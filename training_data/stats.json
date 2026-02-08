@@ -1,0 +1,9 @@
+{
+  "total_routes": 16,
+  "simple": 0,
+  "medium": 16,
+  "complex": 0,
+  "hashpack_visible": 12,
+  "requires_wrap_unwrap": 0,
+  "training_examples": 192
+}
