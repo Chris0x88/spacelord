@@ -441,7 +441,18 @@ class SaucerSwapV2Engine:
                 if len(path_ids) == 2:
                     return self._estimate_exact_output_input(addr_in, addr_out, raw_amount_out, path_fees[0], decimals_in)
                 else:
-                    # Multi-hop exact output is complex; fallback to scale estimation for now
+                    # Multi-hop exact output: Use a scale estimation based on single-hop quotes
+                    # This is better than returning None as it allows 'explain' to show something.
+                    try:
+                        # Estimate using single-hop rate of the whole path
+                        # (amount_in_est = amount_out * (price_in / price_out))
+                        p_in = self.prices.get_price(token_in_id)
+                        p_out = self.prices.get_price(token_out_id)
+                        if p_in and p_out and p_in > 0:
+                            est_in_float = amount * (p_out / p_in) * 1.05 # 5% buffer
+                            return int(est_in_float * (10 ** decimals_in))
+                    except:
+                        pass
                     return None
         except Exception as e:
             logger.debug(f"Quote failed: {e}")
@@ -572,27 +583,18 @@ class SaucerSwapV2Engine:
                     })
             else:
                 # EXACT OUTPUT: Path is reversed (tokenOut -> fee -> tokenIn)
-                # For exactOutput, we want to specify the exact amount we want OUT
-                # The router will calculate how much input is needed
-                
-                # Reverse the path for exactOutput
-                path_ids_rev = [WHBAR_ID if is_hbar_out else token_out_id,
-                               WHBAR_ID if is_hbar_in else token_in_id]
-                path_bytes_rev = encode_path(path_ids_rev, path_fees)
+                # Reverse both tokens and fees
+                path_ids_rev = list(reversed(path_ids))
+                path_fees_rev = list(reversed(path_fees))
+                path_bytes_rev = encode_path(path_ids_rev, path_fees_rev)
                 
                 raw_amount_out_exact = int(amount * (10 ** decimals_out))
                 # amountInMaximum = raw_amount_in (already includes slippage buffer)
                 
                 if is_hbar_in:
-                    # exactOutput with HBAR input
-                    # Construct reversed path: tokenOut -> fee -> WHBAR
-                    path_ids_rev = [WHBAR_ID if is_hbar_out else token_out_id, WHBAR_ID]
-                    path_bytes_rev = encode_path(path_ids_rev, path_fees)
-                    
-                    raw_amount_out_exact = int(amount * (10 ** decimals_out))
-                    
+                    # exactOutput with HBAR input: Multicall(exactOutput + refundETH)
+                    # Use the reversed path constructed above
                     if is_hbar_out:
-                        # HBAR -> HBAR? Nonsense but handled for safety
                         return SwapResult(success=False, error="Cannot swap HBAR for HBAR")
 
                     params = (path_bytes_rev, self.eoa, deadline, raw_amount_out_exact, raw_amount_in)
@@ -605,15 +607,16 @@ class SaucerSwapV2Engine:
                         "chainId": self.client.chain_id
                     })
                 elif is_hbar_out:
-                    # exactOutput to HBAR: reverse path + unwrap
-                    params = (path_bytes_rev, self.eoa, deadline, raw_amount_out_exact, raw_amount_in)
+                    # Token -> HBAR (exactOutput)
+                    # recipient should be router for the unwrapWHBAR step
+                    params = (path_bytes_rev, self.client.router_address, deadline, raw_amount_out_exact, raw_amount_in)
                     swap_call = self.router_extended.encode_abi("exactOutput", [params])
                     unwrap_call = self.router_extended.encode_abi("unwrapWHBAR", [0, self.eoa])
                     
-                    swap_bytes = bytes.fromhex(swap_call[2:])
-                    unwrap_bytes = bytes.fromhex(unwrap_call[2:])
-                    
-                    tx = self.router_extended.functions.multicall([swap_bytes, unwrap_bytes]).build_transaction({
+                    tx = self.router_extended.functions.multicall([
+                        bytes.fromhex(swap_call[2:]),
+                        bytes.fromhex(unwrap_call[2:])
+                    ]).build_transaction({
                         "from": self.eoa,
                         "value": 0,
                         "gas": 2000000,

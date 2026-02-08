@@ -2713,3 +2713,1062 @@
 2026-02-09 00:45:59,517 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
 2026-02-09 00:45:59,740 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
 2026-02-09 00:45:59,740 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 9}
+2026-02-09 00:49:00,898 INFO [pacman_agent] Loaded 544 route candidates across 30 tokens
+2026-02-09 00:49:03,997 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): api.saucerswap.finance:443
+2026-02-09 00:49:04,761 DEBUG [urllib3.connectionpool] https://api.saucerswap.finance:443 "GET /v1/tokens HTTP/1.1" 404 None
+2026-02-09 00:49:04,762 DEBUG [pacman_agent] Failed to fetch live prices: 404 Client Error: Not Found for url: https://api.saucerswap.finance/v1/tokens
+2026-02-09 00:49:04,764 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): api.saucerswap.finance:443
+2026-02-09 00:49:05,028 DEBUG [urllib3.connectionpool] https://api.saucerswap.finance:443 "GET /v1/tokens HTTP/1.1" 404 None
+2026-02-09 00:49:05,028 DEBUG [pacman_agent] Failed to fetch live prices: 404 Client Error: Not Found for url: https://api.saucerswap.finance/v1/tokens
+2026-02-09 00:49:05,186 DEBUG [rlp.codec] Consider installing rusty-rlp to improve pyrlp performance with a rust basedbackend. Not currently functional for Python 3.11
+2026-02-09 00:49:05,374 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: web3_clientVersion
+2026-02-09 00:49:05,374 DEBUG [web3._utils.http_session_manager.HTTPSessionManager] Session cached: https://mainnet.hashio.io/api, <requests.sessions.Session object at 0x10a395d10>
+2026-02-09 00:49:05,375 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): mainnet.hashio.io:443
+2026-02-09 00:49:05,676 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:05,677 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: web3_clientVersion, Response: {'result': 'relay/0.74.1', 'jsonrpc': '2.0', 'id': 0}
+2026-02-09 00:49:05,686 DEBUG [pacman_agent] Swap engine initialized successfully.
+2026-02-09 00:49:05,689 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:05,690 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:05,690 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:05,911 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:49:05,911 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 1}
+2026-02-09 00:49:05,912 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:06,178 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:06,178 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x0000000000000000000000000000000000000000000000000000000000002fa3000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000135ca00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008165221904ae0a4085b0d89a300000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 2}
+2026-02-09 00:49:06,178 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:06,178 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:06,393 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:49:06,393 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 3}
+2026-02-09 00:49:06,396 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:06,397 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:06,397 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:06,613 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:49:06,613 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 4}
+2026-02-09 00:49:06,614 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:06,909 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:06,910 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x0000000000000000000000000000000000000000000000000000000000002fb4000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000026cb80000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000409bb69502e84e337f6bac53000000000000000000000000000000000000000209bcfbf7dd49a4fd0c0e53bba000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 5}
+2026-02-09 00:49:06,910 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:06,910 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:07,125 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:49:07,126 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 6}
+2026-02-09 00:49:07,128 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:07,128 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:07,128 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:07,346 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:49:07,347 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 7}
+2026-02-09 00:49:07,347 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:07,731 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:07,732 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x0000000000000000000000000000000000000000000000000000000000002fbf00000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000003a1f20000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000409bb69502e84e337f6bac53000000000000000000000000000000000000000209ba74806c3caf85db2b9742c0000000000000000000000000000000000000000ffcea7fc6d09a0a4e14689140000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 8}
+2026-02-09 00:49:07,732 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:07,732 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:07,950 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:49:07,950 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 9}
+2026-02-09 00:49:26,584 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:26,585 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:26,585 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:26,878 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:26,879 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 10}
+2026-02-09 00:49:26,879 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:27,391 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:27,391 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x000000000000000000000000000000000000000000000000000000000000000f000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000121db000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000081651ac5da454bfe3875c281f00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 11}
+2026-02-09 00:49:27,391 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:27,391 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:27,607 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:27,607 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 12}
+2026-02-09 00:49:27,609 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:27,609 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:27,609 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:27,826 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:27,827 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 13}
+2026-02-09 00:49:27,827 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:28,126 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:28,126 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x000000000000000000000000000000000000000000000000000000000006d2a8000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001679a0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000816627ada1bfaa0c343094f7800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 14}
+2026-02-09 00:49:28,126 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:28,126 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:28,340 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:28,340 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 15}
+2026-02-09 00:49:28,342 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:28,342 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:28,342 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:28,566 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:28,568 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 16}
+2026-02-09 00:49:28,568 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:28,864 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:28,864 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000a3bf2000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166ae22b196a0b3849448d1c00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 17}
+2026-02-09 00:49:28,865 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:28,865 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:29,082 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:29,083 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 18}
+2026-02-09 00:49:29,084 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:29,084 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:29,084 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:29,301 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:29,301 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 19}
+2026-02-09 00:49:29,301 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:29,726 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:29,726 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000bf094000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166f15d39821c072cc622bef00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 20}
+2026-02-09 00:49:29,727 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:29,727 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:29,942 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:29,943 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 21}
+2026-02-09 00:49:29,944 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:29,944 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:29,944 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:30,162 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:30,162 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 22}
+2026-02-09 00:49:30,163 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:30,422 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:30,422 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000ccae5000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167890000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000816712fa7dc4fc139b2bca62e00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 23}
+2026-02-09 00:49:30,423 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:30,423 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:30,637 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:30,637 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 24}
+2026-02-09 00:49:30,638 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:30,639 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:30,639 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:30,858 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:30,858 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 25}
+2026-02-09 00:49:30,858 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:31,092 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:31,092 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c5dbd000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008167022bdb5669aac9ac3be3800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 26}
+2026-02-09 00:49:31,092 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:31,092 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:31,311 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:31,311 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 27}
+2026-02-09 00:49:31,313 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:31,313 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:31,313 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:31,535 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:31,535 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 28}
+2026-02-09 00:49:31,536 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:31,816 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:31,817 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c2728000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166f9c48a1f207660ec74a3d00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 29}
+2026-02-09 00:49:31,817 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:31,817 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:32,034 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:32,035 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 30}
+2026-02-09 00:49:32,037 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:32,037 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:32,037 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:32,257 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:32,257 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 31}
+2026-02-09 00:49:32,257 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:32,542 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:32,542 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c4272000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fdf8326da2adfaff9d96400000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 32}
+2026-02-09 00:49:32,542 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:32,542 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:32,758 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:32,758 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 33}
+2026-02-09 00:49:32,760 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:32,760 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:32,760 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:32,976 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:32,977 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 34}
+2026-02-09 00:49:32,977 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:33,245 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:33,246 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34cd000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbde5dac1cccf95c93c2400000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 35}
+2026-02-09 00:49:33,246 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:33,246 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:33,462 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:33,462 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 36}
+2026-02-09 00:49:33,464 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:33,464 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:33,464 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:33,680 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:33,680 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 37}
+2026-02-09 00:49:33,680 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:34,048 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:34,048 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3ba0000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fceb47729af84594a351700000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 38}
+2026-02-09 00:49:34,049 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:34,049 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:34,267 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:34,268 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 39}
+2026-02-09 00:49:34,269 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:34,269 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:34,269 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:34,483 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:34,484 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 40}
+2026-02-09 00:49:34,484 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:34,744 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:34,745 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3837000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fc64d2423980052be0dc700000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 41}
+2026-02-09 00:49:34,745 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:34,745 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:34,961 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:34,961 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 42}
+2026-02-09 00:49:34,962 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:34,963 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:34,963 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:35,181 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:35,182 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 43}
+2026-02-09 00:49:35,182 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:35,481 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:35,481 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3682000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fc2197aa08c3e4f77fa1f00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 44}
+2026-02-09 00:49:35,481 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:35,481 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:35,701 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:35,701 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 45}
+2026-02-09 00:49:35,703 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:35,703 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:35,703 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:35,919 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:35,919 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 46}
+2026-02-09 00:49:35,920 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:36,214 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:36,216 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c35a8000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbfffa5df065d4dd4f04b00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 47}
+2026-02-09 00:49:36,216 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:36,216 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:36,433 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:36,433 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 48}
+2026-02-09 00:49:36,435 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:36,436 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:36,436 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:36,652 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:36,653 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 49}
+2026-02-09 00:49:36,653 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:36,933 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:36,934 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c353b000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbef2c5228fc0169ac10e00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 50}
+2026-02-09 00:49:36,934 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:36,934 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:37,151 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:37,151 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 51}
+2026-02-09 00:49:37,152 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:37,153 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:37,153 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:37,367 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:37,367 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 52}
+2026-02-09 00:49:37,367 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:37,733 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:37,733 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3504000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe6c464de1f48c9aa8ec00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 53}
+2026-02-09 00:49:37,733 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:37,733 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:37,957 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:37,957 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 54}
+2026-02-09 00:49:37,958 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:37,958 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:37,958 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:38,178 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:38,178 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 55}
+2026-02-09 00:49:38,178 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:38,552 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:38,553 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34e9000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe291559fd8bb5fd9d5e00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 56}
+2026-02-09 00:49:38,553 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:38,553 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:38,769 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:38,770 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 57}
+2026-02-09 00:49:38,770 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:38,770 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:38,770 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:38,984 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:38,984 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 58}
+2026-02-09 00:49:38,985 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:39,372 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:39,373 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34f6000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe4aadd3efc0214c232500000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 59}
+2026-02-09 00:49:39,373 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:39,373 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:39,587 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:39,587 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 60}
+2026-02-09 00:49:39,588 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:39,589 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:39,589 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:39,806 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:39,807 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 61}
+2026-02-09 00:49:39,807 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:40,070 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:40,070 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34fd000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe5b7a10e8da56f3660900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 62}
+2026-02-09 00:49:40,070 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:40,070 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:40,285 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:40,285 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 63}
+2026-02-09 00:49:40,287 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:40,287 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:40,287 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:40,504 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:40,504 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 64}
+2026-02-09 00:49:40,504 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:40,772 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:40,773 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3501000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe63e02f656771c7077a00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 65}
+2026-02-09 00:49:40,773 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:40,773 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:40,992 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:40,992 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 66}
+2026-02-09 00:49:40,994 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:40,994 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:40,994 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:41,209 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:41,210 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 67}
+2026-02-09 00:49:41,210 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:41,454 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:41,455 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34ff000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe5fa84e00f73f918beb00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 68}
+2026-02-09 00:49:41,455 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:41,455 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:41,673 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:41,673 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 69}
+2026-02-09 00:49:41,674 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:41,674 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:41,674 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:41,896 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:41,896 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 70}
+2026-02-09 00:49:41,896 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:42,240 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:42,241 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3500000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe61c43eb32f58ac49b300000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 71}
+2026-02-09 00:49:42,241 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:42,241 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:42,458 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:42,458 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 72}
+2026-02-09 00:49:42,459 INFO [btc_rebalancer_swap_engine]   Estimated input needed: 52.482464
+2026-02-09 00:49:42,459 INFO [btc_rebalancer_swap_engine]   EXACT_OUTPUT: Want 0.8 out (800000 raw), estimating input needed...
+2026-02-09 00:49:42,460 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:42,461 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:42,461 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:42,686 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:42,686 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 73}
+2026-02-09 00:49:42,686 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:43,060 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:43,061 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x000000000000000000000000000000000000000000000000000000000000000f000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000121db000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000081651ac5da454bfe3875c281f00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 74}
+2026-02-09 00:49:43,061 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:43,061 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:43,275 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:43,275 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 75}
+2026-02-09 00:49:43,277 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:43,277 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:43,277 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:43,492 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:43,492 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 76}
+2026-02-09 00:49:43,492 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:43,877 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:43,878 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x000000000000000000000000000000000000000000000000000000000006d2a8000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001679a0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000816627ada1bfaa0c343094f7800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 77}
+2026-02-09 00:49:43,878 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:43,878 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:44,096 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:44,096 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 78}
+2026-02-09 00:49:44,098 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:44,098 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:44,098 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:44,322 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:44,322 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 79}
+2026-02-09 00:49:44,323 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:44,697 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:44,697 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000a3bf2000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166ae22b196a0b3849448d1c00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 80}
+2026-02-09 00:49:44,697 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:44,697 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:44,911 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:44,911 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 81}
+2026-02-09 00:49:44,912 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:44,913 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:44,913 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:45,224 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:45,224 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 82}
+2026-02-09 00:49:45,225 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:45,618 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:45,619 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000bf094000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166f15d39821c072cc622bef00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 83}
+2026-02-09 00:49:45,619 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:45,619 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:45,836 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:45,836 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 84}
+2026-02-09 00:49:45,838 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:45,838 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:45,838 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:46,052 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:46,052 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 85}
+2026-02-09 00:49:46,053 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:46,303 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:46,304 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000ccae5000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167890000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000816712fa7dc4fc139b2bca62e00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 86}
+2026-02-09 00:49:46,304 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:46,304 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:46,519 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:46,519 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 87}
+2026-02-09 00:49:46,521 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:46,521 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:46,521 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:46,744 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:46,744 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 88}
+2026-02-09 00:49:46,744 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:47,054 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:47,054 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c5dbd000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008167022bdb5669aac9ac3be3800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 89}
+2026-02-09 00:49:47,054 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:47,054 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:47,272 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:47,272 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 90}
+2026-02-09 00:49:47,274 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:47,274 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:47,274 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:47,489 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:47,490 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 91}
+2026-02-09 00:49:47,490 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:47,871 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:47,871 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c2728000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166f9c48a1f207660ec74a3d00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 92}
+2026-02-09 00:49:47,871 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:47,872 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:48,087 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:48,088 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 93}
+2026-02-09 00:49:48,090 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:48,090 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:48,090 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:48,306 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:48,306 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 94}
+2026-02-09 00:49:48,307 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:48,551 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:48,551 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c4272000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fdf8326da2adfaff9d96400000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 95}
+2026-02-09 00:49:48,551 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:48,551 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:48,770 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:48,771 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 96}
+2026-02-09 00:49:48,772 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:48,772 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:48,773 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:48,986 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:48,986 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 97}
+2026-02-09 00:49:48,987 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:49,289 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:49,290 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34cd000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbde5dac1cccf95c93c2400000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 98}
+2026-02-09 00:49:49,290 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:49,290 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:49,509 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:49:49,509 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 99}
+2026-02-09 00:49:49,510 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:49,511 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:49,511 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:49,724 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:49,724 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 100}
+2026-02-09 00:49:49,726 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:49,993 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:49,993 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3ba0000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fceb47729af84594a351700000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 101}
+2026-02-09 00:49:49,994 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:49,994 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:50,218 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:50,219 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 102}
+2026-02-09 00:49:50,220 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:50,221 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:50,221 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:50,438 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:50,439 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 103}
+2026-02-09 00:49:50,439 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:50,842 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:50,843 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3837000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fc64d2423980052be0dc700000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 104}
+2026-02-09 00:49:50,843 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:50,843 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:51,059 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:51,060 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 105}
+2026-02-09 00:49:51,061 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:51,061 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:51,061 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:51,278 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:51,278 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 106}
+2026-02-09 00:49:51,278 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:51,546 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:51,546 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3682000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fc2197aa08c3e4f77fa1f00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 107}
+2026-02-09 00:49:51,546 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:51,546 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:51,765 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:51,766 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 108}
+2026-02-09 00:49:51,767 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:51,767 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:51,767 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:51,981 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:51,982 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 109}
+2026-02-09 00:49:51,982 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:52,261 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:52,262 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c35a8000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbfffa5df065d4dd4f04b00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 110}
+2026-02-09 00:49:52,262 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:52,262 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:52,479 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:52,479 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 111}
+2026-02-09 00:49:52,481 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:52,481 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:52,481 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:52,694 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:52,695 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 112}
+2026-02-09 00:49:52,696 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:52,993 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:52,993 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c353b000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbef2c5228fc0169ac10e00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 113}
+2026-02-09 00:49:52,993 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:52,993 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:53,208 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:53,208 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 114}
+2026-02-09 00:49:53,210 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:53,210 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:53,210 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:53,436 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:53,436 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 115}
+2026-02-09 00:49:53,437 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:53,819 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:53,820 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3504000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe6c464de1f48c9aa8ec00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 116}
+2026-02-09 00:49:53,820 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:53,820 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:54,035 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:54,036 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 117}
+2026-02-09 00:49:54,037 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:54,038 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:54,038 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:54,255 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:54,256 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 118}
+2026-02-09 00:49:54,257 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:54,630 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:54,630 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34e9000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe291559fd8bb5fd9d5e00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 119}
+2026-02-09 00:49:54,630 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:54,630 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:54,845 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:54,845 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 120}
+2026-02-09 00:49:54,847 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:54,847 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:54,847 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:55,063 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:55,063 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 121}
+2026-02-09 00:49:55,063 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:55,382 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:55,382 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34f6000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe4aadd3efc0214c232500000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 122}
+2026-02-09 00:49:55,382 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:55,382 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:55,598 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:55,598 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 123}
+2026-02-09 00:49:55,600 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:55,600 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:55,600 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:55,814 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:55,815 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 124}
+2026-02-09 00:49:55,816 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:56,166 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:56,166 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34fd000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe5b7a10e8da56f3660900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 125}
+2026-02-09 00:49:56,166 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:56,166 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:56,381 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:56,382 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 126}
+2026-02-09 00:49:56,383 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:56,383 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:56,383 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:56,600 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:56,601 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 127}
+2026-02-09 00:49:56,601 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:56,984 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:56,985 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3501000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe63e02f656771c7077a00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 128}
+2026-02-09 00:49:56,986 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:56,986 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:57,205 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:57,206 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 129}
+2026-02-09 00:49:57,208 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:57,208 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:57,208 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:57,497 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:57,497 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 130}
+2026-02-09 00:49:57,498 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:57,804 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:57,806 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34ff000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe5fa84e00f73f918beb00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 131}
+2026-02-09 00:49:57,806 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:57,806 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:58,035 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:58,035 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 132}
+2026-02-09 00:49:58,037 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:58,037 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:58,037 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:58,258 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:58,258 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 133}
+2026-02-09 00:49:58,259 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:58,623 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:58,624 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3500000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001678900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008166fbe61c43eb32f58ac49b300000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 134}
+2026-02-09 00:49:58,624 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:58,624 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:58,837 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:58,837 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 135}
+2026-02-09 00:49:58,838 INFO [btc_rebalancer_swap_engine]   Estimated input needed: 52.482464
+2026-02-09 00:49:58,838 INFO [btc_rebalancer_swap_engine]   Estimated input needed: ~52.482464, max allowed: 53007288
+2026-02-09 00:49:58,840 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:49:58,840 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:58,841 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:59,059 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:59,059 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 136}
+2026-02-09 00:49:59,059 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:49:59,443 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:49:59,443 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x0000000000000000000000000000000000000000000000000000000000000000', 'jsonrpc': '2.0', 'id': 137}
+2026-02-09 00:49:59,443 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:49:59,443 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:49:59,658 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:59,659 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 138}
+2026-02-09 00:49:59,659 INFO [btc_rebalancer_swap_engine]   Current allowance: 0
+2026-02-09 00:49:59,660 INFO [btc_rebalancer_swap_engine]   Approving 0.0.731861 (Need 53007288)...
+2026-02-09 00:49:59,661 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionCount
+2026-02-09 00:49:59,661 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionCount
+2026-02-09 00:49:59,955 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:49:59,955 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionCount, Response: {'result': '0x14d', 'jsonrpc': '2.0', 'id': 139}
+2026-02-09 00:49:59,955 DEBUG [web3.manager.RequestManager] Making request. Method: eth_gasPrice
+2026-02-09 00:49:59,955 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_gasPrice
+2026-02-09 00:50:00,177 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:50:00,177 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_gasPrice, Response: {'result': '0xd18c2e2800', 'jsonrpc': '2.0', 'id': 140}
+2026-02-09 00:50:00,178 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:50:00,178 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:50:00,392 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:50:00,393 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 141}
+2026-02-09 00:50:00,401 DEBUG [web3.manager.RequestManager] Making request. Method: eth_sendRawTransaction
+2026-02-09 00:50:00,401 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_sendRawTransaction
+2026-02-09 00:50:00,702 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:50:00,702 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_sendRawTransaction, Response: {'result': '0x6a544ef86fb13bbc7e0869dcdba62a3998f232c38415cef04748f8f4ac613f5f', 'jsonrpc': '2.0', 'id': 142}
+2026-02-09 00:50:00,702 INFO [btc_rebalancer_swap_engine]   Approval TX sent: 6a544ef86fb13bbc7e0869dcdba62a3998f232c38415cef04748f8f4ac613f5f
+2026-02-09 00:50:00,703 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:00,703 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:01,007 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:01,008 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 143}
+2026-02-09 00:50:01,111 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:01,111 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:01,349 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:01,349 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 144}
+2026-02-09 00:50:01,454 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:01,454 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:01,703 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:01,703 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 145}
+2026-02-09 00:50:01,806 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:01,806 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:02,050 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:02,050 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 146}
+2026-02-09 00:50:02,152 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:02,152 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:02,388 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:02,389 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 147}
+2026-02-09 00:50:02,494 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:02,494 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:02,733 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:02,733 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 148}
+2026-02-09 00:50:02,834 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:02,834 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:03,078 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:03,079 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 149}
+2026-02-09 00:50:03,182 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:03,182 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:03,420 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:03,420 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 150}
+2026-02-09 00:50:03,523 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:03,523 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:03,757 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:03,758 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 151}
+2026-02-09 00:50:03,860 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:03,860 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:04,098 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:04,099 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 152}
+2026-02-09 00:50:04,204 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:04,204 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:04,440 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:04,440 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 153}
+2026-02-09 00:50:04,544 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:04,544 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:04,870 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:04,870 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 154}
+2026-02-09 00:50:04,974 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:04,975 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:05,300 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:05,300 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 155}
+2026-02-09 00:50:05,405 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:05,405 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:05,645 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:05,646 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 156}
+2026-02-09 00:50:05,750 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:05,750 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:06,099 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:06,099 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 157}
+2026-02-09 00:50:06,204 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:06,204 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:06,421 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:50:06,421 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': {'blockHash': '0xc072ab061178b97c9a48258435dc67a0f763a7a851ec6777cf53a1fecffc7a72', 'blockNumber': '0x56b673b', 'from': '0x76d2580a07eebaa790a286df2bd1f8b13655c5fa', 'to': '0x00000000000000000000000000000000000b2ad5', 'cumulativeGasUsed': '0x2426f', 'gasUsed': '0x2426f', 'contractAddress': '0x00000000000000000000000000000000000b2ad5', 'logs': [], 'logsBloom': '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000', 'transactionHash': '0x6a544ef86fb13bbc7e0869dcdba62a3998f232c38415cef04748f8f4ac613f5f', 'transactionIndex': '0x3', 'effectiveGasPrice': '0xd18c2e2800', 'root': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'status': '0x0', 'type': '0x0', 'revertReason': '0x3078'}, 'jsonrpc': '2.0', 'id': 158}
+2026-02-09 00:50:06,422 INFO [btc_rebalancer_swap_engine]   Approval confirmed. Waiting 5s for propagation...
+2026-02-09 00:50:11,424 INFO [btc_rebalancer_swap_engine]   Using Path: 00000000000000000000000000000000000b2ad5000bb8000000000000000000000000000000000006f89a
+2026-02-09 00:50:11,424 INFO [btc_rebalancer_swap_engine]   Deadline: 1770562811424
+2026-02-09 00:50:11,425 INFO [btc_rebalancer_swap_engine]   Min Out: 800000
+2026-02-09 00:50:11,426 DEBUG [web3.manager.RequestManager] Making request. Method: eth_gasPrice
+2026-02-09 00:50:11,426 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_gasPrice
+2026-02-09 00:50:11,645 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:50:11,646 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_gasPrice, Response: {'result': '0xd18c2e2800', 'jsonrpc': '2.0', 'id': 159}
+2026-02-09 00:50:11,647 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionCount
+2026-02-09 00:50:11,647 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionCount
+2026-02-09 00:50:11,936 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 43
+2026-02-09 00:50:11,936 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionCount, Response: {'result': '0x14e', 'jsonrpc': '2.0', 'id': 160}
+2026-02-09 00:50:11,943 DEBUG [web3.manager.RequestManager] Making request. Method: eth_sendRawTransaction
+2026-02-09 00:50:11,944 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_sendRawTransaction
+2026-02-09 00:50:12,471 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:50:12,471 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_sendRawTransaction, Response: {'result': '0xcc5d342c880d6d6ac0fc5ec170b22aa7371bdf6786cf7cb821316618c0e7087f', 'jsonrpc': '2.0', 'id': 161}
+2026-02-09 00:50:12,471 INFO [btc_rebalancer_swap_engine] Swap transaction sent: cc5d342c880d6d6ac0fc5ec170b22aa7371bdf6786cf7cb821316618c0e7087f
+2026-02-09 00:50:12,472 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:12,472 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:13,281 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:13,281 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 162}
+2026-02-09 00:50:13,385 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:13,386 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:13,626 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:13,627 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 163}
+2026-02-09 00:50:13,728 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:13,728 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:13,963 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:13,963 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 164}
+2026-02-09 00:50:14,066 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:14,066 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:14,393 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:14,394 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 165}
+2026-02-09 00:50:14,499 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:14,499 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:14,803 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:14,803 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 166}
+2026-02-09 00:50:14,905 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:14,906 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:15,212 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:15,213 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 167}
+2026-02-09 00:50:15,316 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:15,316 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:15,622 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:15,622 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 168}
+2026-02-09 00:50:15,726 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:15,730 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:16,033 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:16,034 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 169}
+2026-02-09 00:50:16,138 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:16,138 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:16,441 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:16,442 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 170}
+2026-02-09 00:50:16,547 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:16,547 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:16,851 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:16,852 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 171}
+2026-02-09 00:50:16,954 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:16,954 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:17,193 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:17,193 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 172}
+2026-02-09 00:50:17,296 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:17,296 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:17,543 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:17,543 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 173}
+2026-02-09 00:50:17,645 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:17,646 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:17,953 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:17,953 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 174}
+2026-02-09 00:50:18,058 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:18,059 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:18,293 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:18,293 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 175}
+2026-02-09 00:50:18,397 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:18,397 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:18,654 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:18,655 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 176}
+2026-02-09 00:50:18,759 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:18,759 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:18,993 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:18,993 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 177}
+2026-02-09 00:50:19,097 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:19,098 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:19,333 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:19,333 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 178}
+2026-02-09 00:50:19,435 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:19,436 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:19,670 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 40
+2026-02-09 00:50:19,671 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': None, 'jsonrpc': '2.0', 'id': 179}
+2026-02-09 00:50:19,774 DEBUG [web3.manager.RequestManager] Making request. Method: eth_getTransactionReceipt
+2026-02-09 00:50:19,774 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt
+2026-02-09 00:50:20,128 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:50:20,128 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_getTransactionReceipt, Response: {'result': {'blockHash': '0x1ae78cb494e129fea8fdc443d793bfc0ff9d055509169dcdf948b9b064bb5604', 'blockNumber': '0x56b6741', 'from': '0x76d2580a07eebaa790a286df2bd1f8b13655c5fa', 'to': '0x00000000000000000000000000000000003c437a', 'cumulativeGasUsed': '0x93592', 'gasUsed': '0x21c43', 'contractAddress': '0x00000000000000000000000000000000003c437a', 'logs': [], 'logsBloom': '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000', 'transactionHash': '0xcc5d342c880d6d6ac0fc5ec170b22aa7371bdf6786cf7cb821316618c0e7087f', 'transactionIndex': '0x10', 'effectiveGasPrice': '0xd18c2e2800', 'root': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'status': '0x0', 'type': '0x0', 'revertReason': '0xffb9e6ed0000000000000000000000000000000000000000000000000000000000000124'}, 'jsonrpc': '2.0', 'id': 180}
+2026-02-09 00:58:27,074 INFO [pacman_agent] Loaded 544 route candidates across 30 tokens
+2026-02-09 00:58:34,057 INFO [pacman_agent] Loaded 544 route candidates across 30 tokens
+2026-02-09 00:58:48,139 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): api.saucerswap.finance:443
+2026-02-09 00:58:48,877 DEBUG [urllib3.connectionpool] https://api.saucerswap.finance:443 "GET /v1/tokens HTTP/1.1" 404 None
+2026-02-09 00:58:48,878 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): api.saucerswap.finance:443
+2026-02-09 00:58:49,137 DEBUG [urllib3.connectionpool] https://api.saucerswap.finance:443 "GET /v1/tokens HTTP/1.1" 404 None
+2026-02-09 00:58:49,298 DEBUG [rlp.codec] Consider installing rusty-rlp to improve pyrlp performance with a rust basedbackend. Not currently functional for Python 3.11
+2026-02-09 00:58:49,467 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: web3_clientVersion
+2026-02-09 00:58:49,467 DEBUG [web3._utils.http_session_manager.HTTPSessionManager] Session cached: https://mainnet.hashio.io/api, <requests.sessions.Session object at 0x10e30e350>
+2026-02-09 00:58:49,468 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): mainnet.hashio.io:443
+2026-02-09 00:58:49,734 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:49,734 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: web3_clientVersion, Response: {'result': 'relay/0.74.1', 'jsonrpc': '2.0', 'id': 0}
+2026-02-09 00:58:49,742 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:49,742 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:49,742 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:49,954 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:58:49,954 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 1}
+2026-02-09 00:58:49,954 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:50,238 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:50,245 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x000000000000000000000000000000000000000000000000000000000000000f000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000121cb0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000811e35bb78696cf4b2429cb9000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 2}
+2026-02-09 00:58:50,245 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:50,245 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:50,474 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:58:50,474 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 3}
+2026-02-09 00:58:50,475 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:50,475 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:50,475 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:50,685 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:58:50,685 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 4}
+2026-02-09 00:58:50,685 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:50,954 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:50,955 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x000000000000000000000000000000000000000000000000000000000006da28000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000811f42a33fe3cb02adfd6f2e900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 5}
+2026-02-09 00:58:50,955 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:50,955 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:51,173 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:58:51,173 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 6}
+2026-02-09 00:58:51,174 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:51,174 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:51,174 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:51,390 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:58:51,390 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 7}
+2026-02-09 00:58:51,391 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:51,662 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:51,662 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000a4732000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000811fc9184fbac1a9fe612308d00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 8}
+2026-02-09 00:58:51,662 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:51,662 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:51,872 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 41
+2026-02-09 00:58:51,872 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 9}
+2026-02-09 00:58:51,873 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:51,873 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:51,873 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:52,087 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:52,087 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 10}
+2026-02-09 00:58:52,088 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:52,333 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:52,333 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000bfdb4000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a7000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000081200c52d7a63cfda692fcf6000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 11}
+2026-02-09 00:58:52,333 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:52,333 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:52,546 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:52,549 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 12}
+2026-02-09 00:58:52,551 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:52,551 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:52,552 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:52,768 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:52,769 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 13}
+2026-02-09 00:58:52,769 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:53,043 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:53,043 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000cd8f5000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a8000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000081202df01be91d0a14f8a499f00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 14}
+2026-02-09 00:58:53,044 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:53,044 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:53,255 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:53,256 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 15}
+2026-02-09 00:58:53,256 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:53,257 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:53,257 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:53,467 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:53,467 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 16}
+2026-02-09 00:58:53,467 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:53,767 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:53,768 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c6b55000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a8000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000081201d21797a8aa14379161a900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 17}
+2026-02-09 00:58:53,768 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:53,768 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:53,979 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:53,979 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 18}
+2026-02-09 00:58:53,980 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:53,980 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:53,980 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:54,192 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:54,192 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 19}
+2026-02-09 00:58:54,192 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:54,445 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:54,445 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3484000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812014ba2843416cdab94edae00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 20}
+2026-02-09 00:58:54,445 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:54,445 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:54,654 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:54,654 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 21}
+2026-02-09 00:58:54,655 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:54,655 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:54,655 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:54,873 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:54,874 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 22}
+2026-02-09 00:58:54,874 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:55,177 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:55,178 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c4fed000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812018edd091c3a474cc77cd500000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 23}
+2026-02-09 00:58:55,178 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:55,178 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:55,388 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:55,388 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 24}
+2026-02-09 00:58:55,388 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:55,388 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:55,388 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:55,599 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:55,600 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 25}
+2026-02-09 00:58:55,600 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:56,021 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:56,021 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c4238000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812016d3fbd03dc373296df9500000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 26}
+2026-02-09 00:58:56,021 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:56,021 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:56,234 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:56,234 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 27}
+2026-02-09 00:58:56,235 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:56,235 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:56,235 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:56,443 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:56,443 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 28}
+2026-02-09 00:58:56,443 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:56,839 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:56,840 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3b5e000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812015c71209bf9826f15e6a100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 29}
+2026-02-09 00:58:56,840 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:56,840 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:57,053 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:57,053 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 30}
+2026-02-09 00:58:57,054 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:57,054 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:57,054 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:57,262 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:57,262 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 31}
+2026-02-09 00:58:57,263 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:57,556 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:57,557 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c37f1000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812015409cd95e1fe6889bf5100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 32}
+2026-02-09 00:58:57,557 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:57,557 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:57,766 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:57,766 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 33}
+2026-02-09 00:58:57,767 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:57,767 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:57,767 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:57,981 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:57,981 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 34}
+2026-02-09 00:58:57,981 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:58,248 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:58,248 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c363b000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812014fd62412d63c6543aba900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 35}
+2026-02-09 00:58:58,249 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:58,249 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:58,459 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:58,459 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 36}
+2026-02-09 00:58:58,460 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:58,460 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:58,460 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:58,669 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:58,669 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 37}
+2026-02-09 00:58:58,669 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:58,992 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:58,992 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3560000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812014dbc4f51505b63a0a1d500000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 38}
+2026-02-09 00:58:58,992 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:58,992 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:59,200 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:59,200 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 39}
+2026-02-09 00:58:59,201 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:59,201 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:59,201 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:59,424 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:59,424 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 40}
+2026-02-09 00:58:59,424 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:58:59,685 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:58:59,686 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34f2000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812014caf64f08d6ae2cf1ceb00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 41}
+2026-02-09 00:58:59,686 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:59,686 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:58:59,893 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:58:59,894 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 42}
+2026-02-09 00:58:59,894 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:58:59,894 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:58:59,894 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:00,105 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:00,105 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 43}
+2026-02-09 00:59:00,105 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:59:00,428 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:59:00,428 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3529000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812014d35d07ca28fd9a089b300000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 44}
+2026-02-09 00:59:00,428 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:00,428 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:00,647 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:00,647 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 45}
+2026-02-09 00:59:00,648 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:59:00,648 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:00,648 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:00,860 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:00,860 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 46}
+2026-02-09 00:59:00,860 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:59:01,092 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:59:01,092 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c350d000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812014cf29f88be2703037e2600000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 47}
+2026-02-09 00:59:01,093 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:01,093 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:01,300 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:01,301 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 48}
+2026-02-09 00:59:01,301 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:59:01,301 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:01,301 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:01,510 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:01,511 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 49}
+2026-02-09 00:59:01,511 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:59:01,808 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:59:01,808 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c3500000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812014cd0fd6a7f9f4e1da2b200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 50}
+2026-02-09 00:59:01,808 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:01,808 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:02,019 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:02,019 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 51}
+2026-02-09 00:59:02,020 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:59:02,020 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:02,020 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:02,243 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:02,243 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 52}
+2026-02-09 00:59:02,243 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:59:02,494 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:59:02,494 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34f9000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812014cc0312d868518765fcf00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 53}
+2026-02-09 00:59:02,494 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:02,494 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:02,703 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:02,703 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 54}
+2026-02-09 00:59:02,704 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:59:02,704 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:02,704 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:02,919 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:02,919 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 55}
+2026-02-09 00:59:02,919 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:59:03,237 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:59:03,238 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34fc000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812014cc8974c0312334a014000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 56}
+2026-02-09 00:59:03,238 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:03,238 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:03,453 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:03,453 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 57}
+2026-02-09 00:59:03,454 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:59:03,454 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:03,454 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:03,663 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:03,663 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 58}
+2026-02-09 00:59:03,663 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:59:03,905 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:59:03,905 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34fe000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812014ccccf2d6782657f7cd000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 59}
+2026-02-09 00:59:03,905 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:03,905 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:04,119 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:04,119 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 60}
+2026-02-09 00:59:04,120 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:59:04,120 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:04,120 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:04,328 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:04,328 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 61}
+2026-02-09 00:59:04,328 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:59:04,724 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:59:04,725 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x00000000000000000000000000000000000000000000000000000000000c34ff000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000167a70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000812014cceeb1e19ba7e9a3a9700000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 62}
+2026-02-09 00:59:04,725 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:04,725 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:04,934 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:04,935 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 63}
+2026-02-09 00:59:04,935 INFO [btc_rebalancer_swap_engine]   Estimated input needed: 52.258054
+2026-02-09 00:59:04,936 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): api.saucerswap.finance:443
+2026-02-09 00:59:05,242 DEBUG [urllib3.connectionpool] https://api.saucerswap.finance:443 "GET /v1/tokens HTTP/1.1" 404 None
+2026-02-09 00:59:05,243 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): api.saucerswap.finance:443
+2026-02-09 00:59:05,547 DEBUG [urllib3.connectionpool] https://api.saucerswap.finance:443 "GET /v1/tokens HTTP/1.1" 404 None
+2026-02-09 00:59:05,548 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): api.saucerswap.finance:443
+2026-02-09 00:59:05,804 DEBUG [urllib3.connectionpool] https://api.saucerswap.finance:443 "GET /v1/tokens HTTP/1.1" 404 None
+2026-02-09 00:59:05,805 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): api.saucerswap.finance:443
+2026-02-09 00:59:06,069 DEBUG [urllib3.connectionpool] https://api.saucerswap.finance:443 "GET /v1/tokens HTTP/1.1" 404 None
+2026-02-09 00:59:06,070 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): api.saucerswap.finance:443
+2026-02-09 00:59:06,467 DEBUG [urllib3.connectionpool] https://api.saucerswap.finance:443 "GET /v1/tokens HTTP/1.1" 404 None
+2026-02-09 00:59:06,468 DEBUG [urllib3.connectionpool] Starting new HTTPS connection (1): api.saucerswap.finance:443
+2026-02-09 00:59:06,725 DEBUG [urllib3.connectionpool] https://api.saucerswap.finance:443 "GET /v1/tokens HTTP/1.1" 404 None
+2026-02-09 00:59:06,727 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:59:06,727 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:06,727 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:06,937 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:06,937 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 64}
+2026-02-09 00:59:06,937 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:59:07,286 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:59:07,286 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x0000000000000000000000000000000000000000000000000000000000175ba1000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000001679800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000008121ca7a31410629d4898917d00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 65}
+2026-02-09 00:59:07,286 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:07,286 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:07,500 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:07,500 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 66}
+2026-02-09 00:59:07,501 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:59:07,501 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:07,501 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:07,720 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:07,720 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 67}
+2026-02-09 00:59:07,721 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:59:08,001 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:59:08,002 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x000000000000000000000000000000000000000000000000000000000017803a000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000026cc20000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000409a2a44230af6ec7a81cb85a0000000000000000000000000000000000000020761d71d08c96a74c5f89f598000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 68}
+2026-02-09 00:59:08,002 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:08,002 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:08,214 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:08,214 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 69}
+2026-02-09 00:59:08,215 DEBUG [web3.manager.RequestManager] Making request. Method: eth_call
+2026-02-09 00:59:08,215 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:08,215 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:08,437 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:08,438 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 70}
+2026-02-09 00:59:08,438 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call
+2026-02-09 00:59:08,828 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 None
+2026-02-09 00:59:08,828 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_call, Response: {'result': '0x0000000000000000000000000000000000000000000000000000000000176bb600000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000003a1980000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000409a2a44230af6ec7a81cb85a00000000000000000000000000000000000000208895fbd969569428d30c414e0000000000000000000000000000000000000000ffcea217247a0ff283e3c09b0000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001', 'jsonrpc': '2.0', 'id': 71}
+2026-02-09 00:59:08,828 DEBUG [web3.manager.RequestManager] Making request. Method: eth_chainId
+2026-02-09 00:59:08,828 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
+2026-02-09 00:59:09,039 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
+2026-02-09 00:59:09,039 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 72}

@@ -282,13 +282,19 @@ class PacmanAgent:
                         price_per_unit=amount_in / amount if amount > 0 else 0,
                     )
                 
-                # Pick the one with HIGHEST output (for exact_in) or LOWEST input (for exact_out)
-                if best_quote is None:
-                    best_quote = q
-                elif mode == "exact_in" and q.amount_out > best_quote.amount_out:
-                    best_quote = q
-                elif mode == "exact_out" and q.amount_in < best_quote.amount_in:
-                    best_quote = q
+                # Penalty for hops: 2% per extra hop (num_hops - 1)
+                hop_penalty = 1.0 - ((rt.num_hops - 1) * 0.02)
+                
+                # Adjusted amount for comparison
+                if mode == "exact_in":
+                    adj_amount = q.amount_out * hop_penalty
+                    if best_quote is None or adj_amount > (best_quote.amount_out * (1.0 - ((best_quote.route.num_hops - 1) * 0.02))):
+                        best_quote = q
+                else:
+                    # For exact_out, lower input is better, so penalty makes it look LARGER
+                    adj_amount = q.amount_in / hop_penalty
+                    if best_quote is None or adj_amount < (best_quote.amount_in / (1.0 - ((best_quote.route.num_hops - 1) * 0.02))):
+                        best_quote = q
 
             except Exception as e:
                 logger.debug(f"Candidate quote failed (path {'->'.join(rt.path)}): {e}")
@@ -372,7 +378,7 @@ class PacmanAgent:
             logger.error(f"Swap execution failed: {e}")
             return SwapResult(success=False, error=str(e), route_used=route_str)
 
-    def explain(self, from_token: str, to_token: str, amount: float = 1.0) -> str:
+    def explain(self, from_token: str, to_token: str, amount: float = 1.0, mode: str = "exact_in") -> str:
         """
         Human-readable explanation of the route with live selection info.
         """
@@ -390,42 +396,52 @@ class PacmanAgent:
         lp_in = self.prices.get_price(meta_in.get("id", ""))
         lp_out = self.prices.get_price(meta_out.get("id", ""))
         
-        # Fallback to matrix prices
         p_in = lp_in or meta_in.get("priceUsd")
         p_out = lp_out or meta_out.get("priceUsd")
         
         src_in = "LIVE" if lp_in else "MATRIX"
         src_out = "LIVE" if lp_out else "MATRIX"
 
-        val_in_str = f" (~${amount * p_in:.2f} [{src_in}])" if p_in else ""
+        if mode == "exact_in":
+            val_in_str = f" (~${amount * p_in:.2f} [{src_in}])" if p_in else ""
+            input_line = f"Input: {amount} {from_token}{val_in_str}"
+        else:
+            val_out_str = f" (~${amount * p_out:.2f} [{src_out}])" if p_out else ""
+            input_line = f"Target Output: {amount} {to_token}{val_out_str}"
         
         lines = [
             f"Static Matrix: {len(candidates)} candidates found.",
-            f"Input: {amount} {from_token}{val_in_str}",
+            input_line,
             "-" * 40
         ]
         
-        # Get live quote to see which candidate wins
-        q = self.quote(from_token, to_token, amount)
-        if q and q.amount_out > 0:
+        q = self.quote(from_token, to_token, amount, mode)
+        if q and ((mode == "exact_in" and q.amount_out > 0) or (mode == "exact_out" and q.amount_in > 0)):
             lines.append(f"Winner (Live Selection): {' -> '.join(q.route.path)}")
-            lines.append(f"Est. Output: ~{q.amount_out:.8f} {to_token}")
-            if p_out:
-                lines.append(f"Est. Value: ~${q.amount_out * p_out:.2f} [{src_out}]")
+            if mode == "exact_in":
+                lines.append(f"Est. Output: ~{q.amount_out:.8f} {to_token}")
+                if p_out:
+                    lines.append(f"Est. Value: ~${q.amount_out * p_out:.2f} [{src_out}]")
+            else:
+                lines.append(f"Est. Input Needed: ~{q.amount_in:.8f} {from_token}")
+                if p_in:
+                    lines.append(f"Est. Cost: ~${q.amount_in * p_in:.2f} [{src_in}]")
+            
             lines.append(f"Total fee: {q.route.total_fee_percent}%")
             lines.append(f"Hops: {q.route.num_hops}")
         else:
-            # Fallback to matrix info if quoting fails or returns 0
-            # (common if no private key/engine is configured)
             rt = q.route if q else candidates[0]
             lines.append(f"Candidate (Matrix): {' -> '.join(rt.path)}")
-            if p_in and p_out:
-                est_out = (amount * p_in) / p_out
-                lines.append(f"Est. Output: ~{est_out:.6f} {to_token} (Matrix)")
-                lines.append(f"Est. Value: ~${est_out * p_out:.2f} (Matrix)")
+            if mode == "exact_in":
+                if p_in and p_out:
+                    est_out = (amount * p_in) / p_out
+                    lines.append(f"Est. Output: ~{est_out:.6f} {to_token} (Matrix)")
+            else:
+                if p_in and p_out:
+                    est_in = (amount * p_out) / p_in
+                    lines.append(f"Est. Input Needed: ~{est_in:.6f} {from_token} (Matrix)")
             lines.append(f"Total fee: {rt.total_fee_percent}%")
-            if not q or q.amount_out == 0:
-                lines.append("Note: Live quoting unavailable (using matrix fallback)")
+            lines.append("Note: Live quoting unavailable or poor liquidity (using matrix fallback)")
 
         return "\n".join(lines)
 
@@ -601,7 +617,7 @@ if __name__ == "__main__":
                         print(f"   Pair:   {req['from_token']} -> {req['to_token']}")
                         
                         # Explain the matrix choice
-                        exp = agent.explain(req['from_token'], req['to_token'], req['amount'])
+                        exp = agent.explain(req['from_token'], req['to_token'], req['amount'], mode=req['mode'])
                         print("-" * 30)
                         print(exp)
                         print("-" * 30)
