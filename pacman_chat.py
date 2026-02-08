@@ -1,342 +1,209 @@
 #!/usr/bin/env python3
 """
-Pacman Chat Interface v2 - Production Ready
-Natural language interface with config, pre-flight, and execution.
+Pacman Chat v5 (Consumer-First)
+Powered by Pacman Brain v2 and Standardized SwapIntent.
 """
 
-import json
-import re
-from typing import Optional, Dict
-from pathlib import Path
+import sys
+import os
+import time
+from pacman_brain_v2 import PacmanBrainV2
+from pacman_types import SwapIntent, SwapStrategy
+from btc_rebalancer_swap_engine import SaucerSwapV2Engine
+from v2_tokens import DEFAULT_FEE
 
-# Import our components
-from pacman_variant_router import PacmanVariantRouter, TOKEN_VARIANTS
-from pacman_config import PacmanConfig
-from pacman_preflight import PacmanPreFlight
+# Ensure we can import modules
+sys.path.insert(0, os.getcwd())
 
-class PacmanChat:
-    """
-    Production-ready chat interface for Pacman trading.
-    
-    Examples:
-    - "swap 1 usdc for wbtc"
-    - "buy bitcoin with 1 usdc"
-    - "check my config"
-    - "status"
-    """
-    
+class PacmanWizard:
     def __init__(self):
-        # Load configuration
-        self.config = PacmanConfig.from_env()
-        valid, message = self.config.validate()
-        self.config_valid = valid
-        self.config_message = message
+        print("="*60)
+        print("🤖 PACMAN TRADER - Consumer First Edition")
+        print("   'Swap 100 USDC for HBAR'  or  'Buy 1000 SAUCE'")
+        print("="*60)
         
-        # Initialize router
-        self.router = PacmanVariantRouter()
-        self.router.load_pools()
-        
-        # Initialize pre-flight checker
-        self.preflight = PacmanPreFlight(self.config)
-        
-        # State
-        self.pending_swap = None
-        self.execution_history = []
-        
-        # Token aliases
-        self.token_aliases = {
-            "usdc": ["USDC", "usdc", "usd coin"],
-            "wbtc": ["WBTC", "wbtc", "wrapped btc", "wrapped bitcoin", "bitcoin", "btc"],
-            "weth": ["WETH", "weth", "wrapped eth", "wrapped ethereum", "ethereum", "eth"],
-            "hbar": ["HBAR", "hbar", "hedera"],
-            "sauce": ["SAUCE", "sauce"],
-            "usdt": ["USDT", "usdt", "tether"],
-            "dai": ["DAI", "dai"],
-            "link": ["LINK", "link", "chainlink"],
-        }
-        
-        # Intent patterns
-        self.patterns = {
-            "swap": r"(?:swap|trade|exchange|convert)\s+(\d+(?:\.\d+)?)\s*(\w+)\s+(?:for|to|into)\s+(\w+)",
-            "buy": r"(?:buy|purchase)\s+(\w+)\s+(?:with|using)\s+(\d+(?:\.\d+)?)\s*(\w+)",
-            "status": r"(?:status|config|settings|info)",
-        }
-    
-    def parse_intent(self, user_input: str) -> Optional[Dict]:
-        """Parse natural language into structured intent."""
-        user_input_lower = user_input.lower().strip()
-        
-        # Check for status command
-        if re.search(self.patterns["status"], user_input_lower):
-            return {"action": "status"}
-        
-        # Try swap pattern
-        match = re.search(self.patterns["swap"], user_input_lower)
-        if match:
-            amount = float(match.group(1))
-            from_token = self.resolve_token(match.group(2))
-            to_token = self.resolve_token(match.group(3))
-            return {
-                "action": "swap",
-                "amount": amount,
-                "from_token": from_token,
-                "to_token": to_token,
-                "raw_input": user_input
-            }
-        
-        # Try buy pattern
-        match = re.search(self.patterns["buy"], user_input_lower)
-        if match:
-            to_token = self.resolve_token(match.group(1))
-            amount = float(match.group(2))
-            from_token = self.resolve_token(match.group(3))
-            return {
-                "action": "swap",
-                "amount": amount,
-                "from_token": from_token,
-                "to_token": to_token,
-                "raw_input": user_input
-            }
-        
-        return None
-    
-    def resolve_token(self, token_str: str) -> Optional[str]:
-        """Resolve token string to canonical symbol."""
-        token_lower = token_str.lower()
-        for canonical, aliases in self.token_aliases.items():
-            if token_lower in [a.lower() for a in aliases]:
-                if canonical == "wbtc":
-                    return "WBTC_HTS"  # Default to HTS
-                elif canonical == "weth":
-                    return "WETH_HTS"
-                return canonical.upper()
-        return None
-    
-    def handle_status(self) -> str:
-        """Show current configuration status."""
-        lines = [
-            "📊 PACMAN STATUS",
-            "="*60,
-            f"Configuration: {'✅ Valid' if self.config_valid else '❌ Invalid'}",
-        ]
-        
-        if not self.config_valid:
-            lines.append(f"Error: {self.config_message}")
-        
-        lines.extend([
-            "",
-            f"Network: {self.config.network}",
-            f"Account: {self.config.hedera_account_id or 'Not set'}",
-            f"Private Key: {'✅ Set' if self.config.private_key else '❌ Not set'}",
-            "",
-            "🛡️  Safety Limits:",
-            f"   Max per swap: ${self.config.max_swap_amount_usd:.2f}",
-            f"   Max daily: ${self.config.max_daily_volume_usd:.2f}",
-            f"   Max slippage: {self.config.max_slippage_percent:.1f}%",
-            "",
-            f"Mode: {'SIMULATION' if self.config.simulate_mode else 'LIVE'}",
-            f"Confirmation: {'Required' if self.config.require_confirmation else 'Auto'}",
-        ])
-        
-        if self.execution_history:
-            lines.extend([
-                "",
-                f"📜 Session History: {len(self.execution_history)} commands",
-            ])
-        
-        return "\n".join(lines)
-    
-    def handle_swap(self, intent: Dict) -> str:
-        """Handle swap intent with pre-flight checks."""
-        # Cap at $1.00
-        amount = min(intent["amount"], 1.0)
-        from_token = intent["from_token"]
-        to_token = intent["to_token"]
-        
-        if not from_token or not to_token:
-            return "❌ Could not understand tokens. Try: 'swap 1 USDC for WBTC'"
-        
-        # Get route
-        route = self.router.recommend_route(from_token, to_token, "auto", amount)
-        if not route:
-            return f"❌ No route found for {from_token} → {to_token}"
-        
-        # Run pre-flight checks
-        pf_result = self.preflight.check_flight(route, amount)
-        
-        # Build response
-        lines = [
-            f"🎯 SWAP: ${amount:.2f} {from_token} → {to_token}",
-            "="*60,
-            "",
-            route.explain(),
-            "",
-            f"💰 Cost: {route.total_cost_hbar:.4f} HBAR (~${route.total_cost_hbar * 0.09:.2f})",
-            f"⏱️  Time: ~{route.estimated_time_seconds}s",
-            f"👁️  HashPack: {'✅ Visible' if route.hashpack_visible else '❌ Invisible'}",
-            "",
-        ]
-        
-        # Add pre-flight status
-        if pf_result.passed:
-            lines.append("✅ Pre-flight checks PASSED")
-        else:
-            lines.append("⚠️  Pre-flight warnings (can still execute)")
-        
-        if pf_result.warnings:
-            for warning in pf_result.warnings:
-                lines.append(f"   ⚠️  {warning}")
-        
-        lines.extend([
-            "",
-            f"Mode: {'SIMULATION' if self.config.simulate_mode else '🔴 LIVE TRANSACTION'}",
-        ])
-        
-        if self.config.simulate_mode:
-            lines.append("   (No real transaction - set PACMAN_SIMULATE=false for live)")
-        else:
-            lines.append("   ⚠️  REAL TRANSACTION - Review carefully!")
-        
-        lines.extend([
-            "",
-            "Execute this swap? (yes/no)",
-        ])
-        
-        # Store pending
-        self.pending_swap = {
-            "intent": intent,
-            "route": route,
-            "preflight": pf_result
-        }
-        
-        return "\n".join(lines)
-    
-    def handle_confirmation(self, user_input: str) -> str:
-        """Handle yes/no confirmation."""
-        user_lower = user_input.lower().strip()
-        
-        if user_lower in ['yes', 'y', 'confirm', 'execute', 'go']:
-            if not self.pending_swap:
-                return "❌ No pending swap"
-            
-            swap = self.pending_swap
-            self.pending_swap = None
-            
-            # Record in history
-            self.execution_history.append({
-                "action": "swap",
-                "amount": swap["intent"]["amount"],
-                "route": swap["route"].from_variant + "->" + swap["route"].to_variant,
-                "mode": "simulation" if self.config.simulate_mode else "live",
-                "timestamp": "now"
-            })
-            
-            if self.config.simulate_mode:
-                return f"""✅ SIMULATION EXECUTED
+        self.brain = PacmanBrainV2()
+        self.engine = SaucerSwapV2Engine() # Initializes Web3 and Engine
+        self.current_intent = None
 
-Swap: ${swap['intent']['amount']:.2f} {swap['route'].from_variant} → {swap['route'].to_variant}
-Route: {len(swap['route'].steps)} steps
-Cost: {swap['route'].total_cost_hbar:.4f} HBAR
+    def start(self):
+        while True:
+            try:
+                if not self.current_intent:
+                    user_input = input("\n👤 You: ").strip()
+                    if not user_input: continue
+                    if user_input.lower() in ['q', 'quit', 'exit']:
+                        print("👋 Goodbye!")
+                        break
 
-📊 Recorded for AI training dataset
-"""
-            else:
-                # Would execute live transaction here
-                return """🚀 LIVE TRANSACTION EXECUTED
+                    # Initial Parse
+                    self.current_intent = self.brain.parse_intent(user_input)
+                    print(f"🧠 Brain Debug: {self.current_intent}")
 
-Transaction would be submitted to Hedera here.
-For safety, full execution is implemented in pacman_executor.py
+                # Check for completeness and ask clarifying questions
+                self._refine_intent()
 
-To complete live execution:
-1. Ensure all tokens are associated
-2. Approve token spending
-3. Submit swap transaction
-4. Monitor receipt
-5. Record result for AI training
+                # Once complete, confirm and execute
+                if self.current_intent.is_complete:
+                    if self._confirm_and_execute():
+                        self.current_intent = None # Reset after success or cancellation
+                    else:
+                        self.current_intent = None # Reset if user says no
 
-Check execution_records/ for transaction history.
-"""
-        
-        elif user_lower in ['no', 'n', 'cancel', 'abort']:
-            self.pending_swap = None
-            return "❌ Swap cancelled"
-        
-        else:
-            # New command - clear pending and process
-            self.pending_swap = None
-            return None  # Signal to process as new intent
-    
-    def chat(self, user_input: str) -> str:
-        """Main chat handler."""
-        # Check for pending confirmation
-        if self.pending_swap:
-            result = self.handle_confirmation(user_input)
-            if result is not None:
-                return result
-            # If None, fall through to new intent processing
-        
-        # Parse new intent
-        intent = self.parse_intent(user_input)
-        
-        if not intent:
-            return self.handle_help()
-        
-        if intent["action"] == "status":
-            return self.handle_status()
-        elif intent["action"] == "swap":
-            return self.handle_swap(intent)
-        
-        return self.handle_help()
-    
-    def handle_help(self) -> str:
-        """Return help message."""
-        return """🤖 Pacman Trading Assistant
-
-Commands:
-  "swap 1 USDC for WBTC" - Execute swap (max $1.00)
-  "buy WBTC with 1 USDC" - Alternative syntax
-  "status" - Show configuration and limits
-
-Setup:
-  Edit .env file with:
-    PACMAN_PRIVATE_KEY=your_key
-    HEDERA_ACCOUNT_ID=0.0.xxx
-    PACMAN_SIMULATE=false
-
-Current Mode: {mode}
-Max Amount: $1.00 per swap
-Network: {network}
-""".format(
-            mode="SIMULATION" if self.config.simulate_mode else "LIVE",
-            network=self.config.network.upper()
-        )
-
-def run_interactive():
-    """Run interactive chat session."""
-    print("="*60)
-    print("🤖 PACMAN TRADING CHAT v2")
-    print("   Production-ready with pre-flight checks")
-    print("="*60)
-    
-    chat = PacmanChat()
-    
-    # Show status on start
-    print("\n" + chat.handle_status())
-    print("\n" + "="*60)
-    print("Type 'help' for commands, 'quit' to exit\n")
-    
-    # Interactive mode
-    while True:
-        try:
-            user_input = input("\n👤 You: ").strip()
-            if user_input.lower() in ['quit', 'exit', 'q']:
+            except KeyboardInterrupt:
                 print("\n👋 Goodbye!")
                 break
-            if user_input:
-                print(f"\n🤖 Pacman:\n{chat.chat(user_input)}")
-        except (KeyboardInterrupt, EOFError):
-            print("\n\n👋 Goodbye!")
-            break
+            except Exception as e:
+                print(f"❌ Error: {e}")
+                self.current_intent = None
+
+    def _refine_intent(self):
+        """
+        Interactively ask for missing fields.
+        """
+        intent = self.current_intent
+        
+        # 1. Missing Token In (The thing we are spending/selling)
+        # But wait, if Strategy is RECEIVE_EXACT (Buy X), we might not know what we are paying with.
+        # Usually defaults to HBAR or USDC, but better to ask.
+        
+        if not intent.token_in:
+            if intent.strategy == SwapStrategy.SPEND_EXACT:
+                ans = input("🤖 Pacman: What token do you want to **sell/spend**? ")
+            else:
+                ans = input("🤖 Pacman: What token do you want to **pay with**? ")
+            
+            # Use brain to detect token in answer
+            detected = self.brain.detect_tokens(ans)
+            if detected:
+                intent.token_in = detected[0][0]
+            else:
+                print("❌ I didn't recognize that token. Try again.")
+                return
+
+        # 2. Missing Token Out (The thing we are buying/receiving)
+        if not intent.token_out:
+            if intent.strategy == SwapStrategy.RECEIVE_EXACT:
+                ans = input("🤖 Pacman: What token do you want to **buy/receive**? ")
+            else:
+                ans = input("🤖 Pacman: What token do you want to **receive**? ")
+
+            detected = self.brain.detect_tokens(ans)
+            if detected:
+                intent.token_out = detected[0][0]
+            else:
+                print("❌ I didn't recognize that token. Try again.")
+                return
+
+        # 3. Missing Quantity
+        if intent.qty <= 0:
+            if intent.strategy == SwapStrategy.SPEND_EXACT:
+                ans = input(f"🤖 Pacman: How much **{intent.token_in}** do you want to spend? ")
+            else:
+                ans = input(f"🤖 Pacman: How much **{intent.token_out}** do you want to receive? ")
+
+            # Try parse number (handle commas)
+            import re
+            clean_ans = ans.replace(",", "")
+            nums = re.findall(r"(\d+(\.\d+)?)", clean_ans)
+            if nums:
+                intent.qty = float(nums[0][0])
+            else:
+                print("❌ I didn't see a number. Try again.")
+                return
+
+    def _confirm_and_execute(self) -> bool:
+        """
+        Show friendly summary and execute.
+        """
+        intent = self.current_intent
+        
+        # Calculate estimate to show user
+        print("\n⏳ Fetching live quote...")
+        try:
+            # Get decimals
+            # We need to know decimals for tokens.
+            # Using metadata from Brain or fetching from Engine?
+            # Engine has `get_quote`.
+
+            # Brain has `known_tokens` dict.
+            # We can use that.
+            t_in_meta = self.brain.known_tokens.get(intent.token_in)
+            t_out_meta = self.brain.known_tokens.get(intent.token_out)
+
+            if not t_in_meta or not t_out_meta:
+                print(f"❌ Error: Metadata missing for {intent.token_in} or {intent.token_out}.")
+                return False
+
+            dec_in = t_in_meta["decimals"]
+            dec_out = t_out_meta["decimals"]
+
+            # Call Engine Quote
+            # Engine supports `is_exact_input`
+            is_exact_input = (intent.strategy == SwapStrategy.SPEND_EXACT)
+
+            quote_result_raw = self.engine.get_quote(
+                token_in_id=t_in_meta["id"],
+                token_out_id=t_out_meta["id"],
+                amount=intent.qty,
+                decimals_in=dec_in,
+                decimals_out=dec_out,
+                is_exact_input=is_exact_input
+            )
+
+            if quote_result_raw is None:
+                print("❌ Could not get a quote. Route might not exist.")
+                return False
+
+            # Format the output
+            if is_exact_input:
+                # We spent Qty (Exact), we receive Quote (Approx)
+                amount_in = intent.qty
+                amount_out = quote_result_raw / (10 ** dec_out)
+
+                print(f"\n📝 **Confirm Order** (Spend Exact):")
+                print(f"   📉 You Pay:    {amount_in:.6f} {intent.token_in}")
+                print(f"   📈 You Get:   ~{amount_out:.6f} {intent.token_out}")
+            else:
+                # We receive Qty (Exact), we spend Quote (Approx)
+                amount_in = quote_result_raw / (10 ** dec_in)
+                amount_out = intent.qty
+
+                print(f"\n📝 **Confirm Order** (Receive Exact):")
+                print(f"   📉 You Pay:   ~{amount_in:.6f} {intent.token_in}")
+                print(f"   📈 You Get:    {amount_out:.6f} {intent.token_out}")
+
+            confirm = input("\n✅ Execute this swap? (y/n): ").lower()
+            if confirm in ['y', 'yes']:
+                return self._execute_swap(intent, t_in_meta, t_out_meta)
+            else:
+                print("🚫 Cancelled.")
+                return False
+
+        except Exception as e:
+            print(f"❌ Quote Error: {e}")
+            return False
+
+    def _execute_swap(self, intent: SwapIntent, t_in, t_out) -> bool:
+        print("\n🚀 Executing on SaucerSwap V2...")
+        result = self.engine.swap(
+            token_in_id=t_in["id"],
+            token_out_id=t_out["id"],
+            amount=intent.qty,
+            decimals_in=t_in["decimals"],
+            decimals_out=t_out["decimals"],
+            is_exact_input=(intent.strategy == SwapStrategy.SPEND_EXACT)
+        )
+
+        if result.success:
+            print(f"✅ **Success!**")
+            print(f"   TX: https://hashscan.io/mainnet/transaction/{result.tx_hash}")
+            print(f"   Swapped {result.amount_in:.6f} {intent.token_in} -> {result.amount_out:.6f} {intent.token_out}")
+            return True
+        else:
+            print(f"❌ Failed: {result.error}")
+            return False
 
 if __name__ == "__main__":
-    run_interactive()
+    wizard = PacmanWizard()
+    wizard.start()
