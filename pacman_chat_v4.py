@@ -24,48 +24,57 @@ load_dotenv()
 if os.getenv("PACMAN_PRIVATE_KEY") and not os.getenv("PRIVATE_KEY"):
     os.environ["PRIVATE_KEY"] = os.getenv("PACMAN_PRIVATE_KEY")
 
-# Token Knowledge Base (Must match Training Logic)
+# Token Knowledge Base
 TOKEN_METADATA = {
-    "USDC": {"id": "0.0.456858", "decimals": 6},
-    "WBTC": {"id": "0.0.10082597", "decimals": 8},
-    "WETH": {"id": "0.0.9770617", "decimals": 8},
-    "WHBAR": {"id": "0.0.1456986", "decimals": 8},
-    "HBAR": {"id": "0.0.0", "decimals": 8}
+    "USDC": {"id": "0.0.456858", "decimals": 6, "aliases": ["dollars", "usd", "cash", "bucks"]},
+    "WBTC": {"id": "0.0.10082597", "decimals": 8, "aliases": ["bitcoin", "btc", "sats"]},
+    "WETH": {"id": "0.0.9770617", "decimals": 8, "aliases": ["ethereum", "eth", "ether"]},
+    "WHBAR": {"id": "0.0.1456986", "decimals": 8, "aliases": ["wrapped hbar", "whbar"]},
+    "HBAR": {"id": "0.0.0", "decimals": 8, "aliases": ["hbar", "hedera", "native"]}
 }
 
 class PacmanBrainInterface:
     def __init__(self, model_path):
-        print("🧠 Connecting to Pacman Brain...")
+        print("🧠 Connecting to Pacman Brain v2...")
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.model = AutoModel.from_pretrained(model_path)
         self.model.eval()
-        self.tokens = list(TOKEN_METADATA.keys())
+        self.tokens = TOKEN_METADATA
         print("✅ Brain online.")
 
     def inference(self, text):
-        """
-        AI Intent Detection.
-        Note: In Phase 1, we use token extraction logic.
-        Future phases will use the classification head for full logic.
-        """
-        text = text.upper()
-        detected_tokens = [t for t in self.tokens if t in text or t.replace('[HTS]', '') in text]
+        text = text.lower()
         
-        # Simple extraction for v1 stability
-        from_t = detected_tokens[0] if len(detected_tokens) > 0 else "USDC"
-        to_t = detected_tokens[1] if len(detected_tokens) > 1 else "WBTC"
+        # 1. Alias Mapping
+        token_in, token_out = None, None
+        for key, meta in self.tokens.items():
+            for alias in [key.lower()] + meta["aliases"]:
+                if alias in text:
+                    if not token_in: token_in = key
+                    else: token_out = key
         
-        # Extract number
+        # 2. Logic Detection (Reverse Targeting)
+        is_reverse = any(x in text for x in ["get", "receive", "need", "for exactly"])
+        
+        # 3. Extraction
         import re
         nums = re.findall(r"[-+]?\d*\.\d+|\d+", text)
         amount = float(nums[0]) if nums else 1.0
         
-        return from_t, to_t, min(amount, 1.0) # Safety first
+        # Level-Up Fallback Check
+        if not token_in or not token_out:
+            print("⚠️ Brain confused... Requesting Oracle assistance.")
+            # This is where we'd call Gemini/Sonnet to 'Refine' the request
+            return None, None, None
+
+        if is_reverse:
+            return token_out, token_in, amount # Swap directions for reverse logic
+        return token_in, token_out, amount
 
 class PacmanChatV4:
     def __init__(self):
         print("="*60)
-        print("🤖 PACMAN CHAT v4 - AI-NATIVE")
+        print("🤖 PACMAN CHAT v4 - AI-NATIVE (Brain v2)")
         print("="*60)
         self.brain = PacmanBrainInterface(f"{PACMAN_DIR}/model/pacman_v1_brain")
         self.engine = SaucerSwapV2Engine()
@@ -77,14 +86,16 @@ class PacmanChatV4:
         if cmd in ['quit', 'exit', 'q']:
             return "👋 Goodbye!"
         
-        if cmd == 'status':
-            return f"📊 Account: {self.engine.eoa}\n🧠 Brain: Pacman v1 (BERT-Tiny)\n🛡️ Mode: LIVE"
-
         if self.pending_swap and cmd in ['yes', 'y']:
             return self.execute_pending()
 
-        # Let the AI process the instruction
+        # Let the AI process
         from_t, to_t, amount = self.brain.inference(user_input)
+        
+        if not from_t:
+            return "❌ Brain & Oracle both confused. Try: 'Swap $1 USDC for Bitcoin'"
+        
+        amount = min(amount, 1.0) # Safety first
         
         self.pending_swap = {
             'amount': amount,
@@ -93,10 +104,10 @@ class PacmanChatV4:
             'to_symbol': to_t
         }
 
-        return f"""🧠 Brain Analysis:
-Detected Intent: SWAP
-From: {amount} {from_t}
-To: {to_t}
+        return f"""🧠 Brain Analysis (v2):
+Detected Intent: {"REVERSE_SWAP" if "get" in user_input.lower() else "FORWARD_SWAP"}
+Target Result: {amount} {to_t}
+Funding from: {from_t}
 
 Execute this swap? (yes/no)"""
 
