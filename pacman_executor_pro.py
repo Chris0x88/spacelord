@@ -296,25 +296,91 @@ class PacmanExecutorPRO:
             print(f"      Min out: {min_output} (raw)")
             print(f"      Deadline: {int(time.time()) + 1800}")
             
-            # FOR SAFETY: Return simulated success
-            # To enable real execution, uncomment below:
+            # LIVE EXECUTION ENABLED
+            print(f"   🔴 SUBMITTING LIVE TRANSACTION TO HEDERA MAINNET...")
             
-            # tx_hash = self._submit_swap_transaction(path, amount_usd, min_output)
-            # receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            try:
+                tx_hash = self._submit_swap_transaction(path, token_in_id, amount_usd, min_output)
+                print(f"   ⏳ Waiting for confirmation...")
+                receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+                
+                if receipt["status"] == 1:
+                    print(f"   ✅ Transaction confirmed!")
+                    print(f"   📄 Receipt: {receipt['transactionHash'].hex()}")
+                    
+                    return ExecutionResult(
+                        success=True,
+                        tx_hash=receipt['transactionHash'].hex(),
+                        tx_id=str(receipt.get('transactionIndex', 0)),
+                        gas_used=receipt['gasUsed'],
+                        hbar_cost=receipt['gasUsed'] * receipt['effectiveGasPrice'] / 10**18,
+                        actual_output=quote["amount_out_human"],
+                        timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+                        block_number=receipt['blockNumber']
+                    )
+                else:
+                    return ExecutionResult(
+                        success=False,
+                        error=f"Transaction failed: {receipt}",
+                        tx_hash=receipt['transactionHash'].hex()
+                    )
             
-            return ExecutionResult(
-                success=True,
-                tx_hash="SIMULATED_PRO_" + str(int(time.time())),
-                tx_id="0.0." + str(int(time.time())),
-                gas_used=quote["gas_estimate"],
-                actual_output=quote["amount_out_human"],
-                timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
-            )
+            except Exception as tx_error:
+                print(f"   ❌ Transaction error: {tx_error}")
+                return ExecutionResult(success=False, error=str(tx_error))
         
         except Exception as e:
             import traceback
             traceback.print_exc()
             return ExecutionResult(success=False, error=str(e))
+    
+    def _submit_swap_transaction(self, path: bytes, token_in_id: str, 
+                                 amount_in: float, min_output: int) -> str:
+        """
+        Submit actual swap transaction to Hedera via SaucerSwap V2 router.
+        """
+        try:
+            # Build the exactInput transaction
+            # Note: This is simplified - full implementation needs proper ABI encoding
+            
+            # For Hedera, we use the SaucerSwap V2 router contract
+            router_address = self.client.router_address
+            
+            # Convert amount to raw
+            decimals = self._get_decimals(token_in_id)
+            amount_raw = int(amount_in * (10 ** decimals))
+            
+            # Build transaction parameters
+            deadline = int(time.time()) + 1800  # 30 min deadline
+            
+            # Build transaction
+            tx = self.client.router.functions.exactInput(
+                {
+                    "path": path,
+                    "recipient": self.eoa,
+                    "deadline": deadline,
+                    "amountIn": amount_raw,
+                    "amountOutMinimum": min_output
+                }
+            ).build_transaction({
+                "from": self.eoa,
+                "gas": 200000,  # Hedera gas limit
+                "gasPrice": self.w3.eth.gas_price,
+                "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                "chainId": self.chain_id
+            })
+            
+            # Sign transaction
+            signed_tx = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            
+            # Submit transaction
+            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            
+            print(f"   📤 TX submitted: {tx_hash.hex()[:50]}...")
+            return tx_hash.hex()
+        
+        except Exception as e:
+            raise RuntimeError(f"Failed to submit transaction: {e}")
     
     def _get_decimals(self, token_id_or_symbol: str) -> int:
         """Get decimals for a token."""
