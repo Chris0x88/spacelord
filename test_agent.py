@@ -44,10 +44,15 @@ def test_route_table():
 
     # Key pairs must have routes
     required = [
-        "USDC->WBTC_HTS", "USDC->HBAR", "USDC->WETH_HTS",
-        "HBAR->USDC", "HBAR->WBTC_HTS", "SAUCE->HBAR",
-        "HBAR->SAUCE", "USDC->SAUCE",
+        "USDC->WBTC_HTS", "USDC->WETH_HTS",
+        "SAUCE->WBTC_HTS", "USDC->SAUCE", "USDC->GIB",
     ]
+
+    # WHBAR must NOT be tradeable (routing-only)
+    test("no WHBAR in tokens", "WHBAR" not in data["tokens"])
+    test("no HBAR in tokens", "HBAR" not in data["tokens"])
+    whbar_routes = [k for k in data["routes"] if k.startswith("WHBAR->") or k.endswith("->WHBAR")]
+    test("no routes to/from WHBAR", len(whbar_routes) == 0)
     for pair in required:
         test(f"route exists: {pair}", pair in data["routes"])
 
@@ -82,8 +87,9 @@ def test_agent():
     tokens = agent.tokens()
     test("tokens loaded", len(tokens) > 10)
     test("USDC in tokens", "USDC" in tokens)
-    test("HBAR in tokens", "HBAR" in tokens)
     test("WBTC_HTS in tokens", "WBTC_HTS" in tokens)
+    test("WHBAR not tradeable", "WHBAR" not in tokens)
+    test("GIB in tokens", "GIB" in tokens)
 
     # Route lookup
     route = agent.route("USDC", "WBTC_HTS")
@@ -122,7 +128,7 @@ def test_translator():
     # Token resolution
     test("resolve 'bitcoin'", resolve_token("bitcoin") == "WBTC_HTS")
     test("resolve 'USDC'", resolve_token("USDC") == "USDC")
-    test("resolve 'hbar'", resolve_token("hbar") == "HBAR")
+    test("resolve 'gib'", resolve_token("gib") == "GIB")
     test("resolve 'eth'", resolve_token("eth") == "WETH_HTS")
     test("resolve 'sauce'", resolve_token("sauce") == "SAUCE")
     test("resolve unknown", resolve_token("nonexistent") is None)
@@ -171,8 +177,7 @@ def test_integration():
     commands = [
         ("swap 1 USDC for bitcoin", "USDC", "WBTC_HTS"),
         ("buy 0.001 BTC with USDC", "USDC", "WBTC_HTS"),
-        ("convert 100 SAUCE to HBAR", "SAUCE", "HBAR"),
-        ("sell 50 HBAR for USDC", "HBAR", "USDC"),
+        ("convert 100 SAUCE to USDC", "SAUCE", "USDC"),
         ("trade 1 USDC for ethereum", "USDC", "WETH_HTS"),
     ]
 

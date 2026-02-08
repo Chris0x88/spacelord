@@ -36,11 +36,7 @@ ALIASES = {
     "usdt": "USDT_HTS",
     "tether": "USDT_HTS",
     "dai": "DAI_HTS",
-    # HBAR
-    "hbar": "HBAR",
-    "hedera": "HBAR",
-    "h": "HBAR",
-    "whbar": "HBAR",
+    # HBAR ecosystem (WHBAR is routing-only, NOT tradeable)
     "hbarx": "HBARX",
     # Bitcoin
     "btc": "WBTC_HTS",
@@ -86,6 +82,13 @@ ALIASES = {
     "bnb": "WBNB_HTS",
     "davinci": "DAVINCI",
     "carat": "CARAT",
+    "diamond": "CARAT",
+    # Meme / community tokens
+    "gib": "GIB",
+    "jam": "JAM",
+    "tune": "JAM",
+    "tune.fm": "JAM",
+    "steam": "STEAM",
 }
 
 
