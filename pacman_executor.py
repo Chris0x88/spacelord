@@ -14,7 +14,6 @@ from pathlib import Path
 # Import our saucerswap client
 from saucerswap_v2_client import SaucerSwapV2, hedera_id_to_evm, encode_path
 from web3 import Web3
-from pacman_associate import TokenAssociateManager
 
 # ERC20 Wrapper contract (from btc-rebalancer2)
 ERC20_WRAPPER_ID = "0.0.9675688"
@@ -70,14 +69,13 @@ class PacmanExecutor:
     Executes swaps with optional wrap/unwrap steps.
     
     Key feature: Can execute multi-step routes including:
-    1. Token association (Hedera requirement)
-    2. Token approval
-    3. Swap on SaucerSwap
-    4. Wrap/unwrap via ERC20Wrapper
-    5. Record everything for AI training
+    1. Token approval
+    2. Swap on SaucerSwap
+    3. Wrap/unwrap via ERC20Wrapper
+    4. Record everything for AI training
     """
     
-    def __init__(self, private_key: Optional[str] = None, network: str = "mainnet", account_id: Optional[str] = None):
+    def __init__(self, private_key: Optional[str] = None, network: str = "mainnet"):
         """Initialize executor with private key."""
         self.private_key = private_key or os.getenv("PRIVATE_KEY")
         if not self.private_key:
@@ -95,10 +93,6 @@ class PacmanExecutor:
         self.eoa = self.client.eoa
         self.chain_id = 295 if network == "mainnet" else 296
         
-        # Initialize association manager
-        self.account_id = account_id or os.getenv("HEDERA_ACCOUNT_ID")
-        self.associate_manager = TokenAssociateManager(self.client, self.account_id)
-        
         # Initialize wrapper contract
         self.wrapper_address = hedera_id_to_evm(ERC20_WRAPPER_ID)
         self.wrapper = self.w3.eth.contract(
@@ -112,7 +106,6 @@ class PacmanExecutor:
         
         print(f"✅ PacmanExecutor initialized")
         print(f"   Account: {self.eoa}")
-        print(f"   Hedera ID: {self.account_id or 'Not set'}")
         print(f"   Network: {network}")
     
     def execute_swap(self, route, amount_usd: float, simulate: bool = True) -> ExecutionResult:
@@ -130,14 +123,6 @@ class PacmanExecutor:
         print(f"\n🚀 Executing swap: {amount_usd} {route.from_variant} → {route.to_variant}")
         print(f"   Mode: {'SIMULATION' if simulate else 'LIVE'}")
         print(f"   Steps: {len(route.steps)}")
-        
-        # Step 0: Check and handle token associations
-        print("\n🔐 Step 0: Checking token associations...")
-        assoc_success, assoc_txs = self.associate_manager.ensure_associations_for_route(route)
-        if not assoc_success:
-            return ExecutionResult(success=False, error="Failed to associate required tokens")
-        if assoc_txs:
-            print(f"   ✅ Associated {len(assoc_txs)} token(s)")
         
         results = []
         
