@@ -5,6 +5,7 @@ Handles private keys, RPC endpoints, and safety limits.
 """
 
 import os
+import math
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
@@ -32,6 +33,19 @@ class PacmanConfig:
     
     # Hedera Accounts
     hedera_account_id: Optional[str] = None  # 0.0.xxx format
+
+    @staticmethod
+    def _safe_float(val: Optional[str], default: float) -> float:
+        """Safely parse float from string, handling NaN and invalid values."""
+        if val is None:
+            return default
+        try:
+            f = float(val)
+            if math.isnan(f) or math.isinf(f):
+                return default
+            return f
+        except (ValueError, TypeError):
+            return default
     
     @classmethod
     def from_env(cls) -> "PacmanConfig":
@@ -62,13 +76,13 @@ class PacmanConfig:
             config.rpc_url = os.getenv("PACMAN_RPC_URL", "https://mainnet.hashio.io/api")
         
         # Safety limits (cannot be overridden above hardcoded max)
-        max_swap = float(os.getenv("PACMAN_MAX_SWAP", "1.00"))
+        max_swap = cls._safe_float(os.getenv("PACMAN_MAX_SWAP"), 1.00)
         config.max_swap_amount_usd = min(max_swap, 1.00)  # Hard cap at $1
         
-        max_daily = float(os.getenv("PACMAN_MAX_DAILY", "10.00"))
+        max_daily = cls._safe_float(os.getenv("PACMAN_MAX_DAILY"), 10.00)
         config.max_daily_volume_usd = min(max_daily, 10.00)  # Hard cap at $10
         
-        max_slippage = float(os.getenv("PACMAN_MAX_SLIPPAGE", "1.0"))
+        max_slippage = cls._safe_float(os.getenv("PACMAN_MAX_SLIPPAGE"), 1.0)
         config.max_slippage_percent = min(max_slippage, 5.0)  # Hard cap at 5%
         
         # Execution mode
@@ -97,11 +111,14 @@ class PacmanConfig:
             return False, "Private key contains non-hex characters"
         
         # Validate limits
-        if self.max_swap_amount_usd > 1.00:
-            return False, f"max_swap_amount_usd exceeds $1.00 limit: ${self.max_swap_amount_usd}"
+        if math.isnan(self.max_swap_amount_usd) or self.max_swap_amount_usd > 1.00 or self.max_swap_amount_usd < 0:
+            return False, f"Invalid max_swap_amount_usd: ${self.max_swap_amount_usd}"
         
-        if self.max_daily_volume_usd > 10.00:
-            return False, f"max_daily_volume_usd exceeds $10.00 limit: ${self.max_daily_volume_usd}"
+        if math.isnan(self.max_daily_volume_usd) or self.max_daily_volume_usd > 10.00 or self.max_daily_volume_usd < 0:
+            return False, f"Invalid max_daily_volume_usd: ${self.max_daily_volume_usd}"
+
+        if math.isnan(self.max_slippage_percent) or self.max_slippage_percent > 5.0 or self.max_slippage_percent < 0:
+            return False, f"Invalid max_slippage_percent: {self.max_slippage_percent}%"
         
         return True, "Configuration valid"
     
