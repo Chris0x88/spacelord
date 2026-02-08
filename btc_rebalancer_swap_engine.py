@@ -13,8 +13,11 @@ Automatically handles:
 import os
 import time
 import logging
+import requests
+import base64
+from datetime import datetime
 from dataclasses import dataclass
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict
 
 from dotenv import load_dotenv
 from web3 import Web3
@@ -60,6 +63,7 @@ class SaucerSwapV2Engine:
         self.client = SaucerSwapV2(self.w3, network="mainnet", private_key=self.private_key)
         self.eoa = self.client.eoa
         self.whbar = hedera_id_to_evm(WHBAR_ID)
+        self.account_id = os.getenv("HEDERA_ACCOUNT_ID")
         
         # Extended ABI for multicall and unwrap
         self.ROUTER_ABI = [
@@ -120,6 +124,25 @@ class SaucerSwapV2Engine:
                 "outputs": [{"name": "amountOut", "type": "uint256"}],
                 "stateMutability": "payable",
                 "type": "function",
+            },
+            {
+                "inputs": [
+                    {
+                        "components": [
+                            {"name": "path", "type": "bytes"},
+                            {"name": "recipient", "type": "address"},
+                            {"name": "deadline", "type": "uint256"},
+                            {"name": "amountOut", "type": "uint256"},
+                            {"name": "amountInMaximum", "type": "uint256"},
+                        ],
+                        "name": "params",
+                        "type": "tuple",
+                    }
+                ],
+                "name": "exactOutput",
+                "outputs": [{"name": "amountIn", "type": "uint256"}],
+                "stateMutability": "payable",
+                "type": "function",
             }
         ]
         
@@ -140,6 +163,103 @@ class SaucerSwapV2Engine:
             return raw / (10 ** decimals)
         except Exception:
             return 0.0
+
+    def get_usdc_price(self, token_id: str, decimals: int) -> float:
+        """Get the price of a token in USDC."""
+        if token_id == "0.0.456858": # USDC itself
+            return 1.0
+        
+        try:
+            addr_in = self.whbar if token_id.upper() == "HBAR" else hedera_id_to_evm(token_id)
+            addr_usdc = hedera_id_to_evm("0.0.456858")
+            
+            # Use 1 unit of token_in to get quote
+            raw_amount_in = int(1 * (10 ** decimals))
+            quote = self.client.get_quote_single(addr_in, addr_usdc, raw_amount_in, DEFAULT_FEE)
+            return quote["amountOut"] / (10 ** 6) # USDC has 6 decimals
+        except Exception:
+            return 0.0
+
+    def get_all_balances(self, token_metadata: Dict) -> Dict[str, Dict]:
+        """Get balances and USDC valuations for all tokens in metadata."""
+        balances = {}
+        
+        # HBAR
+        hbar_bal = self.get_balance_hbar()
+        if hbar_bal > 0:
+            price = self.get_usdc_price("HBAR", 8)
+            balances["HBAR"] = {
+                "balance": hbar_bal,
+                "usd_value": hbar_bal * price
+            }
+            
+        # HTS Tokens
+        for symbol, meta in token_metadata.items():
+            if symbol == "HBAR": continue
+            bal = self.get_balance_token(meta["id"], meta["decimals"])
+            if bal > 0:
+                price = self.get_usdc_price(meta["id"], meta["decimals"])
+                balances[symbol] = {
+                    "balance": bal,
+                    "usd_value": bal * price
+                }
+        return balances
+
+    def get_recent_transactions(self, limit: int = 10) -> List[Dict]:
+        """Fetch recent transactions and calculate fees in USDC."""
+        if not self.account_id:
+            logger.warning("HEDERA_ACCOUNT_ID not set")
+            return []
+            
+        url = f"https://mainnet-public.mirrornode.hedera.com/api/v1/transactions?account.id={self.account_id}&limit={limit}&order=desc"
+        
+        # Get HBAR price once for fees
+        hbar_price = self.get_usdc_price("HBAR", 8)
+        
+        try:
+            resp = requests.get(url, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+            
+            txs = []
+            for tx in data.get("transactions", []):
+                # Format timestamp
+                ts_str = tx.get("consensus_timestamp")
+                if ts_str:
+                    try:
+                        dt = datetime.fromtimestamp(float(ts_str))
+                        ts_fmt = dt.strftime("%Y-%m-%d %H:%M:%S")
+                    except:
+                        ts_fmt = ts_str
+                else:
+                    ts_fmt = "Unknown"
+                
+                # Decode memo
+                memo_b64 = tx.get("memo_base64")
+                memo = ""
+                if memo_b64:
+                    try:
+                        memo = base64.b64decode(memo_b64).decode("utf-8")
+                    except:
+                        memo = memo_b64
+                
+                # Fee calculation
+                fee_hbar = tx.get("charged_tx_fee", 0) / (10**8)
+                fee_usdc = fee_hbar * hbar_price
+                
+                txs.append({
+                    "timestamp": ts_fmt,
+                    "hash": tx.get("transaction_id"),
+                    "name": tx.get("name"),
+                    "result": tx.get("result"),
+                    "memo": memo,
+                    "fee_hbar": fee_hbar,
+                    "fee_usdc": fee_usdc
+                })
+            return txs
+        except Exception as e:
+            logger.error(f"Failed to fetch transactions: {e}")
+            return []
 
     def get_quote(self, token_in_id: str, token_out_id: str, amount: float, decimals_in: int, is_exact_input: bool = True, fee: int = DEFAULT_FEE) -> Optional[float]:
         """
@@ -178,6 +298,62 @@ class SaucerSwapV2Engine:
             logger.error(f"Quote failed: {e}")
             return None
 
+    def _estimate_exact_output_input(self, addr_in, addr_out, raw_amount_out, fee, decimals_in):
+        """
+        Estimate input amount needed for a desired output.
+        Uses binary search on exactInput quotes since we don't have exactOutput quoter.
+        """
+        try:
+            # Binary search for the right input amount
+            # Lower bound: 0
+            # Upper bound: 10x the expected input (generous)
+            
+            # First, get a rough estimate using a small test amount
+            test_input = int(0.001 * (10 ** decimals_in))  # 0.001 of input token
+            try:
+                test_quote = self.client.get_quote_single(addr_in, addr_out, test_input, fee)
+                rate = test_quote["amountOut"] / test_input  # output per input unit
+                if rate > 0:
+                    initial_estimate = int(raw_amount_out / rate * 1.1)  # 10% buffer
+                else:
+                    initial_estimate = raw_amount_out * 100  # generous upper bound
+            except:
+                initial_estimate = raw_amount_out * 1000  # very generous fallback
+            
+            # Binary search between 0 and initial_estimate
+            low, high = 0, initial_estimate
+            best_input = None
+            
+            for _ in range(20):  # 20 iterations should be plenty
+                mid = (low + high) // 2
+                if mid == 0:
+                    break
+                try:
+                    q = self.client.get_quote_single(addr_in, addr_out, mid, fee)
+                    output = q["amountOut"]
+                    
+                    if output >= raw_amount_out:
+                        # Can achieve desired output with this input
+                        best_input = mid
+                        high = mid
+                    else:
+                        # Need more input
+                        low = mid
+                except Exception as e:
+                    logger.warning(f"Quote failed in binary search: {e}")
+                    low = mid
+            
+            if best_input is None:
+                logger.error("Could not estimate input amount")
+                return None
+            
+            logger.info(f"  Estimated input needed: {best_input / (10**decimals_in)}")
+            return best_input
+            
+        except Exception as e:
+            logger.error(f"Estimation failed: {e}")
+            return None
+
     def swap(self, 
              token_in_id: str, 
              token_out_id: str, 
@@ -189,6 +365,7 @@ class SaucerSwapV2Engine:
              is_exact_input: bool = True) -> SwapResult:
         """
         Perform a swap. Automatically handles HBAR and multicall.
+        Supports both exactInput (specify input amount) and exactOutput (specify output amount).
         """
         try:
             is_hbar_in = token_in_id.upper() == "HBAR"
@@ -197,15 +374,26 @@ class SaucerSwapV2Engine:
             addr_in = self.whbar if is_hbar_in else hedera_id_to_evm(token_in_id)
             addr_out = self.whbar if is_hbar_out else hedera_id_to_evm(token_out_id)
             
-            # Step 1: Pre-calculate raw amounts
-            raw_amount_in = int(amount * (10 ** decimals_in))
-            
-            # Step 2: Get Quote for slippage calculation
-            # Use WHBAR if HBAR is involved
-            quote = self.client.get_quote_single(addr_in, addr_out, raw_amount_in, fee)
-            raw_amount_out_expected = quote["amountOut"]
-            
-            min_out = int(raw_amount_out_expected * (1 - slippage))
+            if is_exact_input:
+                # EXACT INPUT MODE: User specifies how much they want to SEND
+                raw_amount_in = int(amount * (10 ** decimals_in))
+                quote = self.client.get_quote_single(addr_in, addr_out, raw_amount_in, fee)
+                raw_amount_out_expected = quote["amountOut"]
+                min_out = int(raw_amount_out_expected * (1 - slippage))
+                logger.info(f"  EXACT_INPUT: Sending {amount} ({raw_amount_in} raw), expecting ~{raw_amount_out_expected / (10**decimals_out)} out")
+            else:
+                # EXACT OUTPUT MODE: User specifies how much they want to RECEIVE
+                raw_amount_out = int(amount * (10 ** decimals_out))
+                # For exactOutput, we need to estimate input amount
+                # We'll use a reverse quote estimation: try inputs until we get close
+                logger.info(f"  EXACT_OUTPUT: Want {amount} out ({raw_amount_out} raw), estimating input needed...")
+                estimated_input = self._estimate_exact_output_input(addr_in, addr_out, raw_amount_out, fee, decimals_in)
+                if estimated_input is None:
+                    return SwapResult(success=False, error="Failed to estimate input for exactOutput")
+                raw_amount_in = int(estimated_input * (1 + slippage))  # amountInMaximum
+                min_out = raw_amount_out  # This is the exact amount we want out
+                logger.info(f"  Estimated input needed: ~{estimated_input / (10**decimals_in)}, max allowed: {raw_amount_in}")
+                raw_amount_out_expected = raw_amount_out
             
             # Step 3: Handle Allowance if HTS in
             if not is_hbar_in:
@@ -245,45 +433,91 @@ class SaucerSwapV2Engine:
             logger.info(f"  Min Out: {min_out}")
 
             # Step 6: Build the specific transaction type
-            if is_hbar_out:
-                # Token -> HBAR requires multicall(exactInput + unwrapWHBAR)
-                params = (path_bytes, self.client.router_address, deadline, raw_amount_in, min_out)
-                swap_call = self.router_extended.encode_abi("exactInput", [params])
-                unwrap_call = self.router_extended.encode_abi("unwrapWHBAR", [0, self.eoa])
-                
-                swap_bytes = bytes.fromhex(swap_call[2:])
-                unwrap_bytes = bytes.fromhex(unwrap_call[2:])
-                
-                tx = self.router_extended.functions.multicall([swap_bytes, unwrap_bytes]).build_transaction({
-                    "from": self.eoa,
-                    "value": 0,
-                    "gas": 2000000,
-                    "gasPrice": self.w3.eth.gas_price,
-                    "nonce": self.w3.eth.get_transaction_count(self.eoa),
-                    "chainId": self.client.chain_id
-                })
-            elif is_hbar_in:
-                # HBAR -> Token (standard exactInput with value)
-                params = (path_bytes, self.eoa, deadline, raw_amount_in, min_out)
-                tx = self.router_extended.functions.exactInput(params).build_transaction({
-                    "from": self.eoa,
-                    "value": int(amount * 10**18),
-                    "gas": 1000000,
-                    "gasPrice": self.w3.eth.gas_price,
-                    "nonce": self.w3.eth.get_transaction_count(self.eoa),
-                    "chainId": self.client.chain_id
-                })
+            if is_exact_input:
+                # EXACT INPUT: Use exactInput function
+                if is_hbar_out:
+                    # Token -> HBAR requires multicall(exactInput + unwrapWHBAR)
+                    params = (path_bytes, self.client.router_address, deadline, raw_amount_in, min_out)
+                    swap_call = self.router_extended.encode_abi("exactInput", [params])
+                    unwrap_call = self.router_extended.encode_abi("unwrapWHBAR", [0, self.eoa])
+                    
+                    swap_bytes = bytes.fromhex(swap_call[2:])
+                    unwrap_bytes = bytes.fromhex(unwrap_call[2:])
+                    
+                    tx = self.router_extended.functions.multicall([swap_bytes, unwrap_bytes]).build_transaction({
+                        "from": self.eoa,
+                        "value": 0,
+                        "gas": 2000000,
+                        "gasPrice": self.w3.eth.gas_price,
+                        "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                        "chainId": self.client.chain_id
+                    })
+                elif is_hbar_in:
+                    # HBAR -> Token (standard exactInput with value)
+                    params = (path_bytes, self.eoa, deadline, raw_amount_in, min_out)
+                    tx = self.router_extended.functions.exactInput(params).build_transaction({
+                        "from": self.eoa,
+                        "value": int(amount * 10**18),
+                        "gas": 1000000,
+                        "gasPrice": self.w3.eth.gas_price,
+                        "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                        "chainId": self.client.chain_id
+                    })
+                else:
+                    # HTS -> HTS (standard exactInput)
+                    params = (path_bytes, self.eoa, deadline, raw_amount_in, min_out)
+                    tx = self.router_extended.functions.exactInput(params).build_transaction({
+                        "from": self.eoa,
+                        "value": 0,
+                        "gas": 1000000,
+                        "gasPrice": self.w3.eth.gas_price,
+                        "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                        "chainId": self.client.chain_id
+                    })
             else:
-                # HTS -> HTS (standard exactInput)
-                params = (path_bytes, self.eoa, deadline, raw_amount_in, min_out)
-                tx = self.router_extended.functions.exactInput(params).build_transaction({
-                    "from": self.eoa,
-                    "value": 0,
-                    "gas": 1000000,
-                    "gasPrice": self.w3.eth.gas_price,
-                    "nonce": self.w3.eth.get_transaction_count(self.eoa),
-                    "chainId": self.client.chain_id
-                })
+                # EXACT OUTPUT: Path is reversed (tokenOut -> fee -> tokenIn)
+                # For exactOutput, we want to specify the exact amount we want OUT
+                # The router will calculate how much input is needed
+                
+                # Reverse the path for exactOutput
+                path_ids_rev = [WHBAR_ID if is_hbar_out else token_out_id,
+                               WHBAR_ID if is_hbar_in else token_in_id]
+                path_bytes_rev = encode_path(path_ids_rev, path_fees)
+                
+                raw_amount_out_exact = int(amount * (10 ** decimals_out))
+                # amountInMaximum = raw_amount_in (already includes slippage buffer)
+                
+                if is_hbar_in:
+                    # exactOutput with HBAR input is complex - skip for now
+                    return SwapResult(success=False, error="exactOutput with HBAR input not yet supported")
+                elif is_hbar_out:
+                    # exactOutput to HBAR: reverse path + unwrap
+                    params = (path_bytes_rev, self.eoa, deadline, raw_amount_out_exact, raw_amount_in)
+                    swap_call = self.router_extended.encode_abi("exactOutput", [params])
+                    unwrap_call = self.router_extended.encode_abi("unwrapWHBAR", [0, self.eoa])
+                    
+                    swap_bytes = bytes.fromhex(swap_call[2:])
+                    unwrap_bytes = bytes.fromhex(unwrap_call[2:])
+                    
+                    tx = self.router_extended.functions.multicall([swap_bytes, unwrap_bytes]).build_transaction({
+                        "from": self.eoa,
+                        "value": 0,
+                        "gas": 2000000,
+                        "gasPrice": self.w3.eth.gas_price,
+                        "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                        "chainId": self.client.chain_id
+                    })
+                else:
+                    # HTS -> HTS exactOutput
+                    params = (path_bytes_rev, self.eoa, deadline, raw_amount_out_exact, raw_amount_in)
+                    tx = self.router_extended.functions.exactOutput(params).build_transaction({
+                        "from": self.eoa,
+                        "value": 0,
+                        "gas": 1000000,
+                        "gasPrice": self.w3.eth.gas_price,
+                        "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                        "chainId": self.client.chain_id
+                    })
             
             # Step 7: Sign and Send
             signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
@@ -296,7 +530,7 @@ class SaucerSwapV2Engine:
                     success=True, 
                     tx_hash=tx_hash.hex(), 
                     amount_in=amount, 
-                    amount_out=raw_amount_out_expected / (10**decimals_out),
+                    amount_out=raw_amount_out_expected / (10**decimals_out) if 'raw_amount_out_expected' in locals() else amount, 
                     gas_used=receipt.gasUsed
                 )
             else:
