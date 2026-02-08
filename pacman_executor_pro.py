@@ -351,20 +351,16 @@ class PacmanExecutorPRO:
             amount_raw = int(amount_in * (10 ** decimals))
             
             # Build transaction parameters
-            deadline = int(time.time()) + 1800  # 30 min deadline
+            # CRITICAL: Hedera uses MILLISECOND deadlines, not seconds!
+            deadline = int(time.time() * 1000) + 600000  # 10 min deadline in ms
             
             # Build transaction
-            tx = self.client.router.functions.exactInput(
-                {
-                    "path": path,
-                    "recipient": self.eoa,
-                    "deadline": deadline,
-                    "amountIn": amount_raw,
-                    "amountOutMinimum": min_output
-                }
-            ).build_transaction({
+            # Use tuple format like btc-rebalancer2
+            params = (path, self.eoa, deadline, amount_raw, min_output)
+            
+            tx = self.client.router.functions.exactInput(params).build_transaction({
                 "from": self.eoa,
-                "gas": 200000,  # Hedera gas limit
+                "gas": 1000000,  # Hedera gas limit (higher for safety)
                 "gasPrice": self.w3.eth.gas_price,
                 "nonce": self.w3.eth.get_transaction_count(self.eoa),
                 "chainId": self.chain_id
