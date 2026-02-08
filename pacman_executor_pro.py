@@ -272,12 +272,22 @@ class PacmanExecutorPRO:
             # Approve token spending
             print(f"   Approving {from_symbol} for SaucerSwap...")
             try:
+                # Check current nonce before approval
+                nonce_before = self.w3.eth.get_transaction_count(self.eoa)
+                print(f"   Nonce before approval: {nonce_before}")
+                
                 approve_tx = self.client.approve_token(token_in_id)
                 print(f"   ✅ Approved: {approve_tx[:40]}...")
-                time.sleep(3)  # Wait for propagation
+                
+                # Wait and check nonce after
+                time.sleep(5)
+                nonce_after = self.w3.eth.get_transaction_count(self.eoa)
+                print(f"   Nonce after approval: {nonce_after}")
+                
             except Exception as e:
                 # May already be approved
                 print(f"   ℹ️  Approval note: {e}")
+                print(f"   Continuing with swap anyway...")
             
             # Build swap transaction
             print(f"   Building swap transaction...")
@@ -358,11 +368,16 @@ class PacmanExecutorPRO:
             # Use tuple format like btc-rebalancer2
             params = (path, self.eoa, deadline, amount_raw, min_output)
             
+            # Get current nonce with debug
+            current_nonce = self.w3.eth.get_transaction_count(self.eoa)
+            print(f"   Current nonce: {current_nonce}")
+            print(f"   Account: {self.eoa}")
+            
             tx = self.client.router.functions.exactInput(params).build_transaction({
                 "from": self.eoa,
                 "gas": 1000000,  # Hedera gas limit (higher for safety)
                 "gasPrice": self.w3.eth.gas_price,
-                "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                "nonce": current_nonce,
                 "chainId": self.chain_id
             })
             
