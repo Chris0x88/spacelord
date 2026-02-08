@@ -17,6 +17,12 @@ sys.path.insert(0, PACMAN_DIR)
 
 from btc_rebalancer_swap_engine import SaucerSwapV2Engine
 from v2_tokens import DEFAULT_FEE
+from dotenv import load_dotenv
+
+# Load .env file and ensure PRIVATE_KEY is in environment
+load_dotenv()
+if os.getenv("PACMAN_PRIVATE_KEY") and not os.getenv("PRIVATE_KEY"):
+    os.environ["PRIVATE_KEY"] = os.getenv("PACMAN_PRIVATE_KEY")
 
 # Token Knowledge Base (Must match Training Logic)
 TOKEN_METADATA = {
