@@ -75,6 +75,8 @@ pacman/
 
 - **$1.00 testing limit** (hardcoded)
 - **Human confirmation required** for all swaps
+- **Token association checks** (Hedera requirement)
+- **Pre-flight validation** (balance, gas, slippage)
 - **Simulation mode** available
 - **Read-only** analysis of btc-rebalancer2 (production app)
 
