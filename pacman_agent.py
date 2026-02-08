@@ -29,8 +29,38 @@ import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional, Dict, List
+from dotenv import load_dotenv
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+# Load .env early
+load_dotenv()
+
+# Map PACMAN_PRIVATE_KEY to PRIVATE_KEY if needed (compatibility)
+if os.getenv("PACMAN_PRIVATE_KEY") and not os.getenv("PRIVATE_KEY"):
+    os.environ["PRIVATE_KEY"] = os.getenv("PACMAN_PRIVATE_KEY")
+
+# ---------------------------------------------------------------------------
+# Logging Setup (Console + File)
+# ---------------------------------------------------------------------------
+LOG_FILE = Path(__file__).parent / "pacman.log"
+
+formatter = logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
+
+# File Handler
+file_handler = logging.FileHandler(LOG_FILE)
+file_handler.setFormatter(formatter)
+file_handler.setLevel(logging.DEBUG)
+
+# Console Handler
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+console_handler.setLevel(logging.INFO)
+
+# Root Logger
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.DEBUG)
+root_logger.addHandler(file_handler)
+root_logger.addHandler(console_handler)
+
 logger = logging.getLogger("pacman_agent")
 
 ROUTES_FILE = Path(__file__).parent / "routes.json"
@@ -203,20 +233,38 @@ class PacmanAgent:
         
         for rt in candidates:
             try:
-                if rt.num_hops == 1:
-                    amount_out_raw = self._quote_single_hop(engine, rt, amount, mode)
-                else:
-                    amount_out_raw = self._quote_multi_hop(engine, rt, amount, mode)
+                # Build path and fees for engine
+                path_ids = []
+                path_fees = []
+                for hop in rt.hops:
+                    if not path_ids:
+                        path_ids.append(hop["token_in_id"])
+                    path_ids.append(hop["token_out_id"])
+                    path_fees.append(hop["fee"])
+
+                first_hop = rt.hops[0]
+                last_hop = rt.hops[-1]
+
+                amount_out_raw = engine.get_quote(
+                    token_in_id=first_hop["token_in_id"],
+                    token_out_id=last_hop["token_out_id"],
+                    amount=amount,
+                    decimals_in=first_hop["decimals_in"],
+                    decimals_out=last_hop["decimals_out"],
+                    is_exact_input=(mode == "exact_in"),
+                    path_ids=path_ids,
+                    path_fees=path_fees
+                )
 
                 if amount_out_raw is None:
                     continue
 
-                hop = rt.hops[-1]
-                decimals_out = hop["decimals_out"]
-                amount_out = amount_out_raw / (10 ** decimals_out)
-                min_out = amount_out * (1 - self.max_slippage)
+                decimals_out = last_hop["decimals_out"]
+                decimals_in = first_hop["decimals_in"]
 
                 if mode == "exact_in":
+                    amount_out = amount_out_raw / (10 ** decimals_out)
+                    min_out = amount_out * (1 - self.max_slippage)
                     price = amount / amount_out if amount_out > 0 else 0
                     q = Quote(
                         route=rt, amount_in=amount, amount_out=amount_out,
@@ -225,14 +273,13 @@ class PacmanAgent:
                         price_per_unit=price,
                     )
                 else:
-                    # exact_out: amount is the desired output
-                    hop_first = rt.hops[0]
-                    decimals_in = hop_first["decimals_in"]
+                    # exact_out: amount_out_raw is the amount IN needed
+                    amount_in = amount_out_raw / (10 ** decimals_in)
                     q = Quote(
-                        route=rt, amount_in=amount_out, amount_out=amount,
+                        route=rt, amount_in=amount_in, amount_out=amount,
                         min_amount_out=amount, mode=mode,
                         slippage_percent=self.max_slippage * 100,
-                        price_per_unit=amount_out / amount if amount > 0 else 0,
+                        price_per_unit=amount_in / amount if amount > 0 else 0,
                     )
                 
                 # Pick the one with HIGHEST output (for exact_in) or LOWEST input (for exact_out)
@@ -291,12 +338,32 @@ class PacmanAgent:
                 route_used=route_str,
             )
 
-        # Execute hop by hop using the proven engine
+        # Execute using the robust engine
         try:
-            if rt.num_hops == 1:
-                result = self._execute_single_hop(engine, rt, amount, mode)
-            else:
-                result = self._execute_multi_hop(engine, rt, amount, mode)
+            # Build path and fees for engine
+            path_ids = []
+            path_fees = []
+            for hop in rt.hops:
+                if not path_ids:
+                    path_ids.append(hop["token_in_id"])
+                path_ids.append(hop["token_out_id"])
+                path_fees.append(hop["fee"])
+
+            first_hop = rt.hops[0]
+            last_hop = rt.hops[-1]
+
+            result = engine.swap(
+                token_in_id=first_hop["token_in_id"],
+                token_out_id=last_hop["token_out_id"],
+                amount=amount,
+                decimals_in=first_hop["decimals_in"],
+                decimals_out=last_hop["decimals_out"],
+                fee=first_hop["fee"], # single-hop fee, ignored if path_fees provided
+                slippage=self.max_slippage,
+                is_exact_input=(mode == "exact_in"),
+                path_ids=path_ids,
+                path_fees=path_fees
+            )
 
             result.route_used = route_str
             return result
@@ -363,146 +430,7 @@ class PacmanAgent:
         return "\n".join(lines)
 
     # ------------------------------------------------------------------
-    # Internal: quoting
-    # ------------------------------------------------------------------
-
-    def _quote_single_hop(self, engine, rt, amount, mode):
-        """Get quote for a single-hop route."""
-        hop = rt.hops[0]
-        from saucerswap_v2_client import hedera_id_to_evm
-        addr_in = hedera_id_to_evm(hop["token_in_id"])
-        addr_out = hedera_id_to_evm(hop["token_out_id"])
-        raw_amount = int(amount * (10 ** hop["decimals_in"]))
-        result = engine.client.get_quote_single(addr_in, addr_out, raw_amount, hop["fee"])
-        return result["amountOut"]
-
-    def _quote_multi_hop(self, engine, rt, amount, mode):
-        """Get quote for a multi-hop route."""
-        from saucerswap_v2_client import hedera_id_to_evm
-        token_path = []
-        fee_tiers = []
-        for hop in rt.hops:
-            if not token_path:
-                token_path.append(hedera_id_to_evm(hop["token_in_id"]))
-            token_path.append(hedera_id_to_evm(hop["token_out_id"]))
-            fee_tiers.append(hop["fee"])
-
-        raw_amount = int(amount * (10 ** rt.hops[0]["decimals_in"]))
-        result = engine.client.get_quote_multi_hop(token_path, fee_tiers, raw_amount)
-        return result["amount_out"]
-
-    # ------------------------------------------------------------------
-    # Internal: execution
-    # ------------------------------------------------------------------
-
-    def _execute_single_hop(self, engine, rt, amount, mode):
-        """Execute single-hop swap via proven engine."""
-        hop = rt.hops[0]
-        return engine.swap(
-            token_in_id=hop["token_in_id"],
-            token_out_id=hop["token_out_id"],
-            amount=amount,
-            decimals_in=hop["decimals_in"],
-            decimals_out=hop["decimals_out"],
-            fee=hop["fee"],
-            slippage=self.max_slippage,
-            is_exact_input=(mode == "exact_in"),
-        )
-
-    def _execute_multi_hop(self, engine, rt, amount, mode):
-        """
-        Execute multi-hop swap.
-        Uses the engine's multi-hop path encoding for atomic execution.
-        """
-        from saucerswap_v2_client import encode_path
-        import time as _time
-
-        # Build the full path
-        path_ids = []
-        path_fees = []
-        for hop in rt.hops:
-            if not path_ids:
-                path_ids.append(hop["token_in_id"])
-            path_ids.append(hop["token_out_id"])
-            path_fees.append(hop["fee"])
-
-        first_hop = rt.hops[0]
-        last_hop = rt.hops[-1]
-        is_hbar_in = first_hop["token_in_id"] == "0.0.1456986"
-        is_hbar_out = last_hop["token_out_id"] == "0.0.1456986"
-
-        raw_amount_in = int(amount * (10 ** first_hop["decimals_in"]))
-
-        # Get quote for min output
-        quote_out = self._quote_multi_hop(engine, rt, amount, mode)
-        if quote_out is None:
-            from btc_rebalancer_swap_engine import SwapResult as EngineResult
-            return SwapResult(success=False, error="Multi-hop quote failed")
-
-        min_out = int(quote_out * (1 - self.max_slippage))
-        path_bytes = encode_path(path_ids, path_fees)
-        deadline = int(_time.time() * 1000) + 600000  # 10 min, milliseconds
-
-        # Build and send transaction using the engine's extended router
-        from saucerswap_v2_client import hedera_id_to_evm
-
-        # Handle allowance for non-HBAR input
-        if not is_hbar_in:
-            addr_in = hedera_id_to_evm(first_hop["token_in_id"])
-            erc20_abi = [
-                {"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],
-                 "name":"allowance","outputs":[{"type":"uint256"}],"stateMutability":"view","type":"function"},
-                {"inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],
-                 "name":"approve","outputs":[{"type":"bool"}],"stateMutability":"nonpayable","type":"function"}
-            ]
-            erc20 = engine.w3.eth.contract(address=addr_in, abi=erc20_abi)
-            allowance = erc20.functions.allowance(engine.eoa, engine.client.router_address).call()
-            if allowance < raw_amount_in:
-                logger.info(f"Approving {first_hop['from']} for router...")
-                tx = erc20.functions.approve(
-                    engine.client.router_address, raw_amount_in * 10
-                ).build_transaction({
-                    "from": engine.eoa,
-                    "nonce": engine.w3.eth.get_transaction_count(engine.eoa),
-                    "gas": 150000,
-                    "gasPrice": engine.w3.eth.gas_price,
-                })
-                signed = engine.w3.eth.account.sign_transaction(tx, engine.private_key)
-                tx_hash = engine.w3.eth.send_raw_transaction(signed.raw_transaction)
-                engine.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-                _time.sleep(3)
-
-        # Build swap tx
-        params = (path_bytes, engine.eoa, deadline, raw_amount_in, min_out)
-        value = int(amount * 10**18) if is_hbar_in else 0
-
-        tx = engine.router_extended.functions.exactInput(params).build_transaction({
-            "from": engine.eoa,
-            "value": value,
-            "gas": 1500000,
-            "gasPrice": engine.w3.eth.gas_price,
-            "nonce": engine.w3.eth.get_transaction_count(engine.eoa),
-            "chainId": engine.client.chain_id,
-        })
-
-        signed = engine.w3.eth.account.sign_transaction(tx, engine.private_key)
-        tx_hash = engine.w3.eth.send_raw_transaction(signed.raw_transaction)
-        logger.info(f"Multi-hop swap TX sent: {tx_hash.hex()}")
-
-        receipt = engine.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-        if receipt.status == 1:
-            return SwapResult(
-                success=True,
-                tx_hash=tx_hash.hex(),
-                amount_in=amount,
-                amount_out=quote_out / (10 ** last_hop["decimals_out"]),
-                gas_used=receipt.gasUsed,
-            )
-        else:
-            return SwapResult(success=False, tx_hash=tx_hash.hex(), error="Transaction reverted")
-
-    # ------------------------------------------------------------------
-    # Internal: helpers
+    # Internal: Helpers
     # ------------------------------------------------------------------
 
     def _resolve(self, token: str) -> str:
@@ -523,11 +451,22 @@ class PacmanAgent:
             return self._engine
 
         try:
+            # Re-check env just in case something changed or wasn't loaded
+            load_dotenv()
+            if os.getenv("PACMAN_PRIVATE_KEY") and not os.getenv("PRIVATE_KEY"):
+                os.environ["PRIVATE_KEY"] = os.getenv("PACMAN_PRIVATE_KEY")
+                
+            if not os.getenv("PRIVATE_KEY"):
+                logger.warning("PRIVATE_KEY not found in environment (checked PRIVATE_KEY and PACMAN_PRIVATE_KEY)")
+                self._engine = False
+                return None
+
             from btc_rebalancer_swap_engine import SaucerSwapV2Engine
             self._engine = SaucerSwapV2Engine()
+            logger.debug("Swap engine initialized successfully.")
             return self._engine
         except Exception as e:
-            logger.warning(f"Could not initialize swap engine: {e}")
+            logger.error(f"Failed to initialize swap engine: {e}")
             self._engine = False  # Don't retry
             return None
 
@@ -601,7 +540,11 @@ if __name__ == "__main__":
             try:
                 # 1. Handle Confirmations
                 if pending_swap:
-                    inp = input(f"Execute this swap? (y/n): ").strip().lower()
+                    try:
+                        inp = input(f"Execute this swap? (y/n): ").strip().lower()
+                    except EOFError:
+                        print("\nEOF received. Swap cancelled.")
+                        break
                     if inp in ['y', 'yes']:
                         print(f"🚀 Executing...")
                         res = agent.swap(
@@ -621,7 +564,11 @@ if __name__ == "__main__":
                     continue
 
                 # 2. Main REPL
-                line = input("👤 You: ").strip()
+                try:
+                    line = input("👤 You: ").strip()
+                except EOFError:
+                    print("\nGoodbye!")
+                    break
                 if not line: continue
                 if line.lower() in ["exit", "quit", "q"]:
                     print("Goodbye!")

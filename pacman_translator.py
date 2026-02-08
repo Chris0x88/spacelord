@@ -38,15 +38,22 @@ ALIASES = {
     "usd": "USDC",
     "dollar": "USDC",
     "dollars": "USDC",
+    "bucks": "USDC",
+    "stables": "USDC",
     "saucerswap": "SAUCE",
+    "sauce": "SAUCE",
     "tune": "JAM",
     "tune.fm": "JAM",
     "diamond": "CARAT",
-    "avalanche": "WAVAX",
-    "avax": "WAVAX",
-    "chainlink": "LINK",
+    "avalanche": "WAVAX_HTS",
+    "avax": "WAVAX_HTS",
+    "chainlink": "LINK_HTS",
+    "link": "LINK_HTS",
     "headstarter": "HST",
     "calaxy": "CLXY",
+    "bonzo": "BONZO",
+    "pack": "PACK",
+    "sats": "WBTC_HTS",
 }
 
 def load_dynamic_aliases():
@@ -130,11 +137,14 @@ def translate(text: str) -> Optional[Dict]:
     if any(w in text for w in ["list", "tokens", "show tokens", "discovery"]):
         return {"intent": "tokens"}
 
-    # Token/Amount Extraction logic
-    # Pattern 1: "swap/trade/exchange/convert AMOUNT TOKEN for/to/into TOKEN"
+    # Patterns for extraction
+    # pattern_amount: matches optional currency symbol followed by float
+    pattern_amount = r"[\$£]?(\d+(?:\.\d+)?)"
+
+    # Pattern 1: "swap/trade/exchange/convert AMOUNT TOKEN for/to/into TOKEN" (Exact In)
     m = re.match(
-        r"(?:swap|trade|exchange|convert|sell)\s+"
-        r"(\d+(?:\.\d+)?)\s+"
+        fr"(?:swap|trade|exchange|convert|sell)\s+"
+        fr"{pattern_amount}\s+"
         r"(.+?)\s+"
         r"(?:for|to|into)\s+"
         r"(.+)",
@@ -153,17 +163,17 @@ def translate(text: str) -> Optional[Dict]:
                 "mode": "exact_in",
             }
 
-    # Pattern 2: "swap TOKEN for AMOUNT TOKEN" (exact output)
+    # Pattern 2: "swap TOKEN for AMOUNT TOKEN" (Exact Out)
     m = re.match(
-        r"(?:swap|trade|exchange|convert)\s+"
+        fr"(?:swap|trade|exchange|convert)\s+"
         r"(.+?)\s+"
-        r"(?:for|to|into)\s+"
-        r"(\d+(?:\.\d+)?)\s+"
+        r"(?:for|to|into|to\s+get)\s+"
+        fr"{pattern_amount}\s+"
         r"(.+)",
         text, re.IGNORECASE
     )
     if m:
-        from_token = resolve_token(m.group(1))
+        from_token = resolve_token(m.group(1).replace("with", "").strip())
         amount = float(m.group(2))
         to_token = resolve_token(m.group(3))
         if from_token and to_token:
@@ -175,10 +185,10 @@ def translate(text: str) -> Optional[Dict]:
                 "mode": "exact_out",
             }
 
-    # Pattern 3: "buy AMOUNT TOKEN with TOKEN" (exact output)
+    # Pattern 3: "buy AMOUNT TOKEN with TOKEN" (Exact Out)
     m = re.match(
-        r"(?:buy|purchase|get|receive)\s+"
-        r"(?:exactly\s+)?(\d+(?:\.\d+)?)\s+"
+        fr"(?:buy|purchase|get|receive)\s+"
+        fr"(?:exactly\s+)?{pattern_amount}\s+"
         r"(.+?)\s+"
         r"(?:with|using|from|by)\s+"
         r"(.+)",
@@ -197,12 +207,12 @@ def translate(text: str) -> Optional[Dict]:
                 "mode": "exact_out",
             }
 
-    # Pattern 4: "buy TOKEN with AMOUNT TOKEN" (exact input)
+    # Pattern 4: "buy TOKEN with AMOUNT TOKEN" (Exact In)
     m = re.match(
-        r"(?:buy|purchase|get)\s+"
+        fr"(?:buy|purchase|get)\s+"
         r"(.+?)\s+"
         r"(?:with|using|from)\s+"
-        r"(\d+(?:\.\d+)?)\s+"
+        fr"{pattern_amount}\s+"
         r"(.+)",
         text, re.IGNORECASE
     )

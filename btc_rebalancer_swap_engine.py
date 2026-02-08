@@ -18,6 +18,45 @@ import base64
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Optional, List, Union, Dict
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Live Price Provider
+# ---------------------------------------------------------------------------
+
+class LivePriceProvider:
+    """Fetches and caches live USD prices for tokens from SaucerSwap API."""
+    def __init__(self, cache_ttl=300):
+        self.url = "https://api.saucerswap.finance/v1/tokens"
+        self._prices = {}
+        self._last_fetch = 0
+        self.cache_ttl = cache_ttl
+
+    def get_price(self, token_id: str) -> Optional[float]:
+        """Get live USD price for a token ID."""
+        now = time.time()
+        if now - self._last_fetch > self.cache_ttl:
+            self._fetch()
+        
+        # Handle HBAR specially
+        if token_id.upper() == "HBAR":
+            return self._prices.get("WHBAR") # Usually same
+            
+        return self._prices.get(token_id)
+
+    def _fetch(self):
+        try:
+            resp = requests.get(self.url, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+            for t in data:
+                if t.get("priceUsd"):
+                    self._prices[t["id"]] = float(t["priceUsd"])
+                if t.get("symbol") == "WHBAR" and t.get("priceUsd"):
+                    self._prices["WHBAR"] = float(t["priceUsd"])
+            self._last_fetch = time.time()
+        except Exception:
+            pass
 
 from dotenv import load_dotenv
 from web3 import Web3
@@ -49,11 +88,13 @@ class SaucerSwapV2Engine:
         """Initialize the engine."""
         load_dotenv()
         
+        self.prices = LivePriceProvider()
+        
         self.rpc_url = rpc_url or os.getenv("RPC_URL", "https://mainnet.hashio.io/api")
-        self.private_key = private_key or os.getenv("PRIVATE_KEY")
+        self.private_key = private_key or os.getenv("PRIVATE_KEY") or os.getenv("PACMAN_PRIVATE_KEY")
         
         if not self.private_key:
-            raise ValueError("PRIVATE_KEY is required.")
+            raise ValueError("PRIVATE_KEY or PACMAN_PRIVATE_KEY is required in .env")
             
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
         if not self.w3.is_connected():
@@ -169,14 +210,19 @@ class SaucerSwapV2Engine:
         if token_id == "0.0.456858": # USDC itself
             return 1.0
         
+        # Try live price provider first (way faster and more reliable)
+        lp = self.prices.get_price(token_id)
+        if lp:
+            return lp
+
+        # Fallback to quoting (only if API fails or token is very new)
         try:
             addr_in = self.whbar if token_id.upper() == "HBAR" else hedera_id_to_evm(token_id)
             addr_usdc = hedera_id_to_evm("0.0.456858")
             
-            # Use 1 unit of token_in to get quote
             raw_amount_in = int(1 * (10 ** decimals))
             quote = self.client.get_quote_single(addr_in, addr_usdc, raw_amount_in, DEFAULT_FEE)
-            return quote["amountOut"] / (10 ** 6) # USDC has 6 decimals
+            return quote["amountOut"] / (10 ** 6)
         except Exception:
             return 0.0
 
@@ -354,6 +400,53 @@ class SaucerSwapV2Engine:
             logger.error(f"Estimation failed: {e}")
             return None
 
+    def get_quote(self, 
+                  token_in_id: str, 
+                  token_out_id: str, 
+                  amount: float, 
+                  decimals_in: int,
+                  decimals_out: int,
+                  is_exact_input: bool = True,
+                  path_ids: Optional[List[str]] = None,
+                  path_fees: Optional[List[int]] = None) -> Optional[int]:
+        """
+        Get quote for a swap. Returns raw amount.
+        If is_exact_input=True, returns raw amount OUT.
+        If is_exact_input=False, returns raw amount IN needed.
+        """
+        try:
+            is_hbar_in = token_in_id.upper() == "HBAR"
+            is_hbar_out = token_out_id.upper() == "HBAR"
+            
+            addr_in = self.whbar if is_hbar_in else hedera_id_to_evm(token_in_id)
+            addr_out = self.whbar if is_hbar_out else hedera_id_to_evm(token_out_id)
+            
+            if not path_ids:
+                path_ids = [WHBAR_ID if is_hbar_in else token_in_id, 
+                            WHBAR_ID if is_hbar_out else token_out_id]
+                path_fees = [DEFAULT_FEE]
+
+            if is_exact_input:
+                raw_amount_in = int(amount * (10 ** decimals_in))
+                if len(path_ids) == 2:
+                    quote = self.client.get_quote_single(addr_in, addr_out, raw_amount_in, path_fees[0])
+                    return quote["amountOut"]
+                else:
+                    path_evms = [hedera_id_to_evm(pid) for pid in path_ids]
+                    quote = self.client.get_quote_multi_hop(path_evms, path_fees, raw_amount_in)
+                    return quote["amount_out"]
+            else:
+                # exactOutput: find input needed for target output
+                raw_amount_out = int(amount * (10 ** decimals_out))
+                if len(path_ids) == 2:
+                    return self._estimate_exact_output_input(addr_in, addr_out, raw_amount_out, path_fees[0], decimals_in)
+                else:
+                    # Multi-hop exact output is complex; fallback to scale estimation for now
+                    return None
+        except Exception as e:
+            logger.debug(f"Quote failed: {e}")
+            return None
+
     def swap(self, 
              token_in_id: str, 
              token_out_id: str, 
@@ -362,7 +455,9 @@ class SaucerSwapV2Engine:
              decimals_out: int,
              fee: int = DEFAULT_FEE,
              slippage: float = 0.01,
-             is_exact_input: bool = True) -> SwapResult:
+             is_exact_input: bool = True,
+             path_ids: Optional[List[str]] = None,
+             path_fees: Optional[List[int]] = None) -> SwapResult:
         """
         Perform a swap. Automatically handles HBAR and multicall.
         Supports both exactInput (specify input amount) and exactOutput (specify output amount).
@@ -418,11 +513,12 @@ class SaucerSwapV2Engine:
                 else:
                     logger.info(f"  Sufficient allowance exists.")
 
-            # Step 4: Construct the Path (Single hop for now)
-            # hedera_id equivalents
-            path_ids = [WHBAR_ID if is_hbar_in else token_in_id, 
-                        WHBAR_ID if is_hbar_out else token_out_id]
-            path_fees = [fee]
+            # Step 4: Construct the Path
+            if not path_ids:
+                path_ids = [WHBAR_ID if is_hbar_in else token_in_id, 
+                            WHBAR_ID if is_hbar_out else token_out_id]
+                path_fees = [fee]
+            
             path_bytes = encode_path(path_ids, path_fees)
             
             # Step 5: Deadline (MUST BE MILLISECONDS)
@@ -488,8 +584,26 @@ class SaucerSwapV2Engine:
                 # amountInMaximum = raw_amount_in (already includes slippage buffer)
                 
                 if is_hbar_in:
-                    # exactOutput with HBAR input is complex - skip for now
-                    return SwapResult(success=False, error="exactOutput with HBAR input not yet supported")
+                    # exactOutput with HBAR input
+                    # Construct reversed path: tokenOut -> fee -> WHBAR
+                    path_ids_rev = [WHBAR_ID if is_hbar_out else token_out_id, WHBAR_ID]
+                    path_bytes_rev = encode_path(path_ids_rev, path_fees)
+                    
+                    raw_amount_out_exact = int(amount * (10 ** decimals_out))
+                    
+                    if is_hbar_out:
+                        # HBAR -> HBAR? Nonsense but handled for safety
+                        return SwapResult(success=False, error="Cannot swap HBAR for HBAR")
+
+                    params = (path_bytes_rev, self.eoa, deadline, raw_amount_out_exact, raw_amount_in)
+                    tx = self.router_extended.functions.exactOutput(params).build_transaction({
+                        "from": self.eoa,
+                        "value": raw_amount_in, # sending amountInMaximum
+                        "gas": 1000000,
+                        "gasPrice": self.w3.eth.gas_price,
+                        "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                        "chainId": self.client.chain_id
+                    })
                 elif is_hbar_out:
                     # exactOutput to HBAR: reverse path + unwrap
                     params = (path_bytes_rev, self.eoa, deadline, raw_amount_out_exact, raw_amount_in)
