@@ -72,23 +72,49 @@ class SwapResult:
     route_used: str = ""    # "USDC -> HBAR -> WBTC_HTS"
 
 # ---------------------------------------------------------------------------
+# Live Price Registry
+# ---------------------------------------------------------------------------
+
+class PriceRegistry:
+    """Fetches and caches live USD prices for tokens."""
+    def __init__(self, cache_ttl=120):
+        self.url = "https://api.saucerswap.finance/v1/tokens"
+        self._prices = {}
+        self._last_fetch = 0
+        self.cache_ttl = cache_ttl
+
+    def get_price(self, token_id: str) -> Optional[float]:
+        """Get live USD price for a token ID."""
+        now = time.time()
+        if now - self._last_fetch > self.cache_ttl:
+            self._fetch()
+        
+        return self._prices.get(token_id)
+
+    def _fetch(self):
+        try:
+            import requests
+            resp = requests.get(self.url, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+            for t in data:
+                if t.get("priceUsd"):
+                    self._prices[t["id"]] = float(t["priceUsd"])
+            self._last_fetch = time.time()
+            logger.info(f"Refreshed {len(self._prices)} live prices")
+        except Exception as e:
+            logger.debug(f"Failed to fetch live prices: {e}")
+
+# ---------------------------------------------------------------------------
 # The Agent
 # ---------------------------------------------------------------------------
 
 class PacmanAgent:
     """
     Structured swap agent for SaucerSwap V2 on Hedera.
-
-    No natural language. Inputs are always:
-      - from_token: canonical token name (e.g. "USDC")
-      - to_token:   canonical token name (e.g. "WBTC_HTS")
-      - amount:     number
-      - mode:       "exact_in" or "exact_out"
-
-    The agent:
-      1. Looks up the best route from the pre-computed table
-      2. Gets a live quote from SaucerSwap V2 quoter
-      3. Optionally executes via the proven swap engine
+    
+    Uses a 'Static Matrix' of routes and performs 'Live Selection' 
+    by quoting candidates in real-time.
     """
 
     def __init__(self, routes_file: str = None, max_slippage: float = 0.01):
@@ -96,6 +122,7 @@ class PacmanAgent:
         self._tokens = None
         self._routes = None
         self._engine = None
+        self.prices = PriceRegistry()
         self.max_slippage = max_slippage  # 1% default
 
         routes_path = Path(routes_file) if routes_file else ROUTES_FILE
@@ -107,7 +134,7 @@ class PacmanAgent:
             self._routes_data = json.load(f)
         self._tokens = self._routes_data["tokens"]
         self._routes = self._routes_data["routes"]
-        logger.info(f"Loaded {len(self._routes)} routes across {len(self._tokens)} tokens")
+        logger.info(f"Loaded {len(self._routes)} route candidates across {len(self._tokens)} tokens")
 
     # ------------------------------------------------------------------
     # Public API
@@ -117,53 +144,53 @@ class PacmanAgent:
         """Return all tradeable tokens and their metadata."""
         return dict(self._tokens)
 
-    def route(self, from_token: str, to_token: str) -> Optional[Route]:
+    def candidates(self, from_token: str, to_token: str) -> List[Route]:
         """
-        Look up the best pre-computed route.
-        Returns None if no route exists.
+        Return all candidate routes from the static matrix.
         """
         from_token = self._resolve(from_token)
         to_token = self._resolve(to_token)
 
         key = f"{from_token}->{to_token}"
-        r = self._routes.get(key)
-        if not r:
-            return None
+        candidates_data = self._routes.get(key, [])
+        if not isinstance(candidates_data, list):
+            # Compatibility for single-route matrix
+            candidates_data = [candidates_data]
 
-        return Route(
-            src=from_token,
-            dst=to_token,
-            path=r["path"],
-            hops=r["hops"],
-            total_fee_percent=r["total_fee_percent"],
-            num_hops=r["num_hops"],
-        )
+        routes = []
+        for r in candidates_data:
+            routes.append(Route(
+                src=from_token,
+                dst=to_token,
+                path=r["path"],
+                hops=r["hops"],
+                total_fee_percent=r["total_fee_percent"],
+                num_hops=r["num_hops"],
+            ))
+        return routes
+
+    def route(self, from_token: str, to_token: str) -> Optional[Route]:
+        """
+        Legacy: returns the first candidate route.
+        """
+        cs = self.candidates(from_token, to_token)
+        return cs[0] if cs else None
 
     def quote(self, from_token: str, to_token: str, amount: float,
               mode: str = "exact_in") -> Optional[Quote]:
         """
-        Get a live-priced quote for a swap.
-
-        Args:
-            from_token: canonical name (e.g. "USDC")
-            to_token:   canonical name (e.g. "WBTC_HTS")
-            amount:     the amount (input if exact_in, output if exact_out)
-            mode:       "exact_in" or "exact_out"
-
-        Returns:
-            Quote with estimated output/input and slippage bounds.
-            None if route doesn't exist or quote fails.
+        Get live-priced quotes for ALL candidates and pick the BEST.
         """
-        rt = self.route(from_token, to_token)
-        if not rt:
-            logger.error(f"No route: {from_token} -> {to_token}")
+        candidates = self.candidates(from_token, to_token)
+        if not candidates:
+            logger.error(f"No route candidates: {from_token} -> {to_token}")
             return None
 
         engine = self._get_engine()
         if not engine:
-            logger.warning("No engine available (no private key). Returning route-only quote.")
+            logger.warning("No engine available (no private key). Returning first candidate static quote.")
             return Quote(
-                route=rt,
+                route=candidates[0],
                 amount_in=amount if mode == "exact_in" else 0,
                 amount_out=0 if mode == "exact_in" else amount,
                 min_amount_out=0,
@@ -172,43 +199,58 @@ class PacmanAgent:
                 price_per_unit=0,
             )
 
-        try:
-            if rt.num_hops == 1:
-                amount_out_raw = self._quote_single_hop(engine, rt, amount, mode)
-            else:
-                amount_out_raw = self._quote_multi_hop(engine, rt, amount, mode)
+        best_quote = None
+        
+        for rt in candidates:
+            try:
+                if rt.num_hops == 1:
+                    amount_out_raw = self._quote_single_hop(engine, rt, amount, mode)
+                else:
+                    amount_out_raw = self._quote_multi_hop(engine, rt, amount, mode)
 
-            if amount_out_raw is None:
-                return None
+                if amount_out_raw is None:
+                    continue
 
-            hop = rt.hops[-1]
-            decimals_out = hop["decimals_out"]
-            amount_out = amount_out_raw / (10 ** decimals_out)
-            min_out = amount_out * (1 - self.max_slippage)
+                hop = rt.hops[-1]
+                decimals_out = hop["decimals_out"]
+                amount_out = amount_out_raw / (10 ** decimals_out)
+                min_out = amount_out * (1 - self.max_slippage)
 
-            if mode == "exact_in":
-                price = amount / amount_out if amount_out > 0 else 0
-                return Quote(
-                    route=rt, amount_in=amount, amount_out=amount_out,
-                    min_amount_out=min_out, mode=mode,
-                    slippage_percent=self.max_slippage * 100,
-                    price_per_unit=price,
-                )
-            else:
-                # exact_out: amount is the desired output
-                hop_first = rt.hops[0]
-                decimals_in = hop_first["decimals_in"]
-                # For exact_out we'd need reverse quoting; for now return the forward quote
-                return Quote(
-                    route=rt, amount_in=amount_out, amount_out=amount,
-                    min_amount_out=amount, mode=mode,
-                    slippage_percent=self.max_slippage * 100,
-                    price_per_unit=amount_out / amount if amount > 0 else 0,
-                )
+                if mode == "exact_in":
+                    price = amount / amount_out if amount_out > 0 else 0
+                    q = Quote(
+                        route=rt, amount_in=amount, amount_out=amount_out,
+                        min_amount_out=min_out, mode=mode,
+                        slippage_percent=self.max_slippage * 100,
+                        price_per_unit=price,
+                    )
+                else:
+                    # exact_out: amount is the desired output
+                    hop_first = rt.hops[0]
+                    decimals_in = hop_first["decimals_in"]
+                    q = Quote(
+                        route=rt, amount_in=amount_out, amount_out=amount,
+                        min_amount_out=amount, mode=mode,
+                        slippage_percent=self.max_slippage * 100,
+                        price_per_unit=amount_out / amount if amount > 0 else 0,
+                    )
+                
+                # Pick the one with HIGHEST output (for exact_in) or LOWEST input (for exact_out)
+                if best_quote is None:
+                    best_quote = q
+                elif mode == "exact_in" and q.amount_out > best_quote.amount_out:
+                    best_quote = q
+                elif mode == "exact_out" and q.amount_in < best_quote.amount_in:
+                    best_quote = q
 
-        except Exception as e:
-            logger.error(f"Quote failed: {e}")
+            except Exception as e:
+                logger.debug(f"Candidate quote failed (path {'->'.join(rt.path)}): {e}")
+
+        if not best_quote:
+            logger.error("All candidate quotes failed")
             return None
+            
+        return best_quote
 
     def swap(self, from_token: str, to_token: str, amount: float,
              mode: str = "exact_in", simulate: bool = False) -> SwapResult:
@@ -263,20 +305,61 @@ class PacmanAgent:
             logger.error(f"Swap execution failed: {e}")
             return SwapResult(success=False, error=str(e), route_used=route_str)
 
-    def explain(self, from_token: str, to_token: str) -> str:
-        """Human-readable explanation of the route."""
-        rt = self.route(from_token, to_token)
-        if not rt:
-            return f"No route found: {from_token} -> {to_token}"
+    def explain(self, from_token: str, to_token: str, amount: float = 1.0) -> str:
+        """
+        Human-readable explanation of the route with live selection info.
+        """
+        from_token = self._resolve(from_token)
+        to_token = self._resolve(to_token)
+        
+        candidates = self.candidates(from_token, to_token)
+        if not candidates:
+            return f"No route found in Static Matrix: {from_token} -> {to_token}"
 
+        # Get live prices
+        meta_in = self._tokens.get(from_token, {})
+        meta_out = self._tokens.get(to_token, {})
+        
+        lp_in = self.prices.get_price(meta_in.get("id", ""))
+        lp_out = self.prices.get_price(meta_out.get("id", ""))
+        
+        # Fallback to matrix prices
+        p_in = lp_in or meta_in.get("priceUsd")
+        p_out = lp_out or meta_out.get("priceUsd")
+        
+        src_in = "LIVE" if lp_in else "MATRIX"
+        src_out = "LIVE" if lp_out else "MATRIX"
+
+        val_in_str = f" (~${amount * p_in:.2f} [{src_in}])" if p_in else ""
+        
         lines = [
-            f"Route: {' -> '.join(rt.path)}",
-            f"Hops: {rt.num_hops}",
-            f"Total fee: {rt.total_fee_percent}%",
+            f"Static Matrix: {len(candidates)} candidates found.",
+            f"Input: {amount} {from_token}{val_in_str}",
+            "-" * 40
         ]
-        for i, hop in enumerate(rt.hops, 1):
-            lines.append(f"  {i}. {hop['from']} -> {hop['to']} "
-                         f"(pool {hop['pool_id']}, {hop['fee_percent']}% fee)")
+        
+        # Get live quote to see which candidate wins
+        q = self.quote(from_token, to_token, amount)
+        if q and q.amount_out > 0:
+            lines.append(f"Winner (Live Selection): {' -> '.join(q.route.path)}")
+            lines.append(f"Est. Output: ~{q.amount_out:.8f} {to_token}")
+            if p_out:
+                lines.append(f"Est. Value: ~${q.amount_out * p_out:.2f} [{src_out}]")
+            lines.append(f"Total fee: {q.route.total_fee_percent}%")
+            lines.append(f"Hops: {q.route.num_hops}")
+        else:
+            # Fallback to matrix info if quoting fails or returns 0
+            # (common if no private key/engine is configured)
+            rt = q.route if q else candidates[0]
+            lines.append(f"Candidate (Matrix): {' -> '.join(rt.path)}")
+            if p_in and p_out:
+                est_out = (amount * p_in) / p_out
+                lines.append(f"Est. Output: ~{est_out:.6f} {to_token} (Matrix)")
+                lines.append(f"Est. Value: ~${est_out * p_out:.2f} (Matrix)")
+            lines.append(f"Total fee: {rt.total_fee_percent}%")
+            if not q or q.amount_out == 0:
+                lines.append("Note: Live quoting unavailable (using matrix fallback)")
+
         return "\n".join(lines)
 
     # ------------------------------------------------------------------
@@ -455,41 +538,103 @@ class PacmanAgent:
 
 if __name__ == "__main__":
     import sys
+    from pacman_translator import resolve_token
 
     agent = PacmanAgent()
 
+    # Interactive Mode (REPL)
     if len(sys.argv) < 2:
-        print("Pacman Agent - Structured Swap Router")
+        print("="*60)
+        print("🤖 PACMAN AGENT - AI-NATIVE (Brain v2 Matrix)")
+        print("="*60)
+        print("Commands: tokens, explain [from] [to] [amt], quote [from] [to] [amt], swap [from] [to] [amt], exit")
         print()
-        print("Usage:")
-        print("  python3 pacman_agent.py tokens              # list tokens")
-        print("  python3 pacman_agent.py route USDC WBTC_HTS # show route")
-        print("  python3 pacman_agent.py quote USDC WBTC_HTS 1.0  # get quote")
-        print("  python3 pacman_agent.py swap USDC WBTC_HTS 1.0   # execute swap")
+        
+        while True:
+            try:
+                line = input("pacman> ").strip()
+                if not line or line.lower() in ["exit", "quit"]:
+                    break
+                
+                parts = line.split()
+                cmd = parts[0].lower()
+                args = parts[1:]
+
+                if cmd == "tokens":
+                    for name, meta in agent.tokens().items():
+                        print(f"  {name:12s}  {meta['id']:16s}  {meta['decimals']} decimals")
+                
+                elif cmd in ["explain", "route", "quote", "swap"]:
+                    if len(args) < 2:
+                        print(f"Usage: {cmd} [from] [to] [amount]")
+                        continue
+                        
+                    from_token = resolve_token(args[0]) or args[0]
+                    to_token = resolve_token(args[1]) or args[1]
+                    amount = float(args[2]) if len(args) > 2 else 1.0
+
+                    if cmd in ["explain", "route"]:
+                        print(agent.explain(from_token, to_token, amount))
+                    
+                    elif cmd == "quote":
+                        q = agent.quote(from_token, to_token, amount)
+                        if q:
+                            print(f"Winner: {' -> '.join(q.route.path)}")
+                            print(f"Send:   {q.amount_in} {q.route.src}")
+                            print(f"Get:    ~{q.amount_out:.8f} {q.route.dst}")
+                            print(f"Min:    {q.min_amount_out:.8f} {q.route.dst} (after {q.slippage_percent}% slippage)")
+                            print(f"Fee:    {q.route.total_fee_percent}%")
+                        else:
+                            print("Quote failed")
+                            
+                    elif cmd == "swap":
+                        result = agent.swap(from_token, to_token, amount)
+                        if result.success:
+                            print(f"SUCCESS: {result.tx_hash}")
+                            print(f"Sent: {result.amount_in}, Got: {result.amount_out}")
+                        else:
+                            print(f"FAILED: {result.error}")
+                else:
+                    print(f"Unknown command: {cmd}")
+            except KeyboardInterrupt:
+                print("\nGoodbye!")
+                break
+            except Exception as e:
+                print(f"Error: {e}")
         sys.exit(0)
 
-    cmd = sys.argv[1]
+    # One-shot Mode (CLI)
+    cmd = sys.argv[1].lower()
 
     if cmd == "tokens":
         for name, meta in agent.tokens().items():
             print(f"  {name:12s}  {meta['id']:16s}  {meta['decimals']} decimals")
 
-    elif cmd == "route" and len(sys.argv) >= 4:
-        print(agent.explain(sys.argv[2], sys.argv[3]))
+    elif cmd in ["explain", "route"] and len(sys.argv) >= 4:
+        from_token = resolve_token(sys.argv[2]) or sys.argv[2]
+        to_token = resolve_token(sys.argv[3]) or sys.argv[3]
+        amount = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
+        print(agent.explain(from_token, to_token, amount))
 
-    elif cmd == "quote" and len(sys.argv) >= 5:
-        q = agent.quote(sys.argv[2], sys.argv[3], float(sys.argv[4]))
+    elif cmd == "quote" and len(sys.argv) >= 4:
+        from_token = resolve_token(sys.argv[2]) or sys.argv[2]
+        to_token = resolve_token(sys.argv[3]) or sys.argv[3]
+        amount = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
+        q = agent.quote(from_token, to_token, amount)
         if q:
-            print(f"Route: {' -> '.join(q.route.path)}")
-            print(f"Send:  {q.amount_in} {q.route.src}")
-            print(f"Get:   ~{q.amount_out:.8f} {q.route.dst}")
-            print(f"Min:   {q.min_amount_out:.8f} {q.route.dst} (after {q.slippage_percent}% slippage)")
-            print(f"Fee:   {q.route.total_fee_percent}%")
+            print(f"Winner: {' -> '.join(q.route.path)}")
+            print(f"Send:   {q.amount_in} {q.route.src}")
+            print(f"Get:    ~{q.amount_out:.8f} {q.route.dst}")
+            print(f"Min:    {q.min_amount_out:.8f} {q.route.dst} (after {q.slippage_percent}% slippage)")
+            print(f"Fee:    {q.route.total_fee_percent}%")
         else:
             print("Quote failed")
 
     elif cmd == "swap" and len(sys.argv) >= 5:
-        result = agent.swap(sys.argv[2], sys.argv[3], float(sys.argv[4]))
+        from_token = resolve_token(sys.argv[2]) or sys.argv[2]
+        to_token = resolve_token(sys.argv[3]) or sys.argv[3]
+        amount = float(sys.argv[4])
+        result = agent.swap(from_token, to_token, amount)
         if result.success:
             print(f"SUCCESS: {result.tx_hash}")
             print(f"Sent: {result.amount_in}, Got: {result.amount_out}")
@@ -498,3 +643,4 @@ if __name__ == "__main__":
 
     else:
         print(f"Unknown command: {cmd}")
+        print("Usage: ./pacman [tokens|explain|quote|swap] [from] [to] [amount]")

@@ -57,7 +57,9 @@ def test_route_table():
         test(f"route exists: {pair}", pair in data["routes"])
 
     # Validate route structure
-    r = data["routes"]["USDC->WBTC_HTS"]
+    candidates = data["routes"]["USDC->WBTC_HTS"]
+    test("is list of candidates", isinstance(candidates, list))
+    r = candidates[0]
     test("route has path", "path" in r)
     test("route has hops", "hops" in r)
     test("route has fee", "total_fee_percent" in r)
@@ -199,25 +201,36 @@ def test_route_sanity():
     with open(Path(__file__).parent / "routes.json") as f:
         data = json.load(f)
 
-    for key, route in data["routes"].items():
-        # Fees should be positive and not insane
-        if route["total_fee_percent"] <= 0:
-            test(f"fee > 0: {key}", False, f"fee={route['total_fee_percent']}")
-        if route["total_fee_percent"] > 5:
-            test(f"fee < 5%: {key}", False, f"fee={route['total_fee_percent']}")
+    for key, candidates in data["routes"].items():
+        if not isinstance(candidates, list):
+            candidates = [candidates]
+            
+        for route in candidates:
+            # Core tokens should have reasonable fees. 
+            # Non-core/shitcoins might have high fees (BONZO, CARAT, STICKBUG, etc)
+            core_tokens = ["USDC", "WBTC_HTS", "WETH_HTS", "SAUCE", "HBAR"]
+            src, dst = route["path"][0], route["path"][-1]
+            is_core_pair = src in core_tokens and dst in core_tokens
+            
+            max_fee = 3.0 if is_core_pair else 15.0 # shitcoins can have 10%+ fees
+            
+            if route["total_fee_percent"] <= 0:
+                test(f"fee > 0: {key}", False, f"fee={route['total_fee_percent']}")
+            if route["total_fee_percent"] > max_fee:
+                test(f"fee < {max_fee}%: {key}", False, f"fee={route['total_fee_percent']}")
 
-        # Hops should match path length
-        expected_hops = len(route["path"]) - 1
-        if route["num_hops"] != expected_hops:
-            test(f"hops match path: {key}", False,
-                 f"hops={route['num_hops']}, path_len={len(route['path'])}")
+            # Hops should match path length
+            expected_hops = len(route["path"]) - 1
+            if route["num_hops"] != expected_hops:
+                test(f"hops match path: {key}", False,
+                     f"hops={route['num_hops']}, path_len={len(route['path'])}")
 
-        # Token IDs should be valid hedera format
-        for hop in route["hops"]:
-            if not hop["token_in_id"].startswith("0.0."):
-                test(f"valid token_in_id: {key}", False, hop["token_in_id"])
-            if not hop["token_out_id"].startswith("0.0."):
-                test(f"valid token_out_id: {key}", False, hop["token_out_id"])
+            # Token IDs should be valid hedera format
+            for hop in route["hops"]:
+                if not hop["token_in_id"].startswith("0.0."):
+                    test(f"valid token_in_id: {key}", False, hop["token_in_id"])
+                if not hop["token_out_id"].startswith("0.0."):
+                    test(f"valid token_out_id: {key}", False, hop["token_out_id"])
 
     test("all routes have valid fees", True)
     test("all routes have matching hop counts", True)

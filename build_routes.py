@@ -18,89 +18,175 @@ from itertools import combinations
 
 POOLS_FILE = Path(__file__).parent / "pacman_data_raw.json"
 OUTPUT_FILE = Path(__file__).parent / "routes.json"
+TOKENS_FILE = Path(__file__).parent / "tokens.json"
 
-# Canonical token registry
-# Maps user-facing symbol -> hedera token ID + metadata
-# The agent only speaks these names. Everything else is internal.
-TOKEN_REGISTRY = {
-    "USDC":       {"id": "0.0.456858",    "decimals": 6,  "symbol_on_pool": "USDC",       "name": "USD Coin"},
-    "USDC_HTS":   {"id": "0.0.1055459",   "decimals": 6,  "symbol_on_pool": "USDC[hts]",  "name": "USD Coin (HTS)"},
-    "USDT_HTS":   {"id": "0.0.1055472",   "decimals": 6,  "symbol_on_pool": "USDT[hts]",  "name": "Tether USD"},
-    "DAI_HTS":    {"id": "0.0.1055477",   "decimals": 8,  "symbol_on_pool": "DAI[hts]",   "name": "Dai Stablecoin"},
-    "WBTC_HTS":   {"id": "0.0.10082597",  "decimals": 8,  "symbol_on_pool": "HTS-WBTC",   "name": "HTS Wrapped BTC"},
-    "WBTC_LZ":    {"id": "0.0.1055483",   "decimals": 8,  "symbol_on_pool": "WBTC[hts]",  "name": "Wrapped BTC (LayerZero)"},
-    "WETH_HTS":   {"id": "0.0.541564",    "decimals": 8,  "symbol_on_pool": "WETH[hts]",  "name": "Wrapped Ether (HTS)"},
-    "WETH_LZ":    {"id": "0.0.9770617",   "decimals": 8,  "symbol_on_pool": "HTS-WETH",   "name": "HTS WETH (LayerZero)"},
-    "SAUCE":      {"id": "0.0.731861",    "decimals": 6,  "symbol_on_pool": "SAUCE",      "name": "SAUCE"},
-    "XSAUCE":     {"id": "0.0.1460200",   "decimals": 6,  "symbol_on_pool": "XSAUCE",     "name": "xSAUCE"},
-    "HBARX":      {"id": "0.0.834116",    "decimals": 8,  "symbol_on_pool": "HBARX",      "name": "HBARX"},
-    "KARATE":     {"id": "0.0.2283230",   "decimals": 8,  "symbol_on_pool": "KARATE",     "name": "Karate"},
-    "DOVU":       {"id": "0.0.3716059",   "decimals": 8,  "symbol_on_pool": "DOVU",       "name": "Dovu"},
-    "PACK":       {"id": "0.0.4794920",   "decimals": 6,  "symbol_on_pool": "PACK",       "name": "PACK"},
-    "GRELF":      {"id": "0.0.1159074",   "decimals": 8,  "symbol_on_pool": "GRELF",      "name": "GRELF"},
-    "LINK_HTS":   {"id": "0.0.1055495",   "decimals": 8,  "symbol_on_pool": "LINK[hts]",  "name": "ChainLink Token"},
-    "WAVAX_HTS":  {"id": "0.0.1157020",   "decimals": 8,  "symbol_on_pool": "WAVAX[hts]", "name": "Wrapped AVAX"},
-    "QNT_HTS":    {"id": "0.0.1304757",   "decimals": 8,  "symbol_on_pool": "QNT[hts]",   "name": "Quant"},
-    "HCHF":       {"id": "0.0.6070123",   "decimals": 8,  "symbol_on_pool": "HCHF",       "name": "HCHF Stablecoin"},
-    "HLQT":       {"id": "0.0.6070128",   "decimals": 8,  "symbol_on_pool": "HLQT",       "name": "HLQT"},
-    "BONZO":      {"id": "0.0.8279134",   "decimals": 8,  "symbol_on_pool": "BONZO",      "name": "BONZO"},
-    "HST":        {"id": "0.0.968069",    "decimals": 8,  "symbol_on_pool": "HST",        "name": "HeadStarter"},
-    "CLXY":       {"id": "0.0.859814",    "decimals": 6,  "symbol_on_pool": "CLXY",       "name": "Calaxy Tokens"},
-    "WBNB_HTS":   {"id": "0.0.1157005",   "decimals": 8,  "symbol_on_pool": "WBNB[hts]",  "name": "Wrapped BNB"},
-    "DAVINCI":    {"id": "0.0.3706639",   "decimals": 9,  "symbol_on_pool": "DAVINCI",    "name": "Davincigraph"},
-    "CARAT":      {"id": "0.0.1958126",   "decimals": 2,  "symbol_on_pool": "CARAT",      "name": "Diamond Standard Carats"},
-    "GIB":        {"id": "0.0.7893707",   "decimals": 8,  "symbol_on_pool": "gib",        "name": "GIB"},
-    "JAM":        {"id": "0.0.127877",    "decimals": 8,  "symbol_on_pool": "JAM",        "name": "Tune.FM"},
-    "STEAM":      {"id": "0.0.3210123",   "decimals": 2,  "symbol_on_pool": "STEAM",      "name": "STEAM"},
+# WHBAR is 0.0.1456986. It is a technical wrapper, NOT a tradeable asset.
+WHBAR_ID = "0.0.1456986"
+
+# Preferred canonical names for core tokens to maintain backward compatibility
+# and ensure clean, predictable naming.
+PREFERRED_NAMES = {
+    "0.0.456858":   "USDC",
+    "0.0.1055459":  "USDC_HTS",
+    "0.0.1055472":  "USDT_HTS",
+    "0.0.1055477":  "DAI_HTS",
+    "0.0.10082597": "WBTC_HTS",
+    "0.0.1055483":  "WBTC_LZ",
+    "0.0.541564":   "WETH_HTS",
+    "0.0.9770617":  "WETH_LZ",
+    "0.0.731861":   "SAUCE",
+    "0.0.1460200":  "XSAUCE",
 }
 
-# WHBAR is used ONLY as a routing hop (wrapping mechanism), never as a trade destination.
-# Swapping TO WHBAR = lost money. It's in the pool graph for path-finding but
-# excluded from the tradeable token list.
-WHBAR_HOP = {"id": "0.0.1456986", "decimals": 8, "symbol_on_pool": "HBAR", "name": "WHBAR (routing only)"}
+def discover_tokens(raw_pools):
+    """
+    Scan pool data to build a comprehensive token registry.
+    Only includes tokens found in pools with TVL >= $10,000 USD.
+    Returns: { canonical_name: {id, decimals, symbol, name, priceUsd} }
+    """
+    registry = {}
+    id_to_canonical = {}
+    
+    # helper to check if a token is in a high-liquidity pool
+    valid_token_ids = set(PREFERRED_NAMES.keys())
+    
+    # Pass 0: Find all tokens in high-liquidity pools
+    for pool in raw_pools:
+        # TVL calculation
+        tA = pool["tokenA"]
+        tB = pool["tokenB"]
+        pA = tA.get("priceUsd", 0)
+        pB = tB.get("priceUsd", 0)
+        
+        # amountA/B are strings often representing big integers. 
+        # MUST divide by 10**decimals BEFORE multiplying by price.
+        valA = (float(pool["amountA"]) / (10**tA["decimals"])) * pA
+        valB = (float(pool["amountB"]) / (10**tB["decimals"])) * pB
+        tvl = valA + valB
+              
+        # Ignore pools with no liquidity data
+        if int(pool.get("liquidity", "0")) == 0:
+            continue
+            
+        if tvl >= 10000 or tA["id"] in PREFERRED_NAMES or tB["id"] in PREFERRED_NAMES:
+            valid_token_ids.add(tA["id"])
+            valid_token_ids.add(tB["id"])
+        elif tA["symbol"].lower() == "stickbug" or tB["symbol"].lower() == "stickbug":
+             # This will help me see why it's still being kept if it somehow is
+             pass
 
-# Tokens that can appear in routing paths but MUST NOT be a src or dst
-ROUTING_ONLY_TOKENS = {"WHBAR"}
+    # Pass 1: Handle preferred names first (if they are valid)
+    for tid in PREFERRED_NAMES:
+        if tid in valid_token_ids:
+            # We need to find the token info from ANY pool it's in
+            for pool in raw_pools:
+                for side in ["tokenA", "tokenB"]:
+                    t = pool[side]
+                    if t["id"] == tid and tid not in id_to_canonical:
+                        canon = PREFERRED_NAMES[tid]
+                        id_to_canonical[tid] = canon
+                        registry[canon] = {
+                            "id": tid,
+                            "decimals": t["decimals"],
+                            "symbol": t["symbol"],
+                            "name": t["name"],
+                            "priceUsd": t.get("priceUsd"),
+                            "icon": t.get("icon")
+                        }
 
-# Reverse: pool symbol -> canonical name
-_POOL_SYMBOL_TO_CANONICAL = {}
-for canon, meta in TOKEN_REGISTRY.items():
-    _POOL_SYMBOL_TO_CANONICAL[meta["symbol_on_pool"]] = canon
+    # Pass 2: Discover everything else that's valid
+    for pool in raw_pools:
+        for side in ["tokenA", "tokenB"]:
+            t = pool[side]
+            tid = t["id"]
+            
+            if tid == WHBAR_ID or tid not in valid_token_ids or tid in id_to_canonical:
+                continue
+                
+            # Create a canonical name
+            sym = t["symbol"].upper()
+            base_sym = sym.replace("[HTS]", "_HTS").replace("-", "_").replace(" ", "_")
+            
+            unique_name = base_sym
+            counter = 1
+            while unique_name in registry:
+                unique_name = f"{base_sym}_{counter}"
+                counter += 1
+            
+            id_to_canonical[tid] = unique_name
+            registry[unique_name] = {
+                "id": tid,
+                "decimals": t["decimals"],
+                "symbol": t["symbol"],
+                "name": t["name"],
+                "priceUsd": t.get("priceUsd"),
+                "icon": t.get("icon")
+            }
 
-# WHBAR maps to "WHBAR" internally (routing hop only, not tradeable)
-_POOL_SYMBOL_TO_CANONICAL[WHBAR_HOP["symbol_on_pool"]] = "WHBAR"
+    return registry, id_to_canonical
 
-# Also map token ID -> canonical name
+# Global state for IDs (populated during build)
 _ID_TO_CANONICAL = {}
-for canon, meta in TOKEN_REGISTRY.items():
-    _ID_TO_CANONICAL[meta["id"]] = canon
-_ID_TO_CANONICAL[WHBAR_HOP["id"]] = "WHBAR"
-
-# Combined registry (tradeable + routing-only) for route building
-_ALL_TOKENS = dict(TOKEN_REGISTRY)
-_ALL_TOKENS["WHBAR"] = WHBAR_HOP
-
+_ALL_TOKENS = {}
 
 def load_pools():
     """Load raw pool data and build adjacency list."""
     with open(POOLS_FILE) as f:
         raw = json.load(f)
 
+    # 1. Discover all tokens
+    token_registry, id_to_canonical = discover_tokens(raw)
+    
+    # 2. Add WHBAR to the internal routing registry
+    whbar_meta = {
+        "id": WHBAR_ID,
+        "decimals": 8,
+        "symbol": "HBAR",
+        "name": "WHBAR (routing only)",
+        "priceUsd": None
+    }
+    
+    global _ID_TO_CANONICAL, _ALL_TOKENS
+    _ID_TO_CANONICAL = dict(id_to_canonical)
+    _ID_TO_CANONICAL[WHBAR_ID] = "WHBAR"
+    
+    _ALL_TOKENS = dict(token_registry)
+    _ALL_TOKENS["WHBAR"] = whbar_meta
+
     # adjacency: (canonical_a, canonical_b) -> {pool_id, fee, liquidity, ...}
-    # We keep the best pool per pair (highest liquidity at same fee, or lowest fee)
     pools = {}
     for pool in raw:
-        sym_a = pool["tokenA"]["symbol"]
-        sym_b = pool["tokenB"]["symbol"]
         id_a = pool["tokenA"]["id"]
         id_b = pool["tokenB"]["id"]
 
         # Resolve to canonical names
-        canon_a = _POOL_SYMBOL_TO_CANONICAL.get(sym_a) or _ID_TO_CANONICAL.get(id_a)
-        canon_b = _POOL_SYMBOL_TO_CANONICAL.get(sym_b) or _ID_TO_CANONICAL.get(id_b)
+        canon_a = _ID_TO_CANONICAL.get(id_a)
+        canon_b = _ID_TO_CANONICAL.get(id_b)
 
         if not canon_a or not canon_b:
-            continue  # Skip tokens we don't have in registry
+            continue
+
+        # Quality Control: TVL-based Filtering
+        # TVL = (amountA * priceUsdA) + (amountB * priceUsdB)
+        # We only keep pools with TVL >= $10,000 USD to avoid "shitcoins"
+        
+        meta_a = _ALL_TOKENS.get(canon_a)
+        meta_b = _ALL_TOKENS.get(canon_b)
+        
+        p_a = meta_a.get("priceUsd") if meta_a else None
+        p_b = meta_b.get("priceUsd") if meta_b else None
+        
+        # Calculate TVL
+        tvl = 0
+        if p_a:
+            tvl += (float(pool["amountA"]) / 10**meta_a["decimals"]) * p_a
+        if p_b:
+            tvl += (float(pool["amountB"]) / 10**meta_b["decimals"]) * p_b
+            
+        # Decision: Keep if TVL >= $10k OR if it's a core token pair
+        is_core = id_a in PREFERRED_NAMES or id_b in PREFERRED_NAMES
+        if tvl < 10000 and not is_core:
+            continue
 
         pair = tuple(sorted([canon_a, canon_b]))
         fee = pool["fee"]
@@ -116,9 +202,10 @@ def load_pools():
                 "token_b_id": id_b,
                 "fee": fee,
                 "liquidity": liq,
+                "tvl": tvl
             }
 
-    return list(pools.values())
+    return list(pools.values()), token_registry
 
 
 def build_adjacency(pools):
@@ -131,18 +218,16 @@ def build_adjacency(pools):
     return adj
 
 
-def find_best_route(adj, src, dst, max_hops=3):
+def find_top_routes(adj, src, dst, max_hops=3, top_n=3):
     """
-    BFS/DFS to find the cheapest route from src to dst.
-    Score = sum of (fee / 10000) for each hop + liquidity penalty.
-    Returns the best route or None.
+    Find the top N candidate routes from src to dst.
+    Score = sum of (fee / 1000000) for each hop + liquidity penalties.
+    Returns a list of routes sorted by best score.
     """
     if src == dst:
-        return None
+        return []
 
-    best = None
-    best_score = float("inf")
-
+    candidates = []
     # BFS with path tracking
     queue = [(src, [src], 0.0, [])]  # (current, path, cost, hops_info)
 
@@ -150,14 +235,14 @@ def find_best_route(adj, src, dst, max_hops=3):
         current, path, cost, hops = queue.pop(0)
 
         if current == dst:
-            if cost < best_score:
-                best_score = cost
-                best = {
-                    "path": path,
-                    "hops": hops,
-                    "total_fee_percent": round(cost * 100, 4),
-                    "num_hops": len(hops),
-                }
+            route_obj = {
+                "path": path,
+                "hops": hops,
+                "total_fee_percent": round(cost * 100, 4),
+                "num_hops": len(hops),
+                "score": cost
+            }
+            candidates.append(route_obj)
             continue
 
         if len(path) - 1 >= max_hops:
@@ -167,13 +252,13 @@ def find_best_route(adj, src, dst, max_hops=3):
             if neighbor in path:
                 continue  # no cycles
 
-            hop_fee = pool_info["fee"] / 1_000_000  # fee is in hundredths of bps
+            hop_fee = pool_info["fee"] / 1_000_000
             # Liquidity penalty for thin pools
             liq_penalty = 0.0
             if pool_info["liquidity"] < 1_000_000:
-                liq_penalty = 0.01
+                liq_penalty = 0.05
             elif pool_info["liquidity"] < 10_000_000:
-                liq_penalty = 0.005
+                liq_penalty = 0.01
 
             hop_info = {
                 "from": current,
@@ -195,17 +280,24 @@ def find_best_route(adj, src, dst, max_hops=3):
                 hops + [hop_info],
             ))
 
-    return best
+    # Sort by score and take top N
+    candidates.sort(key=lambda x: x["score"])
+    
+    # Remove scores from output
+    for c in candidates:
+        del c["score"]
+        
+    return candidates[:top_n]
 
 
 def build_route_table():
     """Build the complete route lookup table."""
-    pools = load_pools()
+    pools, token_registry = load_pools()
     adj = build_adjacency(pools)
 
     all_graph_tokens = sorted(adj.keys())
-    # Tradeable tokens: exclude routing-only tokens (WHBAR)
-    tradeable = [t for t in all_graph_tokens if t not in ROUTING_ONLY_TOKENS]
+    # Tradeable tokens: exclude WHBAR
+    tradeable = [t for t in all_graph_tokens if t != "WHBAR"]
     print(f"Building routes for {len(tradeable)} tradeable tokens "
           f"({len(all_graph_tokens)} in graph) across {len(pools)} pools...")
 
@@ -218,11 +310,11 @@ def build_route_table():
                 continue
 
             # Route finding uses full graph (WHBAR as hop is fine)
-            route = find_best_route(adj, src, dst)
+            candidates = find_top_routes(adj, src, dst)
             key = f"{src}->{dst}"
 
-            if route:
-                routes[key] = route
+            if candidates:
+                routes[key] = candidates
             else:
                 no_route.append(key)
 
@@ -231,14 +323,19 @@ def build_route_table():
         "version": 2,
         "token_count": len(tradeable),
         "route_count": len(routes),
-        "tokens": {k: TOKEN_REGISTRY[k] for k in tradeable if k in TOKEN_REGISTRY},
+        "tokens": token_registry,
         "routes": routes,
     }
 
     with open(OUTPUT_FILE, "w") as f:
         json.dump(output, f, indent=2)
 
+    # Also save the token registry for the translator
+    with open(TOKENS_FILE, "w") as f:
+        json.dump(token_registry, f, indent=2)
+
     print(f"Wrote {len(routes)} routes to {OUTPUT_FILE}")
+    print(f"Wrote {len(token_registry)} tokens to {TOKENS_FILE}")
     if no_route:
         print(f"No route found for {len(no_route)} pairs (disconnected tokens)")
 

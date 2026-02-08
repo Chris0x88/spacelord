@@ -20,76 +20,69 @@ Usage:
     # -> {"from_token": "USDC", "to_token": "WBTC_HTS", "amount": 0.001, "mode": "exact_out"}
 """
 
+import json
 import re
+from pathlib import Path
 from typing import Optional, Dict
 
-# Token aliases: maps casual names -> canonical agent token name
-# Update this when you add new tokens to the route table
+TOKENS_FILE = Path(__file__).parent / "tokens.json"
+
+# Base legacy aliases to maintain compatibility and common naming
 ALIASES = {
-    # Stablecoins
-    "usdc": "USDC",
-    "usd": "USDC",
-    "dollars": "USDC",
-    "dollar": "USDC",
-    "usd coin": "USDC",
-    "usdc hts": "USDC_HTS",
-    "usdt": "USDT_HTS",
-    "tether": "USDT_HTS",
-    "dai": "DAI_HTS",
-    # HBAR ecosystem (WHBAR is routing-only, NOT tradeable)
-    "hbarx": "HBARX",
-    # Bitcoin
-    "btc": "WBTC_HTS",
     "bitcoin": "WBTC_HTS",
+    "btc": "WBTC_HTS",
     "wbtc": "WBTC_HTS",
-    "wrapped bitcoin": "WBTC_HTS",
-    "wbtc hts": "WBTC_HTS",
-    "wbtc_hts": "WBTC_HTS",
-    "hts-wbtc": "WBTC_HTS",
-    "hts wbtc": "WBTC_HTS",
-    "wbtc lz": "WBTC_LZ",
-    "wbtc_lz": "WBTC_LZ",
-    # Ethereum
     "eth": "WETH_HTS",
     "ether": "WETH_HTS",
     "ethereum": "WETH_HTS",
-    "weth": "WETH_HTS",
-    "wrapped ether": "WETH_HTS",
-    "weth hts": "WETH_HTS",
-    "weth_hts": "WETH_HTS",
-    "weth lz": "WETH_LZ",
-    "weth_lz": "WETH_LZ",
-    # DeFi
-    "sauce": "SAUCE",
+    "usd": "USDC",
+    "dollar": "USDC",
+    "dollars": "USDC",
     "saucerswap": "SAUCE",
-    "xsauce": "XSAUCE",
-    "karate": "KARATE",
-    "dovu": "DOVU",
-    "pack": "PACK",
-    "grelf": "GRELF",
-    "link": "LINK_HTS",
-    "chainlink": "LINK_HTS",
-    "avax": "WAVAX_HTS",
-    "avalanche": "WAVAX_HTS",
-    "qnt": "QNT_HTS",
-    "quant": "QNT_HTS",
-    "hchf": "HCHF",
-    "bonzo": "BONZO",
-    "hst": "HST",
-    "headstarter": "HST",
-    "clxy": "CLXY",
-    "calaxy": "CLXY",
-    "bnb": "WBNB_HTS",
-    "davinci": "DAVINCI",
-    "carat": "CARAT",
-    "diamond": "CARAT",
-    # Meme / community tokens
-    "gib": "GIB",
-    "jam": "JAM",
     "tune": "JAM",
     "tune.fm": "JAM",
-    "steam": "STEAM",
+    "diamond": "CARAT",
+    "avalanche": "WAVAX",
+    "avax": "WAVAX",
+    "chainlink": "LINK",
+    "headstarter": "HST",
+    "calaxy": "CLXY",
 }
+
+def load_dynamic_aliases():
+    """Load discovered tokens and add them to ALIASES."""
+    if not TOKENS_FILE.exists():
+        return
+        
+    try:
+        with open(TOKENS_FILE) as f:
+            tokens = json.load(f)
+            
+        for canon, meta in tokens.items():
+            # 1. Add canonical name itself (lowercase)
+            ALIASES[canon.lower()] = canon
+            
+            # 2. Add pool symbol (lowercase)
+            sym = meta["symbol"].lower()
+            if sym not in ALIASES:
+                ALIASES[sym] = canon
+            # Also stripped version (no [hts])
+            clean_sym = sym.replace("[hts]", "").replace("-", "_")
+            if clean_sym not in ALIASES:
+                ALIASES[clean_sym] = canon
+                
+            # 3. Add full name (lowercase)
+            name = meta["name"].lower()
+            if name not in ALIASES:
+                ALIASES[name] = canon
+                
+            # 4. Add token ID
+            ALIASES[meta["id"]] = canon
+    except Exception as e:
+        print(f"Warning: Failed to load dynamic tokens: {e}")
+
+# Load 'em up
+load_dynamic_aliases()
 
 
 def resolve_token(text: str) -> Optional[str]:
