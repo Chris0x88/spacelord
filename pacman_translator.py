@@ -100,23 +100,37 @@ def resolve_token(text: str) -> Optional[str]:
 
 def translate(text: str) -> Optional[Dict]:
     """
-    Parse natural language into a structured swap request.
-
-    Supported patterns:
+    Parse natural language into a structured request.
+    
+    Supported Swaps:
         "swap 1 USDC for WBTC"       -> exact_in
         "swap USDC for 0.001 WBTC"   -> exact_out
         "buy 0.001 BTC with USDC"    -> exact_out
         "sell 10 HBAR for USDC"      -> exact_in
         "convert 5 SAUCE to HBAR"    -> exact_in
+        
+    Supported Intents:
+        "what is my balance?"        -> intent: balance
+        "show my history"            -> intent: history
+        "list tokens"                -> intent: tokens
 
     Returns:
-        {"from_token": str, "to_token": str, "amount": float, "mode": str}
-        or None if unparseable
+        {"intent": str, "from_token": str, "to_token": str, "amount": float, "mode": str}
+        or {"intent": "balance" / "history" / "tokens"}
     """
-    text = text.strip()
+    text = text.strip().lower()
     if not text:
         return None
 
+    # Intent Detection
+    if any(w in text for w in ["balance", "wallet", "assets", "how much", "portfolio", "holdings"]):
+        return {"intent": "balance"}
+    if any(w in text for w in ["history", "transactions", "tx", "activity", "recently"]):
+        return {"intent": "history"}
+    if any(w in text for w in ["list", "tokens", "show tokens", "discovery"]):
+        return {"intent": "tokens"}
+
+    # Token/Amount Extraction logic
     # Pattern 1: "swap/trade/exchange/convert AMOUNT TOKEN for/to/into TOKEN"
     m = re.match(
         r"(?:swap|trade|exchange|convert|sell)\s+"
@@ -132,6 +146,7 @@ def translate(text: str) -> Optional[Dict]:
         to_token = resolve_token(m.group(3))
         if from_token and to_token:
             return {
+                "intent": "swap",
                 "from_token": from_token,
                 "to_token": to_token,
                 "amount": amount,
@@ -153,6 +168,7 @@ def translate(text: str) -> Optional[Dict]:
         to_token = resolve_token(m.group(3))
         if from_token and to_token:
             return {
+                "intent": "swap",
                 "from_token": from_token,
                 "to_token": to_token,
                 "amount": amount,
@@ -161,10 +177,10 @@ def translate(text: str) -> Optional[Dict]:
 
     # Pattern 3: "buy AMOUNT TOKEN with TOKEN" (exact output)
     m = re.match(
-        r"(?:buy|purchase|get)\s+"
-        r"(\d+(?:\.\d+)?)\s+"
+        r"(?:buy|purchase|get|receive)\s+"
+        r"(?:exactly\s+)?(\d+(?:\.\d+)?)\s+"
         r"(.+?)\s+"
-        r"(?:with|using|from)\s+"
+        r"(?:with|using|from|by)\s+"
         r"(.+)",
         text, re.IGNORECASE
     )
@@ -174,6 +190,7 @@ def translate(text: str) -> Optional[Dict]:
         from_token = resolve_token(m.group(3))
         if from_token and to_token:
             return {
+                "intent": "swap",
                 "from_token": from_token,
                 "to_token": to_token,
                 "amount": amount,
@@ -195,6 +212,7 @@ def translate(text: str) -> Optional[Dict]:
         from_token = resolve_token(m.group(3))
         if from_token and to_token:
             return {
+                "intent": "swap",
                 "from_token": from_token,
                 "to_token": to_token,
                 "amount": amount,

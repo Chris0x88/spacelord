@@ -536,66 +536,141 @@ class PacmanAgent:
 # CLI
 # ---------------------------------------------------------------------------
 
+    def balance(self) -> str:
+        """Fetch and format wallet balances."""
+        try:
+            from btc_rebalancer_swap_engine import SaucerSwapV2Engine
+            engine = SaucerSwapV2Engine()
+            
+            # Build metadata for engine (needs ID and Decimals)
+            meta = {sym: {"id": m["id"], "decimals": m["decimals"]} 
+                    for sym, m in self._tokens.items()}
+            
+            balances = engine.get_all_balances(meta)
+            if not balances:
+                return "Your wallet appears to be empty."
+                
+            output = "\n💰 **Current Balances (with USDC valuation):**\n"
+            total_usd = 0
+            for sym, data in sorted(balances.items()):
+                bal = data["balance"]
+                usd = data["usd_value"]
+                output += f"  - {sym:10s}: {bal:12.6f} (${usd:8.2f})\n"
+                total_usd += usd
+            
+            output += f"\n**Total Portfolio Value: ${total_usd:.2f}**"
+            return output
+        except Exception as e:
+            return f"❌ Failed to fetch balance: {e}"
+
+    def history(self, limit: int = 10) -> str:
+        """Fetch and format transaction history."""
+        try:
+            from btc_rebalancer_swap_engine import SaucerSwapV2Engine
+            engine = SaucerSwapV2Engine()
+            txs = engine.get_recent_transactions(limit=limit)
+            if not txs:
+                return "No recent transactions found."
+                
+            output = f"\n📜 **Last {limit} Transactions:**\n"
+            for tx in txs:
+                memo = f" | {tx['memo']}" if tx['memo'] else ""
+                fee_str = f" [Fee: {tx['fee_hbar']:.4f} HBAR]"
+                output += f"  - {tx['timestamp']}: {tx['name']} -> {tx['result']}{memo}{fee_str}\n"
+            return output
+        except Exception as e:
+            return f"❌ Failed to fetch history: {e}"
+
 if __name__ == "__main__":
     import sys
-    from pacman_translator import resolve_token
+    from pacman_translator import translate, resolve_token
 
     agent = PacmanAgent()
+    pending_swap = None
 
     # Interactive Mode (REPL)
     if len(sys.argv) < 2:
         print("="*60)
         print("🤖 PACMAN AGENT - AI-NATIVE (Brain v2 Matrix)")
         print("="*60)
-        print("Commands: tokens, explain [from] [to] [amt], quote [from] [to] [amt], swap [from] [to] [amt], exit")
+        print("I understand natural language. Try:")
+        print("  'swap 1 usdc for btc', 'what is my balance?', 'show history'")
         print()
         
         while True:
             try:
-                line = input("pacman> ").strip()
-                if not line or line.lower() in ["exit", "quit"]:
+                # 1. Handle Confirmations
+                if pending_swap:
+                    inp = input(f"Execute this swap? (y/n): ").strip().lower()
+                    if inp in ['y', 'yes']:
+                        print(f"🚀 Executing...")
+                        res = agent.swap(
+                            pending_swap['from_token'],
+                            pending_swap['to_token'],
+                            pending_swap['amount'],
+                            mode=pending_swap['mode']
+                        )
+                        if res.success:
+                            print(f"✅ SUCCESS: {res.tx_hash}")
+                            print(f"   Sent: {res.amount_in}, Got: {res.amount_out}")
+                        else:
+                            print(f"❌ FAILED: {res.error}")
+                    else:
+                        print("Swap cancelled.")
+                    pending_swap = None
+                    continue
+
+                # 2. Main REPL
+                line = input("👤 You: ").strip()
+                if not line: continue
+                if line.lower() in ["exit", "quit", "q"]:
+                    print("Goodbye!")
                     break
                 
-                parts = line.split()
-                cmd = parts[0].lower()
-                args = parts[1:]
-
-                if cmd == "tokens":
-                    for name, meta in agent.tokens().items():
-                        print(f"  {name:12s}  {meta['id']:16s}  {meta['decimals']} decimals")
+                # 3. Brain Analysis (Translation)
+                req = translate(line)
                 
-                elif cmd in ["explain", "route", "quote", "swap"]:
-                    if len(args) < 2:
-                        print(f"Usage: {cmd} [from] [to] [amount]")
-                        continue
-                        
-                    from_token = resolve_token(args[0]) or args[0]
-                    to_token = resolve_token(args[1]) or args[1]
-                    amount = float(args[2]) if len(args) > 2 else 1.0
-
-                    if cmd in ["explain", "route"]:
-                        print(agent.explain(from_token, to_token, amount))
+                if req:
+                    intent = req.get("intent")
                     
-                    elif cmd == "quote":
-                        q = agent.quote(from_token, to_token, amount)
-                        if q:
-                            print(f"Winner: {' -> '.join(q.route.path)}")
-                            print(f"Send:   {q.amount_in} {q.route.src}")
-                            print(f"Get:    ~{q.amount_out:.8f} {q.route.dst}")
-                            print(f"Min:    {q.min_amount_out:.8f} {q.route.dst} (after {q.slippage_percent}% slippage)")
-                            print(f"Fee:    {q.route.total_fee_percent}%")
-                        else:
-                            print("Quote failed")
-                            
-                    elif cmd == "swap":
-                        result = agent.swap(from_token, to_token, amount)
-                        if result.success:
-                            print(f"SUCCESS: {result.tx_hash}")
-                            print(f"Sent: {result.amount_in}, Got: {result.amount_out}")
-                        else:
-                            print(f"FAILED: {result.error}")
+                    if intent == "tokens":
+                        for name, meta in agent.tokens().items():
+                            print(f"  {name:12s}  {meta['id']:16s}  {meta['decimals']} decimals")
+                    
+                    elif intent == "balance":
+                        print("Checking balances...")
+                        print(agent.balance())
+                        
+                    elif intent == "history":
+                        print("Fetching history...")
+                        print(agent.history())
+                        
+                    elif intent == "swap":
+                        # Analysis Header
+                        mode_label = "EXACT_IN (You send)" if req['mode'] == "exact_in" else "EXACT_OUT (You receive)"
+                        print(f"\n🧠 Brain Analysis (v2):")
+                        print(f"   Intent: {mode_label}")
+                        print(f"   Amount: {req['amount']} {req['from_token'] if req['mode'] == 'exact_in' else req['to_token']}")
+                        print(f"   Pair:   {req['from_token']} -> {req['to_token']}")
+                        
+                        # Explain the matrix choice
+                        exp = agent.explain(req['from_token'], req['to_token'], req['amount'])
+                        print("-" * 30)
+                        print(exp)
+                        print("-" * 30)
+                        
+                        pending_swap = req
+                    else:
+                        print(f"❌ I understood the intent '{intent}' but don't know how to handle it yet.")
                 else:
-                    print(f"Unknown command: {cmd}")
+                    # Fallback to help or direct command attempt
+                    parts = line.split()
+                    cmd = parts[0].lower()
+                    if cmd == "help":
+                        print("Try: 'swap 1 usdc for btc', 'balance', 'history', 'tokens'")
+                    else:
+                        print(f"❌ Brain & Oracle both confused. Try: 'Swap $1 USDC for Bitcoin' or 'What is my balance?'")
+                        
             except KeyboardInterrupt:
                 print("\nGoodbye!")
                 break
@@ -603,44 +678,21 @@ if __name__ == "__main__":
                 print(f"Error: {e}")
         sys.exit(0)
 
-    # One-shot Mode (CLI)
+    # One-shot Mode (CLI) - Keep for backward compatibility/pipeline usage
     cmd = sys.argv[1].lower()
-
-    if cmd == "tokens":
+    
+    # Try translating the entire command string first for NL one-shot
+    nl_text = " ".join(sys.argv[1:])
+    req = translate(nl_text)
+    
+    if req and req.get("intent") == "swap":
+        print(agent.explain(req['from_token'], req['to_token'], req['amount']))
+    elif cmd == "tokens":
         for name, meta in agent.tokens().items():
             print(f"  {name:12s}  {meta['id']:16s}  {meta['decimals']} decimals")
-
-    elif cmd in ["explain", "route"] and len(sys.argv) >= 4:
-        from_token = resolve_token(sys.argv[2]) or sys.argv[2]
-        to_token = resolve_token(sys.argv[3]) or sys.argv[3]
-        amount = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
-        print(agent.explain(from_token, to_token, amount))
-
-    elif cmd == "quote" and len(sys.argv) >= 4:
-        from_token = resolve_token(sys.argv[2]) or sys.argv[2]
-        to_token = resolve_token(sys.argv[3]) or sys.argv[3]
-        amount = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
-        q = agent.quote(from_token, to_token, amount)
-        if q:
-            print(f"Winner: {' -> '.join(q.route.path)}")
-            print(f"Send:   {q.amount_in} {q.route.src}")
-            print(f"Get:    ~{q.amount_out:.8f} {q.route.dst}")
-            print(f"Min:    {q.min_amount_out:.8f} {q.route.dst} (after {q.slippage_percent}% slippage)")
-            print(f"Fee:    {q.route.total_fee_percent}%")
-        else:
-            print("Quote failed")
-
-    elif cmd == "swap" and len(sys.argv) >= 5:
-        from_token = resolve_token(sys.argv[2]) or sys.argv[2]
-        to_token = resolve_token(sys.argv[3]) or sys.argv[3]
-        amount = float(sys.argv[4])
-        result = agent.swap(from_token, to_token, amount)
-        if result.success:
-            print(f"SUCCESS: {result.tx_hash}")
-            print(f"Sent: {result.amount_in}, Got: {result.amount_out}")
-        else:
-            print(f"FAILED: {result.error}")
-
+    elif cmd == "balance":
+        print(agent.balance())
+    elif cmd == "history":
+        print(agent.history())
     else:
-        print(f"Unknown command: {cmd}")
-        print("Usage: ./pacman [tokens|explain|quote|swap] [from] [to] [amount]")
+        print("Usage: ./pacman [nl-instruction | tokens | balance | history]")
