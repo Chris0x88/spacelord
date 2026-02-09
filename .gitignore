@@ -10,3 +10,4 @@ pacman_env/
 .idea/
 .vscode/
 archive/
+.agent/
