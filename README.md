@@ -31,91 +31,53 @@ Pacman understands Hedera's **dual-token complexity**:
 ## 🚀 Quick Start
 
 ```bash
-# Clone
-git clone https://github.com/Chris0x88/pacman.git
-cd pacman
-
 # Setup
-python3 -m venv pacman_env
-source pacman_env/bin/activate
-pip install web3 networkx
+pip install web3 networkx python-dotenv
 
-# Test routing
-python3 pacman_chat.py
+# Set Environment Variables
+export PACMAN_PRIVATE_KEY="your_private_key"
+export HEDERA_ACCOUNT_ID="0.0.xxxxx"
+
+# Run Pacman
+python3 pacman_cli.py
 ```
+
+## 🛠️ Specialized Commands
+
+- `swap [amount] [tokenA] for [tokenB]` (Exact Input)
+- `swap [tokenA] for [amount] [tokenB]` (Exact Output)
+- `balance`: View wallet assets and HTS association status
+- `history`: Professional record of recent transactions
+- `help`: Full command reference
 
 ## 📁 Project Structure
 
 ```
 pacman/
-├── pacman_chat.py              # Natural language interface
-├── pacman_variant_router.py    # ERC20 vs HTS routing engine
-├── pacman_executor.py          # Live transaction execution
-├── saucerswap_v2_client.py     # SaucerSwap V2 integration
-├── training_data/              # AI training dataset
-│   ├── routing_matrix.json     # Pre-computed routes
-│   └── ai_training_examples.jsonl  # 1,400+ training samples
-└── pacman_architecture.md      # Full design document
+├── pacman_cli.py              # Main Entry Point (Operational CLI)
+├── pacman_executor.py          # HTS/HBAR execution engine (Safe Approvals)
+├── pacman_variant_router.py    # Multi-token variant routing (HTS vs ERC20)
+├── pacman_price_manager.py     # Live pool-based pricing
+├── saucerswap_v2_client.py     # Protocol interaction layer
+├── pacman_translator.py        # Natural language intent parsing
+├── tokens.json                 # Authority on supported tokens
+└── pacman_data_raw.json        # Live pool data source
 ```
 
-## 🧠 AI Training Pipeline
+## 🛡️ Release-Ready Features
 
-**Phase 1 (Current)**: Core routing engine with limited validated pairs
-- USDC → WBTC (HTS/LZ)
-- USDC → WETH (HTS)
-- USDC → WHBAR
-
-**Phase 2**: Live execution → Record every transaction
-
-**Phase 3**: Train 5MB specialized model on real data
-
-**Phase 4**: Expand to all tokens using learned patterns
-
-## 🛡️ Safety
-
-- **$1.00 testing limit** (hardcoded)
-- **Human confirmation required** for all swaps
-- **Token association checks** (Hedera requirement)
-- **Pre-flight validation** (balance, gas, slippage)
-- **Simulation mode** available
-- **Read-only** analysis of btc-rebalancer2 (production app)
-
-## 🔧 Architecture
-
-```
-Natural Language → Intent Parser → Route Optimizer → Execution Engine
-                                                        ↓
-                                               Transaction Recording
-                                                        ↓
-                                               AI Training Dataset
-```
-
-## 📊 Fee Structure
-
-| Pool Type | Fee | Example |
-|-----------|-----|---------|
-| Stable pairs | 0.05% | USDC ↔ USDC[hts] |
-| Standard pairs | 0.15% | USDC[hts] ↔ WBTC |
-| Volatile pairs | 0.30% | SAUCE ↔ HBAR |
+- **HTS Safe Approvals**: Automatically scales approval amounts to prevent supply errors.
+- **Proactive Association**: Detects and fixes missing token associations on-the-fly.
+- **ATO-Ready Receipts**: Professional boxed receipts with fees, rates, and HashScan links.
+- **Live Pricing**: Real-time USD valuation for all assets and network gas.
+- **Universal Routing**: Automatically finds the best path across standard and native HBAR pools.
 
 ## 🏗️ Built On
 
-- **SaucerSwap V2** for liquidity
-- **Hedera Hashgraph** for fast finality
-- **Web3.py** for contract interaction
-- **NetworkX** for pathfinding
-
-## 📝 License
-
-MIT - See LICENSE file
-
-## 🙏 Credits
-
-Architecture inspired by battle-tested patterns from btc-rebalancer2.
-Wrap/unwrap logic from SaucerSwap's ERC20Wrapper contract.
+- **SaucerSwap V2** for deep liquidity
+- **Hedera Hashgraph** for sub-cent gas fees
+- **Web3.py** for secure contract interaction
 
 ---
 
-**Status**: 🚧 Alpha - Core routing validated, execution engine in testing
-
-**Next**: Live $1 transactions → AI training → Full token expansion
+**Status**: ✅ Release Candidate - Fully operational for HBAR and HTS swaps with professional reporting.

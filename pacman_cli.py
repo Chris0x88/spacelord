@@ -30,6 +30,10 @@ def main():
     
     # Initialize Core Components
     try:
+        if not os.path.exists("tokens.json"):
+            print("❌ ERROR: tokens.json missing. This file is required for token metadata.")
+            return
+            
         router = PacmanVariantRouter()
         router.load_pools() # Load pool data once
         
@@ -54,15 +58,7 @@ def main():
         return
 
     # Interactive REPL
-    print("\nOperationally Ready. Commands:")
-    print("  - swap [amount] [token] for [token]  (Exact Input)")
-    print("  - swap [token] for [amount] [token]  (Exact Output)")
-    print("  - convert [token] for [amount] [token]  (Exact Output)") 
-    print("  - convert [amount] [token] for [token]  (Exact Input)")   
-    print("  - balance")
-    print("  - history")
-    print("  - tokens")
-    print("  - exit")
+    show_help()
     print("-" * 60)
 
     while True:
@@ -111,19 +107,39 @@ def process_command(text: str, router: PacmanVariantRouter, executor: PacmanExec
     req = translate(text)
     if not req:
         cmd = text.split()[0].lower()
-        if cmd == "balance": req = {"intent": "balance"}
+        if cmd in ["help", "--help", "-h"]: req = {"intent": "help"}
+        elif cmd == "balance": req = {"intent": "balance"}
         elif cmd == "history": req = {"intent": "history"}
+        elif cmd == "tokens": req = {"intent": "tokens"}
         else:
-            print("❌ Unknown command or format. Try 'swap 100 USDC for WBTC'")
+            print("❌ Unknown command or format. Try 'swap 100 USDC for WBTC' or 'help'")
             return
 
     intent = req.get("intent")
+    if intent == "help": show_help(); return
     if intent == "balance": show_balance(executor); return
     if intent == "history": show_history(executor); return
     if intent == "tokens": show_tokens(); return
     if intent == "swap": handle_swap(req, router, executor); return
     if intent == "convert": handle_convert(req, executor); return
     print(f"❌ Unhandled intent: {intent}")
+
+def show_help():
+    """Display the formal help menu."""
+    print("\n🚀 PACMAN COMMANDS:")
+    print("  - swap [amount] [tokenA] for [tokenB]    -> Exact Input Swap")
+    print("  - swap [tokenA] for [amount] [tokenB]    -> Exact Output Swap")
+    print("  - convert [tokenA] for [amount] [tokenB] -> Native Wrap/Unwrap")
+    print("  - balance                                -> Wallet Balances & Readiness")
+    print("  - history                                -> Transaction History")
+    print("  - tokens                                 -> List Supported Tokens")
+    print("  - help                                   -> This menu")
+    print("  - exit                                   -> Close Pacman")
+    print("\n💡 Examples:")
+    print("  - \"swap 10 HBAR for USDC\"")
+    print("  - \"swap USDC for 0.001 WBTC\"")
+    print("  - \"convert HBAR for 5 WHBAR\"")
+
 
 def handle_convert(req: dict, executor: PacmanExecutor):
     """Handle manual wrap/unwrap conversion."""
