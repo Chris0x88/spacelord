@@ -447,7 +447,7 @@ def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, a
     line(f"ANTICIPATED:    {amount_out:18.8f} {to_token}")
     divider()
     
-    # Rate Math: Gross vs Net (Phase 33)
+    # Rate Math: Gross vs Net (Phase 34)
     decimal_adj = 10**(from_decimals - to_decimals)
     actual_net_rate = amount_out / amount_in if amount_in > 0 else 0
     
@@ -456,16 +456,13 @@ def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, a
     fee_pct = (res.lp_fee_amount / amount_in) if amount_in > 0 else 0
     gross_rate = actual_net_rate / (1 - fee_pct) if (0 < fee_pct < 1) else actual_net_rate
     
-    # Labels swapped as per user request: "wrong way round"
-    # User example: 10.9 HBAR/USDC -> wants USDC/HBAR
-    line(f"Market Swap Rate: {gross_rate:18.8f} {from_token}/{to_token}")
-    
-    # 2. Net Effective Rate (Final, after everything)
-    line(f"Net Effective:    {actual_net_rate:18.8f} {from_token}/{to_token}")
+    # Unambiguous "1 Unit = X Units" format (Phase 34)
+    line(f"Market Swap Rate:  1 {from_token} = {gross_rate:14.8f} {to_token}")
+    line(f"Net Effective:     1 {from_token} = {actual_net_rate:14.8f} {to_token}")
     
     # Inverse for convenience
     inv_net = 1.0 / actual_net_rate if actual_net_rate > 0 else 0
-    line(f"                  {inv_net:18.8f} {to_token}/{from_token}")
+    line(f"                   1 {to_token} = {inv_net:14.8f} {from_token}")
     
     divider()
     
@@ -506,12 +503,32 @@ def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, a
         # Phase 33: Align percentage with USD column
         line(f"Gas Cost %:      {gas_pct:17.4f}% of Total Value")
     
-    # Explain HBAR net deduction if applicable
-    if to_token.upper() == "HBAR":
+    # Universal Net Settlement (Phase 34)
+    if to_token.upper() in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:
         net_received = amount_out - res.gas_cost_hbar
-        line(f"NET SETTLEMENT: {net_received:18.8f} HBAR")
-        line()
+        settle_token = to_token
+    else:
+        net_received = amount_out
+        settle_token = to_token
+        
+    # Calculate USD for settlement
+    settle_usd = 0.0
+    if settle_token.upper() in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:
+        settle_usd = net_received * res.hbar_usd_price
+    elif "USDC" in settle_token.upper():
+        settle_usd = net_received
+    else:
+        # Fallback to general price lookup if available
+        tp = executor.price_manager.get_price(get_token_id_for_variant(settle_token))
+        settle_usd = net_received * tp if tp > 0 else 0
+
+    line(f"NET SETTLEMENT: {net_received:18.8f} {settle_token} (${settle_usd:,.2f})")
+    line()
+    
+    if to_token.upper() in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:
         line("Note: Gas was deducted from final settlement amount.")
+    else:
+        line("Note: Gas was paid from your separate HBAR balance.")
         
     divider()
     line(f"TRANS. STATUS:  [ CONSENSUS SUCCESS ]")
