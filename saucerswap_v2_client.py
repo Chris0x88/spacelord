@@ -15,6 +15,7 @@ from the parent repo, trimmed to the pieces we need:
 It makes btc_rebalancer self-contained for deployment.
 """
 
+import time
 from typing import List
 from web3 import Web3
 
@@ -48,6 +49,21 @@ QUOTER_ABI = [
         "stateMutability": "nonpayable",
         "type": "function",
     },
+    {
+        "inputs": [
+            {"internalType": "bytes", "name": "path", "type": "bytes"},
+            {"internalType": "uint256", "name": "amountOut", "type": "uint256"},
+        ],
+        "name": "quoteExactOutput",
+        "outputs": [
+            {"internalType": "uint256", "name": "amountIn", "type": "uint256"},
+            {"internalType": "uint160[]", "name": "sqrtPriceX96AfterList", "type": "uint160[]"},
+            {"internalType": "uint32[]", "name": "initializedTicksCrossedList", "type": "uint32[]"},
+            {"internalType": "uint256", "name": "gasEstimate", "type": "uint256"},
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    },
 ]
 
 ROUTER_ABI = [
@@ -72,6 +88,49 @@ ROUTER_ABI = [
         ],
         "stateMutability": "payable",
         "type": "function",
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    {"internalType": "bytes", "name": "path", "type": "bytes"},
+                    {"internalType": "address", "name": "recipient", "type": "address"},
+                    {"internalType": "uint256", "name": "deadline", "type": "uint256"},
+                    {"internalType": "uint256", "name": "amountOut", "type": "uint256"},
+                    {"internalType": "uint256", "name": "amountInMaximum", "type": "uint256"},
+                ],
+                "internalType": "struct ISwapRouter.ExactOutputParams",
+                "name": "params",
+                "type": "tuple",
+            }
+        ],
+        "name": "exactOutput",
+        "outputs": [
+            {"internalType": "uint256", "name": "amountIn", "type": "uint256"}
+        ],
+        "stateMutability": "payable",
+        "type": "function",
+    },
+    {
+        "inputs": [{"internalType": "bytes[]", "name": "data", "type": "bytes[]"}],
+        "name": "multicall",
+        "outputs": [{"internalType": "bytes[]", "name": "results", "type": "bytes[]"}],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "uint256", "name": "amountMinimum", "type": "uint256"}, {"internalType": "address", "name": "recipient", "type": "address"}],
+        "name": "unwrapWHBAR",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "refundETH",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
     }
 ]
 
@@ -91,6 +150,16 @@ ERC20_ABI = [
             {"internalType": "address", "name": "account", "type": "address"}
         ],
         "name": "balanceOf",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [
+            {"internalType": "address", "name": "owner", "type": "address"},
+            {"internalType": "address", "name": "spender", "type": "address"},
+        ],
+        "name": "allowance",
         "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
         "stateMutability": "view",
         "type": "function",
@@ -164,6 +233,178 @@ class SaucerSwapV2:
         except Exception as e:
             raise RuntimeError(f"Quote failed: {e}")
 
+    def get_quote_exact_output(self, token_in: str, token_out: str, amount_out: int, fee: int = 1500) -> dict:
+        """
+        Get a quote for a single-hop EXACT OUTPUT swap.
+        Path for exactOutput is encoded in REVERSE: [tokenOut, tokenIn] with [fee].
+        Returns amountIn needed.
+        """
+        # Note: exactOutput path is reversed
+        path = encode_path([token_out, token_in], [fee])
+        try:
+            result = self.quoter.functions.quoteExactOutput(path, amount_out).call()
+            return {
+                "amountIn": result[0],
+                "amount_in": result[0],  # snake_case alias
+                "sqrtPriceX96AfterList": result[1],
+                "initializedTicksCrossedList": result[2],
+                "gasEstimate": result[3],
+            }
+        except Exception as e:
+            raise RuntimeError(f"Quote Exact Output failed: {e}")
+
+    def swap_exact_output(self, token_in: str, token_out: str, amount_out: int, max_amount_in: int, fee: int = 1500, recipient: str = None, value: int = 0) -> str:
+        """
+        Execute a swap for an exact output amount.
+        """
+        if not self.private_key:
+            raise ValueError("Private key required")
+            
+        recipient = recipient or self.eoa
+        deadline = int(time.time() * 1000) + 600000 # 10 mins (Hedera needs milliseconds)
+        
+        # Path for exactOutput is reversed: [tokenOut, tokenIn]
+        path = encode_path([token_out, token_in], [fee])
+        
+        params = (
+            path,
+            recipient,
+            deadline,
+            amount_out,
+            max_amount_in
+        )
+        
+        # Scale HBAR value to 18 decimals for relay compatibility
+        scaled_value = value * 10**10 if value > 0 else 0
+        
+        # Estimate gas? Or just set high.
+        tx = self.router.functions.exactOutput(params).build_transaction({
+            "from": self.eoa,
+            "gas": 1_000_000,
+            "gasPrice": self.w3.eth.gas_price,
+            "nonce": self.w3.eth.get_transaction_count(self.eoa),
+            "chainId": self.chain_id,
+            "value": scaled_value,
+        })
+        
+        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        return tx_hash.hex()
+
+    def swap_exact_input(self, token_in: str, token_out: str, amount_in: int, min_amount_out: int, fee: int = 1500, recipient: str = None, value: int = 0) -> str:
+        """
+        Execute a swap for an exact input amount.
+        """
+        if not self.private_key:
+            raise ValueError("Private key required")
+            
+        recipient = recipient or self.eoa
+        deadline = int(time.time() * 1000) + 600000 # 10 mins (Hedera needs milliseconds)
+        
+        path = encode_path([token_in, token_out], [fee])
+        
+        params = (
+            path,
+            recipient,
+            deadline,
+            amount_in,
+            min_amount_out
+        )
+        
+        # Scale HBAR value to 18 decimals for relay compatibility
+        scaled_value = value * 10**10 if value > 0 else 0
+        
+        tx = self.router.functions.exactInput(params).build_transaction({
+            "from": self.eoa,
+            "gas": 1_000_000,
+            "gasPrice": self.w3.eth.gas_price,
+            "nonce": self.w3.eth.get_transaction_count(self.eoa),
+            "chainId": self.chain_id,
+            "value": scaled_value,
+        })
+        
+        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        return tx_hash.hex()
+
+    def swap_exact_input_multicall(self, token_in: str, token_out: str, amount_in: int, min_amount_out: int, 
+                                 input_is_native: bool = False, output_is_native: bool = False, 
+                                 fee: int = 1500, recipient: str = None) -> str:
+        """
+        Execute a swap using multicall for Native HBAR handling.
+        """
+        if not self.private_key:
+            raise ValueError("Private key required")
+            
+        recipient = self.eoa if not recipient else recipient
+        deadline = int(time.time() * 1000) + 600000 # 10 mins (Hedera needs milliseconds)
+        
+        # Path Encoding
+        # If input is native, token_in provided should be WHBAR ID for path
+        # If output is native, token_out provided should be WHBAR ID for path
+        path = encode_path([token_in, token_out], [fee])
+        
+        encoded_calls = []
+        value_to_send = 0
+        
+        if input_is_native:
+            # HBAR -> Token
+            # 1. exactInput (recipient=self.eoa)
+            # 2. refundETH
+            
+            # Params for exactInput
+            params = (path, self.eoa, deadline, amount_in, min_amount_out)
+            
+            # Encode exactInput
+            swap_calldata = self.router.encode_abi("exactInput", [params])
+            encoded_calls.append(swap_calldata)
+            
+            # Encode refundETH
+            refund_calldata = self.router.encode_abi("refundETH")
+            encoded_calls.append(refund_calldata)
+            
+            value_to_send = amount_in
+            
+        elif output_is_native:
+            # Token -> HBAR
+            # 1. exactInput (recipient=ROUTER)
+            # 2. unwrapWHBAR(minAmount, recipient)
+            
+            # Params for exactInput: recipient MUST be ROUTER
+            params = (path, self.router_address, deadline, amount_in, min_amount_out)
+            
+            swap_calldata = self.router.encode_abi("exactInput", [params])
+            encoded_calls.append(swap_calldata)
+            
+            # Encode unwrapWHBAR
+            # amountMinimum=0 (or min_amount_out), recipient=self.eoa
+            unwrap_calldata = self.router.encode_abi("unwrapWHBAR", [min_amount_out, self.eoa])
+            encoded_calls.append(unwrap_calldata)
+            
+            value_to_send = 0 # ERC20 used
+            
+        else:
+            raise ValueError("Use standard swap_exact_input for non-native swaps")
+            
+        # Scale HBAR value to 18 decimals for relay compatibility
+        scaled_value = value_to_send * 10**10 if value_to_send > 0 else 0
+        if scaled_value > 0:
+            print(f"   🔧 Scaled HBAR Value: {scaled_value} (pseudo-Wei)")
+        
+        # Build Multicall Transaction
+        tx = self.router.functions.multicall(encoded_calls).build_transaction({
+            "from": self.eoa,
+            "gas": 2_500_000, # Increased gas for multicall (V2 complex paths)
+            "gasPrice": self.w3.eth.gas_price,
+            "nonce": self.w3.eth.get_transaction_count(self.eoa),
+            "chainId": self.chain_id,
+            "value": scaled_value
+        })
+        
+        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        return tx_hash.hex()
+
     def get_quote_multi_hop(self, token_path: List[str], fee_tiers: List[int], amount_in: int) -> dict:
         """
         Get a quote for a multi-hop swap using quoteExactInput(path).
@@ -200,14 +441,51 @@ class SaucerSwapV2:
             raise RuntimeError(f"Multi-hop quote failed: {e}")
 
     def approve_token(self, token_id: str, amount: int | None = None) -> str:
-        """Approve router to spend token_id for amount (or max uint256)."""
+        """
+        Approve router to spend token_id for amount (or max uint256).
+        Uses Hedera SDK via JS script for HTS tokens to avoid EVM revert.
+        """
         if not self.private_key:
             raise ValueError("Private key required")
 
-        token_address = hedera_id_to_evm(token_id)
-        token = self.w3.eth.contract(address=token_address, abi=ERC20_ABI)
         if amount is None:
             amount = 2**256 - 1
+
+        # Use Hedera SDK for HTS tokens (starting with 0.0.)
+        if token_id.startswith("0.0."):
+            import subprocess
+            import os
+            
+            print(f"   🔓 Approving HTS token {token_id} via Hedera SDK...")
+            
+            # Use current process environment plus any needed IDs
+            env = os.environ.copy()
+            # If we don't have HEDERA_ACCOUNT_ID in env, we might need a better way to get it.
+            # But the user has it in their .env which we loaded.
+            
+            script_path = "saucerswap_knowledge_export/approve_hts_token.js"
+            try:
+                # amount for JS script. If max, use a large enough number but not 2^256 as JS might struggle.
+                # The script uses 10^12 as default. Let's send a large int.
+                amount_str = str(min(amount, 10**18)) 
+                
+                result = subprocess.run(
+                    ["node", script_path, token_id, CONTRACTS[self.network]["router"], amount_str],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                print(f"   ✅ HTS Approval SUCCESS: {result.stdout.strip()}")
+                return "HTS_SDK_APPROVAL_SUCCESS"
+            except Exception as e:
+                print(f"   ❌ HTS Approval FAILED: {e}")
+                if hasattr(e, 'stderr'): print(e.stderr)
+                raise RuntimeError(f"HTS Approval failed: {e}")
+
+        # Fallback to EVM for others (though most tokens in this app are HTS)
+        token_address = hedera_id_to_evm(token_id)
+        token = self.w3.eth.contract(address=token_address, abi=ERC20_ABI)
 
         tx = token.functions.approve(self.router_address, amount).build_transaction({
             "from": self.eoa,
@@ -220,6 +498,7 @@ class SaucerSwapV2:
         signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         return tx_hash.hex()
+        return tx_hash.hex()
 
     def get_token_balance(self, token_id: str, account: str | None = None) -> int:
         """Get token balance for account (defaults to EOA)."""
@@ -229,6 +508,12 @@ class SaucerSwapV2:
             acct = hedera_id_to_evm(acct)
         token = self.w3.eth.contract(address=token_address, abi=ERC20_ABI)
         return token.functions.balanceOf(acct).call()
+
+    def get_allowance(self, token_id: str, owner: str, spender: str) -> int:
+        """Get allowance."""
+        token_address = hedera_id_to_evm(token_id)
+        token = self.w3.eth.contract(address=token_address, abi=ERC20_ABI)
+        return token.functions.allowance(owner, spender).call()
 
 
 # =============================================================================

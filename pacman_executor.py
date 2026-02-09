@@ -77,9 +77,17 @@ class PacmanExecutor:
     
     def __init__(self, private_key: Optional[str] = None, network: str = "mainnet"):
         """Initialize executor with private key."""
-        self.private_key = private_key or os.getenv("PRIVATE_KEY")
+        self.private_key = private_key or os.getenv("PACMAN_PRIVATE_KEY") or os.getenv("PRIVATE_KEY")
         if not self.private_key:
-            raise ValueError("Private key required for execution")
+            # Check if we can run in simulation mode?
+            # For now, just warn if missing but allow init for simulation-only usages if handled upstream
+            # But the original code raised ValueError. Let's keep it but make it clear.
+            # actually, verification script might want to run without it if simulating?
+            # But verify_fixes.py creates executor() which fails here.
+            pass # ValueError check is below
+            
+        if not self.private_key:
+            raise ValueError("Private key required for execution (Set PACMAN_PRIVATE_KEY)")
         
         self.network = network
         self.rpc_url = "https://mainnet.hashio.io/api" if network == "mainnet" else "https://testnet.hashio.io/api"
@@ -108,29 +116,86 @@ class PacmanExecutor:
         print(f"   Account: {self.eoa}")
         print(f"   Network: {network}")
     
-    def execute_swap(self, route, amount_usd: float, simulate: bool = True) -> ExecutionResult:
+    def execute_swap(self, route, amount_usd: float, mode: str = "exact_in", simulate: bool = True) -> ExecutionResult:
         """
         Execute a swap route.
         
         Args:
             route: The VariantRoute to execute
-            amount_usd: Amount in USD (will convert to token units)
+            amount_usd: Input amount (exact_in) or Output amount (exact_out). 
+                        (Name legacy: implies USD but actually token units)
+            mode: "exact_in" or "exact_out"
             simulate: If True, only quote (no actual transaction)
         
         Returns:
             ExecutionResult with full details
         """
         print(f"\n🚀 Executing swap: {amount_usd} {route.from_variant} → {route.to_variant}")
-        print(f"   Mode: {'SIMULATION' if simulate else 'LIVE'}")
+        print(f"   Mode: {mode.upper()} ({'SIMULATION' if simulate else 'LIVE'})")
         print(f"   Steps: {len(route.steps)}")
         
         results = []
         
-        for i, step in enumerate(route.steps, 1):
-            print(f"\n📍 Step {i}/{len(route.steps)}: {step.step_type.upper()}")
+        if mode == "exact_out" and len(route.steps) > 1:
+            # Backwards Pass: Calculate requirements for each step
+            print("   🔙 Performing Backwards Pass for Multi-Hop Exact Output...")
+            targets = {} # step_index -> required_output_amount
+            
+            # The final step must output the user's requested amount
+            last_decimals = self._get_token_decimals(route.steps[-1].to_token)
+            next_needed_raw = int(amount_usd * (10 ** last_decimals))
+            
+            # Iterate backwards
+            for i in range(len(route.steps) - 1, -1, -1):
+                step = route.steps[i]
+                targets[i] = next_needed_raw
+                
+                # Calculate input needed for this step to produce 'next_needed_raw'
+                if step.step_type == "swap":
+                    # Quote it
+                    from_id = step.details.get("token_in_id", step.from_token)
+                    to_id = step.details.get("token_out_id", step.to_token)
+                    fee = step.details.get("fee_bps", 1500)
+                    
+                    try:
+                        quote = self.client.get_quote_exact_output(from_id, to_id, next_needed_raw, fee)
+                        next_needed_raw = quote['amount_in']
+                        print(f"      Step {i+1} needs output: {targets[i]} -> Input required: {next_needed_raw}")
+                    except Exception as e:
+                        print(f"❌ Backwards pass failed at step {i+1}: {e}")
+                        return ExecutionResult(success=False, error=f"Backwards pass failed: {e}")
+                        
+                elif step.step_type in ["wrap", "unwrap"]:
+                    # 1:1 ratio
+                    print(f"      Step {i+1} (Wrap/Unwrap): 1:1 ratio")
+                    # next_needed_raw stays same
+                    pass
+            
+            print("   ✅ Backwards pass complete. Executing forwarded...\n")
+        else:
+            targets = None
+
+        results = []
+        
+        for i, step in enumerate(route.steps):
+            step_idx = i + 1 # 1-based for display
+            print(f"\n📍 Step {step_idx}/{len(route.steps)}: {step.step_type.upper()}")
+            
+            # Determine amount for this step
+            if mode == "exact_out" and targets:
+                # Use the pre-calculated target OUTPUT for this step
+                step_amount = targets[i]
+                
+                # Get decimals for THIS step's output
+                step_out_decimals = self._get_token_decimals(step.to_token)
+                
+                step_amount_float = step_amount / (10 ** step_out_decimals)
+                current_amount_val = step_amount_float
+            else:
+                current_amount_val = amount_usd # For exact_in, or single hop
             
             if step.step_type == "swap":
-                result = self._execute_swap_step(step, amount_usd, simulate)
+                result = self._execute_swap_step(step, current_amount_val, mode, simulate)
             elif step.step_type == "unwrap":
                 result = self._execute_unwrap_step(step, simulate)
             elif step.step_type == "wrap":
@@ -138,6 +203,23 @@ class PacmanExecutor:
             else:
                 result = ExecutionResult(success=False, error=f"Unknown step type: {step.step_type}")
             
+            # --- NEW: VERIFY ON-CHAIN STATUS ---
+            if result.success and not simulate and result.tx_hash != "SIMULATED":
+                print(f"   ⏳ Verifying transaction on-chain: {result.tx_hash}...")
+                try:
+                    receipt = self.w3.eth.wait_for_transaction_receipt(result.tx_hash, timeout=60)
+                    if receipt.status == 0:
+                        result.success = False
+                        result.error = "Transaction REVERTED on-chain"
+                        print(f"   ❌ Reverted!")
+                    else:
+                        result.block_number = receipt.blockNumber
+                        print(f"   ✅ Confirmed in block {receipt.blockNumber}")
+                except Exception as e:
+                    result.success = False
+                    result.error = f"Timed out waiting for confirmation: {e}"
+                    print(f"   ⚠️  Verification failed: {e}")
+
             results.append(result)
             
             if not result.success:
@@ -156,35 +238,170 @@ class PacmanExecutor:
         
         return final_result
     
-    def _execute_swap_step(self, step, amount_usd: float, simulate: bool) -> ExecutionResult:
+    def _get_token_decimals(self, token_symbol: str) -> int:
+        """
+        Get decimals for a token.
+        TODO: In future, look up from tokens.json metadata.
+        For now, hardcoded known list.
+        """
+        sym = token_symbol.upper()
+        if "USDC" in sym or "USDT" in sym: return 6
+        if "SAUCE" in sym or "XSAUCE" in sym: return 6
+        if "WBTC" in sym: return 8
+        return 8 # Default for HBAR and others
+
+    def _execute_swap_step(self, step, amount_val: float, mode: str, simulate: bool) -> ExecutionResult:
         """Execute a single swap step."""
         try:
             # Get token IDs from step
-            from_token_id = step.from_token  # Simplified - would lookup actual ID
-            to_token_id = step.to_token
+            from_token_id = step.details.get("token_in_id", step.from_token)
+            to_token_id = step.details.get("token_out_id", step.to_token)
             
             # Get fee tier from step details
             fee_bps = step.details.get("fee_bps", 1500)
             
-            # Convert amount (simplified - assumes 6 decimals for USDC)
-            amount_raw = int(amount_usd * 1_000_000)
+            # Determine decimals based on mode
+            token_for_decimals = step.from_token if mode == "exact_in" else step.to_token
+            decimals = self._get_token_decimals(token_for_decimals)
+            
+            amount_raw = int(amount_val * (10 ** decimals))
+            
+            # --- HBAR NATIVE LOGIC ---
+            is_native_hbar = (step.from_token in ["HBAR", "0.0.0"])
+            value_to_send = 0
+            
+            if is_native_hbar:
+                # If we are swapping Native HBAR, we must:
+                # 1. Send native HBAR as msg.value
+                # 2. Use WHBAR address in the path (router auto-wraps)
+                # 3. NOT approve (can't approve native)
+                value_to_send = amount_raw
+                # Ensure we use WHBAR ID for the router call's path
+                from_token_id = "0.0.1456986" # WHBAR
             
             if simulate:
                 # Just quote
-                quote = self.client.get_quote_single(from_token_id, to_token_id, amount_raw, fee_bps)
-                print(f"   Quote: {amount_usd} {step.from_token} → {quote['amount_out']} {step.to_token}")
+                if mode == "exact_in":
+                    quote = self.client.get_quote_single(from_token_id, to_token_id, amount_raw, fee_bps)
+                    
+                    # Decimals for output
+                    out_decimals = self._get_token_decimals(step.to_token)
+                    print(f"   Quote (Exact In): {amount_val} {step.from_token} → {quote['amount_out'] / (10**out_decimals)} {step.to_token}")
+                    
+                    if is_native_hbar:
+                         print(f"   (Native HBAR Swap: Value={amount_raw})")
+                else:
+                    # Exact Output Quote
+                    quote = self.client.get_quote_exact_output(from_token_id, to_token_id, amount_raw, fee_bps)
+                    grams_in = quote['amount_in']
+                    
+                    # Decimals for input token
+                    dec_in = self._get_token_decimals(step.from_token)
+                    print(f"   Quote (Exact Out): Need {grams_in / (10**dec_in)} {step.from_token} → {amount_val} {step.to_token}")
+                    
                 return ExecutionResult(
                     success=True,
                     tx_hash="SIMULATED",
                     timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
                 )
             else:
-                # Real execution would go here
-                # For now, simulate but mark as "WOULD_EXECUTE"
-                print(f"   🔄 Would execute: exactInputSingle({from_token_id}, {to_token_id}, {fee_bps})")
+                # Real execution
+                # 1. Balance Check
+                # If native, check ETH balance. If token, check token balance.
+                if is_native_hbar:
+                    current_balance = self.w3.eth.get_balance(self.eoa)
+                    # For HBAR, we need amount + gas. 
+                    # Simplification: just check amount for now
+                else:
+                    current_balance = self.client.get_token_balance(from_token_id)
+                
+                needed_balance = amount_raw
+                
+                # If exact_out, we better check what we actually NEED
+                if mode == "exact_out":
+                     quote = self.client.get_quote_exact_output(from_token_id, to_token_id, amount_raw, fee_bps)
+                     needed_balance = int(quote["amount_in"] * 1.01) # Max with slippage
+                
+                if current_balance < needed_balance:
+                    decimals_in = self._get_token_decimals(step.from_token)
+                    
+                    bal_readable = current_balance / (10**decimals_in)
+                    need_readable = needed_balance / (10**decimals_in)
+                    
+                    if is_native_hbar:
+                        # Account for gas buffer
+                        return ExecutionResult(success=False, error=f"Insufficient HBAR: Have {bal_readable:.4f}, Need {need_readable:.4f} (+gas)")
+
+                    return ExecutionResult(
+                        success=False, 
+                        error=f"Insufficient funds: Have {bal_readable:.6f}, Need {need_readable:.6f} {step.from_token}. (Check rounded balances!)"
+                    )
+
+                # 2. Approve if needed (SKIP for Native HBAR)
+                if not is_native_hbar:
+                    if mode == "exact_in":
+                        # Approve token_in
+                        current_allowance = self.client.get_allowance(from_token_id, self.client.eoa, self.client.router_address)
+                        if current_allowance < amount_raw:
+                            print(f"   🔓 Approving {step.from_token} ({from_token_id})...")
+                            self.client.approve_token(from_token_id, amount_raw)
+                            time.sleep(2) # propagation
+                    else: 
+                         # For exact_out, we approve max_amount_in. 
+                         # Simplified: Approve from_token.
+                         current_allowance = self.client.get_allowance(from_token_id, self.client.eoa, self.client.router_address)
+                         if current_allowance < 2**255: # Check if approved enough
+                             print(f"   🔓 Approving {step.from_token} ({from_token_id}) (max)...")
+                             self.client.approve_token(from_token_id, 2**256 - 1)
+                             time.sleep(2)
+
+                # 3. Swap
+                if mode == "exact_in":
+                    # Min output (1% slippage)
+                    quote = self.client.get_quote_single(from_token_id, to_token_id, amount_raw, fee_bps)
+                    min_out = int(quote["amount_out"] * 0.99)
+                    print(f"   🔄 Swap Param: amount_in={amount_raw}, min_out={min_out}")
+                    
+                    if is_native_hbar:
+                        # HBAR -> Token (Multicall: exactInput + refundETH)
+                        print(f"   🔄 Executing Multicall (ExactInput + RefundETH)...")
+                        tx_hash = self.client.swap_exact_input_multicall(
+                            from_token_id, to_token_id, amount_raw, min_out, 
+                            input_is_native=True, fee=fee_bps
+                        )
+                    elif step.to_token == "HBAR": # Output is HBAR
+                         # Token -> HBAR (Multicall: exactInput + unwrapWHBAR)
+                         print(f"   🔄 Executing Multicall (ExactInput + UnwrapWHBAR)...")
+                         tx_hash = self.client.swap_exact_input_multicall(
+                            from_token_id, to_token_id, amount_raw, min_out,
+                            output_is_native=True, fee=fee_bps
+                         )
+                    else:
+                        # Standard
+                        tx_hash = self.client.swap_exact_input(from_token_id, to_token_id, amount_raw, min_out, fee_bps)
+                        
+                    print(f"   🚀 Executed: {tx_hash}")
+                else:
+                    # Max input (1% slippage)
+                    quote = self.client.get_quote_exact_output(from_token_id, to_token_id, amount_raw, fee_bps)
+                    max_in = int(quote["amount_in"] * 1.01)
+                    print(f"   🔄 Swap Param: amount_out={amount_raw}, max_in={max_in}")
+                    
+                    if is_native_hbar or step.to_token == "HBAR":
+                        # TODO: excessive complexity for now, fallback to standard exactOutput but warn?
+                        # Or implement swap_exact_output_multicall later.
+                        # For now, let's just error if exact_out with HBAR to be safe, or try standard.
+                        print("⚠️  Warning: exact_output not fully supported for Native HBAR via multicall yet. Using standard exactOutput (might fail for HBAR).")
+                        tx_hash = self.client.swap_exact_output(from_token_id, to_token_id, amount_raw, max_in, fee_bps, value=value_to_send)
+                    else:
+                        tx_hash = self.client.swap_exact_output(from_token_id, to_token_id, amount_raw, max_in, fee_bps)
+                        
+                    print(f"   🚀 Executed: {tx_hash}")
+                    
                 return ExecutionResult(
                     success=True,
-                    tx_hash="WOULD_EXECUTE_" + str(int(time.time())),
+                    tx_hash=tx_hash,
+                    gas_used=400_000, # Approximate / Limit for now
                     timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
                 )
         
@@ -243,8 +460,34 @@ class PacmanExecutor:
         except Exception as e:
             return ExecutionResult(success=False, error=str(e))
     
-    def _record_execution(self, route, amount_usd: float, results: list, simulate: bool):
+    def _record_execution(self, route, amount_val: float, results: list, simulate: bool):
         """Record execution details for AI training."""
+        
+        # Determine actual USD value from token amount
+        usd_price = 0
+        try:
+            with open("tokens.json") as f:
+                tokens_data = json.load(f)
+                
+                # Special case for HBAR (0.0.0 or HBAR variant)
+                if route.from_variant == "HBAR" or route.from_variant == "0.0.0":
+                    # Hardcoded fallback or try to find in metadata if it exists
+                    usd_price = 0.09 # Default fallback if metadata fails
+                    for meta in tokens_data.values():
+                        if meta.get("symbol") == "HBAR":
+                            usd_price = meta.get("priceUsd", usd_price)
+                            break
+                else:
+                    # Try to find the price for the 'from' token
+                    token_meta = tokens_data.get(route.from_variant)
+                    if token_meta:
+                        usd_price = token_meta.get("priceUsd", 0)
+        except:
+            pass
+            
+        actual_usd = amount_val * usd_price if usd_price > 0 else 0
+        total_gas = sum(r.gas_used for r in results)
+        
         record = {
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             "mode": "SIMULATION" if simulate else "LIVE",
@@ -255,7 +498,9 @@ class PacmanExecutor:
                 "total_cost_hbar": route.total_cost_hbar,
                 "hashpack_visible": route.hashpack_visible
             },
-            "amount_usd": amount_usd,
+            "amount_token": amount_val,
+            "amount_usd": round(actual_usd, 2),
+            "gas_used": total_gas,
             "results": [r.to_dict() for r in results],
             "success": all(r.success for r in results),
             "account": self.eoa,
