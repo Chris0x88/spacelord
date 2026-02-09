@@ -44,7 +44,7 @@ python3 pacman_cli.py "swap 10 HBAR for USDC"
 | :--- | :--- |
 | **Buy Exact** | `buy 0.001 WBTC with USDC` |
 | **Sell Exact** | `sell 50 HBAR for SAUCE` |
-| **Bridge/Wrap** | `convert 10 HBAR to WHBAR` |
+| **Bridge/Wrap** | `convert 0.01 WBTC_LZ to WBTC_HTS` |
 | **Portfolio** | `balance` |
 | **Audit Trail** | `history` |
 
