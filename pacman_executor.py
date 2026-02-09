@@ -139,7 +139,56 @@ class PacmanExecutor:
         print(f"   Hedera Account: {self.hedera_account_id} (Native ID)")
         print(f"   EVM Address:    {self.eoa} (Ethereum Mirror)")
         print(f"   Network:        {network}")
-    
+
+    def get_balances(self) -> Dict[str, float]:
+        """Fetch all non-zero token balances for the account."""
+        balances = {}
+        
+        # HBAR Balance
+        hbar_bal = self.w3.eth.get_balance(self.eoa)
+        hbar_readable = hbar_bal / (10**18)
+        if hbar_readable > 0:
+            balances["HBAR"] = hbar_readable
+            
+        # Token Balances from tokens.json
+        try:
+            tokens_path = os.path.join(os.path.dirname(__file__), "tokens.json")
+            with open(tokens_path) as f:
+                tokens_data = json.load(f)
+                
+            for sym, meta in tokens_data.items():
+                token_id = meta.get("id")
+                if not token_id: continue
+                try:
+                    raw_bal = self.client.get_token_balance(token_id)
+                    if raw_bal > 0:
+                        decimals = meta.get("decimals", 8)
+                        balances[sym] = raw_bal / (10**decimals)
+                except: continue
+        except Exception as e:
+            print(f"Warning: Could not load tokens.json for balance check: {e}")
+            
+        return balances
+
+    def _get_token_id(self, symbol: str) -> Optional[str]:
+        """Convert symbol to token ID using tokens.json."""
+        if symbol.startswith("0.0."):
+            return symbol
+        if symbol.upper() == "HBAR":
+            return "0.0.0"
+            
+        try:
+            tokens_path = os.path.join(os.path.dirname(__file__), "tokens.json")
+            with open(tokens_path) as f:
+                tokens_data = json.load(f)
+            meta = tokens_data.get(symbol)
+            if meta:
+                return meta.get("id")
+        except: pass
+        return None
+        
+        return None
+
     def execute_swap(self, route, amount_usd: float, mode: str = "exact_in", simulate: bool = True) -> ExecutionResult:
         """Execute a swap route."""
         print(f"\n🚀 Executing swap: {amount_usd} {route.from_variant} → {route.to_variant}")
@@ -153,10 +202,16 @@ class PacmanExecutor:
             
             print(f"   🛡️  Checking association for {route.to_variant}...")
             if not self.check_token_association(final_token_id):
-                error_msg = f"Token {route.to_variant} ({final_token_id}) is not associated with your Hedera account."
-                print(f"   ❌ {error_msg}")
-                return ExecutionResult(success=False, error=error_msg)
-            print(f"   ✅ Associated.")
+                print(f"   ⚠️  Token {route.to_variant} not associated. Attempting auto-association...")
+                if self.associate_token(final_token_id):
+                    print(f"   ✅ Auto-association successful.")
+                    time.sleep(2) # Brief wait for network propagation
+                else:
+                    error_msg = f"Token {route.to_variant} ({final_token_id}) is not associated and auto-association failed."
+                    print(f"   ❌ {error_msg}")
+                    return ExecutionResult(success=False, error=error_msg)
+            else:
+                print(f"   ✅ Associated.")
         
         if mode == "exact_out" and len(route.steps) > 1:
             print("   🔙 Performing Backwards Pass for Multi-Hop Exact Output...")
@@ -286,13 +341,40 @@ class PacmanExecutor:
         if "WBTC" in sym: return 8
         if "WETH" in sym: return 8
         return 8 # Default for HBAR 
-    
     def check_token_association(self, token_id: str) -> bool:
         if token_id.upper() in ["HBAR", "0.0.0"]: return True
         try:
             balance = self.client.get_token_balance(token_id)
             return True 
         except Exception:
+            return False
+
+    def associate_token(self, token_id: str) -> bool:
+        """Associate HTS token using the JS SDK script."""
+        if token_id.upper() in ["HBAR", "0.0.0"]: return True
+        
+        import subprocess
+        print(f"   🛡️  Associating token {token_id} via Hedera SDK...")
+        
+        env = os.environ.copy()
+        # Use existing private key from client if available
+        if self.private_key:
+            env["PACMAN_PRIVATE_KEY"] = self.private_key
+            
+        try:
+            result = subprocess.run(
+                ["node", "associate_hts_token.js", token_id],
+                env=env,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"   ❌ Association failed: {e.stderr}")
+            return False
+        except Exception as e:
+            print(f"   ❌ Error calling association script: {e}")
             return False
 
     def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in") -> ExecutionResult:
@@ -380,7 +462,10 @@ class PacmanExecutor:
                 current_allowance = self.client.get_allowance(from_token_id, self.client.eoa, self.client.router_address)
                 if current_allowance < needed_balance:
                     print(f"   🔓 Approving {step.from_token}...")
-                    self.client.approve_token(from_token_id, 2**256 - 1)
+                    # Phase 35: Use a large but safe amount for HTS (avoid 2^256 or 10^18 for small supply tokens)
+                    # Approve 100x the needed amount or all current balance, whichever is higher, but capped.
+                    safe_approval = max(needed_balance * 100, current_balance)
+                    self.client.approve_token(from_token_id, int(safe_approval))
                     time.sleep(2)
 
             # Execution logic using proper engine

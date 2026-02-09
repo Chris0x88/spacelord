@@ -224,7 +224,13 @@ def show_balance(executor: PacmanExecutor):
                     readable = raw_bal / (10**decimals)
                     price = meta.get("priceUsd", 0)
                     usd_val = readable * price
-                    print(f"  {sym:10s}: {readable:12.8f} (${usd_val:8.2f})")
+                    
+                    # Phase 35: Readiness Check
+                    assoc_status = ""
+                    if not executor.check_token_association(token_id):
+                        assoc_status = " [⚠️ NOT ASSOCIATED]"
+                    
+                    print(f"  {sym:10s}: {readable:12.8f} (${usd_val:8.2f}){assoc_status}")
                     total_usd += usd_val
             except: continue 
         print(f"  Total Assets USD: ${total_usd:.2f}")
