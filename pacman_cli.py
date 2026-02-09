@@ -273,18 +273,132 @@ def show_tokens():
         print("")
     except Exception as e: print(f"❌ Failed to list tokens: {e}")
 
+from pacman_price_manager import price_manager
+
 def show_history(executor: PacmanExecutor):
     """Display operations history."""
     hist = executor.get_execution_history(limit=10)
     if not hist: print("No local execution history found."); return
     print("\n📜 Recent Operations:")
+    
+    # Reload prices to ensure freshness
+    price_manager.reload()
+
     for h in hist:
         status = "✅" if h["success"] else "❌"
         mode = h.get("mode", "UNKNOWN")
         route = h.get("route", {})
+        
+        ft = route.get("from", "?")
+        tt = route.get("to", "?")
+        
+        # Phase 32: Use Source of Truth for amounts and prices
         amt_token = h.get("amount_token", 0)
         amt_usd = h.get("amount_usd", 0)
-        print(f"  {h['timestamp']} {status} [{mode}] {amt_token:12.8f} {route.get('from')} -> {route.get('to')} (${amt_usd:8.2f})")
+        
+        # 1. Recover true token amount from raw results if possible
+        raw_in = 0
+        token_in_id = ""
+        if "results" in h and h["results"]:
+             if isinstance(h["results"], list) and len(h["results"]) > 0:
+                 res0 = h["results"][0]
+                 if isinstance(res0, dict):
+                     raw_in = res0.get("amount_in_raw", 0)
+                 
+                 # Try to find Token ID from route or results
+                 # Route often has symbol, need ID for price lookup
+                 # We can rely on router/executor to have logged it, or guess from symbol via map if needed.
+                 # Actually price_manager keys are IDs. 
+                 # We need to map Symbol -> ID if we only have symbol in history.
+                 pass
+
+        # We need a Symbol -> ID mapper if the history only stores symbols.
+        # Check what 'ft' (from_token) is. It's usually the variant symbol (e.g. USDC[hts]).
+        # The price_manager is keyed by ID. 
+        # We need the ID to get the price.
+        
+        # Quick lookup for common symbols/variants to IDs for display purposes
+        # This is strictly for display retrofitting.
+        # Future history has IDs stored? 
+        
+        pass 
+        
+        # Let's revert to the original logic plan:
+        # 1. Use raw_in to get amt_token (requires decimals lookup)
+        # 2. Use price_manager.get_price(id) to get price.
+        
+        # Problem: 'ft' is a symbol. price_manager needs ID.
+        # I need a helper to get ID from Symbol. pacman_variant_router has this.
+        
+        # Let's stick to the cleanest integration:
+        # If we can't easily get the ID, we use the stored amount_usd.
+        # BUT the task is to fix history USD value.
+        
+        # Let's trust the 'tokens.json' map for Symbol->ID resolution ONLY, then use price_manager for Price.
+        
+    # Re-reading: The previous code loaded tokens.json to get metadata. 
+    # I should preserve that for Symbol->ID mapping, but get the PRICE from price_manager.
+    
+    # Load token metadata for ID lookup
+    tokens_map = {}
+    try:
+        with open("tokens.json") as f:
+            tdata = json.load(f)
+            for k, v in tdata.items():
+                tokens_map[k] = v
+                if "id" in v: tokens_map[v["id"]] = v
+                if "symbol" in v: tokens_map[v["symbol"]] = v
+    except: pass
+
+    for h in hist:
+        status = "✅" if h["success"] else "❌"
+        mode = h.get("mode", "UNKNOWN")
+        route = h.get("route", {})
+        
+        ft = route.get("from", "?")
+        tt = route.get("to", "?")
+        
+        # Recalculate true amount from raw input
+        amt_token = h.get("amount_token", 0)
+        amt_usd = h.get("amount_usd", 0)
+        
+        raw_in = 0
+        if "results" in h and h["results"]:
+             if isinstance(h["results"], list) and len(h["results"]) > 0:
+                 if isinstance(h["results"][0], dict):
+                     raw_in = h["results"][0].get("amount_in_raw", 0)
+        
+        if raw_in > 0:
+            decimals = 0
+            price = 0
+            
+            # Lookup decimals and ID
+            # ft is likely "HBAR" or "USDC[hts]"
+            token_id = None
+            
+            meta = tokens_map.get(ft)
+            if not meta:
+                # Fallbacks for HBAR
+                if ft.upper() in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:
+                    decimals = 8
+                    token_id = "0.0.1456986" # Use WHBAR for price
+            else:
+                decimals = meta.get("decimals", 8)
+                token_id = meta.get("id")
+            
+            # Use PriceManager for the price
+            if token_id:
+                price = price_manager.get_price(token_id)
+            elif ft.upper() == "HBAR":
+                 price = price_manager.get_hbar_price()
+            
+            if decimals > 0:
+                amt_real = raw_in / (10**decimals)
+                amt_token = amt_real
+                if price > 0:
+                    amt_usd = amt_token * price
+
+        print(f"  {h['timestamp']} {status} [{mode}]   {amt_token:12.8f} {ft} -> {tt} ($ {amt_usd:10.2f})")
 
 def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, amount_val: float, mode: str, executor: PacmanExecutor):
     """Print an ATO-compliant professional money transfer receipt."""

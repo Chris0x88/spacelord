@@ -150,12 +150,12 @@ class VariantRoute:
         lines = [
             f"Route: {self.from_variant} → {self.to_variant}",
             f"Output Format: {'HTS (HashPack visible)' if self.hashpack_visible else 'ERC20 (HashPack invisible)'}",
-            f"Total Cost: {self.total_fee_percent:.2f}% + {self.total_gas_hbar:.3f} HBAR",
+            f"Total Cost: {self.total_fee_percent * 100:.2f}% + {self.total_gas_hbar:.3f} HBAR",
             f"Steps ({len(self.steps)}):",
         ]
         for i, step in enumerate(self.steps, 1):
             if step.step_type == "swap":
-                lines.append(f"  {i}. Swap {step.from_token} → {step.to_token} ({step.fee_percent:.2f}%)")
+                lines.append(f"  {i}. Swap {step.from_token} → {step.to_token} ({step.fee_percent * 100:.2f}%)")
             elif step.step_type == "unwrap":
                 lines.append(f"  {i}. Unwrap {step.from_token} → {step.to_token} (gas: {step.gas_estimate_hbar:.3f} HBAR)")
             elif step.step_type == "wrap":
@@ -203,7 +203,9 @@ class PacmanVariantRouter:
             token_a_id = pool["tokenA"]["id"]
             token_b_id = pool["tokenB"]["id"]
             pool_id = pool["id"]
-            fee = pool["fee"]  # In basis points
+            # Fix Phase 32: Keep raw fee (e.g. 3000) for Contract Calls which expect Uniswap V3 tiers.
+            # Do NOT divide by 100 here.
+            fee = pool["fee"]
             
             # Map variant symbols
             # Store (pool_id, fee, token0_id, token1_id)
@@ -216,7 +218,9 @@ class PacmanVariantRouter:
         """Find a direct swap between two token symbols."""
         if (from_symbol, to_symbol) in self.pool_graph:
             pool_id, fee_bps, id_in, id_out = self.pool_graph[(from_symbol, to_symbol)]
-            fee_pct = fee_bps / 10000  # Convert to percent
+            # Fix Phase 32: Fee is 3000 (0.3%). We want 0.003.
+            # 3000 / 1,000,000 = 0.003
+            fee_pct = fee_bps / 1_000_000 
             
             return RouteStep(
                 step_type="swap",

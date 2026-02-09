@@ -283,11 +283,14 @@ class PacmanExecutor:
         except: pass
         return 0.09 # Professional fallback
 
+    
     def _get_token_decimals(self, token_symbol: str) -> int:
         sym = token_symbol.upper()
+        # Handle variants explicitly
         if "USDC" in sym or "USDT" in sym: return 6
         if "SAUCE" in sym or "XSAUCE" in sym: return 6
         if "WBTC" in sym: return 8
+        if "WETH" in sym: return 8
         return 8 # Default for HBAR 
     
     def check_token_association(self, token_id: str) -> bool:
@@ -301,16 +304,23 @@ class PacmanExecutor:
     def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in") -> ExecutionResult:
         """Execute a single swap step using one of the three engines."""
         try:
+            # Phase 32: Real-Time Pricing (Fetch Immediately)
+            from pacman_price_manager import price_manager
+            hbar_price = price_manager.get_hbar_price()
+            # print(f"🔎 DEBUG EXECUTOR: Fetched HBAR Price: ${hbar_price:.4f}")
+
             from_token_id = step.details.get("token_in_id", step.from_token)
             to_token_id = step.details.get("token_out_id", step.to_token)
-            fee_bps = step.details.get("fee_bps", 1500)
+            # Default fee should be 0.3% (3000 in Uniswap scale)
+            fee_bps = step.details.get("fee_bps", 3000)
             
             # Identify Engine A (Standard) vs Engine B (Native HBAR)
             is_native_hbar = (step.from_token.upper() in ["HBAR", "0.0.0"])
             
             # Fee Calculation (Transparency)
-            # Fee is taken from input amount: amount_in * (fee_bps / 10000)
-            fee_percent = fee_bps / 10000.0
+            # Fee is Uniswap V3 format (3000 = 0.3%)
+            # So divide by 1,000,000 to get decimal (0.003)
+            fee_percent = fee_bps / 1_000_000.0
             lp_fee_raw = int(amount_raw * fee_percent)
             decimals = self._get_token_decimals(step.from_token)
             lp_fee_val = lp_fee_raw / (10**decimals)
@@ -334,6 +344,11 @@ class PacmanExecutor:
                 # Realistic Gas Est. (Investigation Phase 28)
                 # Simple swap ~120k gas, Multicall ~170k. Let's use 150k avg.
                 sim_gas_used = 150_000 
+                # Recalculate HBAR gas cost using LIVE price if possible, or fallback
+                # Actually gas cost in HBAR is mostly fixed by network, but USD value changes.
+                # Let's keep the estimate.
+                sim_gas_cost_hbar = sim_gas_used * 0.00000085
+                
                 return ExecutionResult(
                     success=True, 
                     tx_hash="SIMULATED", 
@@ -345,10 +360,12 @@ class PacmanExecutor:
                     gas_offered=1_000_000,
                     gas_used=sim_gas_used,
                     gas_price_hbar=0.00000085, # approx 85 Gwei
-                    gas_cost_hbar=sim_gas_used * 0.00000085, # ~0.1275 HBAR
+                    gas_cost_hbar=sim_gas_cost_hbar, # ~0.1275 HBAR
                     account_id=self.hedera_account_id,
                     lp_fee_amount=lp_fee_val,
-                    lp_fee_token=lp_fee_token_symbol
+                    lp_fee_token=lp_fee_token_symbol,
+                    hbar_usd_price=hbar_price,
+                    gas_cost_usd=sim_gas_cost_hbar * hbar_price
                 )
             
             # Real execution
@@ -403,7 +420,7 @@ class PacmanExecutor:
                     gas_used = receipt['gasUsed']
                     effective_gas_price = receipt.get('effectiveGasPrice', self.client.w3.eth.gas_price)
                     
-                    # Cost in HBAR = (Gas Used * Price in Tinybar) / 100,000,000
+            # Cost in HBAR = (Gas Used * Price in Tinybar) / 100,000,000
                     gas_cost_hbar = (gas_used * effective_gas_price) / 100_000_000.0
                     print(f"   ✅ Confirmed! Cost: {gas_cost_hbar:.8f} HBAR ({gas_used} gas)")
                 except Exception as e:
@@ -419,10 +436,12 @@ class PacmanExecutor:
                 effective_rate=quoted_rate,
                 gas_offered=sim_gas_used if simulate else 1_000_000,
                 gas_used=sim_gas_used if simulate else gas_used,
-                gas_cost_hbar=sim_gas_used * 0.00000085 if simulate else gas_cost_hbar,
+                gas_cost_hbar=gas_cost_hbar,
                 account_id=self.hedera_account_id,
                 lp_fee_amount=lp_fee_val,
-                lp_fee_token=lp_fee_token_symbol
+                lp_fee_token=lp_fee_token_symbol,
+                hbar_usd_price=hbar_price,
+                gas_cost_usd=gas_cost_hbar * hbar_price
             )
         except Exception as e:
             return ExecutionResult(success=False, error=str(e))
@@ -463,25 +482,53 @@ class PacmanExecutor:
             return ExecutionResult(success=True, tx_hash=tx_hash.hex(), amount_in_raw=amount_raw, amount_out_raw=amount_raw)
         except Exception as e: return ExecutionResult(success=False, error=str(e))
     
+    
     def _record_execution(self, route, amount_val: float, results: list, simulate: bool):
         """Record execution details for AI training."""
-        usd_price = 0
-        try:
-            with open("tokens.json") as f:
-                tokens_data = json.load(f)
-                if route.from_variant in ["HBAR", "0.0.0"]:
-                    usd_price = 0.09 
-                    for meta in tokens_data.values():
-                        if meta.get("symbol") == "HBAR":
-                            usd_price = meta.get("priceUsd", usd_price)
-                            break
-                else:
-                    token_meta = tokens_data.get(route.from_variant)
-                    if token_meta:
-                        usd_price = token_meta.get("priceUsd", 0)
-        except: pass
+        # Use centralized PriceManager (Phase 32)
+        from pacman_price_manager import price_manager
+        
+        # Determine Price
+        if route.from_variant in ["HBAR", "0.0.0"]:
+            usd_price = price_manager.get_hbar_price()
+            decimals = 8
+        else:
+            # We need to resolve the ID from the variant to get the price
+            # route.from_variant is likely a symbol (e.g. USDC[hts]) or ID?
+            # Router typically ensures route object has details. 
+            # But here `route` is a VariantRoute object
             
-        actual_usd = amount_val * usd_price if usd_price > 0 else 0
+            # Helper to find ID from Symbol if needed, similar to CLI
+            # But let's check if the route object has the ID.
+            # PacmanVariantRouter._get_token_meta() returns dict with ID.
+            # But we don't have that here easily without reloading or hacking.
+            
+            # Let's rely on the Executor's _get_token_decimals for decimals
+            decimals = self._get_token_decimals(route.from_variant)
+            
+            # For price, we try to lookup by Symbol if ID fails, but PriceManager expects ID.
+            # We previously loaded tokens.json to bridge this.
+            # Let's load tokens.json ONLY for Symbol->ID mapping.
+            token_id = route.from_variant # Attempt to use as ID if it is one
+            
+            try:
+                with open("tokens.json") as f:
+                    tdata = json.load(f)
+                    meta = tdata.get(route.from_variant)
+                    if meta:
+                        token_id = meta.get("id", token_id)
+            except: pass
+            
+            usd_price = price_manager.get_price(token_id)
+            
+        # Phase 30 Fix: Derive exact token amount from raw inputs
+        actual_amount_token = amount_val
+        if results and decimals > 0:
+            raw_in = results[0].amount_in_raw
+            if raw_in > 0:
+                actual_amount_token = raw_in / (10 ** decimals)
+
+        actual_usd = actual_amount_token * usd_price if usd_price > 0 else 0
         total_gas = sum(r.gas_used for r in results)
         total_gas_hbar = sum(r.gas_cost_hbar for r in results)
         
@@ -495,7 +542,7 @@ class PacmanExecutor:
                 "total_cost_hbar": route.total_cost_hbar,
                 "hashpack_visible": route.hashpack_visible
             },
-            "amount_token": amount_val,
+            "amount_token": actual_amount_token,
             "amount_usd": round(actual_usd, 2),
             "gas_used": total_gas,
             "gas_cost_hbar": total_gas_hbar,
