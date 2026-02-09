@@ -213,17 +213,17 @@ class PacmanVariantRouter:
             # Do NOT divide by 100 here.
             fee = pool["fee"]
             
-            # Map variant symbols
-            # Store (pool_id, fee, token0_id, token1_id)
-            self.pool_graph[(token_a, token_b)] = (pool_id, fee, token_a_id, token_b_id)
-            self.pool_graph[(token_b, token_a)] = (pool_id, fee, token_b_id, token_a_id)
+            # Map variant symbols (Case-insensitive)
+            self.pool_graph[(token_a.upper(), token_b.upper())] = (pool_id, fee, token_a_id, token_b_id)
+            self.pool_graph[(token_b.upper(), token_a.upper())] = (pool_id, fee, token_b_id, token_a_id)
         
         print(f"Loaded {len(self.pool_graph)//2} unique pools")
     
     def find_swap_step(self, from_symbol: str, to_symbol: str) -> Optional[RouteStep]:
-        """Find a direct swap between two token symbols."""
-        if (from_symbol, to_symbol) in self.pool_graph:
-            pool_id, fee_bps, id_in, id_out = self.pool_graph[(from_symbol, to_symbol)]
+        """Find a direct swap between two token symbols (Case-insensitive)."""
+        idx = (from_symbol.upper(), to_symbol.upper())
+        if idx in self.pool_graph:
+            pool_id, fee_bps, id_in, id_out = self.pool_graph[idx]
             # Fix Phase 32: Fee is 3000 (0.3%). We want 0.003.
             # 3000 / 1,000,000 = 0.003
             fee_pct = fee_bps / 1_000_000 
@@ -253,12 +253,13 @@ class PacmanVariantRouter:
         if variant in TOKEN_VARIANTS:
             return TOKEN_VARIANTS[variant]
         
-        # Fallback: Check if it matches a symbol in pools
+        # Fallback: Check if it matches a symbol in pools (Case-insensitive)
+        variant_upper = variant.upper()
         for pool in self.pools_data:
-            if pool["tokenA"]["symbol"] == variant:
-                return {"id": pool["tokenA"]["id"], "symbol": variant, "type": "HTS_NATIVE", "visible_in_hashpack": True}
-            if pool["tokenB"]["symbol"] == variant:
-                return {"id": pool["tokenB"]["id"], "symbol": variant, "type": "HTS_NATIVE", "visible_in_hashpack": True}
+            if pool["tokenA"]["symbol"].upper() == variant_upper:
+                return {"id": pool["tokenA"]["id"], "symbol": pool["tokenA"]["symbol"], "type": "HTS_NATIVE", "visible_in_hashpack": True}
+            if pool["tokenB"]["symbol"].upper() == variant_upper:
+                return {"id": pool["tokenB"]["id"], "symbol": pool["tokenB"]["symbol"], "type": "HTS_NATIVE", "visible_in_hashpack": True}
         return None
 
     def calculate_erc20_route(self, from_variant: str, to_variant: str, amount_usd: float = 100) -> Optional[VariantRoute]:
@@ -286,21 +287,22 @@ class PacmanVariantRouter:
             total_fee = direct.fee_percent
             total_gas = direct.gas_estimate_hbar
         else:
-            # Try via USDC hub
-            hub_route = self.find_hub_route(from_symbol, to_symbol, "USDC")
-            if hub_route:
-                steps.extend(hub_route)
-                total_fee = sum(s.fee_percent for s in hub_route)
-                total_gas = sum(s.gas_estimate_hbar for s in hub_route)
-            else:
-                # Try via USDC[hts] hub
-                hub_route = self.find_hub_route(from_symbol, to_symbol, "USDC[hts]")
+            # Try via multiple hubs
+            potential_hubs = ["USDC", "USDC[hts]", "HBAR", "SAUCE"]
+            best_hub_route = None
+            
+            for hub in potential_hubs:
+                hub_route = self.find_hub_route(from_symbol, to_symbol, hub)
                 if hub_route:
-                    steps.extend(hub_route)
-                    total_fee = sum(s.fee_percent for s in hub_route)
-                    total_gas = sum(s.gas_estimate_hbar for s in hub_route)
-                else:
-                    return None
+                    if best_hub_route is None or sum(s.fee_percent for s in hub_route) < sum(s.fee_percent for s in best_hub_route):
+                        best_hub_route = hub_route
+                        
+            if best_hub_route:
+                steps.extend(best_hub_route)
+                total_fee = sum(s.fee_percent for s in best_hub_route)
+                total_gas = sum(s.gas_estimate_hbar for s in best_hub_route)
+            else:
+                return None
         
         # Calculate total cost in HBAR
         fee_in_hbar = (amount_usd * total_fee / 100) / self.htbar_price

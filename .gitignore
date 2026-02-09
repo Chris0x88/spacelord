@@ -3,3 +3,10 @@
 __pycache__/
 *.pyc
 .DS_Store
+pacman.log
+execution_records/
+node_modules/
+pacman_env/
+.idea/
+.vscode/
+archive/

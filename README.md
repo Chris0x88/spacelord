@@ -1,83 +1,69 @@
-# 🧠 Pacman - AI Trading Assistant for Hedera
+# 👻 Pacman: AI-Powered Trading for Hedera
 
-**Natural language interface for crypto swaps on Hedera with intelligent routing.**
+[![License: MIT](https://img.shields.io/badge/License-MIT-ghostwhite.svg)](https://opensource.org/licenses/MIT)
+[![Hedera](https://img.shields.io/badge/Network-Hedera-blue.svg)](https://hedera.com)
+[![SaucerSwap](https://img.shields.io/badge/DEX-SaucerSwap-purple.svg)](https://saucerswap.finance)
 
-## 🎯 What It Does
-
-Pacman understands plain English trading commands and routes them through the optimal path on SaucerSwap V2:
-
-```
-👤 You: "swap 1 USDC for WBTC"
-🤖 Pacman: Found route via USDC[hts] hub
-          Total cost: 0.20% + 0.04 HBAR
-          HashPack visible: ✅
-          Execute? (yes/no)
-```
-
-## 🧬 Smart Routing
-
-Pacman understands Hedera's **dual-token complexity**:
-
-| Variant | Type | Visible in HashPack | Best For |
-|---------|------|-------------------|----------|
-| WBTC_LZ | ERC20 (LayerZero) | ❌ No | Cheapest swaps |
-| WBTC_HTS | HTS Native | ✅ Yes | HashPack compatibility |
-
-**Routes:**
-- **Cheapest**: USDC → WBTC_LZ (0.20% fees, ERC20 output)
-- **Visible**: USDC → WBTC_HTS (0.20% fees, HTS output)
-- **Smart**: Auto-unwrap if cheaper (coming in v2)
-
-## 🚀 Quick Start
-
-```bash
-# Setup
-pip install web3 networkx python-dotenv
-
-# Set Environment Variables
-export PACMAN_PRIVATE_KEY="your_private_key"
-export HEDERA_ACCOUNT_ID="0.0.xxxxx"
-
-# Run Pacman
-python3 pacman_cli.py
-```
-
-## 🛠️ Specialized Commands
-
-- `swap [amount] [tokenA] for [tokenB]` (Exact Input)
-- `swap [tokenA] for [amount] [tokenB]` (Exact Output)
-- `balance`: View wallet assets and HTS association status
-- `history`: Professional record of recent transactions
-- `help`: Full command reference
-
-## 📁 Project Structure
-
-```
-pacman/
-├── pacman_cli.py              # Main Entry Point (Operational CLI)
-├── pacman_executor.py          # HTS/HBAR execution engine (Safe Approvals)
-├── pacman_variant_router.py    # Multi-token variant routing (HTS vs ERC20)
-├── pacman_price_manager.py     # Live pool-based pricing
-├── saucerswap_v2_client.py     # Protocol interaction layer
-├── pacman_translator.py        # Natural language intent parsing
-├── tokens.json                 # Authority on supported tokens
-└── pacman_data_raw.json        # Live pool data source
-```
-
-## 🛡️ Release-Ready Features
-
-- **HTS Safe Approvals**: Automatically scales approval amounts to prevent supply errors.
-- **Proactive Association**: Detects and fixes missing token associations on-the-fly.
-- **ATO-Ready Receipts**: Professional boxed receipts with fees, rates, and HashScan links.
-- **Live Pricing**: Real-time USD valuation for all assets and network gas.
-- **Universal Routing**: Automatically finds the best path across standard and native HBAR pools.
-
-## 🏗️ Built On
-
-- **SaucerSwap V2** for deep liquidity
-- **Hedera Hashgraph** for sub-cent gas fees
-- **Web3.py** for secure contract interaction
+**Pacman is a high-precision trading assistant that brings natural language power to the Hedera ecosystem. Trade any HTS token using plain English commands with intelligent routing and professional-grade reporting.**
 
 ---
 
-**Status**: ✅ Release Candidate - Fully operational for HBAR and HTS swaps with professional reporting.
+## 🌪️ The "Ghost" Advantage
+Trading on Hedera often involves complex token variants (HTS vs ERC20 bridged) and manual association requirements. **Pacman haunts the machine** to handle it all for you:
+
+- **Natural Language Parsing**: Just tell it what you want. "swap 10 HBAR for USDC".
+- **Intelligent Variant Routing**: Automatically finds the best path through HBAR, USDC, or SAUCE hubs.
+- **Proactive Association**: Pacman detects missing token associations and fixes them on-chain before you swap.
+- **Hardened Approvals**: No more "Amount Exceeds Supply" errors. Pacman scales approvals perfectly for every token type.
+- **Professional Receipts**: Boxed, ATO-ready receipts with transparent fees, net rates, and live HashScan links.
+
+---
+
+## 🚀 Quick Start (One-Shot Mode)
+
+```bash
+# 1. Install Dependencies
+pip install web3 networkx python-dotenv
+
+# 2. Configure Environment (.env)
+PACMAN_PRIVATE_KEY="0x..."
+PACMAN_SIMULATE=true  # Start in safety mode
+
+# 3. Just Swap
+python3 pacman_cli.py "swap 10 HBAR for USDC"
+```
+
+---
+
+## 👤 Human Commands, 🤖 Robot Execution
+
+| Goal | Command Example |
+| :--- | :--- |
+| **Buy Exact** | `buy 0.001 WBTC with USDC` |
+| **Sell Exact** | `sell 50 HBAR for SAUCE` |
+| **Bridge/Wrap** | `convert 10 HBAR to WHBAR` |
+| **Portfolio** | `balance` |
+| **Audit Trail** | `history` |
+
+---
+
+## 🧠 For AI Agent Developers
+Pacman is built to be a **primitive for agentic infrastructure**. If you are building with OpenClaw, AutoGPT, or LangChain, check out our specialized guides:
+
+- [AI Agent Interaction Guide](AI_AGENT_GUIDE.md)
+- [Infrastructure Integration Plan](INTEGRATION_GUIDE.md)
+
+---
+
+## 🛠️ Tech Stack
+- **Engine**: Python 3.10+
+- **Connectivity**: Web3.py & Hedera JSON-RPC
+- **Routing**: NetworkX-powered variant graph
+- **Source of Truth**: SaucerSwap V2 Liquidity Pools
+
+---
+
+### 🛡️ Security
+Pacman never stores your private key. It reads from environment variables at runtime and supports a full **Simulation Mode** (`PACMAN_SIMULATE=true`) for risk-free testing of any trade route.
+
+**Release Status**: `V1.0-RC1` (Production Ready)

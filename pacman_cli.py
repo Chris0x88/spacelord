@@ -19,6 +19,10 @@ from dotenv import load_dotenv
 from pacman_translator import translate
 from pacman_variant_router import PacmanVariantRouter
 from pacman_executor import PacmanExecutor, ExecutionResult
+from pacman_price_manager import PacmanPriceManager
+
+# Global Instance
+price_manager = PacmanPriceManager()
 
 # Load Environment
 load_dotenv()
@@ -47,6 +51,9 @@ def main():
         else:
             executor = PacmanExecutor(private_key=pk_env)
             executor.is_sim = force_sim
+            
+        # Attach components for helpers
+        executor.price_manager = price_manager
             
     except Exception as e:
         print(f"❌ CRITICAL: Failed to initialize components: {e}")
@@ -121,7 +128,7 @@ def process_command(text: str, router: PacmanVariantRouter, executor: PacmanExec
     if intent == "history": show_history(executor); return
     if intent == "tokens": show_tokens(); return
     if intent == "swap": handle_swap(req, router, executor); return
-    if intent == "convert": handle_convert(req, executor); return
+    if intent == "convert": handle_convert(req, router, executor); return
     print(f"❌ Unhandled intent: {intent}")
 
 def show_help():
@@ -141,7 +148,7 @@ def show_help():
     print("  - \"convert HBAR for 5 WHBAR\"")
 
 
-def handle_convert(req: dict, executor: PacmanExecutor):
+def handle_convert(req: dict, router: PacmanVariantRouter, executor: PacmanExecutor):
     """Handle manual wrap/unwrap conversion."""
     from_token = req["from_token"]
     to_token = req["to_token"]
@@ -149,14 +156,33 @@ def handle_convert(req: dict, executor: PacmanExecutor):
     
     print(f"\n🔍 Analyzing conversion: {amount} {from_token} -> {to_token}")
     
+    from_variant = from_token
+    to_variant = to_token
+    
+    # Try to resolve to variants if possible
+    meta_in = router._get_token_meta(from_token)
+    meta_out = router._get_token_meta(to_token)
+    
     is_wrap = False
     is_unwrap = False
     
-    if "ERC20" in to_token and ("HTS" in from_token or from_token in ["WBTC", "WETH"]):
-        is_wrap = True
-    elif ("HTS" in to_token or to_token in ["WBTC", "WETH"]) and "ERC20" in from_token:
-        is_unwrap = True
-    else:
+    if meta_in and meta_out:
+        type_in = meta_in.get("type")
+        type_out = meta_out.get("type")
+        
+        if type_in == "HTS_NATIVE" and type_out == "ERC20_BRIDGED":
+            is_wrap = True
+        elif type_in == "ERC20_BRIDGED" and type_out == "HTS_NATIVE":
+            is_unwrap = True
+            
+    # Fallback to string matching if meta not found
+    if not is_wrap and not is_unwrap:
+        if "ERC20" in to_token and ("HTS" in from_token or from_token in ["WBTC", "WETH"]):
+            is_wrap = True
+        elif ("HTS" in to_token or to_token in ["WBTC", "WETH"]) and "ERC20" in from_token:
+            is_unwrap = True
+            
+    if not is_wrap and not is_unwrap:
         print("   ⚠️  Conversion variants not explicitly detected. Fallback swap might be needed.")
         return
         
