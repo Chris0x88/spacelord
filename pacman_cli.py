@@ -5,24 +5,20 @@ Pacman CLI - Operational Trading Interface
 
 The single source of truth for command-line interaction.
 Pipelines natural language -> Validator -> Router -> Executor.
-
-Architecture:
-  1. Input: "swap 100 USDC to WBTC"
-  2. Translator: {"intent": "swap", "from": "USDC", "to": "WBTC", ...}
-  3. Router: Calculates best route (Variant-aware: HTS vs ERC20)
-  4. Executor: Executes the route (approvals, swaps, wrapping)
 """
 
 import sys
 import os
+import json
 import argparse
+import time
 from typing import Optional
 from dotenv import load_dotenv
 
 # Core Pipeline Modules
 from pacman_translator import translate
 from pacman_variant_router import PacmanVariantRouter
-from pacman_executor import PacmanExecutor
+from pacman_executor import PacmanExecutor, ExecutionResult
 
 # Load Environment
 load_dotenv()
@@ -38,12 +34,15 @@ def main():
         router.load_pools() # Load pool data once
         
         # Initialize executor (requires private key for real options)
-        private_key = os.getenv("PRIVATE_KEY") or os.getenv("PACMAN_PRIVATE_KEY")
-        if not private_key:
-            print("⚠️  WARNING: No PRIVATE_KEY found in .env. executing in SIMULATION ONLY mode.")
-            executor = PacmanExecutor(simulate=True)
+        pk_env = os.getenv("PACMAN_PRIVATE_KEY")
+        force_sim = os.getenv("PACMAN_SIMULATE", "false").lower() == "true"
+        
+        if not pk_env:
+            executor = PacmanExecutor(private_key="0x" + "0"*64)
+            executor.is_sim = True
         else:
-            executor = PacmanExecutor(private_key=private_key)
+            executor = PacmanExecutor(private_key=pk_env)
+            executor.is_sim = force_sim
             
     except Exception as e:
         print(f"❌ CRITICAL: Failed to initialize components: {e}")
@@ -58,6 +57,8 @@ def main():
     print("\nOperationally Ready. Commands:")
     print("  - swap [amount] [token] for [token]  (Exact Input)")
     print("  - swap [token] for [amount] [token]  (Exact Output)")
+    print("  - convert [token] for [amount] [token]  (Exact Output)") 
+    print("  - convert [amount] [token] for [token]  (Exact Input)")   
     print("  - balance")
     print("  - history")
     print("  - tokens")
@@ -86,49 +87,42 @@ def handle_oneshot(args: list, router, executor):
     command = " ".join(args)
     process_command(command, router, executor)
 
+def get_token_id_for_variant(variant: str) -> str:
+    """Helper to get Token ID for a variant name."""
+    IDS = {
+        "WBTC_HTS": "0.0.10082597",
+        "WBTC_ERC20": "0.0.1055483",
+        "WETH_HTS": "0.0.9770617",
+        "WETH_ERC20": "0.0.541564",
+        "HBAR": "0.0.0",
+        "0.0.0": "0.0.0"
+    }
+    if variant in IDS: return IDS[variant]
+    try:
+        with open("tokens.json") as f:
+            tokens_data = json.load(f)
+            if variant in tokens_data:
+                return tokens_data[variant].get("id", variant)
+    except: pass
+    return variant
+
 def process_command(text: str, router: PacmanVariantRouter, executor: PacmanExecutor):
     """Process a single natural language command."""
-    
-    # 1. Translate
     req = translate(text)
     if not req:
-        # Fallback for simple keywords if translator fails
         cmd = text.split()[0].lower()
-        if cmd == "balance":
-            req = {"intent": "balance"}
-        elif cmd == "history":
-            req = {"intent": "history"}
+        if cmd == "balance": req = {"intent": "balance"}
+        elif cmd == "history": req = {"intent": "history"}
         else:
             print("❌ Unknown command or format. Try 'swap 100 USDC for WBTC'")
             return
 
     intent = req.get("intent")
-
-    # 2. Balance
-    if intent == "balance":
-        show_balance(executor)
-        return
-
-    # 3. History
-    if intent == "history":
-        show_history(executor)
-        return
-
-    # 4. Token Registry Discovery
-    if intent == "tokens":
-        show_tokens()
-        return
-
-    # 5. Swap (The Core Op)
-    if intent == "swap":
-        handle_swap(req, router, executor)
-        return
-        
-    # 6. Convert (Wrap/Unwrap)
-    if intent == "convert":
-        handle_convert(req, executor)
-        return
-
+    if intent == "balance": show_balance(executor); return
+    if intent == "history": show_history(executor); return
+    if intent == "tokens": show_tokens(); return
+    if intent == "swap": handle_swap(req, router, executor); return
+    if intent == "convert": handle_convert(req, executor); return
     print(f"❌ Unhandled intent: {intent}")
 
 def handle_convert(req: dict, executor: PacmanExecutor):
@@ -139,42 +133,22 @@ def handle_convert(req: dict, executor: PacmanExecutor):
     
     print(f"\n🔍 Analyzing conversion: {amount} {from_token} -> {to_token}")
     
-    # 1. Determine direction
     is_wrap = False
     is_unwrap = False
     
-    # Heuristic based on the virtual names added to translator
     if "ERC20" in to_token and ("HTS" in from_token or from_token in ["WBTC", "WETH"]):
         is_wrap = True
     elif ("HTS" in to_token or to_token in ["WBTC", "WETH"]) and "ERC20" in from_token:
         is_unwrap = True
     else:
-        # Fallback heuristic: check if symbols are variants of same thing
         print("   ⚠️  Conversion variants not explicitly detected. Fallback swap might be needed.")
-        print("   (Try using 'WBTC_ERC20' or 'WBTC_HTS' for explicit conversion)")
         return
         
-    # 2. Construct Step
     from pacman_variant_router import RouteStep, VariantRoute
-    from saucerswap_v2_client import hedera_id_to_evm
-    
-    # Map back to real IDs 
-    IDS = {
-        "WBTC_HTS": "0.0.10082597",
-        "WBTC_ERC20": "0.0.1055483",
-        "WETH_HTS": "0.0.9770617",
-        "WETH_ERC20": "0.0.541564"
-    }
-    
-    # Also handle some common names if they mapped to the HTS versions
-    if from_token == "WBTC_HTS": from_token_display = "WBTC HTS"
-    else: from_token_display = from_token
-        
-    from_id = IDS.get(from_token, from_token)
-    to_id = IDS.get(to_token, to_token)
+    from_id = get_token_id_for_variant(from_token)
+    to_id = get_token_id_for_variant(to_token)
     
     step_type = "wrap" if is_wrap else "unwrap"
-    # Wrapper Contract: 0.0.9675688
     step = RouteStep(
         step_type=step_type,
         from_token=from_token,
@@ -197,28 +171,19 @@ def handle_convert(req: dict, executor: PacmanExecutor):
         confidence=1.0
     )
     
-    # The executor expects amount_raw on the step or passed in. 
-    # Let's set it.
-    decimals = 8 # Default for BTC
-    if "WETH" in from_token: decimals = 18
+    decimals = 8 if "WBTC" in from_token else 18
     step.amount_raw = int(amount * (10**decimals))
     
-    # 3. Present & Confirm
     print(f"\n✨ Proposed {step_type.upper()}:")
     print(f"   {amount} {from_token} ({from_id})")
     print(f"   -> {amount} {to_token} ({to_id})")
     print(f"   Using Wrapper: 0.0.9675688")
     
-    import os
     if os.getenv("PACMAN_AUTO_CONFIRM") != "true":
         confirm = input("Execute this conversion? (y/n): ").strip().lower()
-        if confirm not in ["y", "yes"]:
-            print("Cancelled.")
-            return
+        if confirm not in ["y", "yes"]: print("Cancelled."); return
 
-    # 4. Execute
-    is_sim = executor.private_key is None
-    res = executor.execute_swap(route, amount_usd=amount, mode="exact_in", simulate=is_sim)
+    res = executor.execute_swap(route, amount_usd=amount, mode="exact_in", simulate=executor.is_sim)
     
     if res.success:
         print(f"\n✅ SUCCESS!")
@@ -231,230 +196,203 @@ def show_balance(executor: PacmanExecutor):
     print("\n💰 Wallet Balances:")
     try:
         client = executor.client
-        
-        # 1. HBAR Balance
         hbar_bal = client.w3.eth.get_balance(client.eoa)
-        hbar_readable = hbar_bal / (10**18) # EVM compatibility uses 18 decimals
-        
-        # Determine HBAR price
-        hbar_price = 0.09 # Default fallback
+        hbar_readable = hbar_bal / (10**18)
+        hbar_price = 0.09
         try:
             with open("tokens.json") as f:
                 tdata = json.load(f)
                 for meta in tdata.values():
                     if meta.get("symbol") == "HBAR" or meta.get("name") == "Hedera":
-                        hbar_price = meta.get("priceUsd", hbar_price)
-                        break
-        except:
-            pass
-            
+                        hbar_price = meta.get("priceUsd", hbar_price); break
+        except: pass
         hbar_usd = hbar_readable * hbar_price
         print(f"  HBAR      : {hbar_readable:12.6f} (${hbar_usd:8.2f})")
 
-        # 2. Token Balances from tokens.json
-        import json
         with open("tokens.json") as f:
             tokens_data = json.load(f)
-            
         total_usd = 0
-        
-        # Priority sort: HBAR is already shown. For tokens:
-        # 1. USDC, 2. WBTC, 3. WETH, 4. Others (alphabetical)
         def sort_key(item):
             sym = item[0]
             if "USDC" in sym: return (0, sym)
             if "WBTC" in sym: return (1, sym)
             if "WETH" in sym: return (2, sym)
             return (3, sym)
-            
         sorted_tokens = sorted(tokens_data.items(), key=sort_key)
-
         for sym, meta in sorted_tokens:
             token_id = meta.get("id")
             if not token_id: continue
-            
             try:
                 raw_bal = client.get_token_balance(token_id)
                 if raw_bal > 0:
                     decimals = meta.get("decimals", 8)
                     readable = raw_bal / (10**decimals)
-                    
-                    # Manual floor to avoid "0.000011" rounding
-                    factor = 10**decimals
-                    readable_floored = (raw_bal // 1) / factor
-                    
                     price = meta.get("priceUsd", 0)
-                    usd_val = readable_floored * price
-                    
-                    # Show 8 decimals for everything to be safe
-                    print(f"  {sym:10s}: {readable_floored:12.8f} (${usd_val:8.2f})")
+                    usd_val = readable * price
+                    print(f"  {sym:10s}: {readable:12.8f} (${usd_val:8.2f})")
                     total_usd += usd_val
-            except:
-                continue 
-                
+            except: continue 
         print(f"  Total Assets USD: ${total_usd:.2f}")
-
-    except Exception as e:
-        print(f"❌ Failed to fetch balance: {e}")
+    except Exception as e: print(f"❌ Failed to fetch balance: {e}")
 
 def show_tokens():
     """Display all valid token aliases in a neat priority-sorted table."""
     print("\n🎫 Token Gallery (ID -> Aliases):")
     try:
         from pacman_translator import ALIASES
-        from pacman_variant_router import PacmanVariantRouter
-        import json
-        
         BLACKLIST = PacmanVariantRouter.BLACKLISTED_TOKENS
-        
-        with open("tokens.json") as f:
-            tokens_data = json.load(f)
-            
-        # Group aliases by canonical ID
+        with open("tokens.json") as f: tokens_data = json.load(f)
         id_to_aliases = {}
-        # Special case for HBAR
         id_to_aliases["0.0.0"] = {"aliases": ["hbar", "hbarx"], "sym": "HBAR", "name": "Hedera Native"}
-
         for alias, canon in ALIASES.items():
             token_id = None
-            if canon in tokens_data:
-                token_id = tokens_data[canon].get("id")
-            elif canon == "HBAR":
-                token_id = "0.0.0"
-            
+            if canon in tokens_data: token_id = tokens_data[canon].get("id")
+            elif canon == "HBAR": token_id = "0.0.0"
             if token_id:
-                if token_id in BLACKLIST:
-                    continue
-                if token_id not in id_to_aliases:
-                    id_to_aliases[token_id] = {"aliases": [], "sym": canon, "name": ""}
+                if token_id in BLACKLIST: continue
+                if token_id not in id_to_aliases: id_to_aliases[token_id] = {"aliases": [], "sym": canon, "name": ""}
                 id_to_aliases[token_id]["aliases"].append(alias)
-
-        # Priority Sorting Logic
         PRIORITY_SYMS = ["USDC", "WBTC", "WETH", "QNT", "LINK", "AVAX", "SAUCE", "XSAUCE", "BONZO"]
-        
         def sort_key(item):
             tid, data = item
-            if tid == "0.0.0": return (0, "") # HBAR is #1
-            
-            # Find symbol
+            if tid == "0.0.0": return (0, "")
             meta = next((m for m in tokens_data.values() if m.get("id") == tid), {})
             sym = meta.get("symbol", data["sym"])
-            
             for i, psym in enumerate(PRIORITY_SYMS):
-                if psym in sym.upper():
-                    return (1, i, sym)
-            
+                if psym in sym.upper(): return (1, i, sym)
             return (2, sym)
-
         sorted_tokens = sorted(id_to_aliases.items(), key=sort_key)
-
-        # Header
         print(f"  {'TOKEN ID':15s} | {'SYMBOL':10s} | {'NAME':25s} | {'ALIASES'}")
         print(f"  {'-'*15}-|-{'-'*10}-|-{'-'*25}-|-{'-'*30}")
-
         for tid, data in sorted_tokens:
             meta = next((m for m in tokens_data.values() if m.get("id") == tid), {})
             sym = meta.get("symbol", data["sym"])
             name = meta.get("name", "Hedera Native" if tid == "0.0.0" else "Unknown")
-            
-            clean_aliases = sorted(list(set(data["aliases"])))
-            alias_str = ", ".join(clean_aliases)
-            
+            alias_str = ", ".join(sorted(list(set(data["aliases"]))))
             print(f"  {tid:15s} | {sym:10s} | {name[:25]:25s} | {alias_str}")
         print("")
-
-    except Exception as e:
-        print(f"❌ Failed to list tokens: {e}")
+    except Exception as e: print(f"❌ Failed to list tokens: {e}")
 
 def show_history(executor: PacmanExecutor):
     """Display operations history."""
-    hist = executor.get_execution_history(limit=5)
-    if not hist:
-        print("No local execution history found.")
-        return
-        
+    hist = executor.get_execution_history(limit=10)
+    if not hist: print("No local execution history found."); return
     print("\n📜 Recent Operations:")
     for h in hist:
         status = "✅" if h["success"] else "❌"
         mode = h.get("mode", "UNKNOWN")
         route = h.get("route", {})
-        
-        # Display logic: prefer amount_token if exists, fallback to amount_usd
-        amt_token = h.get("amount_token", h.get("amount_usd", 0))
+        amt_token = h.get("amount_token", 0)
         amt_usd = h.get("amount_usd", 0)
-        
         print(f"  {h['timestamp']} {status} [{mode}] {amt_token:12.8f} {route.get('from')} -> {route.get('to')} (${amt_usd:8.2f})")
+
+def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, amount_val: float, mode: str, executor: PacmanExecutor):
+    """Print a professional money transfer receipt with perfect alignment."""
+    width = 62
+    
+    def line(content: str = ""):
+        if not content:
+            print(f"║{' ' * (width-2)}║")
+            return
+        # Adjust for special characters if needed, but here we just use standard padding
+        padding = width - 4 - len(content)
+        if padding < 0:
+             content = content[:width-7] + "..."
+             padding = 0
+        print(f"║ {content}{' ' * padding} ║")
+
+    def divider(double=False):
+        if double:
+            print("╠" + "═" * (width-2) + "╣")
+        else:
+            print("╟" + "─" * (width-2) + "╢")
+
+    print("\n" + "╔" + "════════════════════════════════════════════════════════════" + "╗")
+    print("║             PACMAN MONEY TRANSFER RECEIPT                  ║")
+    divider(True)
+    
+    timestamp = res.timestamp or time.strftime("%Y-%m-%d %H:%M:%S")
+    line(f"Date/Time:  {timestamp}")
+    line(f"Account:    {res.account_id or executor.hedera_account_id} (Native ID)")
+    divider()
+    
+    # Send/Receive Details
+    from_decimals = executor._get_token_decimals(from_token)
+    to_decimals = executor._get_token_decimals(to_token)
+    
+    amount_in = res.amount_in_raw / (10**from_decimals)
+    amount_out = res.amount_out_raw / (10**to_decimals)
+    
+    line(f"YOU SENT:   {amount_in:15.8f} {from_token}")
+    line(f"YOU REC'D:  {amount_out:15.8f} {to_token}")
+    divider()
+    
+    # Rates
+    line(f"Quoted Rate:    {res.quoted_rate:15.8f} {to_token}/{from_token}")
+    if res.quoted_rate > 0:
+        inv_rate = 1.0 / res.quoted_rate
+        line(f"                {inv_rate:15.8f} {from_token}/{to_token}")
+        
+    divider()
+    
+    if res.effective_rate > 0:
+        line(f"Effective Rate: {res.effective_rate:15.8f} {to_token}/{from_token}")
+        inv_eff = 1.0 / res.effective_rate
+        line(f"                {inv_eff:15.8f} {from_token}/{to_token}")
+    else:
+        line(f"Effective Rate: [Market Adjusted]")
+        
+    divider()
+    
+    # Gas & Fees
+    line(f"Gas Offered:    {res.gas_offered:15,} units")
+    line(f"Gas Used:       {res.gas_used:15,} units")
+    line(f"Gas Cost:       {res.gas_cost_hbar:15.8f} HBAR")
+    
+    # Explain HBAR net deduction if applicable
+    if to_token.upper() == "HBAR":
+        net_received = amount_out - res.gas_cost_hbar
+        line(f"NET RECEIVED:   {net_received:15.8f} HBAR (incl. gas)")
+        line()
+        line("NOTE: Gas was deducted from your final HBAR receipt.")
+        
+    divider()
+    line(f"STATUS:         [ SUCCESS ]")
+    if res.tx_hash != "SIMULATED" and res.tx_hash:
+        line(f"TX HASH:        {res.tx_hash[:40]}")
+        line(f"                {res.tx_hash[40:]}")
+        line(f"HASHSCAN:       https://hashscan.io/mainnet/transaction/{res.tx_hash}")
+    else:
+        line(f"TX HASH:        [ SIMULATED - NO ON-CHAIN RECORD ]")
+        
+    print("╚" + "════════════════════════════════════════════════════════════" + "╝\n")
 
 def handle_swap(req: dict, router: PacmanVariantRouter, executor: PacmanExecutor):
     """Orchestrate the swap flow."""
     from_token = req["from_token"]
     to_token = req["to_token"]
     amount = req["amount"]
-    mode = req["mode"] # exact_in vs exact_out
+    mode = req["mode"]
 
     print(f"\n🔍 Analyzing: {amount} {from_token} -> {to_token} ({mode})")
-
-    # 1. Route
-    # We need to map the "translator token names" to "router variants"
-    # Translator returns canonical names mostly.
-    # Usage: router.recommend_route(from_variant, to_variant, "auto", amount_usd)
-    # Limitation: Router expects variants like "USDC", "WBTC_HTS". 
-    # Translator might return "WBTC_HTS" correctly.
-    
-    # Heuristic: If translator gives us a name that matches a variant key, use it.
-    # If not, we might need a lookup.
-    # Start simple: Assume translator outputs valid variant names or close to it.
-    
-    # Calculate amount in USD for routing (approximate is fine for selection)
-    # In a real app we'd get a price. For now, pass 100 as dummy if unknown, 
-    # or implement price fetch.
-    
     route = router.recommend_route(from_token, to_token, user_preference="auto", amount_usd=100.0)
-    
-    if not route:
-        print(f"❌ No route found for {from_token} -> {to_token}")
-        return
+    if not route: print(f"❌ No route found for {from_token} -> {to_token}"); return
 
-    # 2. Present Options
+    from_id = get_token_id_for_variant(route.from_variant)
+    to_id = get_token_id_for_variant(route.to_variant)
     print("\n⚡ Proposed Route:")
+    print(f"   {route.from_variant} ({from_id}) -> {route.to_variant} ({to_id})")
     print(route.explain())
     print("-" * 30)
     
-    # 3. Confirm
     if os.getenv("PACMAN_AUTO_CONFIRM") != "true":
         confirm = input("Execute this swap? (y/n): ").strip().lower()
-        if confirm not in ["y", "yes"]:
-            print("Cancelled.")
-            return
+        if confirm not in ["y", "yes"]: print("Cancelled."); return
 
-    # 4. Execute
-    # Executor needs amount in USD. 
-    # This is a bit of a mismatch in the current executor_pro signature vs the request.
-    # The executor expects `amount_usd`.
-    # BUT `req['amount']` is token amount. 
-    # Let's fix the Executor call or the Executor itself to accept token amounts.
-    # Looking at pacman_executor.py: execute_swap(route, amount_usd, simulate)
-    # It converts USD to token units inside: amount_raw = int(amount_usd * 1_000_000)
-    # THIS IS A BUG/LIMITATION in the current executor! It assumes input is always USDC-like (6 decimals).
-    # We must patch this in `pacman_executor.py` or work around it.
-    
-    # Correct approach: Update Executor to take token amount, not USD.
-    # For now, we will modify the calling code to calculate USD roughly or 
-    # (BETTER) Update pacman_executor.py to handle raw amounts.
-    
-    # Hack for now: We will assume the executor needs to be fixed.
-    # Let's try to run it. If from_token is USDC, amount is amount_usd.
-    amount_val = amount
-    
-    # Check if we are in simulation mode
-    is_sim = executor.private_key is None
-    
-    res = executor.execute_swap(route, amount_usd=amount_val, mode=mode, simulate=is_sim)
+    res = executor.execute_swap(route, amount_usd=amount, mode=mode, simulate=executor.is_sim)
     
     if res.success:
-        print(f"\n✅ SUCCESS!")
-        print(f"   Tx: {res.tx_hash}")
-        print(f"   Gas: {res.gas_used}")
+        print_receipt(res, route, route.from_variant, route.to_variant, amount, mode, executor)
     else:
         print(f"\n❌ FAILED: {res.error}")
 

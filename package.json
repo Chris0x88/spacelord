@@ -1,0 +1,28 @@
+{
+  "name": "pacman",
+  "version": "1.0.0",
+  "description": "**Natural language interface for crypto swaps on Hedera with intelligent routing.**",
+  "main": "approve_hts_token.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Chris0x88/pacman.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Chris0x88/pacman/issues"
+  },
+  "homepage": "https://github.com/Chris0x88/pacman#readme",
+  "dependencies": {
+    "@hashgraph/sdk": "^2.80.0",
+    "dotenv": "^17.2.4"
+  }
+}

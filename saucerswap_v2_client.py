@@ -410,6 +410,72 @@ class SaucerSwapV2:
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         return tx_hash.hex()
 
+    def swap_exact_output_multicall(self, token_in: str, token_out: str, amount_out: int, max_amount_in: int, input_is_native: bool = False, output_is_native: bool = False, fee: int = 1500) -> str:
+        """
+        Execute multicall for exact output swaps involving native HBAR.
+        Similar to swap_exact_input_multicall but for exactOutput.
+        """
+        if not self.private_key:
+            raise ValueError("Private key required")
+            
+        deadline = int(time.time() * 1000) + 600000 # 10 mins
+        
+        # Path for exactOutput is reversed: [tokenOut, tokenIn]
+        path = encode_path([token_out, token_in], [fee])
+        
+        encoded_calls = []
+        value_to_send = 0
+        
+        if input_is_native:
+            # HBAR -> Token
+            # 1. exactOutput (recipient=self.eoa, amountOut=amount_out, maxAmountIn=max_amount_in)
+            # 2. refundETH
+            params = (path, self.eoa, deadline, amount_out, max_amount_in)
+            swap_calldata = self.router.encode_abi("exactOutput", [params])
+            encoded_calls.append(swap_calldata)
+            
+            print(f"   🔄 Executing Multicall (ExactOutput + RefundETH)...")
+            refund_calldata = self.router.encode_abi("refundETH")
+            encoded_calls.append(refund_calldata)
+            
+            value_to_send = max_amount_in # Max we are willing to spend
+            
+        elif output_is_native:
+            # Token -> HBAR
+            # 1. exactOutput (recipient=ROUTER)
+            # 2. unwrapWHBAR(amountOut, recipient)
+            
+            # Recipient for exactOutput MUST be ROUTER so it can unwrap
+            params = (path, self.router_address, deadline, amount_out, max_amount_in)
+            swap_calldata = self.router.encode_abi("exactOutput", [params])
+            encoded_calls.append(swap_calldata)
+            
+            print(f"   🔄 Executing Multicall (ExactOutput + unwrapWHBAR)...")
+            # For exactOutput, we unwrap the exact amount_out requested
+            unwrap_calldata = self.router.encode_abi("unwrapWHBAR", [amount_out, self.eoa])
+            encoded_calls.append(unwrap_calldata)
+            
+            value_to_send = 0
+            
+        else:
+            raise ValueError("Use standard swap_exact_output for non-native swaps")
+
+        # Scale HBAR value
+        scaled_value = value_to_send * 10**10 if value_to_send > 0 else 0
+        
+        tx = self.router.functions.multicall(encoded_calls).build_transaction({
+            "from": self.eoa,
+            "gas": 2_500_000,
+            "gasPrice": self.w3.eth.gas_price,
+            "nonce": self.w3.eth.get_transaction_count(self.eoa),
+            "chainId": self.chain_id,
+            "value": scaled_value
+        })
+        
+        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        return tx_hash.hex()
+
     def get_quote_multi_hop(self, token_path: List[str], fee_tiers: List[int], amount_in: int) -> dict:
         """
         Get a quote for a multi-hop swap using quoteExactInput(path).
@@ -468,6 +534,8 @@ class SaucerSwapV2:
             
             # Use current process environment plus any needed IDs
             env = os.environ.copy()
+            if self.private_key:
+                env["PRIVATE_KEY"] = self.private_key
             
             script_path = "approve_hts_token.js"
             try:

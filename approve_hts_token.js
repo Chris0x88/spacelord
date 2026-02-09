@@ -46,7 +46,7 @@ async function main() {
 
     // Get credentials from environment
     const accountIdStr = process.env.HEDERA_ACCOUNT_ID;
-    let privateKeyStr = process.env.HEDERA_PRIVATE_KEY || process.env.PRIVATE_KEY;
+    let privateKeyStr = process.env.PACMAN_PRIVATE_KEY;
 
     if (!accountIdStr) {
         console.error("Error: HEDERA_ACCOUNT_ID not set");
@@ -75,7 +75,7 @@ async function main() {
         // Create client
         const accountId = AccountId.fromString(accountIdStr);
         const privateKey = PrivateKey.fromStringECDSA(privateKeyStr);
-        
+
         const client = Client.forMainnet();
         client.setOperator(accountId, privateKey);
 
@@ -93,12 +93,12 @@ async function main() {
 
         // Execute
         const response = await transaction.execute(client);
-        
+
         console.log(`Transaction ID: ${response.transactionId.toString()}`);
 
         // Get receipt
         const receipt = await response.getReceipt(client);
-        
+
         console.log(`Status: ${receipt.status.toString()}`);
 
         if (receipt.status.toString() === "SUCCESS") {

@@ -21,94 +21,40 @@ Status: Active specification
 #
 # It is NOT a chatbot. It is NOT a research tool. It IS an executor.
 #
-# Core Philosophy:
+# Core Philosophy is to be a hedera account CLI tool that can swap tokens on Saucerswap V2 pools:
 #   1. Operational: "Swap 100 USDC for WBTC" -> Done.
 #   2. Variant-Aware: Handles the HTS vs ERC20 bridged token complexity automatically.
 #   3. Robust: Uses millisecond deadlines and multicall for HBAR wrapping.
 
 
 # =============================================================================
-# 2. THE NEW ARCHITECTURE (Consolidated)
+# 2. THE THREE ENGINES
 # =============================================================================
 #
-# ┌─────────────────────────────────────────────────────┐
-# │  ENTRY: pacman_cli.py                               │
-# │  Single source of truth. REPL or One-shot.          │
-# └─────────────┬───────────────────────────────────────┘
-#               │
-#               ▼
-# ┌─────────────────────────────────────────────────────┐
-# │  LAYER 1: TRANSLATOR (pacman_translator.py)         │
-# │  Input: "swap 100 USDC for bitcoin"                 │
-# │  Output: {intent="swap", from="USDC", to="WBTC"...} │
-# └─────────────┬───────────────────────────────────────┘
-#               │
-#               ▼
-# ┌─────────────────────────────────────────────────────┐
-# │  LAYER 2: ROUTER (pacman_variant_router.py)         │
-# │  "The Brain". Knows about HTS vs ERC20 variants.    │
-# │  Calculates routes that ensure HashPack visibility. │
-# │  Auto-inserts Unwrap steps if cheapest route is ERC20.
-# └─────────────┬───────────────────────────────────────┘
-#               │
-#               ▼
-# ┌─────────────────────────────────────────────────────┐
-# │  LAYER 3: EXECUTOR (pacman_executor.py)             │
-# │  "The Muscle". Executes the complex multi-step plan.│
-# │  Handles Approvals -> Swaps -> Unwraps.             │
-# │  Records data for training.                         │
-# └─────────────────────────────────────────────────────┘
+# Pacman maintains three distinct execution engines to handle Hedera's complexity:
+#
+# A. Swap Engine (Standard):
+#    - Handles HTS -> HTS and ERC20 -> ERC20 swaps.
+#    - Uses standard Uniswap V3 `exactInput` / `exactOutput` calls.
+#
+# B. Swap Engine (Native HBAR):
+#    - Handles HBAR -> Token and Token -> HBAR.
+#    - Uses `multicall` with `refundETH` (for wrapping) or `unwrapWHBAR` (for unwrapping).
+#    - Scales HBAR to 18 decimals for relay compatibility.
+#
+# C. Variant Conversion Engine:
+#    - Handles manual wrapping/unwrapping (e.g., WBTC_HTS <-> WBTC_ERC20).
+#    - Uses the `ERC20Wrapper` contract directly.
 
 
 # =============================================================================
-# 3. PACMAN OPERATIONAL DIRECTIVES (THE RULES)
+# 3. INTERFACE
 # =============================================================================
 #
-# 1. SINGLE PURPOSE
-#    This tool executes swaps. It is not a general assistant.
+# The CLI must present a clean, command-based REPL:
+#   - swap [amount] [token] for [token]  (Exact Input)
+#   - swap [token] for [amount] [token]  (Exact Output)
+#   - convert [token] for [amount] [token] (Exact Output)
+#   - convert [amount] [token] for [token] (Exact Input)
 #
-# 2. ONE ROUTER
-#    Always use `PacmanVariantRouter`. Never create new routing logic or
-#    bypasses. The static `routes.json` is deprecated in favor of this
-#    dynamic, variant-aware router.
-#
-# 3. ONE EXECUTOR
-#    Always use `PacmanExecutor`. It records performance data.
-#    Do not use `SaucerSwapV2Engine` directly unless debugging low-level issues.
-#
-# 4. HASHPACK VISIBILITY IS PARAMOUNT
-#    Always prefer routes that result in HTS-native tokens (e.g., WBTC[hts])
-#    over raw ERC20s, unless the user explicitly asks for "cheapest".
-#    Users panic when they can't see their tokens. Prevent panic.
-#
-# 5. NO "PRO/ULTRA" VERSIONS
-#    Improve the core files (`pacman_executor.py`). Do not fork them.
-#    Delete any file named `*_pro.py` or `*_ultra.py` on sight.
-
-
-# =============================================================================
-# 4. HEDERA & SAUCERSWAP GOTCHAS
-# =============================================================================
-#
-# 1. WHBAR IS NOT A TOKEN
-#    0.0.1456986 is a contract wrapper. Never trade to it as a final destination.
-#    Always unwrap to native HBAR.
-#
-# 2. MILLISECOND DEADLINES
-#    Hedera requires deadlines in milliseconds: `int(time.time() * 1000) + 600000`
-#
-# 3. HTS ASSOCIATION
-#    Accounts must associate with tokens before receiving them.
-#
-# 4. DECIMALS MATTER
-#    USDC is 6 decimals. WBTC is 8 decimals.
-#    Don't assume 18. Check `tokens.json` or pool data.
-
-# =============================================================================
-# 5. DEPRECATED / ARCHIVED
-# =============================================================================
-#
-# - pacman_agent.py (The old static agent)
-# - btc_rebalancer_swap_engine.py (Old standalone engine)
-# - routes.json (Static routing table - replaced by dynamic Router)
-# - build_routes.py (Replaced by Router's load_pools)
+# Status: READY

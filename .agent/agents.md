@@ -24,5 +24,9 @@ Standard EVM `approve()` calls often fail for HTS tokens. Always verify or use t
 ### 4. Multicall Recipient Context
 When swapping **Token → HBAR**, the `exactInput` step MUST specify the **Router Address** as the recipient. This allows the subsequent `unwrapWHBAR` call to access the funds within the Router's own context.
 
+### 5. Private Key Environment Variable
+The **only** environment variable used for account private keys is `PACMAN_PRIVATE_KEY`. Do not use `PRIVATE_KEY` or `HEDERA_PRIVATE_KEY`. All scripts and clients must prioritize `PACMAN_PRIVATE_KEY`.
+
 ## 🤝 Collaboration
 Always log `amount_in` and `min_out` for transparency. Ensure dual account IDs (EVM and Hedera) are displayed during initialization to avoid user confusion.
+Mode:AGENT_MODE_VERIFICATION
