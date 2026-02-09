@@ -1,7 +1,7 @@
 # 👻 Pacman: AI-Powered Trading for Hedera
 
 > [!CAUTION]
-> **EXPERIMENTAL / TESTING ONLY.** Use at your own risk. Private keys are handled locally; ensure your environment is secure. See [SECURITY.md](SECURITY.md) for critical safety guidelines.
+> **EXPERIMENTAL / TESTING ONLY.** User beware: this software is in active testing and some functions may not work as desired. Use at your own risk. Private keys are handled locally; ensure your environment is secure. See [SECURITY.md](SECURITY.md) for critical safety guidelines.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-ghostwhite.svg)](https://opensource.org/licenses/MIT)
 [![Hedera](https://img.shields.io/badge/Network-Hedera-blue.svg)](https://hedera.com)

@@ -1,7 +1,8 @@
 # Security Guide & Risk Disclosure
 
 ## ⚠️ MANDATORY WARNING
-**Pacman CLI is an experimental tool. It is NOT intended for production use with capital.**
+**Pacman CLI is an experimental tool in active testing. It is NOT intended for production use with capital.** 
+Not all functions may work as desired; use with extreme caution.
 
 By using this software, you acknowledge that you are handling your own cryptographic private keys. **If your machine is compromised, your funds are at risk.**
 
@@ -57,7 +58,7 @@ Moving away from `.env` to encrypted JSON files (similar to Ethereum's `UTC--...
 
 ### 4. Hardware Wallet Support
 Direct integration with Ledger or Trezor.
-- **How it works**: You would manually confirm every swap on your physical device. Pacman would purely be the routing and transaction-building engine.
+- **How it works**: You would manually confirm every swap on your physical device. Pacman would purely be the routing and transaction-building engine. This is the most secure option but not suitable for ai agents and so we are unlikely to pursue this direction. 
 
 ## ⚖️ Liability
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. The authors and contributors are not responsible for any financial loss, bugs, or security breaches resulting from the use of this tool.
