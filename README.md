@@ -18,7 +18,7 @@ Trading on Hedera often involves complex token variants (HTS vs ERC20 bridged) a
 - **Intelligent Variant Routing**: Automatically finds the best path through HBAR, USDC, or SAUCE hubs.
 - **Proactive Association**: Pacman detects missing token associations and fixes them on-chain before you swap.
 - **Hardened Approvals**: No more "Amount Exceeds Supply" errors. Pacman scales approvals perfectly for every token type.
-- **Professional Receipts**: Boxed, ATO-ready receipts with transparent fees, net rates, and live HashScan links.
+- **Professional Receipts**: Boxed receipts with transparent fees, net rates, and live HashScan links.
 
 ---
 
@@ -53,8 +53,8 @@ python3 pacman_cli.py "swap 10 HBAR for USDC"
 ## 🧠 For AI Agent Developers
 Pacman is built to be a **primitive for agentic infrastructure**. If you are building with OpenClaw, AutoGPT, or LangChain, check out our specialized guides:
 
-- [AI Agent Interaction Guide](AI_AGENT_GUIDE.md)
-- [Infrastructure Integration Plan](INTEGRATION_GUIDE.md)
+- [AI Agent Interaction Guide](docs/AI_AGENT_GUIDE.md)
+- [Infrastructure Integration Plan](docs/INTEGRATION_GUIDE.md)
 
 ---
 
@@ -69,4 +69,4 @@ Pacman is built to be a **primitive for agentic infrastructure**. If you are bui
 ### 🛡️ Security
 Pacman never stores your private key. It reads from environment variables at runtime and supports a full **Simulation Mode** (`PACMAN_SIMULATE=true`) for risk-free testing of any trade route.
 
-**Release Status**: `V1.0-RC1` (Production Ready)
+**Release Status**: `V1.0-BETA` (Experimental / Testing Only)
