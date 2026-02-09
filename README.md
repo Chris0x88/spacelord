@@ -7,7 +7,7 @@
 [![Hedera](https://img.shields.io/badge/Network-Hedera-blue.svg)](https://hedera.com)
 [![SaucerSwap](https://img.shields.io/badge/DEX-SaucerSwap-purple.svg)](https://saucerswap.finance)
 
-**Pacman is a high-precision trading assistant that brings natural language power to the Hedera ecosystem. Trade any HTS token using plain English commands with intelligent routing and professional-grade reporting.**
+**Pacman is a lightweight CLI primitive that gives AI agents (like OpenClaw) the power to swap on Hedera. Built for strategy malleability, it handles the "spectral" HTS variants while you tweak your logic in plain English.**
 
 ---
 
