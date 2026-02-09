@@ -78,6 +78,39 @@ TOKEN_VARIANTS = {
         "visible_in_hashpack": True,
         "pool_preference": "high",
     },
+    "HBAR": {
+        "id": "0.0.0",
+        "symbol": "HBAR",
+        "type": "HTS_NATIVE",
+        "layer": "Hedera",
+        "visible_in_hashpack": True,
+        "pool_preference": "high",
+        "liquidity_id": "0.0.1456986", # Shared liquidity contract
+    },
+    "SAUCE": {
+        "id": "0.0.731861",
+        "symbol": "SAUCE",
+        "type": "HTS_NATIVE",
+        "layer": "Hedera",
+        "visible_in_hashpack": True,
+        "pool_preference": "high",
+    },
+    "XSAUCE": {
+        "id": "0.0.1460200",
+        "symbol": "XSAUCE",
+        "type": "HTS_NATIVE",
+        "layer": "Hedera",
+        "visible_in_hashpack": True,
+        "pool_preference": "high",
+    },
+    "HBARX": {
+        "id": "0.0.834116",
+        "symbol": "HBARX",
+        "type": "HTS_NATIVE",
+        "layer": "Hedera",
+        "visible_in_hashpack": True,
+        "pool_preference": "high",
+    },
 }
 
 # Reverse lookup by ID
@@ -140,6 +173,8 @@ class PacmanVariantRouter:
     - AUTO: Accept ERC20 if cheaper by > X%, auto-unwrap
     """
     
+    BLACKLISTED_TOKENS = ["0.0.1456986"] # WHBAR is strictly blacklisted
+    
     def __init__(self):
         self.pools_data = None
         self.pool_graph = {}  # (token_in, token_out) -> (pool_id, fee_bps)
@@ -151,21 +186,36 @@ class PacmanVariantRouter:
             self.pools_data = json.load(f)
         
         for pool in self.pools_data:
+            token_a_id = pool["tokenA"]["id"]
+            token_b_id = pool["tokenB"]["id"]
+            
+            # Map WHBAR liquidity ID (0.0.1456986) to HBAR (0.0.0) for internal routing
+            # while keeping WHBAR on the blacklist for direct user selection.
+            if token_a_id == "0.0.1456986": token_a_id = "0.0.0"
+            if token_b_id == "0.0.1456986": token_b_id = "0.0.0"
+
+            # Skip pools with blacklisted tokens (if they aren't the mapped HBAR)
+            if (token_a_id in self.BLACKLISTED_TOKENS and token_a_id != "0.0.0") or \
+               (token_b_id in self.BLACKLISTED_TOKENS and token_b_id != "0.0.0"):
+                continue
             token_a = pool["tokenA"]["symbol"]
             token_b = pool["tokenB"]["symbol"]
+            token_a_id = pool["tokenA"]["id"]
+            token_b_id = pool["tokenB"]["id"]
             pool_id = pool["id"]
             fee = pool["fee"]  # In basis points
             
             # Map variant symbols
-            self.pool_graph[(token_a, token_b)] = (pool_id, fee)
-            self.pool_graph[(token_b, token_a)] = (pool_id, fee)
+            # Store (pool_id, fee, token0_id, token1_id)
+            self.pool_graph[(token_a, token_b)] = (pool_id, fee, token_a_id, token_b_id)
+            self.pool_graph[(token_b, token_a)] = (pool_id, fee, token_b_id, token_a_id)
         
         print(f"Loaded {len(self.pool_graph)//2} unique pools")
     
     def find_swap_step(self, from_symbol: str, to_symbol: str) -> Optional[RouteStep]:
         """Find a direct swap between two token symbols."""
         if (from_symbol, to_symbol) in self.pool_graph:
-            pool_id, fee_bps = self.pool_graph[(from_symbol, to_symbol)]
+            pool_id, fee_bps, id_in, id_out = self.pool_graph[(from_symbol, to_symbol)]
             fee_pct = fee_bps / 10000  # Convert to percent
             
             return RouteStep(
@@ -175,7 +225,7 @@ class PacmanVariantRouter:
                 contract="0.0.3949434",  # SaucerSwap Router
                 fee_percent=fee_pct,
                 gas_estimate_hbar=0.02,  # ~0.02 HBAR
-                details={"pool_id": pool_id, "fee_bps": fee_bps}
+                details={"pool_id": pool_id, "fee_bps": fee_bps, "token_in_id": id_in, "token_out_id": id_out}
             )
         return None
     
@@ -188,13 +238,32 @@ class PacmanVariantRouter:
             return [step1, step2]
         return None
     
+    def _get_token_meta(self, variant: str) -> Optional[dict]:
+        """Get best metadata for a variant, with fallback to symbols."""
+        if variant in TOKEN_VARIANTS:
+            return TOKEN_VARIANTS[variant]
+        
+        # Fallback: Check if it matches a symbol in pools
+        for pool in self.pools_data:
+            if pool["tokenA"]["symbol"] == variant:
+                return {"id": pool["tokenA"]["id"], "symbol": variant, "type": "HTS_NATIVE", "visible_in_hashpack": True}
+            if pool["tokenB"]["symbol"] == variant:
+                return {"id": pool["tokenB"]["id"], "symbol": variant, "type": "HTS_NATIVE", "visible_in_hashpack": True}
+        return None
+
     def calculate_erc20_route(self, from_variant: str, to_variant: str, amount_usd: float = 100) -> Optional[VariantRoute]:
         """
         Calculate cheapest route using ERC20 pools.
         Result may be ERC20 tokens (invisible in HashPack).
         """
-        from_symbol = TOKEN_VARIANTS[from_variant]["symbol"]
-        to_symbol = TOKEN_VARIANTS[to_variant]["symbol"]
+        meta_in = self._get_token_meta(from_variant)
+        meta_out = self._get_token_meta(to_variant)
+        
+        if not meta_in or not meta_out:
+            return None
+            
+        from_symbol = meta_in["symbol"]
+        to_symbol = meta_out["symbol"]
         
         steps = []
         total_fee = 0.0
@@ -235,8 +304,8 @@ class PacmanVariantRouter:
             total_gas_hbar=total_gas,
             total_cost_hbar=total_cost,
             estimated_time_seconds=5 * len(steps),
-            output_format="ERC20" if TOKEN_VARIANTS[to_variant]["type"] == "ERC20_BRIDGED" else "HTS",
-            hashpack_visible=TOKEN_VARIANTS[to_variant]["visible_in_hashpack"],
+            output_format="ERC20" if meta_out.get("type") == "ERC20_BRIDGED" else "HTS",
+            hashpack_visible=meta_out.get("visible_in_hashpack", True),
             confidence=0.95 if len(steps) == 1 else 0.85
         )
     
@@ -245,48 +314,50 @@ class PacmanVariantRouter:
         Calculate route to HTS-native output (visible in HashPack).
         If ERC20 is cheaper, adds unwrap step.
         """
-        to_symbol = TOKEN_VARIANTS[to_variant]["symbol"]
+        meta_in = self._get_token_meta(from_variant)
+        meta_out = self._get_token_meta(to_variant)
         
-        # If target is already HTS, use standard routing
-        if TOKEN_VARIANTS[to_variant]["type"] == "HTS_NATIVE":
+        if not meta_in or not meta_out:
+            return None
+            
+        # If target already HTS, standard routing is fine
+        if meta_out.get("type") == "HTS_NATIVE":
             return self.calculate_erc20_route(from_variant, to_variant, amount_usd)
         
         # Target is ERC20, need to find HTS variant
-        hts_variant = TOKEN_VARIANTS[to_variant].get("unwrap_to")
+        hts_variant = meta_out.get("unwrap_to")
         if not hts_variant:
-            return None
+            # If no unwrap_to, we just do ERC20 and hope for the best
+            return self.calculate_erc20_route(from_variant, to_variant, amount_usd)
         
         # Option 1: Direct to HTS variant
         hts_route = self.calculate_erc20_route(from_variant, hts_variant, amount_usd)
         
         # Option 2: To ERC20 then unwrap
         erc20_route = self.calculate_erc20_route(from_variant, to_variant, amount_usd)
-        if erc20_route and hts_variant:
+        if erc20_route:
             # Add unwrap step
-            unwrap_gas = TOKEN_VARIANTS[to_variant].get("unwrap_gas_hbar", 0.02)
-            erc20_route.steps.append(RouteStep(
+            unwrap_gas = meta_out.get("unwrap_gas_hbar", 0.02)
+            step = RouteStep(
                 step_type="unwrap",
-                from_token=to_variant,
-                to_token=hts_variant,
-                contract=TOKEN_VARIANTS[to_variant]["unwrap_contract"],
-                gas_estimate_hbar=unwrap_gas,
-                fee_percent=0.0,
-                details={"type": "erc20_to_hts"}
-            ))
-            erc20_route.total_gas_hbar += unwrap_gas
-            erc20_route.total_cost_hbar += unwrap_gas
+                from_token=meta_out["symbol"],
+                to_token=TOKEN_VARIANTS[hts_variant]["symbol"],
+                contract=meta_out.get("unwrap_contract", "0.0.9675688"),
+                gas_estimate_hbar=unwrap_gas
+            )
+            erc20_route.steps.append(step)
             erc20_route.to_variant = hts_variant
             erc20_route.hashpack_visible = True
-            erc20_route.output_format = "HTS"
-        
-        # Return cheaper option
-        if hts_route and erc20_route:
-            if erc20_route.total_cost_hbar < hts_route.total_cost_hbar * 0.95:  # 5% threshold
+            erc20_route.total_gas_hbar += unwrap_gas
+            erc20_route.total_cost_hbar += unwrap_gas
+            
+            if not hts_route or erc20_route.total_cost_hbar < hts_route.total_cost_hbar:
                 return erc20_route
-            return hts_route
-        return hts_route or erc20_route
+        
+        return hts_route
     
     def get_all_routes(self, from_variant: str, to_variant: str, amount_usd: float = 100) -> List[VariantRoute]:
+
         """Get all possible routes for comparison."""
         routes = []
         

@@ -102,22 +102,6 @@ const response = await new ContractExecuteTransaction()
 
 ---
 
-## 🔮 FUTURE: Memejob Trading
-
-**Status:** To be integrated from HederaAgentKit
-
-**Source Files Needed:**
-- From `CL10-HederaAgentKit_with_memejob_connector/hedera-agent-kit-js`
-- Memejob connector module
-- Token association utilities
-
-**Implementation Notes:**
-- Requires token association before receiving HTS tokens
-- May have different patterns for memecoin pools
-- Follow SaucerSwap docs precisely for each swap type
-
----
-
 ## Contract Addresses (Mainnet)
 
 | Contract | Hedera ID | EVM Address |

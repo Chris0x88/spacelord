@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-02-09 14:57:39",
+  "mode": "LIVE",
+  "route": {
+    "from": "WBTC_HTS",
+    "to": "USDC",
+    "steps": 2,
+    "total_cost_hbar": 2.2282654484155264,
+    "hashpack_visible": true
+  },
+  "amount_usd": 1.0,
+  "results": [
+    {
+      "success": true,
+      "tx_hash": "acaa70d12acc4aa7446fa8f16c3cf7174752a2ad1b8ff24c3d8093fd3a0432b3",
+      "gas_used": 0,
+      "error": "",
+      "block_number": 0,
+      "timestamp": "2026-02-09 14:57:33",
+      "steps_completed": 0,
+      "total_steps": 0
+    },
+    {
+      "success": true,
+      "tx_hash": "72ca8cab0d40dd09f3f3b6fd550957c64d03af188c18f1adff2330939f8fec6a",
+      "gas_used": 0,
+      "error": "",
+      "block_number": 0,
+      "timestamp": "2026-02-09 14:57:39",
+      "steps_completed": 0,
+      "total_steps": 0
+    }
+  ],
+  "success": true,
+  "account": "0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa",
+  "network": "mainnet"
+}

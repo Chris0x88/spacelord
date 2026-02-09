@@ -54,6 +54,17 @@ ALIASES = {
     "bonzo": "BONZO",
     "pack": "PACK",
     "sats": "WBTC_HTS",
+    "hbar": "HBAR",
+    "hbarx": "HBARX",
+    "xsauce": "XSAUCE",
+    "wbtc_hts": "WBTC_HTS",
+    "wbtc_erc20": "WBTC_ERC20",
+    "weth_hts": "WETH_HTS",
+    "weth_erc20": "WETH_ERC20",
+    "hts_wbtc": "WBTC_HTS",
+    "erc20_wbtc": "WBTC_ERC20",
+    "hts_weth": "WETH_HTS",
+    "erc20_weth": "WETH_ERC20",
 }
 
 def load_dynamic_aliases():
@@ -66,6 +77,10 @@ def load_dynamic_aliases():
             tokens = json.load(f)
             
         for canon, meta in tokens.items():
+            token_id = meta.get("id")
+            if token_id == "0.0.1456986": # Skip WHBAR
+                continue
+                
             # 1. Add canonical name itself (lowercase)
             ALIASES[canon.lower()] = canon
             
@@ -138,8 +153,8 @@ def translate(text: str) -> Optional[Dict]:
         return {"intent": "tokens"}
 
     # Patterns for extraction
-    # pattern_amount: matches optional currency symbol followed by float
-    pattern_amount = r"[\$£]?(\d+(?:\.\d+)?)"
+    # pattern_amount: matches optional currency symbol followed by float (supports .5 and 0.5)
+    pattern_amount = r"[\$£]?((?:\d+(?:\.\d*)?|\.\d+))"
 
     # Pattern 1: "swap/trade/exchange/convert AMOUNT TOKEN for/to/into TOKEN" (Exact In)
     m = re.match(
@@ -155,8 +170,9 @@ def translate(text: str) -> Optional[Dict]:
         from_token = resolve_token(m.group(2))
         to_token = resolve_token(m.group(3))
         if from_token and to_token:
+            intent_val = "convert" if "convert" in text else "swap"
             return {
-                "intent": "swap",
+                "intent": intent_val,
                 "from_token": from_token,
                 "to_token": to_token,
                 "amount": amount,
@@ -221,8 +237,10 @@ def translate(text: str) -> Optional[Dict]:
         amount = float(m.group(2))
         from_token = resolve_token(m.group(3))
         if from_token and to_token:
+            # If the user used 'convert', we use a special intent
+            intent_val = "convert" if "convert" in text else "swap"
             return {
-                "intent": "swap",
+                "intent": intent_val,
                 "from_token": from_token,
                 "to_token": to_token,
                 "amount": amount,

@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-02-09 20:49:07",
+  "mode": "LIVE",
+  "route": {
+    "from": "HBAR",
+    "to": "USDC",
+    "steps": 1,
+    "total_cost_hbar": 1.6611990863116446,
+    "hashpack_visible": true
+  },
+  "amount_token": 5.0,
+  "amount_usd": 0.45,
+  "gas_used": 400000,
+  "results": [
+    {
+      "success": true,
+      "tx_hash": "6223d20e9ba02215901118c90e1571424fabffeeb9e4bffda6daed5af1745d08",
+      "gas_used": 400000,
+      "error": "",
+      "block_number": 90960827,
+      "timestamp": "2026-02-09 20:49:00",
+      "steps_completed": 0,
+      "total_steps": 0
+    }
+  ],
+  "success": true,
+  "account": "0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa",
+  "network": "mainnet"
+}

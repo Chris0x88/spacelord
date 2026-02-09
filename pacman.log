@@ -3772,3 +3772,9 @@
 2026-02-09 00:59:08,828 DEBUG [web3.providers.HTTPProvider] Making request HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId
 2026-02-09 00:59:09,039 DEBUG [urllib3.connectionpool] https://mainnet.hashio.io:443 "POST /api HTTP/1.1" 200 42
 2026-02-09 00:59:09,039 DEBUG [web3.providers.HTTPProvider] Getting response HTTP. URI: https://mainnet.hashio.io/api, Method: eth_chainId, Response: {'result': '0x127', 'jsonrpc': '2.0', 'id': 72}
+2026-02-09 11:28:04,517 DEBUG [rlp.codec] Consider installing rusty-rlp to improve pyrlp performance with a rust basedbackend. Not currently functional for Python 3.11
+2026-02-09 11:28:45,547 DEBUG [rlp.codec] Consider installing rusty-rlp to improve pyrlp performance with a rust basedbackend. Not currently functional for Python 3.11
+2026-02-09 11:29:34,641 DEBUG [rlp.codec] Consider installing rusty-rlp to improve pyrlp performance with a rust basedbackend. Not currently functional for Python 3.11
+2026-02-09 11:30:22,620 DEBUG [rlp.codec] Consider installing rusty-rlp to improve pyrlp performance with a rust basedbackend. Not currently functional for Python 3.11
+2026-02-09 11:31:16,617 DEBUG [rlp.codec] Consider installing rusty-rlp to improve pyrlp performance with a rust basedbackend. Not currently functional for Python 3.11
+2026-02-09 11:31:38,659 DEBUG [rlp.codec] Consider installing rusty-rlp to improve pyrlp performance with a rust basedbackend. Not currently functional for Python 3.11

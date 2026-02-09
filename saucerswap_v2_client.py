@@ -360,6 +360,7 @@ class SaucerSwapV2:
             encoded_calls.append(swap_calldata)
             
             # Encode refundETH
+            print(f"   🔄 Executing Multicall (ExactInput + RefundETH)...")
             refund_calldata = self.router.encode_abi("refundETH")
             encoded_calls.append(refund_calldata)
             
@@ -377,8 +378,12 @@ class SaucerSwapV2:
             encoded_calls.append(swap_calldata)
             
             # Encode unwrapWHBAR
-            # amountMinimum=0 (or min_amount_out), recipient=self.eoa
-            unwrap_calldata = self.router.encode_abi("unwrapWHBAR", [min_amount_out, self.eoa])
+            # amountMinimum=0 (slippage already handled by exactInput), recipient=self.eoa
+            print(f"   🔄 Executing Multicall (ExactInput + unwrapWHBAR)...")
+            print(f"      - Path: {path.hex()}")
+            print(f"      - Recipient (Swap): {self.router_address}")
+            print(f"      - Recipient (Unwrap): {self.eoa}")
+            unwrap_calldata = self.router.encode_abi("unwrapWHBAR", [0, self.eoa])
             encoded_calls.append(unwrap_calldata)
             
             value_to_send = 0 # ERC20 used
@@ -440,9 +445,9 @@ class SaucerSwapV2:
         except Exception as e:
             raise RuntimeError(f"Multi-hop quote failed: {e}")
 
-    def approve_token(self, token_id: str, amount: int | None = None) -> str:
+    def approve_token(self, token_id: str, amount: int | None = None, spender: str | None = None) -> str:
         """
-        Approve router to spend token_id for amount (or max uint256).
+        Approve router or custom spender to spend token_id for amount (or max uint256).
         Uses Hedera SDK via JS script for HTS tokens to avoid EVM revert.
         """
         if not self.private_key:
@@ -450,27 +455,27 @@ class SaucerSwapV2:
 
         if amount is None:
             amount = 2**256 - 1
+            
+        # Default spender is the router
+        spender_val = spender or CONTRACTS[self.network]["router"]
 
         # Use Hedera SDK for HTS tokens (starting with 0.0.)
         if token_id.startswith("0.0."):
             import subprocess
             import os
             
-            print(f"   🔓 Approving HTS token {token_id} via Hedera SDK...")
+            print(f"   🔓 Approving HTS token {token_id} for {spender_val} via Hedera SDK...")
             
             # Use current process environment plus any needed IDs
             env = os.environ.copy()
-            # If we don't have HEDERA_ACCOUNT_ID in env, we might need a better way to get it.
-            # But the user has it in their .env which we loaded.
             
-            script_path = "saucerswap_knowledge_export/approve_hts_token.js"
+            script_path = "approve_hts_token.js"
             try:
                 # amount for JS script. If max, use a large enough number but not 2^256 as JS might struggle.
-                # The script uses 10^12 as default. Let's send a large int.
                 amount_str = str(min(amount, 10**18)) 
                 
                 result = subprocess.run(
-                    ["node", script_path, token_id, CONTRACTS[self.network]["router"], amount_str],
+                    ["node", script_path, token_id, spender_val, amount_str],
                     env=env,
                     capture_output=True,
                     text=True,
@@ -481,13 +486,20 @@ class SaucerSwapV2:
             except Exception as e:
                 print(f"   ❌ HTS Approval FAILED: {e}")
                 if hasattr(e, 'stderr'): print(e.stderr)
+                # Fallback to EVM if JS fails? No, better to fail loud.
                 raise RuntimeError(f"HTS Approval failed: {e}")
 
         # Fallback to EVM for others (though most tokens in this app are HTS)
         token_address = hedera_id_to_evm(token_id)
         token = self.w3.eth.contract(address=token_address, abi=ERC20_ABI)
+        
+        # If spender is a Hedera ID, convert to EVM
+        if spender_val.startswith("0.0."):
+            spender_evm = hedera_id_to_evm(spender_val)
+        else:
+            spender_evm = spender_val
 
-        tx = token.functions.approve(self.router_address, amount).build_transaction({
+        tx = token.functions.approve(spender_evm, amount).build_transaction({
             "from": self.eoa,
             "gas": 1_000_000,
             "gasPrice": self.w3.eth.gas_price,
@@ -497,7 +509,6 @@ class SaucerSwapV2:
 
         signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        return tx_hash.hex()
         return tx_hash.hex()
 
     def get_token_balance(self, token_id: str, account: str | None = None) -> int:

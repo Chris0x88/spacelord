@@ -55,11 +55,12 @@ def main():
         return
 
     # Interactive REPL
-    print("\nOperational Ready. Commands:")
+    print("\nOperationally Ready. Commands:")
     print("  - swap [amount] [token] for [token]  (Exact Input)")
     print("  - swap [token] for [amount] [token]  (Exact Output)")
     print("  - balance")
     print("  - history")
+    print("  - tokens")
     print("  - exit")
     print("-" * 60)
 
@@ -122,8 +123,108 @@ def process_command(text: str, router: PacmanVariantRouter, executor: PacmanExec
     if intent == "swap":
         handle_swap(req, router, executor)
         return
+        
+    # 6. Convert (Wrap/Unwrap)
+    if intent == "convert":
+        handle_convert(req, executor)
+        return
 
     print(f"❌ Unhandled intent: {intent}")
+
+def handle_convert(req: dict, executor: PacmanExecutor):
+    """Handle manual wrap/unwrap conversion."""
+    from_token = req["from_token"]
+    to_token = req["to_token"]
+    amount = req["amount"]
+    
+    print(f"\n🔍 Analyzing conversion: {amount} {from_token} -> {to_token}")
+    
+    # 1. Determine direction
+    is_wrap = False
+    is_unwrap = False
+    
+    # Heuristic based on the virtual names added to translator
+    if "ERC20" in to_token and ("HTS" in from_token or from_token in ["WBTC", "WETH"]):
+        is_wrap = True
+    elif ("HTS" in to_token or to_token in ["WBTC", "WETH"]) and "ERC20" in from_token:
+        is_unwrap = True
+    else:
+        # Fallback heuristic: check if symbols are variants of same thing
+        print("   ⚠️  Conversion variants not explicitly detected. Fallback swap might be needed.")
+        print("   (Try using 'WBTC_ERC20' or 'WBTC_HTS' for explicit conversion)")
+        return
+        
+    # 2. Construct Step
+    from pacman_variant_router import RouteStep, VariantRoute
+    from saucerswap_v2_client import hedera_id_to_evm
+    
+    # Map back to real IDs 
+    IDS = {
+        "WBTC_HTS": "0.0.10082597",
+        "WBTC_ERC20": "0.0.1055483",
+        "WETH_HTS": "0.0.9770617",
+        "WETH_ERC20": "0.0.541564"
+    }
+    
+    # Also handle some common names if they mapped to the HTS versions
+    if from_token == "WBTC_HTS": from_token_display = "WBTC HTS"
+    else: from_token_display = from_token
+        
+    from_id = IDS.get(from_token, from_token)
+    to_id = IDS.get(to_token, to_token)
+    
+    step_type = "wrap" if is_wrap else "unwrap"
+    # Wrapper Contract: 0.0.9675688
+    step = RouteStep(
+        step_type=step_type,
+        from_token=from_token,
+        to_token=to_token,
+        contract="0.0.9675688",
+        gas_estimate_hbar=0.02,
+        details={"token_in_id": from_id, "token_out_id": to_id}
+    )
+    
+    route = VariantRoute(
+        from_variant=from_token,
+        to_variant=to_token,
+        steps=[step],
+        total_fee_percent=0.0,
+        total_gas_hbar=0.02,
+        total_cost_hbar=0.02,
+        estimated_time_seconds=10,
+        output_format="HTS" if is_unwrap else "ERC20",
+        hashpack_visible=is_unwrap,
+        confidence=1.0
+    )
+    
+    # The executor expects amount_raw on the step or passed in. 
+    # Let's set it.
+    decimals = 8 # Default for BTC
+    if "WETH" in from_token: decimals = 18
+    step.amount_raw = int(amount * (10**decimals))
+    
+    # 3. Present & Confirm
+    print(f"\n✨ Proposed {step_type.upper()}:")
+    print(f"   {amount} {from_token} ({from_id})")
+    print(f"   -> {amount} {to_token} ({to_id})")
+    print(f"   Using Wrapper: 0.0.9675688")
+    
+    import os
+    if os.getenv("PACMAN_AUTO_CONFIRM") != "true":
+        confirm = input("Execute this conversion? (y/n): ").strip().lower()
+        if confirm not in ["y", "yes"]:
+            print("Cancelled.")
+            return
+
+    # 4. Execute
+    is_sim = executor.private_key is None
+    res = executor.execute_swap(route, amount_usd=amount, mode="exact_in", simulate=is_sim)
+    
+    if res.success:
+        print(f"\n✅ SUCCESS!")
+        print(f"   Tx: {res.tx_hash}")
+    else:
+        print(f"\n❌ FAILED: {res.error}")
 
 def show_balance(executor: PacmanExecutor):
     """Display wallet balances using the new client."""

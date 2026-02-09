@@ -3,4 +3,4 @@
 # Usage: ./pacman [command] [args]
 
 # If no args, starts interactive mode
-python3 pacman_agent.py "$@"
+python3 pacman_cli.py "$@"

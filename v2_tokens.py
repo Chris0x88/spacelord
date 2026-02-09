@@ -6,10 +6,9 @@ Users can add their own token IDs here.
 """
 
 # Common Token IDs (Hedera format)
-WHBAR_ID = "0.0.1456986"
 USDC_ID = "0.0.456858"
 WBTC_ID = "0.0.10082597"
-WETH_ID = "0.0.1456986" # Update with actual WETH if needed, using WHBAR as placeholder if not
+WETH_ID = "0.0.541564"
 
 # Fee Tiers (in hundredths of a basis point, e.g. 1500 = 0.15%)
 FEE_LOW = 100    # 0.01%

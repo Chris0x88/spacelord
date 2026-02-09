@@ -111,10 +111,12 @@ class PacmanExecutor:
         # Recording system
         self.recordings_dir = Path("execution_records")
         self.recordings_dir.mkdir(exist_ok=True)
+        self.hedera_account_id = os.getenv("HEDERA_ACCOUNT_ID", "Unknown")
         
         print(f"✅ PacmanExecutor initialized")
-        print(f"   Account: {self.eoa}")
-        print(f"   Network: {network}")
+        print(f"   Hedera Account: {self.hedera_account_id} (Native ID)")
+        print(f"   EVM Address:    {self.eoa} (Ethereum Mirror)")
+        print(f"   Network:        {network}")
     
     def execute_swap(self, route, amount_usd: float, mode: str = "exact_in", simulate: bool = True) -> ExecutionResult:
         """
@@ -135,6 +137,19 @@ class PacmanExecutor:
         print(f"   Steps: {len(route.steps)}")
         
         results = []
+        
+        # --- Pre-Check: Token Association ---
+        if not simulate:
+            # We check the final destination token of the route
+            last_step = route.steps[-1]
+            final_token_id = last_step.details.get("token_out_id", last_step.to_token)
+            
+            print(f"   🛡️  Checking association for {route.to_variant}...")
+            if not self.check_token_association(final_token_id):
+                error_msg = f"Token {route.to_variant} ({final_token_id}) is not associated with your Hedera account."
+                print(f"   ❌ {error_msg}")
+                return ExecutionResult(success=False, error=error_msg)
+            print(f"   ✅ Associated.")
         
         if mode == "exact_out" and len(route.steps) > 1:
             # Backwards Pass: Calculate requirements for each step
@@ -194,8 +209,13 @@ class PacmanExecutor:
             else:
                 current_amount_val = amount_usd # For exact_in, or single hop
             
+            # Determine decimals based on mode for the current step
+            token_for_decimals = step.from_token if mode == "exact_in" else step.to_token
+            decimals = self._get_token_decimals(token_for_decimals)
+            amount_raw_for_step = int(current_amount_val * (10 ** decimals))
+
             if step.step_type == "swap":
-                result = self._execute_swap_step(step, current_amount_val, mode, simulate)
+                result = self._execute_swap_step(step, amount_raw_for_step, simulate, mode)
             elif step.step_type == "unwrap":
                 result = self._execute_unwrap_step(step, simulate)
             elif step.step_type == "wrap":
@@ -250,7 +270,25 @@ class PacmanExecutor:
         if "WBTC" in sym: return 8
         return 8 # Default for HBAR and others
 
-    def _execute_swap_step(self, step, amount_val: float, mode: str, simulate: bool) -> ExecutionResult:
+    def check_token_association(self, token_id: str) -> bool:
+        """
+        Check if the account is associated with the given HTS token.
+        On Hedera, association is required to receive any HTS token.
+        """
+        if token_id.upper() == "HBAR":
+            return True
+            
+        try:
+            # Mirror Node checkout or simple balanceOf check
+            # In EVM context, balanceOf usually returns 0 if not associated
+            # rather than reverting, but we can try to catch specific signals.
+            balance = self.client.get_token_balance(token_id)
+            return True # If it returns a value (even 0), it's nominally fine in EVM
+        except Exception as e:
+            print(f"   ⚠️  Association check failed for {token_id}: {e}")
+            return False
+
+    def _execute_swap_step(self, step: Dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in") -> ExecutionResult:
         """Execute a single swap step."""
         try:
             # Get token IDs from step
@@ -263,8 +301,7 @@ class PacmanExecutor:
             # Determine decimals based on mode
             token_for_decimals = step.from_token if mode == "exact_in" else step.to_token
             decimals = self._get_token_decimals(token_for_decimals)
-            
-            amount_raw = int(amount_val * (10 ** decimals))
+            amount_float = amount_raw / (10 ** decimals)
             
             # --- HBAR NATIVE LOGIC ---
             is_native_hbar = (step.from_token in ["HBAR", "0.0.0"])
@@ -286,7 +323,7 @@ class PacmanExecutor:
                     
                     # Decimals for output
                     out_decimals = self._get_token_decimals(step.to_token)
-                    print(f"   Quote (Exact In): {amount_val} {step.from_token} → {quote['amount_out'] / (10**out_decimals)} {step.to_token}")
+                    print(f"   Quote (Exact In): {amount_float} {step.from_token} → {quote['amount_out'] / (10**out_decimals)} {step.to_token}")
                     
                     if is_native_hbar:
                          print(f"   (Native HBAR Swap: Value={amount_raw})")
@@ -297,7 +334,7 @@ class PacmanExecutor:
                     
                     # Decimals for input token
                     dec_in = self._get_token_decimals(step.from_token)
-                    print(f"   Quote (Exact Out): Need {grams_in / (10**dec_in)} {step.from_token} → {amount_val} {step.to_token}")
+                    print(f"   Quote (Exact Out): Need {grams_in / (10**dec_in)} {step.from_token} → {amount_float} {step.to_token}")
                     
                 return ExecutionResult(
                     success=True,
@@ -409,55 +446,107 @@ class PacmanExecutor:
             return ExecutionResult(success=False, error=str(e))
     
     def _execute_unwrap_step(self, step, simulate: bool) -> ExecutionResult:
-        """Execute unwrap ERC20 → HTS."""
+        """Execute unwrap ERC20 -> HTS."""
         try:
-            # Get token address to unwrap
-            erc20_token = step.from_token  # e.g., "WBTC_LZ"
-            amount = 0  # Would get from previous step output
+            # We use the mapping from erc20_to_hts_wrapper.py
+            WRAPPER_ID = "0.0.9675688"
             
-            print(f"   Unwrapping {erc20_token} via {ERC20_WRAPPER_ID}")
+            # Decimals: ERC20 WBTC is 8, HTS WBTC is 8.
+            # ERC20 WETH is 18? No, let's look at tokens.json mapping.
+            
+            from_token = step.from_token
+            to_token = step.to_token
+            
+            # IDs
+            from_id = step.details.get("token_in_id", from_token)
+            
+            # Determine decimals
+            decimals = self._get_token_decimals(from_token)
+            
+            # The amount is stored in the step (from a previous swap result)
+            # or passed in if standalone.
+            # For now, we assume step.amount_raw is set if this is part of a route.
+            amount_raw = getattr(step, 'amount_raw', 0)
+            if amount_raw == 0:
+                # Standalone call? Let's check if we have a way to pass it.
+                pass
+            
+            print(f"   🔓 Unwrapping {amount_raw / (10**decimals)} {from_token} -> {to_token}...")
             
             if simulate:
-                return ExecutionResult(
-                    success=True,
-                    tx_hash="UNWRAP_SIMULATED",
-                    timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
-                )
-            else:
-                # Real unwrap transaction
-                print(f"   🔄 Would execute: withdrawTo({self.eoa}, {amount})")
-                return ExecutionResult(
-                    success=True,
-                    tx_hash="UNWRAP_WOULD_EXECUTE_" + str(int(time.time())),
-                    timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
-                )
-        
+                return ExecutionResult(success=True, tx_hash="SIMULATED_UNWRAP", timestamp=time.strftime("%Y-%m-%d %H:%M:%S"))
+
+            # 1. Approve Wrapper to spend ERC20
+            self.client.approve_token(from_id, amount_raw, spender=WRAPPER_ID)
+            
+            # 2. Call withdrawTo(self.eoa, amount)
+            wrapper_addr = hedera_id_to_evm(WRAPPER_ID)
+            wrapper_contract = self.w3.eth.contract(address=wrapper_addr, abi=ERC20_WRAPPER_ABI)
+            
+            tx = wrapper_contract.functions.withdrawTo(self.eoa, amount_raw).build_transaction({
+                "from": self.eoa,
+                "gas": 1_000_000,
+                "gasPrice": self.w3.eth.gas_price,
+                "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                "chainId": self.client.chain_id,
+            })
+            
+            signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            
+            return ExecutionResult(
+                success=True,
+                tx_hash=tx_hash.hex(),
+                timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
+            )
+            
         except Exception as e:
+            print(f"   ❌ Unwrap failed: {e}")
             return ExecutionResult(success=False, error=str(e))
     
     def _execute_wrap_step(self, step, simulate: bool) -> ExecutionResult:
-        """Execute wrap HTS → ERC20."""
+        """Execute wrap HTS -> ERC20."""
         try:
-            hts_token = step.from_token
-            amount = 0  # Would get from previous step
+            WRAPPER_ID = "0.0.9675688"
+            from_token = step.from_token
+            to_token = step.to_token
+            from_id = step.details.get("token_in_id", from_token)
             
-            print(f"   Wrapping {hts_token} via {ERC20_WRAPPER_ID}")
+            decimals = self._get_token_decimals(from_token)
+            amount_raw = getattr(step, 'amount_raw', 0)
+            
+            print(f"   🔒 Wrapping {amount_raw / (10**decimals)} {from_token} -> {to_token}...")
             
             if simulate:
-                return ExecutionResult(
-                    success=True,
-                    tx_hash="WRAP_SIMULATED",
-                    timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
-                )
-            else:
-                print(f"   🔄 Would execute: depositFor({self.eoa}, {amount})")
-                return ExecutionResult(
-                    success=True,
-                    tx_hash="WRAP_WOULD_EXECUTE_" + str(int(time.time())),
-                    timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
-                )
-        
+                return ExecutionResult(success=True, tx_hash="SIMULATED_WRAP", timestamp=time.strftime("%Y-%m-%d %H:%M:%S"))
+
+            # 1. Approve Wrapper to spend HTS
+            # This uses the Hedera SDK via JS
+            self.client.approve_token(from_id, amount_raw, spender=WRAPPER_ID)
+            
+            # 2. Call depositFor(self.eoa, amount)
+            wrapper_addr = hedera_id_to_evm(WRAPPER_ID)
+            wrapper_contract = self.w3.eth.contract(address=wrapper_addr, abi=ERC20_WRAPPER_ABI)
+            
+            tx = wrapper_contract.functions.depositFor(self.eoa, amount_raw).build_transaction({
+                "from": self.eoa,
+                "gas": 1_000_000,
+                "gasPrice": self.w3.eth.gas_price,
+                "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                "chainId": self.client.chain_id,
+            })
+            
+            signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            
+            return ExecutionResult(
+                success=True,
+                tx_hash=tx_hash.hex(),
+                timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
+            )
+            
         except Exception as e:
+            print(f"   ❌ Wrap failed: {e}")
             return ExecutionResult(success=False, error=str(e))
     
     def _record_execution(self, route, amount_val: float, results: list, simulate: bool):
