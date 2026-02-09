@@ -27,7 +27,20 @@ price_manager = PacmanPriceManager()
 # Load Environment
 load_dotenv()
 
+def print_security_warning():
+    """Display a prominent security disclaimer at startup."""
+    print("\n" + "!" * 60)
+    print("⚠️  SECURITY WARNING & RISK DISCLOSURE")
+    print("!" * 60)
+    print("This tool is EXPERIMENTAL and NOT intended for production use.")
+    print("You are handling PRIVATE KEYS. If your machine is compromised,")
+    print("your funds are at risk. Use only with a dedicated 'Hot Account'.")
+    print("-" * 60)
+    print("See SECURITY.md for safety best practices.")
+    print("!" * 60 + "\n")
+
 def main():
+    print_security_warning()
     print("="*60)
     print("👻 PACMAN CLI - OPERATIONAL MODE")
     print("="*60)

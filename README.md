@@ -1,5 +1,8 @@
 # 👻 Pacman: AI-Powered Trading for Hedera
 
+> [!CAUTION]
+> **EXPERIMENTAL / TESTING ONLY.** Use at your own risk. Private keys are handled locally; ensure your environment is secure. See [SECURITY.md](SECURITY.md) for critical safety guidelines.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-ghostwhite.svg)](https://opensource.org/licenses/MIT)
 [![Hedera](https://img.shields.io/badge/Network-Hedera-blue.svg)](https://hedera.com)
 [![SaucerSwap](https://img.shields.io/badge/DEX-SaucerSwap-purple.svg)](https://saucerswap.finance)
