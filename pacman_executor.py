@@ -273,15 +273,9 @@ class PacmanExecutor:
         return final_result
     
     def _get_hbar_price_usd(self) -> float:
-        """Fetch current HBAR price in USD from tokens.json."""
-        try:
-            with open("tokens.json") as f:
-                data = json.load(f)
-                for meta in data.values():
-                    if meta.get("symbol") == "HBAR":
-                        return meta.get("priceUsd", 0.09)
-        except: pass
-        return 0.09 # Professional fallback
+        """Fetch current HBAR price in USD from PriceManager."""
+        from pacman_price_manager import price_manager
+        return price_manager.get_hbar_price()
 
     
     def _get_token_decimals(self, token_symbol: str) -> int:
@@ -521,17 +515,24 @@ class PacmanExecutor:
             
             usd_price = price_manager.get_price(token_id)
             
-        # Phase 30 Fix: Derive exact token amount from raw inputs
+        # Phase 33: Record both amounts for history
         actual_amount_token = amount_val
         if results and decimals > 0:
             raw_in = results[0].amount_in_raw
             if raw_in > 0:
                 actual_amount_token = raw_in / (10 ** decimals)
 
+        actual_to_amount_token = 0.0
+        if results:
+            to_decimals = self._get_token_decimals(route.to_variant)
+            raw_out = results[-1].amount_out_raw
+            if raw_out > 0 and to_decimals > 0:
+                actual_to_amount_token = raw_out / (10 ** to_decimals)
+
         actual_usd = actual_amount_token * usd_price if usd_price > 0 else 0
         total_gas = sum(r.gas_used for r in results)
         total_gas_hbar = sum(r.gas_cost_hbar for r in results)
-        
+
         record = {
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             "mode": "SIMULATION" if simulate else "LIVE",
@@ -543,6 +544,7 @@ class PacmanExecutor:
                 "hashpack_visible": route.hashpack_visible
             },
             "amount_token": actual_amount_token,
+            "to_amount_token": actual_to_amount_token,
             "amount_usd": round(actual_usd, 2),
             "gas_used": total_gas,
             "gas_cost_hbar": total_gas_hbar,

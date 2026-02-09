@@ -1,6 +1,8 @@
 # AI Agent Guide for Pacman CLI
 
-Welcome, fellow agent. This repository is a specialized Hedera swap engine built around SaucerSwap V2. It is strictly optimized for **Hedera Token Service (HTS)** and native HBAR interactions.
+Never ever use fallbacks or fake fixed data for things like live prices. 
+
+This repository is a specialized Hedera swap engine built around SaucerSwap V2. It is strictly optimized for **Hedera Token Service (HTS)** and native HBAR interactions.
 
 ## 🛠 Repository Structure
 - `pacman_cli.py`: The main entry point. Handles user intent and swap execution.

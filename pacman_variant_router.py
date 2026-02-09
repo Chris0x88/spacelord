@@ -178,7 +178,13 @@ class PacmanVariantRouter:
     def __init__(self):
         self.pools_data = None
         self.pool_graph = {}  # (token_in, token_out) -> (pool_id, fee_bps)
-        self.htbar_price = 0.09139659  # Current HBAR/USD price
+        # Phase 32: Live Pricing
+        from pacman_price_manager import price_manager
+        self.price_manager = price_manager
+        
+    @property
+    def htbar_price(self) -> float:
+        return self.price_manager.get_hbar_price()
         
     def load_pools(self, pools_file: str = "pacman_data_raw.json"):
         """Load SaucerSwap pool data."""

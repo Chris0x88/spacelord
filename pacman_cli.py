@@ -195,17 +195,12 @@ def show_balance(executor: PacmanExecutor):
     """Display wallet balances using the new client."""
     print("\n💰 Wallet Balances:")
     try:
+        from pacman_price_manager import price_manager
         client = executor.client
         hbar_bal = client.w3.eth.get_balance(client.eoa)
         hbar_readable = hbar_bal / (10**18)
-        hbar_price = 0.09
-        try:
-            with open("tokens.json") as f:
-                tdata = json.load(f)
-                for meta in tdata.values():
-                    if meta.get("symbol") == "HBAR" or meta.get("name") == "Hedera":
-                        hbar_price = meta.get("priceUsd", hbar_price); break
-        except: pass
+        
+        hbar_price = price_manager.get_hbar_price()
         hbar_usd = hbar_readable * hbar_price
         print(f"  HBAR      : {hbar_readable:12.6f} (${hbar_usd:8.2f})")
 
@@ -398,10 +393,15 @@ def show_history(executor: PacmanExecutor):
                 if price > 0:
                     amt_usd = amt_token * price
 
-        print(f"  {h['timestamp']} {status} [{mode}]   {amt_token:12.8f} {ft} -> {tt} ($ {amt_usd:10.2f})")
+            # Phase 33: Show both amounts for better clarity
+            to_amt = h.get('to_amount_token', 0.0)
+            if to_amt > 0:
+                print(f"  {h['timestamp']} {status} [{mode}]   {amt_token:12.8f} {ft} -> {to_amt:12.8f} {tt} ($ {amt_usd:10.2f})")
+            else:
+                print(f"  {h['timestamp']} {status} [{mode}]   {amt_token:12.8f} {ft} -> {tt} ($ {amt_usd:10.2f})")
 
 def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, amount_val: float, mode: str, executor: PacmanExecutor):
-    """Print an ATO-compliant professional money transfer receipt."""
+    """Print an ATO-compliant money transfer receipt."""
     width = 68
     
     def line(content: str = "", center=False):
@@ -427,7 +427,7 @@ def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, a
             print("╟" + "─" * (width-2) + "╢")
 
     print("\n" + "╔" + "══════════════════════════════════════════════════════════════════" + "╗")
-    line("HEDERA PROFESSIONAL TRANSACTION RECORD", center=True)
+    line("HEDERA TRANSACTION RECORD", center=True)
     divider(True)
     
     timestamp = res.timestamp or time.strftime("%Y-%m-%d %H:%M:%S")
@@ -444,28 +444,36 @@ def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, a
     amount_out = res.amount_out_raw / (10**to_decimals)
     
     line(f"TOTAL SENT:     {amount_in:18.8f} {from_token}")
-    line(f"TOTAL RECEIVED: {amount_out:18.8f} {to_token}")
+    line(f"ANTICIPATED:    {amount_out:18.8f} {to_token}")
     divider()
     
-    # Rate Math: Already fixed by using human-readable amounts
-    actual_quoted_rate = amount_out / amount_in if amount_in > 0 else 0
-    actual_inv_quoted = 1.0 / actual_quoted_rate if actual_quoted_rate > 0 else 0
+    # Rate Math: Gross vs Net (Phase 33)
+    decimal_adj = 10**(from_decimals - to_decimals)
+    actual_net_rate = amount_out / amount_in if amount_in > 0 else 0
     
-    line(f"Quoted Rate:    {actual_quoted_rate:18.8f} {to_token}/{from_token}")
-    line(f"                {actual_inv_quoted:18.8f} {from_token}/{to_token}")
+    # Infer Gross (Market) rate by adding back LP fee percentage
+    # res.lp_fee_amount is in 'from_token'
+    fee_pct = (res.lp_fee_amount / amount_in) if amount_in > 0 else 0
+    gross_rate = actual_net_rate / (1 - fee_pct) if (0 < fee_pct < 1) else actual_net_rate
+    
+    # Labels swapped as per user request: "wrong way round"
+    # User example: 10.9 HBAR/USDC -> wants USDC/HBAR
+    line(f"Market Swap Rate: {gross_rate:18.8f} {from_token}/{to_token}")
+    
+    # 2. Net Effective Rate (Final, after everything)
+    line(f"Net Effective:    {actual_net_rate:18.8f} {from_token}/{to_token}")
+    
+    # Inverse for convenience
+    inv_net = 1.0 / actual_net_rate if actual_net_rate > 0 else 0
+    line(f"                  {inv_net:18.8f} {to_token}/{from_token}")
     
     divider()
     
-    # Effective Rate
-    if res.effective_rate > 0 and res.tx_hash != "SIMULATED":
-         # Correct for decimals: (raw_out/raw_in) * 10^(from-to)
-         decimal_adj = 10**(from_decimals - to_decimals)
-         adj_eff_rate = res.effective_rate * decimal_adj
-         adj_inv_eff = 1.0 / adj_eff_rate if adj_eff_rate > 0 else 0
-         line(f"Effective Rate: {adj_eff_rate:18.8f} {to_token}/{from_token}")
-         line(f"                {adj_inv_eff:18.8f} {from_token}/{to_token}")
+    # Effective Rate Details (Redundant with above but preserving structure)
+    if res.tx_hash != "SIMULATED":
+         line(f"Consensus Status: [ FINALIZED ]")
     else:
-         line(f"Effective Rate: [ Market Price Finalized at Consensus ]")
+         line(f"Consensus Status: [ SIMULATED - MARKET ESTIMATE ]")
         
     divider()
     
@@ -495,7 +503,8 @@ def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, a
          
     if total_val_usd > 0 and res.gas_cost_usd > 0:
         gas_pct = (res.gas_cost_usd / total_val_usd) * 100
-        line(f"Gas Cost %:     {gas_pct:.4f}% of Total Value")
+        # Phase 33: Align percentage with USD column
+        line(f"Gas Cost %:      {gas_pct:17.4f}% of Total Value")
     
     # Explain HBAR net deduction if applicable
     if to_token.upper() == "HBAR":
@@ -510,13 +519,14 @@ def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, a
         line(f"CONSENSUS HASH:")
         line(f"{res.tx_hash[:32]}")
         line(f"{res.tx_hash[32:]}")
-        divider()
-        line(f"VIEW ON HASHSCAN (TRANS. ID):")
-        line(f"https://hashscan.io/mainnet/transaction/{res.tx_hash}")
     else:
         line(f"CONSENSUS HASH: [ SIMULATED - NO ON-CHAIN RECORD ]")
         
-    print("╚" + "══════════════════════════════════════════════════════════════════" + "╝\n")
+    print("╚" + "══════════════════════════════════════════════════════════════════" + "╝")
+    
+    if res.tx_hash != "SIMULATED" and res.tx_hash:
+        print(f"\n🔗 VIEW ON HASHSCAN (TRANS. ID):")
+        print(f"   https://hashscan.io/mainnet/transaction/{res.tx_hash}\n")
 
 def handle_swap(req: dict, router: PacmanVariantRouter, executor: PacmanExecutor):
     """Orchestrate the swap flow."""
