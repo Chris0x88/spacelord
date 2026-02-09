@@ -64,6 +64,10 @@ class ExecutionResult:
     gas_cost_usd: float = 0.0
     hbar_usd_price: float = 0.0
     
+    # Fee Transparency
+    lp_fee_amount: float = 0.0
+    lp_fee_token: str = ""
+    
     def to_dict(self) -> Dict:
         return {
             "success": self.success,
@@ -83,7 +87,9 @@ class ExecutionResult:
             "gas_offered": self.gas_offered,
             "account_id": self.account_id,
             "gas_cost_usd": self.gas_cost_usd,
-            "hbar_usd_price": self.hbar_usd_price
+            "hbar_usd_price": self.hbar_usd_price,
+            "lp_fee_amount": self.lp_fee_amount,
+            "lp_fee_token": self.lp_fee_token
         }
 
 class PacmanExecutor:
@@ -302,6 +308,14 @@ class PacmanExecutor:
             # Identify Engine A (Standard) vs Engine B (Native HBAR)
             is_native_hbar = (step.from_token.upper() in ["HBAR", "0.0.0"])
             
+            # Fee Calculation (Transparency)
+            # Fee is taken from input amount: amount_in * (fee_bps / 10000)
+            fee_percent = fee_bps / 10000.0
+            lp_fee_raw = int(amount_raw * fee_percent)
+            decimals = self._get_token_decimals(step.from_token)
+            lp_fee_val = lp_fee_raw / (10**decimals)
+            lp_fee_token_symbol = step.from_token
+            
             # Get Quote for rate calculations
             if mode == "exact_in":
                 # Engine will need amount_raw
@@ -317,6 +331,9 @@ class PacmanExecutor:
                 amount_out_expected = amount_raw
 
             if simulate:
+                # Realistic Gas Est. (Investigation Phase 28)
+                # Simple swap ~120k gas, Multicall ~170k. Let's use 150k avg.
+                sim_gas_used = 150_000 
                 return ExecutionResult(
                     success=True, 
                     tx_hash="SIMULATED", 
@@ -326,7 +343,12 @@ class PacmanExecutor:
                     quoted_rate=quoted_rate,
                     effective_rate=quoted_rate, # No slippage/gas actuals in sim
                     gas_offered=1_000_000,
-                    account_id=self.hedera_account_id
+                    gas_used=sim_gas_used,
+                    gas_price_hbar=0.00000085, # approx 85 Gwei
+                    gas_cost_hbar=sim_gas_used * 0.00000085, # ~0.1275 HBAR
+                    account_id=self.hedera_account_id,
+                    lp_fee_amount=lp_fee_val,
+                    lp_fee_token=lp_fee_token_symbol
                 )
             
             # Real execution
@@ -371,6 +393,22 @@ class PacmanExecutor:
                 else:
                     tx_hash = self.client.swap_exact_output(from_token_id, to_token_id, amount_raw, max_in, fee_bps)
             
+            # Wait for receipt to get actual gas cost (Phase 29: On-Chain Verification)
+            gas_cost_hbar = 0.0
+            gas_used = 0
+            if not simulate:
+                try:
+                    print(f"   ⏳ Waiting for on-chain confirmation...")
+                    receipt = self.client.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+                    gas_used = receipt['gasUsed']
+                    effective_gas_price = receipt.get('effectiveGasPrice', self.client.w3.eth.gas_price)
+                    
+                    # Cost in HBAR = (Gas Used * Price in Tinybar) / 100,000,000
+                    gas_cost_hbar = (gas_used * effective_gas_price) / 100_000_000.0
+                    print(f"   ✅ Confirmed! Cost: {gas_cost_hbar:.8f} HBAR ({gas_used} gas)")
+                except Exception as e:
+                    print(f"   ⚠️ Could not fetch receipt stats: {e}")
+            
             return ExecutionResult(
                 success=True, 
                 tx_hash=tx_hash, 
@@ -378,8 +416,13 @@ class PacmanExecutor:
                 amount_in_raw=amount_in_expected,
                 amount_out_raw=amount_out_expected,
                 quoted_rate=quoted_rate,
-                gas_offered=1_000_000,
-                account_id=self.hedera_account_id
+                effective_rate=quoted_rate,
+                gas_offered=sim_gas_used if simulate else 1_000_000,
+                gas_used=sim_gas_used if simulate else gas_used,
+                gas_cost_hbar=sim_gas_used * 0.00000085 if simulate else gas_cost_hbar,
+                account_id=self.hedera_account_id,
+                lp_fee_amount=lp_fee_val,
+                lp_fee_token=lp_fee_token_symbol
             )
         except Exception as e:
             return ExecutionResult(success=False, error=str(e))

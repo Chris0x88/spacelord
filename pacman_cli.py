@@ -355,12 +355,33 @@ def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, a
         
     divider()
     
+    # Manufacturer/Protocol Fees
+    if res.lp_fee_amount > 0:
+        line("REF. FEES:")
+        # Identify fee tier percentage (approximate reverse calc or just standard display if store)
+        # We stored the raw amount, we can infer %, or just display amount.
+        # Let's just display the Amount for now as "Liquidity Fee".
+        line(f"Liquidity Fee:  {res.lp_fee_amount:18.8f} {res.lp_fee_token}")
+    
     # Gas & Reporting Metrics
-    line(f"Gas Limit:      {res.gas_offered:18,} units")
-    line(f"Gas Consumed:   {res.gas_used:18,} units")
+    line(f"Network Gas:    {res.gas_cost_hbar:18.8f} HBAR")
+    line(f"Gas Value:      ${res.gas_cost_usd:18.4f} USD")
     line(f"HBAR Price:     ${res.hbar_usd_price:18.4f} USD")
-    line(f"Network Fee:    {res.gas_cost_hbar:18.8f} HBAR")
-    line(f"Fee Value:      ${res.gas_cost_usd:18.4f} USD")
+    
+    # Gas Context (Phase 29)
+    total_val_usd = 0.0
+    if from_token.upper() in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:
+         total_val_usd = amount_in * res.hbar_usd_price
+    elif to_token.upper() in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:
+         total_val_usd = amount_out * res.hbar_usd_price
+    elif "USDC" in from_token.upper():
+         total_val_usd = amount_in
+    elif "USDC" in to_token.upper():
+         total_val_usd = amount_out
+         
+    if total_val_usd > 0 and res.gas_cost_usd > 0:
+        gas_pct = (res.gas_cost_usd / total_val_usd) * 100
+        line(f"Gas Cost %:     {gas_pct:.4f}% of Total Value")
     
     # Explain HBAR net deduction if applicable
     if to_token.upper() == "HBAR":
