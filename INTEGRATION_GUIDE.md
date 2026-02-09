@@ -5,7 +5,8 @@ Pacman is designed to be "Agent-First" software. This guide outlines how to inte
 ## 1. Integration Patterns
 
 ### A. The "Black Box" CLI Pattern (Lowest Friction)
-Most agentic frameworks (like OpenClaw) can interact with Pacman simply by executing shell commands.
+Most agentic frameworks (like OpenClaw) can interact with Pacman simply by executing shell commands. Security wise, this is loose! 
+ Security wise, this is loose! 
 - **Workflow**: Agent generates an NL string -> Calls `python3 pacman_cli.py "[string]"` -> Parses standard output.
 - **Example**:
   ```bash
