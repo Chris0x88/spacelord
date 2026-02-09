@@ -58,7 +58,8 @@ class PacmanConfig:
                 for line in f:
                     if '=' in line and not line.startswith('#'):
                         key, value = line.strip().split('=', 1)
-                        os.environ[key] = value
+                        if key not in os.environ:
+                            os.environ[key] = value
         
         config = cls()
         
