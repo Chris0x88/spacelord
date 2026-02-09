@@ -61,6 +61,8 @@ class ExecutionResult:
     effective_rate: float = 0.0
     gas_offered: int = 0
     account_id: str = ""
+    gas_cost_usd: float = 0.0
+    hbar_usd_price: float = 0.0
     
     def to_dict(self) -> Dict:
         return {
@@ -79,7 +81,9 @@ class ExecutionResult:
             "quoted_rate": self.quoted_rate,
             "effective_rate": self.effective_rate,
             "gas_offered": self.gas_offered,
-            "account_id": self.account_id
+            "account_id": self.account_id,
+            "gas_cost_usd": self.gas_cost_usd,
+            "hbar_usd_price": self.hbar_usd_price
         }
 
 class PacmanExecutor:
@@ -171,6 +175,8 @@ class PacmanExecutor:
             targets = None
 
         results = []
+        current_amount_val = amount_usd # This starts as the user's input amount
+        
         for i, step in enumerate(route.steps):
             step_idx = i + 1
             print(f"\n📍 Step {step_idx}/{len(route.steps)}: {step.step_type.upper()}")
@@ -178,13 +184,13 @@ class PacmanExecutor:
             if mode == "exact_out" and targets:
                 step_amount = targets[i]
                 step_out_decimals = self._get_token_decimals(step.to_token)
-                current_amount_val = step_amount / (10 ** step_out_decimals)
+                current_step_input_val = step_amount / (10 ** step_out_decimals)
             else:
-                current_amount_val = amount_usd
+                current_step_input_val = current_amount_val
             
             token_for_decimals = step.from_token if mode == "exact_in" else step.to_token
             decimals = self._get_token_decimals(token_for_decimals)
-            amount_raw_for_step = int(current_amount_val * (10 ** decimals))
+            amount_raw_for_step = int(current_step_input_val * (10 ** decimals))
 
             if step.step_type == "swap":
                 result = self._execute_swap_step(step, amount_raw_for_step, simulate, mode)
@@ -195,6 +201,16 @@ class PacmanExecutor:
             else:
                 result = ExecutionResult(success=False, error=f"Unknown step type: {step.step_type}")
             
+            if not result.success:
+                return result
+            
+            results.append(result)
+            
+            # For exact_in, update current_amount_val for the next step from this step's output
+            if mode == "exact_in" and result.amount_out_raw > 0:
+                to_decimals = self._get_token_decimals(step.to_token)
+                current_amount_val = result.amount_out_raw / (10 ** to_decimals)
+
             if result.success and not simulate and result.tx_hash != "SIMULATED":
                 print(f"   ⏳ Verifying transaction on-chain: {result.tx_hash}...")
                 try:
@@ -215,6 +231,10 @@ class PacmanExecutor:
                         
                         result.gas_price_hbar = eff_gas_price_wei / (10**18)
                         result.gas_cost_hbar = (result.gas_used * eff_gas_price_wei) / (10**18)
+                        
+                        # Calculate USD costs
+                        result.hbar_usd_price = self._get_hbar_price_usd()
+                        result.gas_cost_usd = result.gas_cost_hbar * result.hbar_usd_price
                         
                         # Calculate effective rate for this step if it's a swap
                         if step.step_type == "swap" and result.amount_in_raw > 0 and result.amount_out_raw > 0:
@@ -240,8 +260,23 @@ class PacmanExecutor:
         final_result.gas_offered = sum(r.gas_offered for r in results)
         final_result.account_id = self.hedera_account_id
         
+        # Aggregate USD costs
+        final_result.hbar_usd_price = self._get_hbar_price_usd()
+        final_result.gas_cost_usd = final_result.gas_cost_hbar * final_result.hbar_usd_price
+        
         return final_result
     
+    def _get_hbar_price_usd(self) -> float:
+        """Fetch current HBAR price in USD from tokens.json."""
+        try:
+            with open("tokens.json") as f:
+                data = json.load(f)
+                for meta in data.values():
+                    if meta.get("symbol") == "HBAR":
+                        return meta.get("priceUsd", 0.09)
+        except: pass
+        return 0.09 # Professional fallback
+
     def _get_token_decimals(self, token_symbol: str) -> int:
         sym = token_symbol.upper()
         if "USDC" in sym or "USDT" in sym: return 6

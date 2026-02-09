@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-02-09 23:16:53",
+  "mode": "SIMULATION",
+  "route": {
+    "from": "HBAR",
+    "to": "USDC",
+    "steps": 1,
+    "total_cost_hbar": 1.6611990863116446,
+    "hashpack_visible": true
+  },
+  "amount_token": 1.0,
+  "amount_usd": 0.09,
+  "gas_used": 0,
+  "gas_cost_hbar": 0.0,
+  "results": [
+    {
+      "success": true,
+      "tx_hash": "SIMULATED",
+      "gas_used": 0,
+      "gas_price_hbar": 0.0,
+      "gas_cost_hbar": 0.0,
+      "error": "",
+      "block_number": 0,
+      "timestamp": "2026-02-09 23:16:53",
+      "steps_completed": 0,
+      "total_steps": 0,
+      "amount_in_raw": 100000000,
+      "amount_out_raw": 89450,
+      "quoted_rate": 0.0008945,
+      "effective_rate": 0.0008945,
+      "gas_offered": 1000000,
+      "account_id": "0.0.12345",
+      "gas_cost_usd": 0.0,
+      "hbar_usd_price": 0.0
+    }
+  ],
+  "success": true,
+  "account": "0x1Be31A94361a391bBaFB2a4CCd704F57dc04d4bb",
+  "network": "mainnet"
+}

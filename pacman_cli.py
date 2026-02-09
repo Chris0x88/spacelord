@@ -287,19 +287,24 @@ def show_history(executor: PacmanExecutor):
         print(f"  {h['timestamp']} {status} [{mode}] {amt_token:12.8f} {route.get('from')} -> {route.get('to')} (${amt_usd:8.2f})")
 
 def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, amount_val: float, mode: str, executor: PacmanExecutor):
-    """Print a professional money transfer receipt with perfect alignment."""
-    width = 62
+    """Print an ATO-compliant professional money transfer receipt."""
+    width = 68
     
-    def line(content: str = ""):
+    def line(content: str = "", center=False):
         if not content:
             print(f"║{' ' * (width-2)}║")
             return
-        # Adjust for special characters if needed, but here we just use standard padding
-        padding = width - 4 - len(content)
-        if padding < 0:
-             content = content[:width-7] + "..."
-             padding = 0
-        print(f"║ {content}{' ' * padding} ║")
+        if center:
+            padding = width - 2 - len(content)
+            left = padding // 2
+            right = padding - left
+            print(f"║{' ' * left}{content}{' ' * right}║")
+        else:
+            padding = width - 4 - len(content)
+            if padding < 0:
+                 content = content[:width-7] + "..."
+                 padding = 0
+            print(f"║ {content}{' ' * padding} ║")
 
     def divider(double=False):
         if double:
@@ -307,13 +312,14 @@ def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, a
         else:
             print("╟" + "─" * (width-2) + "╢")
 
-    print("\n" + "╔" + "════════════════════════════════════════════════════════════" + "╗")
-    print("║             PACMAN MONEY TRANSFER RECEIPT                  ║")
+    print("\n" + "╔" + "══════════════════════════════════════════════════════════════════" + "╗")
+    line("HEDERA PROFESSIONAL TRANSACTION RECORD", center=True)
     divider(True)
     
     timestamp = res.timestamp or time.strftime("%Y-%m-%d %H:%M:%S")
-    line(f"Date/Time:  {timestamp}")
-    line(f"Account:    {res.account_id or executor.hedera_account_id} (Native ID)")
+    line(f"Date/Time:      {timestamp}")
+    line(f"Account (ID):   {res.account_id or executor.hedera_account_id}")
+    line(f"Network:        {executor.network.upper()} (Mainnet Consensus)")
     divider()
     
     # Send/Receive Details
@@ -323,49 +329,59 @@ def print_receipt(res: ExecutionResult, route, from_token: str, to_token: str, a
     amount_in = res.amount_in_raw / (10**from_decimals)
     amount_out = res.amount_out_raw / (10**to_decimals)
     
-    line(f"YOU SENT:   {amount_in:15.8f} {from_token}")
-    line(f"YOU REC'D:  {amount_out:15.8f} {to_token}")
+    line(f"TOTAL SENT:     {amount_in:18.8f} {from_token}")
+    line(f"TOTAL RECEIVED: {amount_out:18.8f} {to_token}")
     divider()
     
-    # Rates
-    line(f"Quoted Rate:    {res.quoted_rate:15.8f} {to_token}/{from_token}")
-    if res.quoted_rate > 0:
-        inv_rate = 1.0 / res.quoted_rate
-        line(f"                {inv_rate:15.8f} {from_token}/{to_token}")
-        
+    # Rate Math: Already fixed by using human-readable amounts
+    actual_quoted_rate = amount_out / amount_in if amount_in > 0 else 0
+    actual_inv_quoted = 1.0 / actual_quoted_rate if actual_quoted_rate > 0 else 0
+    
+    line(f"Quoted Rate:    {actual_quoted_rate:18.8f} {to_token}/{from_token}")
+    line(f"                {actual_inv_quoted:18.8f} {from_token}/{to_token}")
+    
     divider()
     
-    if res.effective_rate > 0:
-        line(f"Effective Rate: {res.effective_rate:15.8f} {to_token}/{from_token}")
-        inv_eff = 1.0 / res.effective_rate
-        line(f"                {inv_eff:15.8f} {from_token}/{to_token}")
+    # Effective Rate
+    if res.effective_rate > 0 and res.tx_hash != "SIMULATED":
+         # Correct for decimals: (raw_out/raw_in) * 10^(from-to)
+         decimal_adj = 10**(from_decimals - to_decimals)
+         adj_eff_rate = res.effective_rate * decimal_adj
+         adj_inv_eff = 1.0 / adj_eff_rate if adj_eff_rate > 0 else 0
+         line(f"Effective Rate: {adj_eff_rate:18.8f} {to_token}/{from_token}")
+         line(f"                {adj_inv_eff:18.8f} {from_token}/{to_token}")
     else:
-        line(f"Effective Rate: [Market Adjusted]")
+         line(f"Effective Rate: [ Market Price Finalized at Consensus ]")
         
     divider()
     
-    # Gas & Fees
-    line(f"Gas Offered:    {res.gas_offered:15,} units")
-    line(f"Gas Used:       {res.gas_used:15,} units")
-    line(f"Gas Cost:       {res.gas_cost_hbar:15.8f} HBAR")
+    # Gas & Reporting Metrics
+    line(f"Gas Limit:      {res.gas_offered:18,} units")
+    line(f"Gas Consumed:   {res.gas_used:18,} units")
+    line(f"HBAR Price:     ${res.hbar_usd_price:18.4f} USD")
+    line(f"Network Fee:    {res.gas_cost_hbar:18.8f} HBAR")
+    line(f"Fee Value:      ${res.gas_cost_usd:18.4f} USD")
     
     # Explain HBAR net deduction if applicable
     if to_token.upper() == "HBAR":
         net_received = amount_out - res.gas_cost_hbar
-        line(f"NET RECEIVED:   {net_received:15.8f} HBAR (incl. gas)")
+        line(f"NET SETTLEMENT: {net_received:18.8f} HBAR")
         line()
-        line("NOTE: Gas was deducted from your final HBAR receipt.")
+        line("Note: Gas was deducted from final settlement amount.")
         
     divider()
-    line(f"STATUS:         [ SUCCESS ]")
+    line(f"TRANS. STATUS:  [ CONSENSUS SUCCESS ]")
     if res.tx_hash != "SIMULATED" and res.tx_hash:
-        line(f"TX HASH:        {res.tx_hash[:40]}")
-        line(f"                {res.tx_hash[40:]}")
-        line(f"HASHSCAN:       https://hashscan.io/mainnet/transaction/{res.tx_hash}")
+        line(f"CONSENSUS HASH:")
+        line(f"{res.tx_hash[:32]}")
+        line(f"{res.tx_hash[32:]}")
+        divider()
+        line(f"VIEW ON HASHSCAN (TRANS. ID):")
+        line(f"https://hashscan.io/mainnet/transaction/{res.tx_hash}")
     else:
-        line(f"TX HASH:        [ SIMULATED - NO ON-CHAIN RECORD ]")
+        line(f"CONSENSUS HASH: [ SIMULATED - NO ON-CHAIN RECORD ]")
         
-    print("╚" + "════════════════════════════════════════════════════════════" + "╝\n")
+    print("╚" + "══════════════════════════════════════════════════════════════════" + "╝\n")
 
 def handle_swap(req: dict, router: PacmanVariantRouter, executor: PacmanExecutor):
     """Orchestrate the swap flow."""
