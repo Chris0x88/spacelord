@@ -19,7 +19,11 @@ def setup_logger(name: str, log_file: str = "pacman.log", level=logging.INFO):
 
     # Console Handler (cleaner for CLI)
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(logging.Formatter('%(message)s'))
+    # If level is DEBUG, show more detail in console
+    if level == logging.DEBUG:
+        console_handler.setFormatter(logging.Formatter('\033[90m[DEBUG] %(message)s\033[0m'))
+    else:
+        console_handler.setFormatter(logging.Formatter('%(message)s'))
 
     logger = logging.getLogger(name)
     logger.setLevel(level)
@@ -30,6 +34,17 @@ def setup_logger(name: str, log_file: str = "pacman.log", level=logging.INFO):
         logger.addHandler(console_handler)
 
     return logger
+
+def set_verbose(enabled: bool = True):
+    """Dynamically switch to verbose logging."""
+    lvl = logging.DEBUG if enabled else logging.INFO
+    logger.setLevel(lvl)
+    for h in logger.handlers:
+        if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
+            if enabled:
+                h.setFormatter(logging.Formatter('\033[90m[DEBUG] %(message)s\033[0m'))
+            else:
+                h.setFormatter(logging.Formatter('%(message)s'))
 
 # Primary app logger
 logger = setup_logger("pacman")

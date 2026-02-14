@@ -121,6 +121,8 @@ class PacmanExecutor:
         self.hedera_account_id = config.hedera_account_id or "Unknown"
         
         logger.info(f"✅ PacmanExecutor initialized")
+        logger.debug(f"   RPC Provider:   {self.rpc_url}")
+        logger.debug(f"   Chain ID:      {self.chain_id}")
         logger.info(f"   Hedera Account: {self.hedera_account_id} (Native ID)")
         logger.info(f"   EVM Address:    {self.eoa} (Ethereum Mirror)")
         logger.info(f"   Network:        {self.network}")
@@ -155,6 +157,7 @@ class PacmanExecutor:
         except Exception as e:
             logger.error(f"Error: Could not load tokens.json for balance check: {e}")
             
+        logger.debug(f"Fetched {len(balances)} non-zero balances.")
         return balances
 
     def _get_token_id(self, symbol: str) -> Optional[str]:
@@ -262,6 +265,8 @@ class PacmanExecutor:
         """Process a single step in the route."""
         step_idx = i + 1
         logger.info(f"\n📍 Step {step_idx}/{len(route.steps)}: {step.step_type.upper()}")
+        logger.debug(f"   From: {step.from_token} -> To: {step.to_token}")
+        logger.debug(f"   Contract: {getattr(step, 'contract', 'N/A')}")
         
         if mode == "exact_out" and targets:
             step_amount = targets[i]

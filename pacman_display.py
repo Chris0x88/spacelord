@@ -113,6 +113,7 @@ def show_help():
         ("account",                  "Wallet & network info"),
         ("tokens",                   "Supported token list"),
         ("history",                  "Transaction history"),
+        ("verbose",                  "Toggle debug logging"),
         ("help",                     "This menu"),
         ("exit",                     "Quit Pacman"),
     ]

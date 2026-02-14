@@ -13,6 +13,7 @@ This class is the "Public API" of the Pacman library.
 """
 
 from typing import Optional, Dict, List, Any
+from pacman_logger import logger, set_verbose
 from pacman_config import PacmanConfig
 from pacman_errors import PacmanError, ConfigurationError
 from pacman_variant_router import PacmanVariantRouter, VariantRoute
@@ -34,11 +35,30 @@ class PacmanApp:
         # 1. Load Configuration
         self.config = config or PacmanConfig.from_env()
 
-        # 2. Initialize Components
+        # 2. Set Logging Level
+        if self.config.verbose_mode:
+            set_verbose(True)
+            logger.debug("Verbose Mode Enabled")
+
+        # 3. Initialize Components
         self.router = PacmanVariantRouter()
 
         # Executor is lazy-loaded to allow lightweight usage (e.g. quote only)
         self._executor: Optional[PacmanExecutor] = None
+
+    def toggle_verbose(self, enabled: Optional[bool] = None) -> bool:
+        """
+        Toggle or set verbose logging mode.
+        
+        Args:
+            enabled: Specific state to set, or None to toggle.
+        """
+        if enabled is None:
+            enabled = not self.config.verbose_mode
+        
+        self.config.verbose_mode = enabled
+        set_verbose(enabled)
+        return enabled
 
         # Load static data
         try:

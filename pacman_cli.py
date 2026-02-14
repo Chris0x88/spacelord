@@ -144,6 +144,27 @@ def cmd_receive(app, args):
             print(f"  {C.ERR}✗{C.R} Association failed.")
     print()
 
+    print()
+    print()
+
+def cmd_verbose(app, args):
+    """Toggle or set verbose mode."""
+    if not args:
+        enabled = app.toggle_verbose()
+    else:
+        val = args[0].lower()
+        if val in ["on", "true", "1"]:
+            enabled = app.toggle_verbose(True)
+        elif val in ["off", "false", "0"]:
+            enabled = app.toggle_verbose(False)
+        else:
+            print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}verbose [on/off]{C.R}")
+            return
+    
+    from pacman_display import C
+    status = f"{C.OK}ON{C.R}" if enabled else f"{C.WARN}OFF{C.R}"
+    print(f"  Verbose Mode: {status}")
+
 def handle_natural_language(app, text):
     """Process NLP commands like 'swap 10 HBAR for USDC'."""
     req = translate(text)
@@ -211,7 +232,8 @@ COMMANDS = {
     "balance": cmd_balance,
     "history": cmd_history,
     "send": cmd_send,
-    "receive": cmd_receive
+    "receive": cmd_receive,
+    "verbose": cmd_verbose
 }
 
 def process_input(app, text):
@@ -240,12 +262,22 @@ def process_input(app, text):
 # ---------------------------------------------------------------------------
 
 def main():
+    # Verbose Mode Detection (CLI Override)
+    verbose_requested = False
+    if "--verbose" in sys.argv or "-v" in sys.argv:
+        verbose_requested = True
+        if "--verbose" in sys.argv: sys.argv.remove("--verbose")
+        if "-v" in sys.argv: sys.argv.remove("-v")
+
     print(PACMAN_BANNER)
     print_security_warning()
 
     # Initialize App (Logic)
     try:
         app = PacmanApp()
+        if verbose_requested:
+            app.toggle_verbose(True)
+            
         print(f"\n  {C.BOLD}{C.ACCENT}System Online{C.R}")
     except ConfigurationError as e:
         print(f"  {C.ERR}✗{C.R} Config Error: {e}")

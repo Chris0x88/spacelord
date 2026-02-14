@@ -31,6 +31,7 @@ class PacmanConfig:
     simulate_mode: bool = True  # Start in simulation
     require_confirmation: bool = True  # Always ask before executing
     auto_record: bool = True  # Record all transactions
+    verbose_mode: bool = False  # Detailed logging
     
     # Hedera Accounts
     hedera_account_id: Optional[str] = None  # 0.0.xxx format
@@ -87,6 +88,7 @@ class PacmanConfig:
         # Execution mode
         config.simulate_mode = os.getenv("PACMAN_SIMULATE", "true").lower() == "true"
         config.require_confirmation = os.getenv("PACMAN_CONFIRM", "true").lower() == "true"
+        config.verbose_mode = os.getenv("PACMAN_VERBOSE", "false").lower() == "true"
         
         # Hedera account ID (for transaction records)
         config.hedera_account_id = os.getenv("HEDERA_ACCOUNT_ID")
@@ -163,6 +165,7 @@ PACMAN_MAX_SLIPPAGE=1.0
 # Execution mode
 PACMAN_SIMULATE=true
 PACMAN_CONFIRM=true
+PACMAN_VERBOSE=false
 """
     
     env_path = Path(__file__).parent / ".env.template"
