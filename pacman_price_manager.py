@@ -19,6 +19,14 @@ class PacmanPriceManager:
     
     The manager uses `pacman_data_raw.json` (SaucerSwap V2 live export) 
     as the sole source of truth for pricing.
+    
+    WHY: By relying on the raw pool data, we ensure that our pricing is always
+    synchronous with the routing graph. If a pool exists for routing, we have 
+    its current live price. This prevents "phantom routes" where we can 
+    route but can't price (or vice-versa).
+    
+    DATA FLOW:
+    refresh_data.py -> data/pacman_data_raw.json -> PacmanPriceManager
     """
 
     def __init__(self, data_file: str = "data/pacman_data_raw.json"):
@@ -74,7 +82,11 @@ class PacmanPriceManager:
                             continue
 
             # Resolve Native HBAR Price (from WHBAR 0.0.1456986)
+            # WHY: HBAR doesn't have its own "pool" on-chain; liquidity exists 
+            # exclusively against the wrapped version (WHBAR). We map WHBAR 
+            # price 1:1 to HBAR.
             self.hbar_price = self.prices.get("0.0.1456986", 0.0)
+            
             # If we didn't find the specific USDC pool, fall back to WHBAR's source
             if self.hbar_price > 0 and "0.0.0" not in self.sources:
                 self.sources["0.0.0"] = self.sources.get("0.0.1456986", "SaucerSwap V2")

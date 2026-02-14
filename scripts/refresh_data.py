@@ -10,63 +10,98 @@ import json
 import requests
 import sys
 import os
+import argparse
 from pathlib import Path
+
+# --- THE "WHY" ---
+# WHAT: This script fetches live pool data from SaucerSwap V2.
+# WHY: Pacman is a "data-led" agent. To find the best routes and prices, 
+# it needs a local map of liquidity. We download this "raw" data 
+# and then filter it to keep our routing graph lean and high-confidence.
+# 
+# CURATION: We only track pools involving tokens we "know" (in tokens.json). 
+# This prevents the router from selecting low-liquidity, high-slippage 
+# "garbage" pools and protects against API rate limits.
+# -----------------
 
 class C:
     R = "\033[0m"
     WARN = "\033[93m"
+    OK = "\033[92m"
+    BOLD = "\033[1m"
 
 POOLS_URL = "https://api.saucerswap.finance/v2/pools"
-RAW_DATA_FILE = Path(__file__).parent / "pacman_data_raw.json"
 
-def refresh():
-    print(f"Fetching fresh pool data from {POOLS_URL}...")
+# Robust absolute path resolution
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+RAW_DATA_FILE = DATA_DIR / "pacman_data_raw.json"
+TOKENS_FILE = DATA_DIR / "tokens.json"
+
+def refresh(full_fetch=False):
+    print(f"\n  {C.BOLD}🔄 Refreshing SaucerSwap V2 Data{C.R}")
+    print(f"  Source: {POOLS_URL}")
+    
     try:
-        # 1. Load Whitelist from tokens.json
-        tokens_file = Path(__file__).parent / "tokens.json"
+        # Ensure data directory exists
+        DATA_DIR.mkdir(exist_ok=True)
+
+        # 1. Load Curation Whitelist
+        # We only care about pools that have at least one token we officially recognize.
         whitelist = set()
-        if tokens_file.exists():
-            with open(tokens_file) as f:
+        if TOKENS_FILE.exists():
+            with open(TOKENS_FILE) as f:
                 tdata = json.load(f)
                 for item in tdata.values():
                     if "id" in item:
                         whitelist.add(item["id"])
                         
-        # Always include HBAR and WHBAR
+        # Always include HBAR and WHBAR in whitelist regardless of tokens.json
         whitelist.add("0.0.1456986") # WHBAR
         whitelist.add("0.0.0") # HBAR
 
-        # 2. Fetch all pools
+        # 2. Fetch all pools from SaucerSwap V2 API
+        # WARNING: This endpoint can be rate-limited. Do not loop it aggressively.
         try:
             response = requests.get(POOLS_URL, timeout=30)
             if response.status_code == 401:
-                print(f"  {C.WARN}⚠{C.R}  API access restricted (401). Using cached data.")
+                print(f"  {C.WARN}⚠{C.R} API access restricted (401). Using cached data.")
                 return
             response.raise_for_status()
             all_pools = response.json()
         except Exception as e:
-            print(f"  {C.WARN}⚠{C.R}  API fetch failed ({e}). Using cached data.")
+            print(f"  {C.WARN}⚠{C.R} API fetch failed ({e}). Protecting cached data.")
             return
         
-        # 3. Filter relevant pools
-        # Keep pool if EITHER token is in our whitelist
+        # 3. Filter or Backup
         relevant_pools = []
-        for pool in all_pools:
-            ta = pool.get("tokenA", {}).get("id")
-            tb = pool.get("tokenB", {}).get("id")
-            
-            if ta in whitelist or tb in whitelist:
-                relevant_pools.append(pool)
+        if full_fetch:
+            print(f"  {C.OK}✓{C.R} Full download requested. Skipping curation.")
+            relevant_pools = all_pools
+        else:
+            # Keep pool if EITHER token is in our curated whitelist
+            for pool in all_pools:
+                ta = pool.get("tokenA", {}).get("id")
+                tb = pool.get("tokenB", {}).get("id")
+                
+                if ta in whitelist or tb in whitelist:
+                    relevant_pools.append(pool)
         
-        # 4. Save
-        with open(RAW_DATA_FILE, "w") as f:
-            json.dump(relevant_pools, f, indent=2)
+        # 4. Save to Disk
+        # Only overwrite if we actually got data to save
+        if relevant_pools:
+            with open(RAW_DATA_FILE, "w") as f:
+                json.dump(relevant_pools, f, indent=2)
+            print(f"  {C.OK}✓{C.R} Saved {len(relevant_pools)} pools to {RAW_DATA_FILE}")
+        else:
+            print(f"  {C.WARN}⚠{C.R} No pools matched criteria. Source data preserved.")
             
-        print(f"Fetched {len(all_pools)} pools, saved {len(relevant_pools)} relevant to {RAW_DATA_FILE}")
-        
     except Exception as e:
-        print(f"⚠️  Fatal error in refresh: {e}")
-        # Don't exit, just let the app use old data if fetch fails
+        print(f"  {C.WARN}⚠{C.R} Fatal error in refresh: {e}")
 
 if __name__ == "__main__":
-    refresh()
+    parser = argparse.ArgumentParser(description="Refresh SaucerSwap V2 Data")
+    parser.add_argument("--full", action="store_true", help="Download all pools (skip curation)")
+    args = parser.parse_args()
+    
+    refresh(full_fetch=args.full)

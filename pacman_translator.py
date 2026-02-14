@@ -25,50 +25,35 @@ import re
 from pathlib import Path
 from typing import Optional, Dict
 
-TOKENS_FILE = Path(__file__).parent / "tokens.json"
+# --- PATH RESOLUTION ---
+# WHY: We use absolute paths to ensure the translator can find data regardless
+# of where the user runs the 'pacman' command from.
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+TOKENS_FILE = DATA_DIR / "tokens.json"
+ALIASES_FILE = DATA_DIR / "aliases.json"
 
-# Base legacy aliases to maintain compatibility and common naming
-ALIASES = {
-    "bitcoin": "WBTC_HTS",
-    "btc": "WBTC_HTS",
-    "wbtc": "WBTC_HTS",
-    "eth": "WETH_HTS",
-    "ether": "WETH_HTS",
-    "ethereum": "WETH_HTS",
-    "usd": "USDC",
-    "dollar": "USDC",
-    "dollars": "USDC",
-    "bucks": "USDC",
-    "stables": "USDC",
-    "saucerswap": "SAUCE",
-    "sauce": "SAUCE",
-    "tune": "JAM",
-    "tune.fm": "JAM",
-    "diamond": "CARAT",
-    "avalanche": "WAVAX_HTS",
-    "avax": "WAVAX_HTS",
-    "chainlink": "LINK_HTS",
-    "link": "LINK_HTS",
-    "headstarter": "HST",
-    "calaxy": "CLXY",
-    "bonzo": "BONZO",
-    "pack": "PACK",
-    "sats": "WBTC_HTS",
-    "hbar": "HBAR",
-    "hbarx": "HBARX",
-    "xsauce": "XSAUCE",
-    "wbtc_hts": "WBTC_HTS",
-    "wbtc_erc20": "WBTC_ERC20",
-    "weth_hts": "WETH_HTS",
-    "weth_erc20": "WETH_ERC20",
-    "hts_wbtc": "WBTC_HTS",
-    "erc20_wbtc": "WBTC_ERC20",
-    "hts_weth": "WETH_HTS",
-    "erc20_weth": "WETH_ERC20",
-}
+# Global Alias Map
+ALIASES: Dict[str, str] = {}
+
+def load_static_aliases():
+    """Load manually curated nicknames from aliases.json."""
+    if not ALIASES_FILE.exists():
+        return
+    try:
+        with open(ALIASES_FILE) as f:
+            data = json.load(f)
+            ALIASES.update({k.lower(): v for k, v in data.items()})
+    except Exception as e:
+        print(f"Warning: Failed to load static aliases: {e}")
 
 def load_dynamic_aliases():
-    """Load discovered tokens and add them to ALIASES."""
+    """
+    Load discovered tokens from tokens.json and add them to ALIASES.
+    
+    WHY: This ensures that even if a token isn't in aliases.json, 
+    the user can still use its Symbol or Name as a valid alias.
+    """
     if not TOKENS_FILE.exists():
         return
         
@@ -78,32 +63,36 @@ def load_dynamic_aliases():
             
         for canon, meta in tokens.items():
             token_id = meta.get("id")
-            if token_id == "0.0.1456986": # Skip WHBAR
+            # Skip internal WHBAR (0.0.1456986) to keep aliases focused on logic
+            if token_id == "0.0.1456986": 
                 continue
                 
-            # 1. Add canonical name itself (lowercase)
+            # 1. Add canonical name itself (e.g. "USDC")
             ALIASES[canon.lower()] = canon
             
-            # 2. Add pool symbol (lowercase)
-            sym = meta["symbol"].lower()
-            if sym not in ALIASES:
+            # 2. Add pool symbol (e.g. "usdc[hts]")
+            sym = meta.get("symbol", "").lower()
+            if sym and sym not in ALIASES:
                 ALIASES[sym] = canon
-            # Also stripped version (no [hts])
+                
+            # 3. Add cleaned symbol (e.g. "usdc_hts" or just "usdc")
             clean_sym = sym.replace("[hts]", "").replace("-", "_")
-            if clean_sym not in ALIASES:
+            if clean_sym and clean_sym not in ALIASES:
                 ALIASES[clean_sym] = canon
                 
-            # 3. Add full name (lowercase)
-            name = meta["name"].lower()
-            if name not in ALIASES:
+            # 4. Add full descriptive name
+            name = meta.get("name", "").lower()
+            if name and name not in ALIASES:
                 ALIASES[name] = canon
                 
-            # 4. Add token ID
-            ALIASES[meta["id"]] = canon
+            # 5. Add direct ID resolution
+            ALIASES[token_id] = canon
+            
     except Exception as e:
         print(f"Warning: Failed to load dynamic tokens: {e}")
 
-# Load 'em up
+# Initialization
+load_static_aliases()
 load_dynamic_aliases()
 
 

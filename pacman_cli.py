@@ -232,8 +232,8 @@ def _do_swap(app, req):
 
 COMMANDS = {
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
-    "tokens": cmd_tokens,
-    "sources": cmd_sources,
+    "tokens": cmd_tokens, "t": cmd_tokens,
+    "sources": cmd_sources, "source": cmd_sources, "s": cmd_sources,
     "price": cmd_price,
     "account": cmd_account,
     "balance": cmd_balance,

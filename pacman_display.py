@@ -231,17 +231,43 @@ def show_all_prices():
 
 
 def show_sources():
-    """Display the sources of all tracked prices."""
+    """
+    Display the sources of all tracked prices.
+    
+    WHY: Users need to know where price data originates (Contract ID) to verify 
+    authenticity and liquidity depth. This command bridges the raw SaucerSwap
+    pool data with human-readable token identities.
+    """
     from pacman_price_manager import price_manager
     price_manager.reload()
     
+    # Load metadata to map IDs back to Symbols/Names
+    try:
+        with open("data/tokens.json") as f:
+            tokens_data = json.load(f)
+    except Exception:
+        tokens_data = {}
+
     print(f"\n{C.BOLD}{C.TEXT}  PRICE SOURCES{C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
     
-    # Tokens (HBAR is included in price_manager.sources as 0.0.0)
+    # Header
+    print(f"  {C.MUTED}{'ID':15s}  {'SYMBOL':10s}  {'SOURCE'}{C.R}")
+    print(f"  {C.CHROME}{'─'*15}  {'─'*10}  {'─'*27}{C.R}")
+
+    # price_manager.sources is keyed by Token ID (0.0.xxx)
     for tid, source in sorted(price_manager.sources.items()):
-        if tid == "0.0.1456986": continue # skip redundant WHBAR
-        print(f"  {C.ACCENT}{tid:12s}{C.R} {C.MUTED}{source}{C.R}")
+        # skip redundant WHBAR (handled as HBAR 0.0.0 internally for display)
+        if tid == "0.0.1456986": continue 
+        
+        # Resolve symbol from tokens.json if possible
+        display_sym = "HBAR" if tid == "0.0.0" else "???"
+        for sym, meta in tokens_data.items():
+            if meta.get("id") == tid:
+                display_sym = meta.get("symbol", sym)
+                break
+                
+        print(f"  {C.MUTED}{tid:15s}{C.R}  {C.ACCENT}{display_sym:10s}{C.R}  {C.MUTED}{source}{C.R}")
     print()
 
 
@@ -385,7 +411,14 @@ def _show_all_balances(executor, price_manager):
 # ---------------------------------------------------------------------------
 
 def show_tokens():
-    """Display all supported tokens in a clean formatted table."""
+    """
+    Display all supported tokens in a clean formatted table.
+    
+    WHY: This is the curated "Market Map". It shows tokens that Pacman 
+    officially supports and has metadata for. It draws directly from 
+    data/tokens.json (Source of Truth) and integrates nicknames from 
+    the translator.
+    """
     print(f"\n{C.BOLD}{C.TEXT}  TOKENS{C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
 
@@ -394,53 +427,79 @@ def show_tokens():
         from pacman_variant_router import PacmanVariantRouter
 
         BLACKLIST = PacmanVariantRouter.BLACKLISTED_TOKENS
+        
+        # 1. Load the comprehensive token database (curated list)
         with open("data/tokens.json") as f:
             tokens_data = json.load(f)
 
+        # 2. Build reverse alias map (ID -> [nicknames])
+        # This lets us show "bitcoin" next to WBTC even if "bitcoin" isn't in tokens.json
         id_to_aliases = {}
-        id_to_aliases["0.0.0"] = {"aliases": ["hbar", "hbarx"], "sym": "HBAR", "name": "Hedera Native"}
-
         for alias, canon in ALIASES.items():
-            token_id = None
+            # Find the ID for this canonical name
+            target_id = None
             if canon in tokens_data:
-                token_id = tokens_data[canon].get("id")
+                target_id = tokens_data[canon].get("id")
             elif canon == "HBAR":
-                token_id = "0.0.0"
-            if token_id:
-                if token_id in BLACKLIST:
-                    continue
-                if token_id not in id_to_aliases:
-                    id_to_aliases[token_id] = {"aliases": [], "sym": canon, "name": ""}
-                id_to_aliases[token_id]["aliases"].append(alias)
+                target_id = "0.0.0"
+                
+            if target_id:
+                if target_id not in id_to_aliases:
+                    id_to_aliases[target_id] = []
+                # Add to aliases if it's not the raw ID
+                if alias.lower() != target_id.lower():
+                    id_to_aliases[target_id].append(alias)
 
+        # 3. Define display priority
         PRIORITY_SYMS = ["USDC", "WBTC", "WETH", "QNT", "LINK", "AVAX", "SAUCE", "XSAUCE", "BONZO"]
 
         def sort_key(item):
-            tid, data = item
-            if tid == "0.0.0": return (0, "")
-            meta = next((m for m in tokens_data.values() if m.get("id") == tid), {})
-            sym = meta.get("symbol", data["sym"])
+            sym, meta = item
+            tid = meta.get("id", "")
+            if tid == "0.0.0" or sym == "HBAR": return (0, "")
+            
+            upper_sym = sym.upper()
             for i, psym in enumerate(PRIORITY_SYMS):
-                if psym in sym.upper():
-                    return (1, i, sym)
-            return (2, sym)
+                if psym in upper_sym:
+                    return (1, i, upper_sym)
+            return (2, upper_sym)
 
-        # Header
-        print(f"  {C.MUTED}{'ID':15s}  {'SYMBOL':10s}  {'NAME':20s}  ALIASES{C.R}")
-        print(f"  {C.CHROME}{'─'*15}  {'─'*10}  {'─'*20}  {'─'*20}{C.R}")
+        # Header - Increased width for ALIASES
+        print(f"  {C.MUTED}{'ID':15s}  {'SYMBOL':10s}  {'NAME':20s}  {'ALIASES'}{C.R}")
+        print(f"  {C.CHROME}{'─'*15}  {'─'*10}  {'─'*20}  {'─'*40}{C.R}")
 
-        sorted_tokens = sorted(id_to_aliases.items(), key=sort_key)
-        for tid, data in sorted_tokens:
-            meta = next((m for m in tokens_data.values() if m.get("id") == tid), {})
-            sym = meta.get("symbol", data["sym"])
-            name = meta.get("name", "Hedera Native" if tid == "0.0.0" else "Unknown")
-            alias_str = ", ".join(sorted(list(set(data["aliases"]))))[:28]
+        # 4. Iterate over tokens.json (The real source of truth)
+        # Add HBAR manually as it's often not in the JSON but is the core asset
+        display_list = list(tokens_data.items())
+        if not any(meta.get("id") == "0.0.0" for _, meta in display_list):
+             display_list.append(("HBAR", {"id": "0.0.0", "symbol": "HBAR", "name": "Hedera Native"}))
+
+        sorted_tokens = sorted(display_list, key=sort_key)
+        
+        for sym_key, meta in sorted_tokens:
+            tid = meta.get("id", "Unknown")
+            
+            # Skip WHBAR (0.0.1456986) to keep UI clean - users only care about HBAR 0.0.0
+            if tid == "0.0.1456986": continue
+            
+            # Skip blacklisted tokens unless they are HBAR
+            if tid in BLACKLIST and tid != "0.0.0":
+                continue
+                
+            sym = meta.get("symbol", sym_key)
+            name = meta.get("name", "Unknown")
+            
+            # Fetch nicknames from our reverse map
+            aliases = id_to_aliases.get(tid, [])
+            alias_str = ", ".join(sorted(list(set(aliases))))
 
             print(f"  {C.MUTED}{tid:15s}{C.R}  {C.ACCENT}{sym:10s}{C.R}  {C.TEXT}{name[:20]:20s}{C.R}  {C.MUTED}{alias_str}{C.R}")
 
         print()
     except Exception as e:
         print(f"  {C.ERR}✗{C.R} Failed to list tokens: {e}")
+        import traceback
+        # print(traceback.format_exc()) # Debug only
 
 
 # ---------------------------------------------------------------------------
