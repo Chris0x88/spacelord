@@ -37,6 +37,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 RAW_DATA_FILE = DATA_DIR / "pacman_data_raw.json"
 TOKENS_FILE = DATA_DIR / "tokens.json"
+POOLS_REGISTRY_FILE = DATA_DIR / "pools.json"
 
 def refresh(full_fetch=False):
     print(f"\n  {C.BOLD}🔄 Refreshing SaucerSwap V2 Data{C.R}")
@@ -47,18 +48,34 @@ def refresh(full_fetch=False):
         DATA_DIR.mkdir(exist_ok=True)
 
         # 1. Load Curation Whitelist
-        # We only care about pools that have at least one token we officially recognize.
+        # We build the whitelist from:
+        # a) Official token metadata (tokens.json)
+        # b) Structural pool registry (pools.json)
         whitelist = set()
+        
+        # a) Tokens
         if TOKENS_FILE.exists():
-            with open(TOKENS_FILE) as f:
-                tdata = json.load(f)
-                for item in tdata.values():
-                    if "id" in item:
-                        whitelist.add(item["id"])
-                        
-        # Always include HBAR and WHBAR in whitelist regardless of tokens.json
+            try:
+                with open(TOKENS_FILE) as f:
+                    tdata = json.load(f)
+                    for item in tdata.values():
+                        if "id" in item: whitelist.add(item["id"])
+            except Exception: pass
+            
+        # b) Registered Pools
+        if POOLS_REGISTRY_FILE.exists():
+            try:
+                with open(POOLS_REGISTRY_FILE) as f:
+                    pdata = json.load(f)
+                    for pool in pdata:
+                        whitelist.add(pool.get("tokenA"))
+                        whitelist.add(pool.get("tokenB"))
+            except Exception: pass
+
+        # Always include HBAR and WHBAR in whitelist
         whitelist.add("0.0.1456986") # WHBAR
         whitelist.add("0.0.0") # HBAR
+        whitelist.discard(None) # Remove any accidentally added Nones
 
         # 2. Fetch all pools from SaucerSwap V2 API
         # WARNING: This endpoint can be rate-limited. Do not loop it aggressively.

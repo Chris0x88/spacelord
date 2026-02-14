@@ -13,112 +13,11 @@ from pathlib import Path
 # Use centralized logger
 from pacman_logger import logger
 
-# Token variants - the key insight for Hedera routing
-TOKEN_VARIANTS = {
-    # WBTC Variants
-    "WBTC_LZ": {
-        "id": "0.0.1055483",
-        "symbol": "WBTC[hts]",
-        "type": "ERC20_BRIDGED",
-        "layer": "LayerZero",
-        "visible_in_hashpack": False,
-        "pool_preference": "high",
-        "unwrap_to": "WBTC_HTS",
-        "unwrap_contract": "0.0.9675688",
-        "unwrap_gas_hbar": 0.02,
-    },
-    "WBTC_HTS": {
-        "id": "0.0.10082597",
-        "symbol": "WBTC[hts]",  # Same display symbol
-        "type": "HTS_NATIVE",
-        "layer": "Hedera",
-        "visible_in_hashpack": True,
-        "pool_preference": "low",
-        "wrap_to": "WBTC_LZ",
-        "wrap_contract": "0.0.9675688",
-        "wrap_gas_hbar": 0.02,
-    },
-    
-    # WETH Variants
-    "WETH_LZ": {
-        "id": "0.0.9770617",
-        "symbol": "WETH[hts]",
-        "type": "ERC20_BRIDGED",
-        "layer": "LayerZero",
-        "visible_in_hashpack": False,
-        "pool_preference": "high",
-        "unwrap_to": "WETH_HTS",
-        "unwrap_contract": "0.0.9675688",
-        "unwrap_gas_hbar": 0.02,
-    },
-    "WETH_HTS": {
-        "id": "0.0.541564",
-        "symbol": "WETH[hts]",
-        "type": "HTS_NATIVE",
-        "layer": "Hedera",
-        "visible_in_hashpack": True,
-        "pool_preference": "low",
-        "wrap_to": "WETH_LZ",
-        "wrap_contract": "0.0.9675688",
-        "wrap_gas_hbar": 0.02,
-    },
-    
-    # USDC (mostly HTS, but has bridged variant)
-    "USDC": {
-        "id": "0.0.456858",
-        "symbol": "USDC",
-        "type": "ERC20_BRIDGED",
-        "layer": "Circle",
-        "visible_in_hashpack": True,
-        "pool_preference": "high",
-        "is_bridgeable_to_hts": True,
-        "hts_variant": "USDC_HTS",
-    },
-    "USDC_HTS": {
-        "id": "0.0.1055459",
-        "symbol": "USDC[hts]",
-        "type": "HTS_NATIVE",
-        "layer": "Hedera",
-        "visible_in_hashpack": True,
-        "pool_preference": "high",
-    },
-    "HBAR": {
-        "id": "0.0.0",
-        "symbol": "HBAR",
-        "type": "HTS_NATIVE",
-        "layer": "Hedera",
-        "visible_in_hashpack": True,
-        "pool_preference": "high",
-        "liquidity_id": "0.0.1456986", # Shared liquidity contract
-    },
-    "SAUCE": {
-        "id": "0.0.731861",
-        "symbol": "SAUCE",
-        "type": "HTS_NATIVE",
-        "layer": "Hedera",
-        "visible_in_hashpack": True,
-        "pool_preference": "high",
-    },
-    "XSAUCE": {
-        "id": "0.0.1460200",
-        "symbol": "XSAUCE",
-        "type": "HTS_NATIVE",
-        "layer": "Hedera",
-        "visible_in_hashpack": True,
-        "pool_preference": "high",
-    },
-    "HBARX": {
-        "id": "0.0.834116",
-        "symbol": "HBARX",
-        "type": "HTS_NATIVE",
-        "layer": "Hedera",
-        "visible_in_hashpack": True,
-        "pool_preference": "high",
-    },
-}
-
-# Reverse lookup by ID
-VARIANT_BY_ID = {v["id"]: k for k, v in TOKEN_VARIANTS.items()}
+# --- CONFIGURATION & PATHS ---
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+VARIANTS_FILE = DATA_DIR / "variants.json"
+POOLS_REGISTRY_FILE = DATA_DIR / "pools.json"
 
 @dataclass
 class RouteStep:
@@ -170,22 +69,36 @@ class PacmanVariantRouter:
     """
     Ultimate router that understands Hedera's dual-token system.
     
-    Key insight: The "cheapest" route might give you ERC20 tokens that
-    are invisible in HashPack. This router lets you choose:
-    - CHEAPEST: Minimize total cost (may require manual unwrap)
-    - VISIBLE: Ensure output is HTS native (HashPack friendly)
-    - AUTO: Accept ERC20 if cheaper by > X%, auto-unwrap
+    WHY: Decouples structural metadata (variants/pools) from live liquidity data,
+    providing a stable registry that survives API fluctuations.
     """
     
-    BLACKLISTED_TOKENS = ["0.0.1456986"] # WHBAR is strictly blacklisted
+    # WHBAR is strictly blacklisted for UI, but used for internal routing
+    BLACKLISTED_TOKENS = ["0.0.1456986"]
     
-    def __init__(self):
-        self.pools_data = None
-        self.pool_graph = {}  # (token_in, token_out) -> (pool_id, fee_bps)
-        # Phase 32: Live Pricing
-        from pacman_price_manager import price_manager
-        self.price_manager = price_manager
+    def __init__(self, price_manager=None):
+        self.pool_graph = {}  # (token_in, token_out) -> (pool_id, fee_bps, in_id, out_id)
         
+        # Load Static Metadata
+        self.variants = self._load_json(VARIANTS_FILE, {})
+        self.pool_registry = self._load_json(POOLS_REGISTRY_FILE, [])
+        
+        # Build Reverse ID Map (used throughout the routing logic)
+        self.variant_by_id = {v["id"]: k for k, v in self.variants.items()}
+
+        # Phase 32: Live Pricing
+        from pacman_price_manager import price_manager as pm
+        self.price_manager = price_manager or pm
+        
+    def _load_json(self, path: Path, default):
+        try:
+            if path.exists():
+                with open(path) as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not load static file {path.name}: {e}")
+        return default
+
     @property
     def htbar_price(self) -> float:
         """Get the current live HBAR price from the price manager."""
@@ -193,65 +106,68 @@ class PacmanVariantRouter:
         
     def load_pools(self, pools_file: str = "data/pacman_data_raw.json"):
         """
-        Load SaucerSwap pool data from a local JSON file.
+        Populate the routing graph.
         
-        Args:
-            pools_file: Path to the JSON file containing raw pool data.
-            
-        Raises:
-            FileNotFoundError: If the pools_file does not exist.
-            json.JSONDecodeError: If the file is not valid JSON.
+        WHY: We build the "map" using our static pool registry (the source of truth
+        for structural integrity) and then layer in live data for routing weighting.
         """
+        # 1. Initialize Graph from Static Registry
+        # This ensures we CAN route even if the API refresh fails temporarily.
+        for entry in self.pool_registry:
+            cid = entry.get("contractId")
+            ta_id = entry.get("tokenA")
+            tb_id = entry.get("tokenB")
+            fee = entry.get("fee", 3000)
+            
+            # Resolve symbols for the graph keys
+            ta_sym = self._id_to_sym(ta_id)
+            tb_sym = self._id_to_sym(tb_id)
+            
+            if ta_sym and tb_sym:
+                self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id)
+                self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id)
+
+        # 2. Layer in Live Pool Data (for discovery and validation)
         try:
             with open(pools_file) as f:
-                self.pools_data = json.load(f)
-        except FileNotFoundError:
-            logger.error(f"❌ Critical error: {pools_file} not found. Run refresh_data.py first.")
-            raise
-        except json.JSONDecodeError:
-            logger.error(f"❌ Critical error: {pools_file} is not a valid JSON file.")
-            raise
-        
-        for pool in self.pools_data:
-            try:
-                # 1. Basic Structure Check
-                if not isinstance(pool, dict) or "tokenA" not in pool or "tokenB" not in pool:
-                    continue
-                
-                token_a_meta = pool.get("tokenA", {})
-                token_b_meta = pool.get("tokenB", {})
-                
-                token_a_id = token_a_meta.get("id")
-                token_b_id = token_b_meta.get("id")
-                
-                if not token_a_id or not token_b_id:
-                    continue
+                raw_data = json.load(f)
+                for pool in raw_data:
+                    cid = pool.get("contractId")
+                    ta_id = pool.get("tokenA", {}).get("id")
+                    tb_id = pool.get("tokenB", {}).get("id")
+                    
+                    # Skip if already in graph from registry
+                    # This protects our "hand-verified" registry from being overwritten
+                    check_key = (self._id_to_sym(ta_id), self._id_to_sym(tb_id))
+                    if check_key in self.pool_graph:
+                        continue
+                        
+                    # Otherwise, auto-discover if they are known tokens
+                    ta_sym = self._id_to_sym(ta_id)
+                    tb_sym = self._id_to_sym(tb_id)
+                    
+                    if ta_sym and tb_sym:
+                        fee = pool.get("fee", 3000)
+                        self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id)
+                        self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id)
+        except Exception as e:
+            logger.warning(f"Live data {pools_file} not found or malformed. Using static registry only.")
 
-                # 3. Security Blacklist (Allow WHBAR 0.0.1456986 for routing graph)
-                # We need WHBAR edges for pathfinding even if we don't display it
-                if (token_a_id in self.BLACKLISTED_TOKENS and token_a_id != "0.0.1456986") or \
-                   (token_b_id in self.BLACKLISTED_TOKENS and token_b_id != "0.0.1456986"):
-                    continue
+        logger.info(f"Loaded {len(self.pool_graph)//2} unique pools into routing graph.")
 
-                # 4. Symbol Extraction & Normalization
-                token_a = (token_a_meta.get("symbol") or "UNKNOWN").upper()
-                token_b = (token_b_meta.get("symbol") or "UNKNOWN").upper()
-                
-                if token_a == "WHBAR": token_a = "HBAR"
-                if token_b == "WHBAR": token_b = "HBAR"
-
-                pool_id = pool.get("contractId", pool.get("id", "Unknown"))
-                fee = pool.get("fee", 3000)
-                
-                # 5. Populate Graph
-                self.pool_graph[(token_a, token_b)] = (pool_id, fee, token_a_id, token_b_id)
-                self.pool_graph[(token_b, token_a)] = (pool_id, fee, token_b_id, token_a_id)
-                
-            except Exception as e:
-                logger.debug(f"      - Skipping pool due to error: {e}")
-                continue
-        
-        logger.info(f"Loaded {len(self.pool_graph)//2} unique pools from {pools_file}")
+    def _id_to_sym(self, token_id: str) -> Optional[str]:
+        """Resolve a token ID to its internal routing symbol."""
+        # Check variants first (our internal canonical names)
+        if token_id in self.variant_by_id:
+            variant_key = self.variant_by_id[token_id]
+            # Strip _LZ or _HTS for the routing graph (they route the same)
+            return variant_key.split("_")[0]
+            
+        # Fallback to HBAR
+        if token_id == "0.0.0" or token_id == "0.0.1456986":
+            return "HBAR"
+            
+        return None
     
     def find_swap_step(self, from_symbol: str, to_symbol: str) -> Optional[RouteStep]:
         """Find a direct swap between two token symbols (Case-insensitive)."""
