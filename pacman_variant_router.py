@@ -214,28 +214,41 @@ class PacmanVariantRouter:
         
         for pool in self.pools_data:
             try:
-                token_a_id = pool["tokenA"]["id"]
-                token_b_id = pool["tokenB"]["id"]
+                # 1. Basic Structure Check
+                if not isinstance(pool, dict) or "tokenA" not in pool or "tokenB" not in pool:
+                    continue
                 
-                # Map WHBAR liquidity ID (0.0.1456986) to HBAR (0.0.0) for internal routing
-                if token_a_id == "0.0.1456986": token_a_id = "0.0.0"
-                if token_b_id == "0.0.1456986": token_b_id = "0.0.0"
-
-                if (token_a_id in self.BLACKLISTED_TOKENS and token_a_id != "0.0.0") or \
-                   (token_b_id in self.BLACKLISTED_TOKENS and token_b_id != "0.0.0"):
+                token_a_meta = pool.get("tokenA", {})
+                token_b_meta = pool.get("tokenB", {})
+                
+                token_a_id = token_a_meta.get("id")
+                token_b_id = token_b_meta.get("id")
+                
+                if not token_a_id or not token_b_id:
                     continue
 
-                token_a = pool["tokenA"]["symbol"]
-                token_b = pool["tokenB"]["symbol"]
-                token_a_id = pool["tokenA"]["id"]
-                token_b_id = pool["tokenB"]["id"]
-                pool_id = pool["id"]
-                fee = pool["fee"]
+                # 3. Security Blacklist (Allow WHBAR 0.0.1456986 for routing graph)
+                # We need WHBAR edges for pathfinding even if we don't display it
+                if (token_a_id in self.BLACKLISTED_TOKENS and token_a_id != "0.0.1456986") or \
+                   (token_b_id in self.BLACKLISTED_TOKENS and token_b_id != "0.0.1456986"):
+                    continue
+
+                # 4. Symbol Extraction & Normalization
+                token_a = (token_a_meta.get("symbol") or "UNKNOWN").upper()
+                token_b = (token_b_meta.get("symbol") or "UNKNOWN").upper()
                 
-                self.pool_graph[(token_a.upper(), token_b.upper())] = (pool_id, fee, token_a_id, token_b_id)
-                self.pool_graph[(token_b.upper(), token_a.upper())] = (pool_id, fee, token_b_id, token_a_id)
-            except KeyError as e:
-                logger.warning(f"⚠️ Skipping malformed pool entry: Missing key {e}")
+                if token_a == "WHBAR": token_a = "HBAR"
+                if token_b == "WHBAR": token_b = "HBAR"
+
+                pool_id = pool.get("contractId", pool.get("id", "Unknown"))
+                fee = pool.get("fee", 3000)
+                
+                # 5. Populate Graph
+                self.pool_graph[(token_a, token_b)] = (pool_id, fee, token_a_id, token_b_id)
+                self.pool_graph[(token_b, token_a)] = (pool_id, fee, token_b_id, token_a_id)
+                
+            except Exception as e:
+                logger.debug(f"      - Skipping pool due to error: {e}")
                 continue
         
         logger.info(f"Loaded {len(self.pool_graph)//2} unique pools from {pools_file}")
@@ -244,6 +257,7 @@ class PacmanVariantRouter:
         """Find a direct swap between two token symbols (Case-insensitive)."""
         idx = (from_symbol.upper(), to_symbol.upper())
         if idx in self.pool_graph:
+            logger.debug(f"      [✓] Direct pool found for {idx}")
             pool_id, fee_bps, id_in, id_out = self.pool_graph[idx]
             # Fix Phase 32: Fee is 3000 (0.3%). We want 0.003.
             # 3000 / 1,000,000 = 0.003
@@ -292,10 +306,12 @@ class PacmanVariantRouter:
         meta_out = self._get_token_meta(to_variant)
         
         if not meta_in or not meta_out:
+            logger.debug(f"      [✗] Could not resolve metadata for {from_variant} -> {to_variant}")
             return None
             
         from_symbol = meta_in["symbol"]
         to_symbol = meta_out["symbol"]
+        logger.debug(f"      - Symbols: {from_symbol} -> {to_symbol}")
         
         steps = []
         total_fee = 0.0
@@ -319,10 +335,12 @@ class PacmanVariantRouter:
                         best_hub_route = hub_route
                         
             if best_hub_route:
+                logger.debug(f"      [✓] Found route via hub")
                 steps.extend(best_hub_route)
                 total_fee = sum(s.fee_percent for s in best_hub_route)
                 total_gas = sum(s.gas_estimate_hbar for s in best_hub_route)
             else:
+                logger.debug(f"      [✗] No viable path found in graph")
                 return None
         
         # Calculate total cost in HBAR

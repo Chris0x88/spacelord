@@ -16,8 +16,9 @@ fi
 # 2. Check & Install Dependencies
 # We check for a core package (web3) to see if we need to install
 if [ -f "$REQUIREMENTS" ]; then
-    if ! "$VENV_PY" -c "import web3" &> /dev/null; then
-        echo "⬇️   Installing dependencies..."
+    # Test if web3 can be imported without being silent, so we seeErrors if any
+    if ! "$VENV_PY" -c "import web3" 2>/dev/null; then
+        echo "⬇️   Dependencies missing or broken. Installing..."
         "$VENV_DIR/bin/pip" install -r "$REQUIREMENTS"
         echo "✅  Dependencies installed."
         echo

@@ -100,9 +100,11 @@ class PacmanExecutor:
         self.rpc_url = config.rpc_url
         
         # Initialize web3 and client
-        self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
-        if not self.w3.is_connected():
-            raise ConnectionError(f"Failed to connect to {self.rpc_url}")
+        logger.debug(f"   [RPC] Connecting to {self.rpc_url} (timeout=10s)...")
+        self.w3 = Web3(Web3.HTTPProvider(self.rpc_url, request_kwargs={'timeout': 10}))
+        
+        # We skip is_connected() as it can hang on some providers
+        # Connection will be tested on first actual RPC call
         
         self.client = SaucerSwapV2(self.w3, network=self.network, private_key=self.config.private_key)
         self.eoa = self.client.eoa
@@ -185,7 +187,9 @@ class PacmanExecutor:
 
         logger.info(f"\n🚀 Executing swap: {amount_usd} {route.from_variant} → {route.to_variant}")
         logger.info(f"   Mode: {mode.upper()} ({'SIMULATION' if simulate else 'LIVE'})")
-        logger.info(f"   Steps: {len(route.steps)}")
+        logger.debug(f"   [DEBUG] Steps: {len(route.steps)}")
+        for step in route.steps:
+            logger.debug(f"     -> {step.step_type.upper()}: {step.from_token} to {step.to_token}")
         
         # 1. Association Check
         if not simulate:
@@ -394,12 +398,16 @@ class PacmanExecutor:
             lp_fee_val = lp_fee_raw / (10**decimals)
             
             if mode == "exact_in":
+                logger.debug(f"      - Requesting Quote (Exact In): {amount_raw} {from_token_id} -> {to_token_id} @ fee {fee_bps}")
                 quote = self.client.get_quote_single(from_token_id if not is_native_hbar else "0.0.1456986", to_token_id, amount_raw, fee_bps)
+                logger.debug(f"      - Quote received: {quote.get('amount_out', 0)}")
                 quoted_rate = quote['amount_out'] / amount_raw
                 amount_in_expected = amount_raw
                 amount_out_expected = quote['amount_out']
             else:
+                logger.debug(f"      - Requesting Quote (Exact Out): {amount_raw} {from_token_id} -> {to_token_id} @ fee {fee_bps}")
                 quote = self.client.get_quote_exact_output(from_token_id if not is_native_hbar else "0.0.1456986", to_token_id, amount_raw, fee_bps)
+                logger.debug(f"      - Quote received: {quote.get('amount_in', 0)}")
                 quoted_rate = amount_raw / quote['amount_in']
                 amount_in_expected = quote['amount_in']
                 amount_out_expected = amount_raw
@@ -428,10 +436,19 @@ class PacmanExecutor:
                 )
             
             if is_native_hbar:
-                current_balance = self.w3.eth.get_balance(self.eoa)
+                logger.debug(f"      - Fetching HBAR balance...")
+                if simulate and self.eoa == "0x0000000000000000000000000000000000000000":
+                     current_balance = 10**24 # Plentiful fake balance
+                else:
+                     current_balance = self.w3.eth.get_balance(self.eoa)
             else:
-                current_balance = self.client.get_token_balance(from_token_id)
+                logger.debug(f"      - Fetching {step.from_token} balance...")
+                if simulate and self.eoa == "0x0000000000000000000000000000000000000000":
+                     current_balance = 10**24
+                else:
+                     current_balance = self.client.get_token_balance(from_token_id)
             
+            logger.debug(f"      - Current Balance: {current_balance}, Needed: {amount_in_expected}")
             needed_balance = amount_in_expected
             if mode == "exact_out":
                  needed_balance = int(amount_in_expected * 1.01)
@@ -450,15 +467,23 @@ class PacmanExecutor:
 
             if mode == "exact_in":
                 min_out = int(amount_out_expected * 0.99)
-                if is_native_hbar:
-                    tx_hash = self.client.swap_exact_input_multicall(from_token_id, to_token_id, amount_raw, min_out, input_is_native=True, fee=fee_bps)
+                if simulate:
+                    tx_hash = "SIMULATED_SWAP_COMPLETE"
+                    logger.info("   [SIM] Skipping on-chain broadcast")
+                elif is_native_hbar:
+                    # SAFETY: Force WHBAR ID for path encoding when input is native HBAR
+                    path_in_id = "0.0.1456986" 
+                    tx_hash = self.client.swap_exact_input_multicall(path_in_id, to_token_id, amount_raw, min_out, input_is_native=True, fee=fee_bps)
                 elif step.to_token.upper() in ["HBAR", "0.0.0"]:
                     tx_hash = self.client.swap_exact_input_multicall(from_token_id, to_token_id, amount_raw, min_out, output_is_native=True, fee=fee_bps)
                 else:
                     tx_hash = self.client.swap_exact_input(from_token_id, to_token_id, amount_raw, min_out, fee_bps)
             else:
                 max_in = int(amount_in_expected * 1.01)
-                if is_native_hbar or step.to_token.upper() in ["HBAR", "0.0.0"]:
+                if simulate:
+                    tx_hash = "SIMULATED_SWAP_COMPLETE"
+                    logger.info("   [SIM] Skipping on-chain broadcast")
+                elif is_native_hbar or step.to_token.upper() in ["HBAR", "0.0.0"]:
                     tx_hash = self.client.swap_exact_output_multicall(
                         from_token_id, to_token_id, amount_raw, max_in,
                         input_is_native=is_native_hbar,

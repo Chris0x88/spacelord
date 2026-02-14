@@ -208,6 +208,9 @@ def _do_swap(app, req):
             if confirm not in ["y", "yes"]:
                 print(f"  {C.MUTED}Cancelled.{C.R}")
                 return
+        
+        from pacman_logger import logger
+        logger.debug("Confirmation received, starting execution phase...")
 
         res = app.executor.execute_swap(route, amount_usd=amount, mode=mode)
 
@@ -218,6 +221,10 @@ def _do_swap(app, req):
 
     except PacmanError as e:
         print(f"  {C.ERR}✗{C.R} Error: {e}")
+    except Exception as e:
+        print(f"\n  {C.ERR}✗{C.R} Critical System Error: {e}")
+        import traceback
+        logger.debug(traceback.format_exc())
 
 # ---------------------------------------------------------------------------
 # Dispatcher
@@ -274,10 +281,11 @@ def main():
 
     # Initialize App (Logic)
     try:
-        app = PacmanApp()
         if verbose_requested:
-            app.toggle_verbose(True)
+            import os
+            os.environ["PACMAN_VERBOSE"] = "true"
             
+        app = PacmanApp()
         print(f"\n  {C.BOLD}{C.ACCENT}System Online{C.R}")
     except ConfigurationError as e:
         print(f"  {C.ERR}✗{C.R} Config Error: {e}")

@@ -38,13 +38,19 @@ class PacmanApp:
         # 2. Set Logging Level
         if self.config.verbose_mode:
             set_verbose(True)
-            logger.debug("Verbose Mode Enabled")
+            logger.debug("Verbose Mode Enabled (Initialization)")
 
         # 3. Initialize Components
         self.router = PacmanVariantRouter()
 
         # Executor is lazy-loaded to allow lightweight usage (e.g. quote only)
         self._executor: Optional[PacmanExecutor] = None
+
+        # 4. Load static data
+        try:
+            self.router.load_pools(pools_file="data/pacman_data_raw.json")
+        except Exception as e:
+            logger.error(f"Failed to load pool data: {e}")
 
     def toggle_verbose(self, enabled: Optional[bool] = None) -> bool:
         """
@@ -59,13 +65,6 @@ class PacmanApp:
         self.config.verbose_mode = enabled
         set_verbose(enabled)
         return enabled
-
-        # Load static data
-        try:
-            self.router.load_pools(pools_file="data/pacman_data_raw.json")
-        except Exception:
-            # Non-fatal if just starting up, but routing won't work
-            pass
 
     @property
     def executor(self) -> PacmanExecutor:
@@ -101,6 +100,8 @@ class PacmanApp:
         # Clean inputs
         from_token = from_token.upper()
         to_token = to_token.upper()
+
+        logger.debug(f"Routing request: {from_token} -> {to_token} (${amount})")
 
         # Resolve Variants (e.g. USDC -> USDC[hts] if preferred)
         # For now, simplistic routing logic from the variant router
