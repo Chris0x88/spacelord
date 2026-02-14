@@ -73,11 +73,6 @@ class ExecutionResult:
 class PacmanExecutor:
     """
     Executes swaps with optional wrap/unwrap steps.
-    
-    Key feature: Can execute multi-step routes including:
-    1. Token approval
-    2. Swap on SaucerSwap (3 Engines: Standard, Native HBAR Multicall, Manual Convert)
-    3. Recording everything for AI training (and professional receipts!)
     """
     
     def __init__(self, private_key: Optional[str] = None, network: str = "mainnet"):
@@ -170,50 +165,70 @@ class PacmanExecutor:
     def execute_swap(self, route, amount_usd: float, mode: str = "exact_in", simulate: bool = True) -> ExecutionResult:
         """
         Execute a swap route consisting of one or more steps.
-        
-        This is the primary entry point for executing transactions. It handles:
-        1. Token association (live only)
-        2. Backwards pass for exact_output multi-hop routes
-        3. Sequential step execution (Swap/Wrap/Unwrap)
-        4. On-chain verification and receipt collection
-        
-        Args:
-            route: A VariantRoute object containing the execution plan.
-            amount_usd: The user's input amount in USD (used for reporting and initial step).
-            mode: "exact_in" or "exact_out".
-            simulate: If True, simulates the transaction without sending to the network.
-            
-        Returns:
-            An ExecutionResult object containing success status and metadata.
         """
         logger.info(f"\n🚀 Executing swap: {amount_usd} {route.from_variant} → {route.to_variant}")
         logger.info(f"   Mode: {mode.upper()} ({'SIMULATION' if simulate else 'LIVE'})")
         logger.info(f"   Steps: {len(route.steps)}")
         
-        # --- Pre-Check: Token Association ---
+        # 1. Association Check
         if not simulate:
-            last_step = route.steps[-1]
-            final_token_id = last_step.details.get("token_out_id", last_step.to_token)
-            
-            print(f"   🛡️  Checking association for {route.to_variant}...")
-            if not self.check_token_association(final_token_id):
-                logger.warning(f"   ⚠️  Token {route.to_variant} not associated. Attempting auto-association...")
-                if self.associate_token(final_token_id):
-                    logger.info(f"   ✅ Auto-association successful.")
-                    time.sleep(2) # Brief wait for network propagation
-                else:
-                    error_msg = f"Token {route.to_variant} ({final_token_id}) is not associated and auto-association failed."
-                    logger.error(f"   ❌ {error_msg}")
-                    return ExecutionResult(success=False, error=error_msg)
-            else:
-                logger.info(f"   ✅ Associated.")
+            if not self._ensure_association(route):
+                return ExecutionResult(success=False, error=f"Token association failed for {route.to_variant}")
         
+        # 2. Backwards Pass (for Exact Output)
+        targets = None
         if mode == "exact_out" and len(route.steps) > 1:
-            logger.info("   🔙 Performing Backwards Pass for Multi-Hop Exact Output...")
-            targets = {} 
-            last_decimals = self._get_token_decimals(route.steps[-1].to_token)
-            next_needed_raw = int(amount_usd * (10 ** last_decimals))
+            targets = self._calculate_backwards_pass(route, amount_usd)
+            if targets is None:
+                return ExecutionResult(success=False, error="Backwards pass calculation failed")
+
+        # 3. Execution Loop
+        results = []
+        current_amount_val = amount_usd
+
+        for i, step in enumerate(route.steps):
+            step_result, current_amount_val = self._process_step(
+                i, step, route, mode, simulate, targets, current_amount_val
+            )
             
+            if not step_result.success:
+                self._record_execution(route, amount_usd, results + [step_result], simulate)
+                return step_result
+
+            results.append(step_result)
+
+        # 4. Finalize
+        final_result = self._aggregate_results(results, route)
+        self._record_execution(route, amount_usd, results, simulate)
+        return final_result
+
+    def _ensure_association(self, route) -> bool:
+        """Ensure the target token is associated."""
+        last_step = route.steps[-1]
+        final_token_id = last_step.details.get("token_out_id", last_step.to_token)
+
+        print(f"   🛡️  Checking association for {route.to_variant}...")
+        if not self.check_token_association(final_token_id):
+            logger.warning(f"   ⚠️  Token {route.to_variant} not associated. Attempting auto-association...")
+            if self.associate_token(final_token_id):
+                logger.info(f"   ✅ Auto-association successful.")
+                time.sleep(2)
+                return True
+            else:
+                logger.error(f"   ❌ Auto-association failed.")
+                return False
+        else:
+            logger.info(f"   ✅ Associated.")
+            return True
+
+    def _calculate_backwards_pass(self, route, amount_out_usd: float) -> Optional[Dict[int, int]]:
+        """Calculate required inputs for each step in a multi-hop exact output swap."""
+        logger.info("   🔙 Performing Backwards Pass for Multi-Hop Exact Output...")
+        targets = {}
+        last_decimals = self._get_token_decimals(route.steps[-1].to_token)
+        next_needed_raw = int(amount_out_usd * (10 ** last_decimals))
+
+        try:
             for i in range(len(route.steps) - 1, -1, -1):
                 step = route.steps[i]
                 targets[i] = next_needed_raw
@@ -221,107 +236,96 @@ class PacmanExecutor:
                     from_id = step.details.get("token_in_id", step.from_token)
                     to_id = step.details.get("token_out_id", step.to_token)
                     fee = step.details.get("fee_bps", 1500)
-                    try:
-                        quote = self.client.get_quote_exact_output(from_id, to_id, next_needed_raw, fee)
-                        next_needed_raw = quote['amount_in']
-                    except Exception as e:
-                        return ExecutionResult(success=False, error=f"Backwards pass failed: {e}")
+                    quote = self.client.get_quote_exact_output(from_id, to_id, next_needed_raw, fee)
+                    next_needed_raw = quote['amount_in']
             logger.info("   ✅ Backwards pass complete.\n")
+            return targets
+        except Exception as e:
+            logger.error(f"Backwards pass failed: {e}")
+            return None
+
+    def _process_step(self, i: int, step, route, mode: str, simulate: bool, targets: Optional[dict], current_val: float):
+        """Process a single step in the route."""
+        step_idx = i + 1
+        logger.info(f"\n📍 Step {step_idx}/{len(route.steps)}: {step.step_type.upper()}")
+        
+        if mode == "exact_out" and targets:
+            step_amount = targets[i]
+            step_out_decimals = self._get_token_decimals(step.to_token)
+            current_step_input_val = step_amount / (10 ** step_out_decimals)
         else:
-            targets = None
+            current_step_input_val = current_val
 
-        results = []
-        current_amount_val = amount_usd # This starts as the user's input amount
-        
-        for i, step in enumerate(route.steps):
-            step_idx = i + 1
-            logger.info(f"\n📍 Step {step_idx}/{len(route.steps)}: {step.step_type.upper()}")
-            
-            if mode == "exact_out" and targets:
-                step_amount = targets[i]
-                step_out_decimals = self._get_token_decimals(step.to_token)
-                current_step_input_val = step_amount / (10 ** step_out_decimals)
+        token_for_decimals = step.from_token if mode == "exact_in" else step.to_token
+        decimals = self._get_token_decimals(token_for_decimals)
+        amount_raw_for_step = int(current_step_input_val * (10 ** decimals))
+
+        if step.step_type == "swap":
+            result = self._execute_swap_step(step, amount_raw_for_step, simulate, mode)
+        elif step.step_type == "unwrap":
+            result = self._execute_unwrap_step(step, simulate)
+        elif step.step_type == "wrap":
+            result = self._execute_wrap_step(step, simulate)
+        else:
+            return ExecutionResult(success=False, error=f"Unknown step type: {step.step_type}"), current_val
+
+        # Verify on-chain if live
+        if result.success and not simulate and result.tx_hash != "SIMULATED":
+            self._verify_transaction(result, step)
+
+        # Update current value for next step (for exact_in)
+        next_val = current_val
+        if mode == "exact_in" and result.amount_out_raw > 0:
+            to_decimals = self._get_token_decimals(step.to_token)
+            next_val = result.amount_out_raw / (10 ** to_decimals)
+
+        return result, next_val
+
+    def _verify_transaction(self, result: ExecutionResult, step):
+        """Wait for and verify transaction receipt."""
+        logger.info(f"   ⏳ Verifying transaction on-chain: {result.tx_hash}...")
+        try:
+            receipt = self.w3.eth.wait_for_transaction_receipt(result.tx_hash, timeout=60)
+            if receipt.status == 0:
+                result.success = False
+                result.error = "Transaction REVERTED on-chain"
             else:
-                current_step_input_val = current_amount_val
-            
-            token_for_decimals = step.from_token if mode == "exact_in" else step.to_token
-            decimals = self._get_token_decimals(token_for_decimals)
-            amount_raw_for_step = int(current_step_input_val * (10 ** decimals))
+                result.block_number = receipt.blockNumber
+                result.gas_used = receipt.gasUsed
 
-            if step.step_type == "swap":
-                result = self._execute_swap_step(step, amount_raw_for_step, simulate, mode)
-            elif step.step_type == "unwrap":
-                result = self._execute_unwrap_step(step, simulate)
-            elif step.step_type == "wrap":
-                result = self._execute_wrap_step(step, simulate)
-            else:
-                result = ExecutionResult(success=False, error=f"Unknown step type: {step.step_type}")
-            
-            if not result.success:
-                return result
-            
-            results.append(result)
-            
-            # For exact_in, update current_amount_val for the next step from this step's output
-            if mode == "exact_in" and result.amount_out_raw > 0:
-                to_decimals = self._get_token_decimals(step.to_token)
-                current_amount_val = result.amount_out_raw / (10 ** to_decimals)
+                tx_details = self.w3.eth.get_transaction(result.tx_hash)
+                eff_gas_price_wei = receipt.get('effectiveGasPrice', tx_details.get('gasPrice', 0))
 
-            if result.success and not simulate and result.tx_hash != "SIMULATED":
-                logger.info(f"   ⏳ Verifying transaction on-chain: {result.tx_hash}...")
-                try:
-                    receipt = self.w3.eth.wait_for_transaction_receipt(result.tx_hash, timeout=60)
-                    if receipt.status == 0:
-                        result.success = False
-                        result.error = "Transaction REVERTED on-chain"
-                    else:
-                        result.block_number = receipt.blockNumber
-                        result.gas_used = receipt.gasUsed
-                        
-                        # Calculate gas cost in HBAR
-                        # On Hedera Hashio, gasPrice is usually static or follows mirrored value.
-                        # Receipt effectiveGasPrice is in tinybars? Or wei-tinybars?
-                        # Hashio Relay uses 18 decimals for ETH compatibility.
-                        tx_details = self.w3.eth.get_transaction(result.tx_hash)
-                        eff_gas_price_wei = receipt.get('effectiveGasPrice', tx_details.get('gasPrice', 0))
-                        
-                        result.gas_price_hbar = eff_gas_price_wei / (10**18)
-                        result.gas_cost_hbar = (result.gas_used * eff_gas_price_wei) / (10**18)
-                        
-                        # Calculate USD costs
-                        result.hbar_usd_price = self._get_hbar_price_usd()
-                        result.gas_cost_usd = result.gas_cost_hbar * result.hbar_usd_price
-                        
-                        # Calculate effective rate for this step if it's a swap
-                        if step.step_type == "swap" and result.amount_in_raw > 0 and result.amount_out_raw > 0:
-                            result.effective_rate = result.amount_out_raw / result.amount_in_raw
+                result.gas_price_hbar = eff_gas_price_wei / (10**18)
+                result.gas_cost_hbar = (result.gas_used * eff_gas_price_wei) / (10**18)
 
-                except Exception as e:
-                    logger.error(f"   ❌ Verification failed: {e}")
-                    result.success = False
-                    result.error = f"Timed out: {e}"
+                result.hbar_usd_price = self._get_hbar_price_usd()
+                result.gas_cost_usd = result.gas_cost_hbar * result.hbar_usd_price
 
-            # result already in results list from line 288; verification mutates in-place
-            if not result.success:
-                self._record_execution(route, amount_usd, results, simulate)
-                return result
+                if step.step_type == "swap" and result.amount_in_raw > 0:
+                    result.effective_rate = result.amount_out_raw / result.amount_in_raw
+        except Exception as e:
+            logger.error(f"   ❌ Verification failed: {e}")
+            result.success = False
+            result.error = f"Timed out: {e}"
+
+    def _aggregate_results(self, results: List[ExecutionResult], route) -> ExecutionResult:
+        """Combine multiple step results into a final report."""
+        if not results:
+            return ExecutionResult(success=False, error="No steps executed")
+
+        final = results[-1]
+        final.total_steps = len(route.steps)
+        final.steps_completed = sum(1 for r in results if r.success)
+        final.gas_used = sum(r.gas_used for r in results)
+        final.gas_cost_hbar = sum(r.gas_cost_hbar for r in results)
+        final.gas_offered = sum(r.gas_offered for r in results)
+        final.account_id = self.hedera_account_id
         
-        self._record_execution(route, amount_usd, results, simulate)
-        final_result = results[-1] if results else ExecutionResult(success=False, error="No steps")
-        final_result.total_steps = len(route.steps)
-        final_result.steps_completed = sum(1 for r in results if r.success)
+        final.hbar_usd_price = self._get_hbar_price_usd()
+        final.gas_cost_usd = final.gas_cost_hbar * final.hbar_usd_price
         
-        # Aggregate gas for the final result
-        final_result.gas_used = sum(r.gas_used for r in results)
-        final_result.gas_cost_hbar = sum(r.gas_cost_hbar for r in results)
-        final_result.gas_offered = sum(r.gas_offered for r in results)
-        final_result.account_id = self.hedera_account_id
-        
-        # Aggregate USD costs
-        final_result.hbar_usd_price = self._get_hbar_price_usd()
-        final_result.gas_cost_usd = final_result.gas_cost_hbar * final_result.hbar_usd_price
-        
-        return final_result
+        return final
     
     def _get_hbar_price_usd(self) -> float:
         """Fetch current HBAR price in USD from PriceManager."""
@@ -348,56 +352,38 @@ class PacmanExecutor:
     def associate_token(self, token_id: str) -> bool:
         """Associate HTS token using the HTS Precompile."""
         if token_id.upper() in ["HBAR", "0.0.0"]: return True
-        
-        # Use native client method
         return self.client.associate_token_native(token_id)
 
     def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in") -> ExecutionResult:
         """Execute a single swap step using one of the three engines."""
         try:
-            # Phase 32: Real-Time Pricing (Fetch Immediately)
             from pacman_price_manager import price_manager
             hbar_price = price_manager.get_hbar_price()
 
-
             from_token_id = step.details.get("token_in_id", step.from_token)
             to_token_id = step.details.get("token_out_id", step.to_token)
-            # Default fee should be 0.3% (3000 in Uniswap scale)
             fee_bps = step.details.get("fee_bps", 3000)
             
-            # Identify Engine A (Standard) vs Engine B (Native HBAR)
             is_native_hbar = (step.from_token.upper() in ["HBAR", "0.0.0"])
             
-            # Fee Calculation (Transparency)
-            # Fee is Uniswap V3 format (3000 = 0.3%)
-            # So divide by 1,000,000 to get decimal (0.003)
             fee_percent = fee_bps / 1_000_000.0
             lp_fee_raw = int(amount_raw * fee_percent)
             decimals = self._get_token_decimals(step.from_token)
             lp_fee_val = lp_fee_raw / (10**decimals)
-            lp_fee_token_symbol = step.from_token
             
-            # Get Quote for rate calculations
             if mode == "exact_in":
-                # Engine will need amount_raw
                 quote = self.client.get_quote_single(from_token_id if not is_native_hbar else "0.0.1456986", to_token_id, amount_raw, fee_bps)
                 quoted_rate = quote['amount_out'] / amount_raw
                 amount_in_expected = amount_raw
                 amount_out_expected = quote['amount_out']
             else:
-                # Engine will need amount_raw as amount_out
                 quote = self.client.get_quote_exact_output(from_token_id if not is_native_hbar else "0.0.1456986", to_token_id, amount_raw, fee_bps)
                 quoted_rate = amount_raw / quote['amount_in']
                 amount_in_expected = quote['amount_in']
                 amount_out_expected = amount_raw
 
             if simulate:
-                # Realistic Gas Est. (Investigation Phase 28)
-                # Simple swap ~120k gas, Multicall ~170k. Let's use 150k avg.
                 sim_gas_used = 150_000 
-                # Recalculate HBAR gas cost using LIVE price if possible, or fallback
-                # Actually gas cost in HBAR is mostly fixed by network, but USD value changes.
-                # Let's keep the estimate.
                 sim_gas_cost_hbar = sim_gas_used * 0.00000085
                 
                 return ExecutionResult(
@@ -407,19 +393,18 @@ class PacmanExecutor:
                     amount_in_raw=amount_in_expected,
                     amount_out_raw=amount_out_expected,
                     quoted_rate=quoted_rate,
-                    effective_rate=quoted_rate, # No slippage/gas actuals in sim
+                    effective_rate=quoted_rate,
                     gas_offered=1_000_000,
                     gas_used=sim_gas_used,
-                    gas_price_hbar=0.00000085, # approx 85 Gwei
-                    gas_cost_hbar=sim_gas_cost_hbar, # ~0.1275 HBAR
+                    gas_price_hbar=0.00000085,
+                    gas_cost_hbar=sim_gas_cost_hbar,
                     account_id=self.hedera_account_id,
                     lp_fee_amount=lp_fee_val,
-                    lp_fee_token=lp_fee_token_symbol,
+                    lp_fee_token=step.from_token,
                     hbar_usd_price=hbar_price,
                     gas_cost_usd=sim_gas_cost_hbar * hbar_price
                 )
             
-            # Real execution
             if is_native_hbar:
                 current_balance = self.w3.eth.get_balance(self.eoa)
             else:
@@ -432,18 +417,14 @@ class PacmanExecutor:
             if current_balance < needed_balance:
                 return ExecutionResult(success=False, error=f"Insufficient funds")
 
-            # Approve if needed
             if not is_native_hbar:
                 current_allowance = self.client.get_allowance(from_token_id, self.client.eoa, self.client.router_address)
                 if current_allowance < needed_balance:
                     logger.info(f"   🔓 Approving {step.from_token}...")
-                    # Phase 35: Use a large but safe amount for HTS (avoid 2^256 or 10^18 for small supply tokens)
-                    # Approve 100x the needed amount or all current balance, whichever is higher, but capped.
                     safe_approval = max(needed_balance * 100, current_balance)
                     self.client.approve_token(from_token_id, int(safe_approval))
                     time.sleep(2)
 
-            # Execution logic using proper engine
             if mode == "exact_in":
                 min_out = int(amount_out_expected * 0.99)
                 if is_native_hbar:
@@ -464,7 +445,6 @@ class PacmanExecutor:
                 else:
                     tx_hash = self.client.swap_exact_output(from_token_id, to_token_id, amount_raw, max_in, fee_bps)
             
-            # Wait for receipt to get actual gas cost (Phase 29: On-Chain Verification)
             gas_cost_hbar = 0.0
             gas_used = 0
             if not simulate:
@@ -473,8 +453,6 @@ class PacmanExecutor:
                     receipt = self.client.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
                     gas_used = receipt['gasUsed']
                     effective_gas_price = receipt.get('effectiveGasPrice', self.client.w3.eth.gas_price)
-                    
-            # Cost in HBAR = (Gas Used * Price in Tinybar) / 100,000,000
                     gas_cost_hbar = (gas_used * effective_gas_price) / 100_000_000.0
                     logger.info(f"   ✅ Confirmed! Cost: {gas_cost_hbar:.8f} HBAR ({gas_used} gas)")
                 except Exception as e:
@@ -493,7 +471,7 @@ class PacmanExecutor:
                 gas_cost_hbar=gas_cost_hbar,
                 account_id=self.hedera_account_id,
                 lp_fee_amount=lp_fee_val,
-                lp_fee_token=lp_fee_token_symbol,
+                lp_fee_token=step.from_token,
                 hbar_usd_price=hbar_price,
                 gas_cost_usd=gas_cost_hbar * hbar_price
             )
