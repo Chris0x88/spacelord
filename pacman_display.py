@@ -104,6 +104,7 @@ def show_help():
         ("swap <A> for <amt> <B>",   "Exact output swap"),
         ("convert <A> for <amt> <B>","Wrap / Unwrap tokens"),
         ("send <amt> <tk> to <rcp>", "Transfer crypto"),
+        ("receive <token>",          "Get addr & associate"),
         ("balance",                  "All wallet balances"),
         ("balance <token>",          "Single token balance"),
         ("price",                    "List all market prices"),

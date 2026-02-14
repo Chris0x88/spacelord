@@ -123,6 +123,10 @@ class PacmanApp:
         from pacman_transfers import execute_transfer
         return execute_transfer(self.executor, token_symbol, amount, recipient)
 
+    def resolve_token_id(self, symbol: str) -> Optional[str]:
+        """Resolve symbol to Hedera ID."""
+        return self.executor._get_token_id(symbol)
+
     def get_history(self, limit: int = 10) -> List[dict]:
         """Get transaction history."""
         return self.executor.get_execution_history(limit)

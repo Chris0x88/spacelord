@@ -85,6 +85,65 @@ def cmd_send(app, args):
     else:
         print(f"\n  {C.ERR}✗{C.R} FAILED: {res.get('error')}")
 
+def cmd_receive(app, args):
+    """Show wallet address and check token associations."""
+    from pacman_display import C
+
+    if not app.executor:
+        print(f"  {C.ERR}✗{C.R} Engine not initialized.")
+        return
+
+    # 1. Show Address
+    print(f"\n{C.BOLD}{C.TEXT}  RECEIVE FUNDS{C.R}")
+    print(f"  {C.CHROME}{'─' * 56}{C.R}")
+    print(f"  {C.MUTED}Hedera ID:{C.R}    {C.TEXT}{app.executor.hedera_account_id}{C.R}")
+    print(f"  {C.MUTED}EVM Address:{C.R}  {C.TEXT}{app.executor.eoa}{C.R}")
+    print(f"  {C.CHROME}{'─' * 56}{C.R}")
+
+    # 2. Check Token Association (if requested)
+    if not args:
+        print(f"  {C.OK}✓{C.R} You can receive HBAR anytime.")
+        print(f"  {C.MUTED}To check a token, run: {C.TEXT}receive <token>{C.R}")
+        print()
+        return
+
+    token_symbol = args[0].upper()
+    if token_symbol in ["HBAR", "HBARX"]:
+        print(f"  {C.OK}✓{C.R} HBAR is native. No association needed.")
+        print()
+        return
+
+    # Resolve ID
+    token_id = app.resolve_token_id(token_symbol)
+    if not token_id:
+        print(f"  {C.WARN}⚠{C.R} Unknown token '{token_symbol}'.")
+        print(f"  Ensure sender uses your Hedera ID or EVM Address.")
+        print()
+        return
+
+    print(f"  Checking status for {C.BOLD}{token_symbol}{C.R} ({token_id})...")
+
+    is_associated = app.executor.check_token_association(token_id)
+    if is_associated:
+        print(f"  {C.OK}✓{C.R} Associated. Ready to receive {token_symbol}.")
+    else:
+        print(f"  {C.WARN}⚠  NOT ASSOCIATED{C.R}")
+        print(f"  You must associate {token_symbol} before receiving it.")
+
+        if app.config.require_confirmation:
+            confirm = input(f"\n  Associate now? (cost ~0.05 HBAR) {C.MUTED}(y/n){C.R} ").strip().lower()
+            if confirm not in ["y", "yes"]:
+                print(f"  {C.MUTED}Cancelled.{C.R}")
+                return
+
+        print(f"  {C.MUTED}Associating...{C.R}")
+        success = app.executor.associate_token(token_id)
+        if success:
+            print(f"  {C.OK}✓{C.R} Successfully associated {token_symbol}!")
+        else:
+            print(f"  {C.ERR}✗{C.R} Association failed.")
+    print()
+
 def handle_natural_language(app, text):
     """Process NLP commands like 'swap 10 HBAR for USDC'."""
     req = translate(text)
@@ -151,7 +210,8 @@ COMMANDS = {
     "account": cmd_account,
     "balance": cmd_balance,
     "history": cmd_history,
-    "send": cmd_send
+    "send": cmd_send,
+    "receive": cmd_receive
 }
 
 def process_input(app, text):

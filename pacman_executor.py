@@ -83,12 +83,13 @@ class PacmanExecutor:
         from web3 import Web3
 
         self.config = config
+        self.is_sim = config.simulate_mode
         
         # Ensure config is valid before proceeding
         try:
             self.config.validate()
         except ConfigurationError as e:
-            if not self.config.simulate_mode:
+            if not self.is_sim:
                 raise e # Re-raise if we are in live mode and config is bad
             # In sim mode, we might proceed with a dummy key if missing
             if not self.config.private_key:
