@@ -1,0 +1,12 @@
+#!/bin/bash
+# Pacman CLI Wrapper
+# Usage: ./pacman [command] [args]
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+VENV_PY="$DIR/pacman_env/bin/python3"
+
+if [ -x "$VENV_PY" ]; then
+    "$VENV_PY" "$DIR/pacman_cli.py" "$@"
+else
+    python3 "$DIR/pacman_cli.py" "$@"
+fi

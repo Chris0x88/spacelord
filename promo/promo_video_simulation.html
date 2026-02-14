@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenClaw - Neon Ghost Terminal</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');
+
+        :root {
+            --bg-color: #050510;
+            /* Deep void black */
+            --terminal-bg: #0a0a0f;
+            --text-color: #e0e0e0;
+            --accent-color: #00f3ff;
+            /* Cyan neon */
+            --secondary-accent: #bd00ff;
+            /* Purple neon */
+            --success-color: #00ff9d;
+            --warning-color: #ffbd2e;
+            --dim-color: #555577;
+            --font-stack: 'Fira Code', 'Courier New', monospace;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-stack);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #terminal-container {
+            width: 90%;
+            max-width: 1000px;
+            height: 600px;
+            background: var(--terminal-bg);
+            border: 1px solid #333;
+            border-radius: 16px;
+            box-shadow:
+                0 0 60px rgba(0, 243, 255, 0.05),
+                0 0 30px rgba(189, 0, 255, 0.05),
+                inset 0 0 100px rgba(0, 0, 0, 0.8);
+            padding: 0;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* CRT Scanline effect */
+        #terminal-container::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 10;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            border-radius: 16px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #111;
+            padding: 12px 20px;
+            border-bottom: 1px solid #222;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .control {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .control.red {
+            background: #ff5f56;
+        }
+
+        .control.yellow {
+            background: #ffbd2e;
+        }
+
+        .control.green {
+            background: #27c93f;
+        }
+
+        .title {
+            font-size: 0.8rem;
+            color: var(--dim-color);
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        #output {
+            flex-grow: 1;
+            padding: 20px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            overflow-y: auto;
+            z-index: 1;
+            font-family: inherit;
+        }
+
+        .line {
+            margin-bottom: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .prompt-wrapper {
+            display: flex;
+            margin-right: 10px;
+            white-space: nowrap;
+        }
+
+        .prompt-user {
+            color: var(--accent-color);
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+        }
+
+        .prompt-symbol {
+            color: var(--secondary-accent);
+            margin-right: 8px;
+            margin-left: 2px;
+        }
+
+        .command-text {
+            color: #fff;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+        }
+
+        .system-msg {
+            color: var(--dim-color);
+            font-style: italic;
+            font-size: 0.95rem;
+        }
+
+        .agent-name {
+            color: var(--secondary-accent);
+            font-weight: bold;
+            margin-right: 10px;
+            text-shadow: 0 0 10px rgba(189, 0, 255, 0.4);
+        }
+
+        .response-text {
+            color: var(--success-color);
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2em;
+            background-color: var(--accent-color);
+            animation: blink 1s step-end infinite;
+            margin-left: 5px;
+            vertical-align: text-bottom;
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        /* Glitch effect for OpenClaw text */
+        @keyframes glitch {
+            0% {
+                transform: translate(0)
+            }
+
+            20% {
+                transform: translate(-2px, 2px)
+            }
+
+            40% {
+                transform: translate(-2px, -2px)
+            }
+
+            60% {
+                transform: translate(2px, 2px)
+            }
+
+            80% {
+                transform: translate(2px, -2px)
+            }
+
+            100% {
+                transform: translate(0)
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="terminal-container">
+        <div class="header">
+            <div class="window-controls">
+                <div class="control red"></div>
+                <div class="control yellow"></div>
+                <div class="control green"></div>
+            </div>
+            <div class="title">OpenClaw v2.1.0 -- SECURE CONNECTION</div>
+            <div style="width: 50px;"></div>
+        </div>
+
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const outputElement = document.getElementById('output');
+
+        // Script sequence
+        const script = [
+            { type: 'prompt', text: 'openclaw --status' },
+            { type: 'system', text: 'Checking connection to Hedera Mainnet... [CONNECTED]' },
+            { type: 'system', text: 'Ghost Protocol: ACTIVE' },
+            { type: 'prompt', text: 'openclaw agent start --name Bozo --mode active' },
+            { type: 'system', text: 'Agent "Bozo" initialized. Liquidity sources: SaucerSwap V1, V2.' },
+            { type: 'pause', duration: 800 },
+            { type: 'prompt', text: '@Bozo swap 0.45 USDC for GIB' },
+            { type: 'system', text: 'Analyzing intent...' },
+            { type: 'system', text: '... Safety Checks: Validating vs Cupcake Guardrails ... [PASSED]' },
+            { type: 'system', text: '... Route Found: USDC -> HBAR -> GIB' },
+            { type: 'system', text: '... Executing transaction on-chain...' },
+            { type: 'pause', duration: 2000 }, // Suspense
+            { type: 'response', text: 'OpenClaw[Bozo]: " [I] Swapped 0.45 USDC for GIB. The transaction succeeded. Your new balances: **.** USDC remaining, ***.** GIB total. The swap used a 2-step route (USDC→HBAR→GIB) with 1.15% total fees + 0.040 HBAR gas."' },
+            { type: 'prompt', text: '' } // Final prompt waiting
+        ];
+
+        async function typeWriter(text, element, speed = 30) {
+            return new Promise(resolve => {
+                let i = 0;
+                function char() {
+                    if (i < text.length) {
+                        element.innerHTML += text.charAt(i);
+                        // Random typing variance to look human
+                        let variance = (Math.random() * 30) + 10;
+                        i++;
+                        setTimeout(char, speed + variance);
+                    } else {
+                        resolve();
+                    }
+                }
+                char();
+            });
+        }
+
+        async function runScript() {
+            for (const line of script) {
+
+                // Create line container
+                const lineDiv = document.createElement('div');
+                lineDiv.classList.add('line');
+                outputElement.appendChild(lineDiv);
+
+                // Handle cursor
+                const existingCursor = document.querySelector('.cursor');
+                if (existingCursor) existingCursor.remove();
+
+                const cursorSpan = document.createElement('span');
+                cursorSpan.classList.add('cursor');
+
+                if (line.type === 'pause') {
+                    lineDiv.appendChild(cursorSpan); // Keep cursor blinking during pause
+                    await new Promise(r => setTimeout(r, line.duration));
+                    cursorSpan.remove(); // Remove cursor from this empty line after pause, or keep it?
+                    // Actually pause shouldn't create a new line usually, but my loop does.
+                    // Let's hide the lineDiv if it's just a pause
+                    lineDiv.style.display = 'none';
+                    // Find the previous cursor and re-attach? 
+                    // Creating a pause line is fine for spacing.
+                    continue;
+                }
+
+                if (line.type === 'prompt') {
+                    const promptHTML = `<div class="prompt-wrapper"><span class="prompt-user">user@openclaw</span><span class="prompt-symbol">:~ $</span></div>`;
+                    lineDiv.innerHTML = promptHTML;
+
+                    const textSpan = document.createElement('span');
+                    textSpan.classList.add('command-text');
+                    lineDiv.appendChild(textSpan);
+                    lineDiv.appendChild(cursorSpan);
+
+                    await typeWriter(line.text, textSpan, 40);
+                }
+                else if (line.type === 'system') {
+                    const textSpan = document.createElement('span');
+                    textSpan.classList.add('system-msg');
+                    lineDiv.appendChild(textSpan);
+                    lineDiv.appendChild(cursorSpan);
+
+                    await typeWriter(line.text, textSpan, 15);
+                }
+                else if (line.type === 'response') {
+                    // Formatting the response
+                    const prefix = "OpenClaw[Bozo]:";
+                    const content = line.text.substring(prefix.length);
+
+                    const labelSpan = document.createElement('span');
+                    labelSpan.classList.add('agent-name');
+                    labelSpan.textContent = prefix;
+                    lineDiv.appendChild(labelSpan);
+
+                    const contentSpan = document.createElement('span');
+                    contentSpan.classList.add('response-text');
+                    lineDiv.appendChild(contentSpan);
+                    lineDiv.appendChild(cursorSpan);
+
+                    await typeWriter(content, contentSpan, 20);
+                }
+
+                // Pause after line completion
+                await new Promise(r => setTimeout(r, 600));
+            }
+        }
+
+        // Start slightly after load
+        window.onload = () => setTimeout(runScript, 500);
+
+    </script>
+
+</body>
+
+</html>

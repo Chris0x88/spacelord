@@ -1,0 +1,948 @@
+{
+  "USDC->WBTC[hts]": {
+    "path": [
+      "USDC",
+      "USDC[hts]",
+      "WBTC[hts]"
+    ],
+    "pools": [
+      1,
+      13
+    ],
+    "fee_tiers": [
+      500,
+      1500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "USDC->WETH[hts]": {
+    "path": [
+      "USDC",
+      "USDC[hts]",
+      "WETH[hts]"
+    ],
+    "pools": [
+      1,
+      14
+    ],
+    "fee_tiers": [
+      500,
+      1500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "USDC->SAUCE": {
+    "path": [
+      "USDC",
+      "SAUCE"
+    ],
+    "pools": [
+      19
+    ],
+    "fee_tiers": [
+      3000
+    ],
+    "total_fee_bps": 3000,
+    "type": "DIRECT"
+  },
+  "USDC->USDT[hts]": {
+    "path": [
+      "USDC",
+      "USDC[hts]",
+      "USDT[hts]"
+    ],
+    "pools": [
+      1,
+      4
+    ],
+    "fee_tiers": [
+      500,
+      500
+    ],
+    "total_fee_bps": 1000,
+    "type": "USDC_HOP"
+  },
+  "USDC->DAI[hts]": {
+    "path": [
+      "USDC",
+      "USDC[hts]",
+      "DAI[hts]"
+    ],
+    "pools": [
+      1,
+      5
+    ],
+    "fee_tiers": [
+      500,
+      500
+    ],
+    "total_fee_bps": 1000,
+    "type": "USDC_HOP"
+  },
+  "USDC->LINK[hts]": {
+    "path": [
+      "USDC",
+      "HBAR",
+      "LINK[hts]"
+    ],
+    "pools": [
+      9,
+      20
+    ],
+    "fee_tiers": [
+      1500,
+      3000
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "USDC->HBARX": {
+    "path": [
+      "USDC",
+      "HBAR",
+      "HBARX"
+    ],
+    "pools": [
+      9,
+      3
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "HUB_ROUTE"
+  },
+  "WBTC[hts]->USDC": {
+    "path": [
+      "WBTC[hts]",
+      "USDC[hts]",
+      "USDC"
+    ],
+    "pools": [
+      13,
+      1
+    ],
+    "fee_tiers": [
+      1500,
+      500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "WBTC[hts]->WETH[hts]": {
+    "path": [
+      "WBTC[hts]",
+      "USDC[hts]",
+      "WETH[hts]"
+    ],
+    "pools": [
+      13,
+      14
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "USDC_HOP"
+  },
+  "WBTC[hts]->SAUCE": {
+    "path": [
+      "WBTC[hts]",
+      "HBAR",
+      "SAUCE"
+    ],
+    "pools": [
+      7,
+      2
+    ],
+    "fee_tiers": [
+      1500,
+      3000
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "WBTC[hts]->USDT[hts]": {
+    "path": [
+      "WBTC[hts]",
+      "USDC[hts]",
+      "USDT[hts]"
+    ],
+    "pools": [
+      13,
+      4
+    ],
+    "fee_tiers": [
+      1500,
+      500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "WBTC[hts]->DAI[hts]": {
+    "path": [
+      "WBTC[hts]",
+      "USDC[hts]",
+      "DAI[hts]"
+    ],
+    "pools": [
+      13,
+      5
+    ],
+    "fee_tiers": [
+      1500,
+      500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "WBTC[hts]->LINK[hts]": {
+    "path": [
+      "WBTC[hts]",
+      "HBAR",
+      "LINK[hts]"
+    ],
+    "pools": [
+      7,
+      20
+    ],
+    "fee_tiers": [
+      1500,
+      3000
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "WBTC[hts]->HBARX": {
+    "path": [
+      "WBTC[hts]",
+      "HBAR",
+      "HBARX"
+    ],
+    "pools": [
+      7,
+      3
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "HUB_ROUTE"
+  },
+  "WETH[hts]->USDC": {
+    "path": [
+      "WETH[hts]",
+      "USDC[hts]",
+      "USDC"
+    ],
+    "pools": [
+      14,
+      1
+    ],
+    "fee_tiers": [
+      1500,
+      500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "WETH[hts]->WBTC[hts]": {
+    "path": [
+      "WETH[hts]",
+      "USDC[hts]",
+      "WBTC[hts]"
+    ],
+    "pools": [
+      14,
+      13
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "USDC_HOP"
+  },
+  "WETH[hts]->SAUCE": {
+    "path": [
+      "WETH[hts]",
+      "HBAR",
+      "SAUCE"
+    ],
+    "pools": [
+      8,
+      2
+    ],
+    "fee_tiers": [
+      1500,
+      3000
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "WETH[hts]->USDT[hts]": {
+    "path": [
+      "WETH[hts]",
+      "USDC[hts]",
+      "USDT[hts]"
+    ],
+    "pools": [
+      14,
+      4
+    ],
+    "fee_tiers": [
+      1500,
+      500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "WETH[hts]->DAI[hts]": {
+    "path": [
+      "WETH[hts]",
+      "USDC[hts]",
+      "DAI[hts]"
+    ],
+    "pools": [
+      14,
+      5
+    ],
+    "fee_tiers": [
+      1500,
+      500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "WETH[hts]->LINK[hts]": {
+    "path": [
+      "WETH[hts]",
+      "HBAR",
+      "LINK[hts]"
+    ],
+    "pools": [
+      8,
+      20
+    ],
+    "fee_tiers": [
+      1500,
+      3000
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "WETH[hts]->HBARX": {
+    "path": [
+      "WETH[hts]",
+      "HBAR",
+      "HBARX"
+    ],
+    "pools": [
+      8,
+      3
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "HUB_ROUTE"
+  },
+  "SAUCE->USDC": {
+    "path": [
+      "SAUCE",
+      "USDC"
+    ],
+    "pools": [
+      19
+    ],
+    "fee_tiers": [
+      3000
+    ],
+    "total_fee_bps": 3000,
+    "type": "DIRECT"
+  },
+  "SAUCE->WBTC[hts]": {
+    "path": [
+      "SAUCE",
+      "HBAR",
+      "WBTC[hts]"
+    ],
+    "pools": [
+      2,
+      7
+    ],
+    "fee_tiers": [
+      3000,
+      1500
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "SAUCE->WETH[hts]": {
+    "path": [
+      "SAUCE",
+      "HBAR",
+      "WETH[hts]"
+    ],
+    "pools": [
+      2,
+      8
+    ],
+    "fee_tiers": [
+      3000,
+      1500
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "SAUCE->USDT[hts]": {
+    "path": [
+      "SAUCE",
+      "HBAR",
+      "USDT[hts]"
+    ],
+    "pools": [
+      2,
+      11
+    ],
+    "fee_tiers": [
+      3000,
+      1500
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "SAUCE->DAI[hts]": {
+    "path": [
+      "SAUCE",
+      "HBAR",
+      "DAI[hts]"
+    ],
+    "pools": [
+      2,
+      12
+    ],
+    "fee_tiers": [
+      3000,
+      1500
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "SAUCE->LINK[hts]": {
+    "path": [
+      "SAUCE",
+      "HBAR",
+      "LINK[hts]"
+    ],
+    "pools": [
+      2,
+      20
+    ],
+    "fee_tiers": [
+      3000,
+      3000
+    ],
+    "total_fee_bps": 6000,
+    "type": "HUB_ROUTE"
+  },
+  "SAUCE->HBARX": {
+    "path": [
+      "SAUCE",
+      "HBAR",
+      "HBARX"
+    ],
+    "pools": [
+      2,
+      3
+    ],
+    "fee_tiers": [
+      3000,
+      1500
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "USDT[hts]->USDC": {
+    "path": [
+      "USDT[hts]",
+      "USDC[hts]",
+      "USDC"
+    ],
+    "pools": [
+      4,
+      1
+    ],
+    "fee_tiers": [
+      500,
+      500
+    ],
+    "total_fee_bps": 1000,
+    "type": "USDC_HOP"
+  },
+  "USDT[hts]->WBTC[hts]": {
+    "path": [
+      "USDT[hts]",
+      "USDC[hts]",
+      "WBTC[hts]"
+    ],
+    "pools": [
+      4,
+      13
+    ],
+    "fee_tiers": [
+      500,
+      1500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "USDT[hts]->WETH[hts]": {
+    "path": [
+      "USDT[hts]",
+      "USDC[hts]",
+      "WETH[hts]"
+    ],
+    "pools": [
+      4,
+      14
+    ],
+    "fee_tiers": [
+      500,
+      1500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "USDT[hts]->SAUCE": {
+    "path": [
+      "USDT[hts]",
+      "HBAR",
+      "SAUCE"
+    ],
+    "pools": [
+      11,
+      2
+    ],
+    "fee_tiers": [
+      1500,
+      3000
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "USDT[hts]->DAI[hts]": {
+    "path": [
+      "USDT[hts]",
+      "USDC[hts]",
+      "DAI[hts]"
+    ],
+    "pools": [
+      4,
+      5
+    ],
+    "fee_tiers": [
+      500,
+      500
+    ],
+    "total_fee_bps": 1000,
+    "type": "USDC_HOP"
+  },
+  "USDT[hts]->LINK[hts]": {
+    "path": [
+      "USDT[hts]",
+      "HBAR",
+      "LINK[hts]"
+    ],
+    "pools": [
+      11,
+      20
+    ],
+    "fee_tiers": [
+      1500,
+      3000
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "USDT[hts]->HBARX": {
+    "path": [
+      "USDT[hts]",
+      "HBAR",
+      "HBARX"
+    ],
+    "pools": [
+      11,
+      3
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "HUB_ROUTE"
+  },
+  "DAI[hts]->USDC": {
+    "path": [
+      "DAI[hts]",
+      "USDC[hts]",
+      "USDC"
+    ],
+    "pools": [
+      5,
+      1
+    ],
+    "fee_tiers": [
+      500,
+      500
+    ],
+    "total_fee_bps": 1000,
+    "type": "USDC_HOP"
+  },
+  "DAI[hts]->WBTC[hts]": {
+    "path": [
+      "DAI[hts]",
+      "USDC[hts]",
+      "WBTC[hts]"
+    ],
+    "pools": [
+      5,
+      13
+    ],
+    "fee_tiers": [
+      500,
+      1500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "DAI[hts]->WETH[hts]": {
+    "path": [
+      "DAI[hts]",
+      "USDC[hts]",
+      "WETH[hts]"
+    ],
+    "pools": [
+      5,
+      14
+    ],
+    "fee_tiers": [
+      500,
+      1500
+    ],
+    "total_fee_bps": 2000,
+    "type": "USDC_HOP"
+  },
+  "DAI[hts]->SAUCE": {
+    "path": [
+      "DAI[hts]",
+      "HBAR",
+      "SAUCE"
+    ],
+    "pools": [
+      12,
+      2
+    ],
+    "fee_tiers": [
+      1500,
+      3000
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "DAI[hts]->USDT[hts]": {
+    "path": [
+      "DAI[hts]",
+      "USDC[hts]",
+      "USDT[hts]"
+    ],
+    "pools": [
+      5,
+      4
+    ],
+    "fee_tiers": [
+      500,
+      500
+    ],
+    "total_fee_bps": 1000,
+    "type": "USDC_HOP"
+  },
+  "DAI[hts]->LINK[hts]": {
+    "path": [
+      "DAI[hts]",
+      "HBAR",
+      "LINK[hts]"
+    ],
+    "pools": [
+      12,
+      20
+    ],
+    "fee_tiers": [
+      1500,
+      3000
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "DAI[hts]->HBARX": {
+    "path": [
+      "DAI[hts]",
+      "HBAR",
+      "HBARX"
+    ],
+    "pools": [
+      12,
+      3
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "HUB_ROUTE"
+  },
+  "LINK[hts]->USDC": {
+    "path": [
+      "LINK[hts]",
+      "HBAR",
+      "USDC"
+    ],
+    "pools": [
+      20,
+      9
+    ],
+    "fee_tiers": [
+      3000,
+      1500
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "LINK[hts]->WBTC[hts]": {
+    "path": [
+      "LINK[hts]",
+      "HBAR",
+      "WBTC[hts]"
+    ],
+    "pools": [
+      20,
+      7
+    ],
+    "fee_tiers": [
+      3000,
+      1500
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "LINK[hts]->WETH[hts]": {
+    "path": [
+      "LINK[hts]",
+      "HBAR",
+      "WETH[hts]"
+    ],
+    "pools": [
+      20,
+      8
+    ],
+    "fee_tiers": [
+      3000,
+      1500
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "LINK[hts]->SAUCE": {
+    "path": [
+      "LINK[hts]",
+      "HBAR",
+      "SAUCE"
+    ],
+    "pools": [
+      20,
+      2
+    ],
+    "fee_tiers": [
+      3000,
+      3000
+    ],
+    "total_fee_bps": 6000,
+    "type": "HUB_ROUTE"
+  },
+  "LINK[hts]->USDT[hts]": {
+    "path": [
+      "LINK[hts]",
+      "HBAR",
+      "USDT[hts]"
+    ],
+    "pools": [
+      20,
+      11
+    ],
+    "fee_tiers": [
+      3000,
+      1500
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "LINK[hts]->DAI[hts]": {
+    "path": [
+      "LINK[hts]",
+      "HBAR",
+      "DAI[hts]"
+    ],
+    "pools": [
+      20,
+      12
+    ],
+    "fee_tiers": [
+      3000,
+      1500
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "LINK[hts]->HBARX": {
+    "path": [
+      "LINK[hts]",
+      "HBAR",
+      "HBARX"
+    ],
+    "pools": [
+      20,
+      3
+    ],
+    "fee_tiers": [
+      3000,
+      1500
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "HBARX->USDC": {
+    "path": [
+      "HBARX",
+      "HBAR",
+      "USDC"
+    ],
+    "pools": [
+      3,
+      9
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "HUB_ROUTE"
+  },
+  "HBARX->WBTC[hts]": {
+    "path": [
+      "HBARX",
+      "HBAR",
+      "WBTC[hts]"
+    ],
+    "pools": [
+      3,
+      7
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "HUB_ROUTE"
+  },
+  "HBARX->WETH[hts]": {
+    "path": [
+      "HBARX",
+      "HBAR",
+      "WETH[hts]"
+    ],
+    "pools": [
+      3,
+      8
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "HUB_ROUTE"
+  },
+  "HBARX->SAUCE": {
+    "path": [
+      "HBARX",
+      "HBAR",
+      "SAUCE"
+    ],
+    "pools": [
+      3,
+      2
+    ],
+    "fee_tiers": [
+      1500,
+      3000
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  },
+  "HBARX->USDT[hts]": {
+    "path": [
+      "HBARX",
+      "HBAR",
+      "USDT[hts]"
+    ],
+    "pools": [
+      3,
+      11
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "HUB_ROUTE"
+  },
+  "HBARX->DAI[hts]": {
+    "path": [
+      "HBARX",
+      "HBAR",
+      "DAI[hts]"
+    ],
+    "pools": [
+      3,
+      12
+    ],
+    "fee_tiers": [
+      1500,
+      1500
+    ],
+    "total_fee_bps": 3000,
+    "type": "HUB_ROUTE"
+  },
+  "HBARX->LINK[hts]": {
+    "path": [
+      "HBARX",
+      "HBAR",
+      "LINK[hts]"
+    ],
+    "pools": [
+      3,
+      20
+    ],
+    "fee_tiers": [
+      1500,
+      3000
+    ],
+    "total_fee_bps": 4500,
+    "type": "HUB_ROUTE"
+  }
+}

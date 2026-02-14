@@ -1,0 +1,177 @@
+2026-02-14 06:17:53 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 06:18:01 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 06:18:03 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 06:18:03 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 06:18:03 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 06:18:03 | pacman | INFO |    Network:        mainnet
+2026-02-14 06:18:08 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 06:18:10 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 06:18:10 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 06:18:10 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 06:18:10 | pacman | INFO |    Network:        mainnet
+2026-02-14 07:21:43 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 07:26:37 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 07:26:35 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 07:26:41 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 07:26:41 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 07:26:41 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 07:26:41 | pacman | INFO |    Network:        mainnet
+2026-02-14 07:27:03 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 07:27:04 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 07:27:04 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 07:27:04 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 07:27:04 | pacman | INFO |    Network:        mainnet
+2026-02-14 07:27:04 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 07:27:04 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 07:27:04 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 07:27:04 | pacman | INFO |    Network:        mainnet
+2026-02-14 07:27:04 | pacman | INFO | 
+💸 Initiating Transfer: 100.0 HBAR -> 0.0.12345
+2026-02-14 07:27:04 | pacman | INFO |    EVM Recipient: 0x0000000000000000000000000000000000003039
+2026-02-14 07:27:05 | pacman | INFO |    📡 Sending HBAR via JSON-RPC...
+2026-02-14 07:27:05 | pacman | INFO |    ⚠️  SIMULATION MODE: Skipping broadcast.
+2026-02-14 07:27:06 | pacman | INFO | 
+💸 Initiating Transfer: 50.0 USDC -> 0.0.99999
+2026-02-14 07:27:06 | pacman | INFO |    EVM Recipient: 0x000000000000000000000000000000000001869F
+2026-02-14 07:37:29 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 07:40:13 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 07:40:15 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 07:40:15 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 07:40:15 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 07:40:15 | pacman | INFO |    Network:        mainnet
+2026-02-14 07:40:35 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 07:40:36 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 07:43:13 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 07:43:13 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 07:43:13 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 07:43:13 | pacman | INFO |    Network:        mainnet
+2026-02-14 07:47:05 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 07:47:08 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 07:47:08 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 07:47:08 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 07:47:08 | pacman | INFO |    Network:        mainnet
+2026-02-14 07:56:56 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 07:57:44 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 07:57:44 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:00:21 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:00:22 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:00:34 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:00:34 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:00:34 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:00:34 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:00:39 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 08:00:39 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 08:00:39 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 08:00:39 | pacman | INFO |    Network:        mainnet
+2026-02-14 08:02:38 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:09:08 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:09:09 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:09:10 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:12:01 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:13:44 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:24:14 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:24:19 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:24:40 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:24:40 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:25:15 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:28:05 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 08:28:33 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 08:28:33 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 08:28:33 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 08:28:33 | pacman | INFO |    Network:        mainnet
+2026-02-14 10:38:16 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 10:38:33 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 10:38:33 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 10:38:33 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 10:38:33 | pacman | INFO |    Network:        mainnet
+2026-02-14 11:29:14 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 11:29:32 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 11:29:32 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 11:29:32 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 11:29:32 | pacman | INFO |    Network:        mainnet
+2026-02-14 11:48:32 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 11:48:33 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 11:48:33 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 11:48:33 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 11:48:33 | pacman | INFO |    Network:        mainnet
+2026-02-14 11:48:37 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 11:48:38 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 11:53:08 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 11:54:01 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 11:54:08 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 11:54:08 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 11:54:08 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 11:54:08 | pacman | INFO |    Network:        mainnet
+2026-02-14 12:01:06 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:01:07 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 12:01:07 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 12:01:07 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 12:01:07 | pacman | INFO |    Network:        mainnet
+2026-02-14 12:01:11 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:02:03 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:03:09 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:03:10 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 12:03:10 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 12:03:10 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 12:03:10 | pacman | INFO |    Network:        mainnet
+2026-02-14 12:03:59 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:04:00 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:04:02 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 12:04:02 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 12:04:02 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 12:04:02 | pacman | INFO |    Network:        mainnet
+2026-02-14 12:14:48 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:14:48 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:14:49 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 12:14:49 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 12:14:49 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 12:14:49 | pacman | INFO |    Network:        mainnet
+2026-02-14 12:16:22 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:17:05 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:17:17 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 12:17:17 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 12:17:17 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 12:17:17 | pacman | INFO |    Network:        mainnet
+2026-02-14 12:19:15 | pacman | INFO | 
+🚀 Executing swap: 0.5 USDC_HTS → USDC
+2026-02-14 12:19:15 | pacman | INFO |    Mode: EXACT_OUT (LIVE)
+2026-02-14 12:19:15 | pacman | INFO |    Steps: 1
+2026-02-14 12:19:16 | pacman | INFO |    ✅ Associated.
+2026-02-14 12:19:16 | pacman | INFO | 
+📍 Step 1/1: SWAP
+2026-02-14 12:19:19 | pacman | INFO |    ⏳ Waiting for on-chain confirmation...
+2026-02-14 12:19:25 | pacman | INFO |    ✅ Confirmed! Cost: 1081268400.00000000 HBAR (131862 gas)
+2026-02-14 12:19:25 | pacman | INFO |    ⏳ Verifying transaction on-chain: ae9bac3028859d756b6b3f8cddda4fbb7808c9dc5f29f6389c0024ac594b4b18...
+2026-02-14 12:19:26 | pacman | INFO | 
+📝 Execution recorded: execution_records/exec_20260214_121926_USDC_HTS_to_USDC.json
+2026-02-14 12:29:44 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:29:52 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:29:52 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:29:54 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 12:29:54 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 12:29:54 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 12:29:54 | pacman | INFO |    Network:        mainnet
+2026-02-14 12:41:10 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:41:11 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 12:41:11 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 12:41:11 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 12:41:11 | pacman | INFO |    Network:        mainnet
+2026-02-14 12:41:43 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:41:43 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:42:04 | pacman | INFO | Loaded 44 unique pools from pacman_data_raw.json
+2026-02-14 12:42:18 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 12:42:18 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 12:42:18 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 12:42:18 | pacman | INFO |    Network:        mainnet
+2026-02-14 12:42:30 | pacman | INFO | 
+🚀 Executing swap: 5.0 HBAR → USDC
+2026-02-14 12:42:30 | pacman | INFO |    Mode: EXACT_IN (LIVE)
+2026-02-14 12:42:30 | pacman | INFO |    Steps: 1
+2026-02-14 12:42:30 | pacman | INFO |    ✅ Associated.
+2026-02-14 12:42:30 | pacman | INFO | 
+📍 Step 1/1: SWAP
+2026-02-14 12:42:32 | pacman | INFO |    ⏳ Waiting for on-chain confirmation...
+2026-02-14 12:42:39 | pacman | INFO |    ✅ Confirmed! Cost: 1535974800.00000000 HBAR (187314 gas)
+2026-02-14 12:42:39 | pacman | INFO |    ⏳ Verifying transaction on-chain: 9b9d6802d3e80fd0fec7d0b44fbb167b1b8a3fd103af55803608ee8e52526d2f...
+2026-02-14 12:42:40 | pacman | INFO | 
+📝 Execution recorded: execution_records/exec_20260214_124240_HBAR_to_USDC.json

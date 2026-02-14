@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-02-14 12:42:40",
+  "mode": "LIVE",
+  "route": {
+    "from": "HBAR",
+    "to": "USDC",
+    "steps": 1,
+    "total_cost_hbar": 0.03634448597517796,
+    "hashpack_visible": true
+  },
+  "amount_token": 5.0,
+  "to_amount_token": 0.518486,
+  "amount_usd": 0.46,
+  "gas_used": 187314,
+  "gas_cost_hbar": 0.15359748,
+  "results": [
+    {
+      "success": true,
+      "tx_hash": "9b9d6802d3e80fd0fec7d0b44fbb167b1b8a3fd103af55803608ee8e52526d2f",
+      "gas_used": 187314,
+      "gas_price_hbar": 8.2e-07,
+      "gas_cost_hbar": 0.15359748,
+      "error": "",
+      "block_number": 91162228,
+      "timestamp": "2026-02-14 12:42:39",
+      "steps_completed": 0,
+      "total_steps": 0,
+      "amount_in_raw": 500000000,
+      "amount_out_raw": 518486,
+      "quoted_rate": 0.001036972,
+      "effective_rate": 0.001036972,
+      "gas_offered": 1000000,
+      "account_id": "0.0.8213379",
+      "gas_cost_usd": 0.0140962658813436,
+      "hbar_usd_price": 0.09177407,
+      "lp_fee_amount": 0.0075,
+      "lp_fee_token": "HBAR"
+    }
+  ],
+  "success": true,
+  "account": "0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa",
+  "network": "mainnet"
+}

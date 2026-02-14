@@ -1,0 +1,6 @@
+model/
+node_modules/
+__pycache__/
+*.safetensors
+*.bin
+*.json_raw
