@@ -175,3 +175,10 @@
 2026-02-14 12:42:39 | pacman | INFO |    ⏳ Verifying transaction on-chain: 9b9d6802d3e80fd0fec7d0b44fbb167b1b8a3fd103af55803608ee8e52526d2f...
 2026-02-14 12:42:40 | pacman | INFO | 
 📝 Execution recorded: execution_records/exec_20260214_124240_HBAR_to_USDC.json
+2026-02-14 19:46:46 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-14 19:50:24 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-14 19:50:26 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-14 19:50:27 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-14 19:50:27 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-14 19:50:27 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-14 19:50:27 | pacman | INFO |    Network:        mainnet

@@ -21,7 +21,7 @@ class PacmanPriceManager:
     as the sole source of truth for pricing.
     """
 
-    def __init__(self, data_file: str = "pacman_data_raw.json"):
+    def __init__(self, data_file: str = "data/pacman_data_raw.json"):
         """
         Initialize the price manager.
         

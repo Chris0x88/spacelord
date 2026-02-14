@@ -130,7 +130,7 @@ class PacmanExecutor:
             
         # Token Balances from tokens.json
         try:
-            tokens_path = os.path.join(os.path.dirname(__file__), "tokens.json")
+            tokens_path = os.path.join(os.path.dirname(__file__), "data/tokens.json")
             with open(tokens_path) as f:
                 tokens_data = json.load(f)
                 
@@ -158,7 +158,7 @@ class PacmanExecutor:
             return "0.0.0"
             
         try:
-            tokens_path = os.path.join(os.path.dirname(__file__), "tokens.json")
+            tokens_path = os.path.join(os.path.dirname(__file__), "data/tokens.json")
             with open(tokens_path) as f:
                 tokens_data = json.load(f)
             meta = tokens_data.get(symbol)
@@ -346,32 +346,11 @@ class PacmanExecutor:
             return False
 
     def associate_token(self, token_id: str) -> bool:
-        """Associate HTS token using the JS SDK script."""
+        """Associate HTS token using the HTS Precompile."""
         if token_id.upper() in ["HBAR", "0.0.0"]: return True
         
-        import subprocess
-        logger.info(f"   🛡️  Associating token {token_id} via Hedera SDK...")
-        
-        env = os.environ.copy()
-        # Use existing private key from client if available
-        if self.private_key:
-            env["PACMAN_PRIVATE_KEY"] = self.private_key
-            
-        try:
-            result = subprocess.run(
-                ["node", "associate_hts_token.js", token_id],
-                env=env,
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            return True
-        except subprocess.CalledProcessError as e:
-            logger.error(f"   ❌ Association failed: {e.stderr}")
-            return False
-        except Exception as e:
-            logger.error(f"   ❌ Error calling association script: {e}")
-            return False
+        # Use native client method
+        return self.client.associate_token_native(token_id)
 
     def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in") -> ExecutionResult:
         """Execute a single swap step using one of the three engines."""
@@ -589,7 +568,7 @@ class PacmanExecutor:
             token_id = route.from_variant # Attempt to use as ID if it is one
             
             try:
-                with open("tokens.json") as f:
+                with open("data/tokens.json") as f:
                     tdata = json.load(f)
                     meta = tdata.get(route.from_variant)
                     if meta:

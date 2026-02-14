@@ -191,7 +191,7 @@ class PacmanVariantRouter:
         """Get the current live HBAR price from the price manager."""
         return self.price_manager.get_hbar_price()
         
-    def load_pools(self, pools_file: str = "pacman_data_raw.json"):
+    def load_pools(self, pools_file: str = "data/pacman_data_raw.json"):
         """
         Load SaucerSwap pool data from a local JSON file.
         

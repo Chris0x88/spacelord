@@ -63,29 +63,17 @@ PACMAN_BANNER = f"""{C.ACCENT}
 
 
 # ---------------------------------------------------------------------------
-# Spinner / Progress
+# Loading / Progress
 # ---------------------------------------------------------------------------
 
-SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-
-def spinner_step(message: str, step: int, total: int, frame_idx: int = 0):
-    """Render one frame of a modern spinner with step counter."""
-    spinner = SPINNER_FRAMES[frame_idx % len(SPINNER_FRAMES)]
-    bar_w = 24
-    filled = int(bar_w * step / total)
-    empty = bar_w - filled
-    pct = int(100.0 * step / total)
-
-    bar = f"{C.OK}{'━' * filled}{C.MUTED}{'━' * empty}{C.R}"
-    counter = f"{C.MUTED}[{step}/{total}]{C.R}"
-
-    sys.stdout.write(f"\r  {C.ACCENT}{spinner}{C.R} {bar} {C.TEXT}{pct:3d}%{C.R} {counter} {C.MUTED}{message}{C.R}    ")
+def show_loading(message: str):
+    """Show a simple loading message."""
+    sys.stdout.write(f"\r  {C.ACCENT}{message}{C.R}...")
     sys.stdout.flush()
 
-
-def spinner_done(message: str = "Ready"):
-    """Finalize the spinner line."""
-    sys.stdout.write(f"\r  {C.OK}✓{C.R} {'━' * 24} {C.OK}100%{C.R} {C.TEXT}{message}{C.R}                      \n")
+def hide_loading(message: str = "Done"):
+    """Complete the loading line."""
+    sys.stdout.write(f" {C.OK}{message}{C.R}\n")
     sys.stdout.flush()
 
 
@@ -213,7 +201,7 @@ def show_all_prices():
     # Sort by Symbol if possible, else ID
     # We need to map IDs to symbols for display
     try:
-        with open("tokens.json") as f:
+        with open("data/tokens.json") as f:
             tdata = json.load(f)
     except:
         tdata = {}
@@ -292,7 +280,7 @@ def _show_single_balance(executor, token_name: str, price_manager):
 
     # Token lookup
     try:
-        with open("tokens.json") as f:
+        with open("data/tokens.json") as f:
             tokens_data = json.load(f)
     except:
         print(f"  {C.ERR}✗{C.R} Could not load tokens.json")
@@ -346,7 +334,7 @@ def _show_all_balances(executor, price_manager):
 
         print(f"  {C.ACCENT}HBAR{C.R}       {C.TEXT}{hbar_readable:>14.6f}{C.R}  {C.OK}${hbar_usd:>10.2f}{C.R}")
 
-        with open("tokens.json") as f:
+        with open("data/tokens.json") as f:
             tokens_data = json.load(f)
 
         total_usd = hbar_usd
@@ -404,7 +392,7 @@ def show_tokens():
         from pacman_variant_router import PacmanVariantRouter
 
         BLACKLIST = PacmanVariantRouter.BLACKLISTED_TOKENS
-        with open("tokens.json") as f:
+        with open("data/tokens.json") as f:
             tokens_data = json.load(f)
 
         id_to_aliases = {}
@@ -474,7 +462,7 @@ def show_history(executor):
     # Load token metadata
     tokens_map = {}
     try:
-        with open("tokens.json") as f:
+        with open("data/tokens.json") as f:
             tdata = json.load(f)
             for k, v in tdata.items():
                 tokens_map[k] = v
@@ -674,7 +662,7 @@ def _resolve_token_id(token_name: str) -> Optional[str]:
         return "0.0.1456986"
 
     try:
-        with open("tokens.json") as f:
+        with open("data/tokens.json") as f:
             tokens_data = json.load(f)
         for sym, meta in tokens_data.items():
             if sym.upper() == name or meta.get("symbol", "").upper() == name:

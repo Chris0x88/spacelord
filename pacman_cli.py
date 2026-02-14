@@ -10,7 +10,6 @@ Pipelines: Natural Language -> Translator -> Router -> Executor.
 import sys
 import os
 import json
-import time
 
 # Load environment early (fast, no heavy deps)
 from dotenv import load_dotenv
@@ -34,7 +33,7 @@ def get_token_id_for_variant(variant: str) -> str:
     if variant in IDS:
         return IDS[variant]
     try:
-        with open("tokens.json") as f:
+        with open("data/tokens.json") as f:
             tokens_data = json.load(f)
             if variant in tokens_data:
                 return tokens_data[variant].get("id", variant)
@@ -48,29 +47,17 @@ def get_token_id_for_variant(variant: str) -> str:
 # ---------------------------------------------------------------------------
 
 def init_executor():
-    """Initialize the executor with a visual spinner."""
-    from pacman_display import spinner_step, spinner_done, C
+    """Initialize the executor instantly."""
+    from pacman_display import C
     from pacman_executor import PacmanExecutor
     from pacman_logger import logger
 
-    print(f"\n  {C.BOLD}{C.TEXT}INITIALIZING ENGINE{C.R}")
+    print(f"\n  {C.BOLD}{C.ACCENT}Initializing Engine...{C.R}", end="", flush=True)
 
-    # Step 1: Web3
-    for i in range(8):
-        spinner_step("Connecting to Hedera...", 1, 5, i)
-        time.sleep(0.04)
+    # Imports (Lazy but fast)
     from web3 import Web3
-
-    # Step 2: Protocol
-    for i in range(6):
-        spinner_step("Loading SaucerSwap V2...", 2, 5, i + 8)
-        time.sleep(0.03)
     from saucerswap_v2_client import SaucerSwapV2
-
-    # Step 3: Identity
-    for i in range(4):
-        spinner_step("Resolving identity...", 3, 5, i + 14)
-        time.sleep(0.03)
+    from pacman_price_manager import price_manager
 
     pk_env = os.getenv("PACMAN_PRIVATE_KEY")
     force_sim = os.getenv("PACMAN_SIMULATE", "false").lower() == "true"
@@ -83,15 +70,9 @@ def init_executor():
         executor = PacmanExecutor(private_key=pk_env)
         executor.is_sim = force_sim
 
-    # Step 4: Price data
-    for i in range(4):
-        spinner_step("Syncing market data...", 4, 5, i + 18)
-        time.sleep(0.03)
-    from pacman_price_manager import price_manager
     executor.price_manager = price_manager
 
-    # Step 5: Done
-    spinner_done("Engine online")
+    print(f" {C.OK}DONE{C.R}")
     return executor
 
 
@@ -389,7 +370,7 @@ def main():
     try:
         from pacman_variant_router import PacmanVariantRouter
         router = PacmanVariantRouter()
-        router.load_pools()
+        router.load_pools(pools_file="data/pacman_data_raw.json")
     except Exception as e:
         print(f"  {C.ERR}✗{C.R} Failed to initialize: {e}")
         return
