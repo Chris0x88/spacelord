@@ -9,6 +9,7 @@ import math
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
+from pacman_errors import ConfigurationError
 
 @dataclass
 class PacmanConfig:
@@ -65,9 +66,6 @@ class PacmanConfig:
         
         # Required: Private key
         config.private_key = os.getenv("PACMAN_PRIVATE_KEY") or os.getenv("PRIVATE_KEY")
-        if not config.private_key:
-            print("⚠️  Warning: No private key found. Set PACMAN_PRIVATE_KEY in .env")
-            print("   Running in read-only mode (quotes only)")
         
         # Network settings
         config.network = os.getenv("PACMAN_NETWORK", "mainnet")
@@ -95,33 +93,32 @@ class PacmanConfig:
         
         return config
     
-    def validate(self) -> tuple[bool, str]:
+    def validate(self) -> None:
         """Validate configuration is safe for trading."""
         
-        if not self.private_key:
-            return False, "No private key configured"
-        
-        # Validate private key format (should be 64 hex chars)
-        clean_key = self.private_key.replace("0x", "")
-        if len(clean_key) != 64:
-            return False, f"Invalid private key format (expected 64 chars, got {len(clean_key)})"
-        
-        try:
-            int(clean_key, 16)
-        except ValueError:
-            return False, "Private key contains non-hex characters"
+        if not self.simulate_mode:
+            if not self.private_key:
+                raise ConfigurationError("Private key required for live execution (Set PACMAN_PRIVATE_KEY)")
+
+            # Validate private key format (should be 64 hex chars)
+            clean_key = self.private_key.replace("0x", "")
+            if len(clean_key) != 64:
+                raise ConfigurationError(f"Invalid private key format (expected 64 hex chars, got {len(clean_key)})")
+
+            try:
+                int(clean_key, 16)
+            except ValueError:
+                raise ConfigurationError("Private key contains non-hex characters")
         
         # Validate limits
         if math.isnan(self.max_swap_amount_usd) or self.max_swap_amount_usd > 1.00 or self.max_swap_amount_usd < 0:
-            return False, f"Invalid max_swap_amount_usd: ${self.max_swap_amount_usd}"
+            raise ConfigurationError(f"Invalid max_swap_amount_usd: ${self.max_swap_amount_usd} (Max permitted: $1.00)")
         
         if math.isnan(self.max_daily_volume_usd) or self.max_daily_volume_usd > 10.00 or self.max_daily_volume_usd < 0:
-            return False, f"Invalid max_daily_volume_usd: ${self.max_daily_volume_usd}"
+            raise ConfigurationError(f"Invalid max_daily_volume_usd: ${self.max_daily_volume_usd} (Max permitted: $10.00)")
 
         if math.isnan(self.max_slippage_percent) or self.max_slippage_percent > 5.0 or self.max_slippage_percent < 0:
-            return False, f"Invalid max_slippage_percent: {self.max_slippage_percent}%"
-        
-        return True, "Configuration valid"
+            raise ConfigurationError(f"Invalid max_slippage_percent: {self.max_slippage_percent}% (Max permitted: 5%)")
     
     def print_status(self):
         """Print current configuration status."""
@@ -182,11 +179,10 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "init":
         create_env_template()
     else:
-        config = PacmanConfig.from_env()
-        config.print_status()
-        
-        valid, message = config.validate()
-        if valid:
+        try:
+            config = PacmanConfig.from_env()
+            config.print_status()
+            config.validate()
             print("\n✅ Configuration is valid and safe for trading")
-        else:
-            print(f"\n❌ Configuration error: {message}")
+        except ConfigurationError as e:
+            print(f"\n❌ Configuration error: {e}")

@@ -11,6 +11,8 @@ from typing import Dict, Optional, List
 from dataclasses import dataclass, field
 from pathlib import Path
 from pacman_logger import logger
+from pacman_config import PacmanConfig
+from pacman_errors import ConfigurationError, ExecutionError, InsufficientFundsError
 
 # ERC20 Wrapper contract (from btc-rebalancer2)
 ERC20_WRAPPER_ID = "0.0.9675688"
@@ -75,26 +77,35 @@ class PacmanExecutor:
     Executes swaps with optional wrap/unwrap steps.
     """
     
-    def __init__(self, private_key: Optional[str] = None, network: str = "mainnet"):
-        """Initialize executor with private key."""
+    def __init__(self, config: PacmanConfig):
+        """Initialize executor with configuration."""
         from saucerswap_v2_client import SaucerSwapV2, hedera_id_to_evm
         from web3 import Web3
 
-        self.private_key = private_key or os.getenv("PACMAN_PRIVATE_KEY")
-        if not self.private_key:
-            raise ValueError("Private key required for execution (Set PACMAN_PRIVATE_KEY)")
+        self.config = config
         
-        self.network = network
-        self.rpc_url = "https://mainnet.hashio.io/api" if network == "mainnet" else "https://testnet.hashio.io/api"
+        # Ensure config is valid before proceeding
+        try:
+            self.config.validate()
+        except ConfigurationError as e:
+            if not self.config.simulate_mode:
+                raise e # Re-raise if we are in live mode and config is bad
+            # In sim mode, we might proceed with a dummy key if missing
+            if not self.config.private_key:
+                logger.warning("Simulation Mode: Using dummy private key.")
+                self.config.private_key = "0x" + "0" * 64
+
+        self.network = config.network
+        self.rpc_url = config.rpc_url
         
         # Initialize web3 and client
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
         if not self.w3.is_connected():
             raise ConnectionError(f"Failed to connect to {self.rpc_url}")
         
-        self.client = SaucerSwapV2(self.w3, network=network, private_key=self.private_key)
+        self.client = SaucerSwapV2(self.w3, network=self.network, private_key=self.config.private_key)
         self.eoa = self.client.eoa
-        self.chain_id = 146 if network == "mainnet" else 147 # Hedera Chain IDs
+        self.chain_id = 146 if self.network == "mainnet" else 147 # Hedera Chain IDs
         
         # Initialize wrapper contract
         self.wrapper_address = hedera_id_to_evm(ERC20_WRAPPER_ID)
@@ -106,12 +117,12 @@ class PacmanExecutor:
         # Recording system
         self.recordings_dir = Path("execution_records")
         self.recordings_dir.mkdir(exist_ok=True)
-        self.hedera_account_id = os.getenv("HEDERA_ACCOUNT_ID", "Unknown")
+        self.hedera_account_id = config.hedera_account_id or "Unknown"
         
         logger.info(f"✅ PacmanExecutor initialized")
         logger.info(f"   Hedera Account: {self.hedera_account_id} (Native ID)")
         logger.info(f"   EVM Address:    {self.eoa} (Ethereum Mirror)")
-        logger.info(f"   Network:        {network}")
+        logger.info(f"   Network:        {self.network}")
 
     def get_balances(self) -> Dict[str, float]:
         """Fetch all non-zero token balances for the account."""
@@ -162,10 +173,12 @@ class PacmanExecutor:
         except: pass
         return None
 
-    def execute_swap(self, route, amount_usd: float, mode: str = "exact_in", simulate: bool = True) -> ExecutionResult:
+    def execute_swap(self, route, amount_usd: float, mode: str = "exact_in") -> ExecutionResult:
         """
         Execute a swap route consisting of one or more steps.
         """
+        simulate = self.config.simulate_mode
+
         logger.info(f"\n🚀 Executing swap: {amount_usd} {route.from_variant} → {route.to_variant}")
         logger.info(f"   Mode: {mode.upper()} ({'SIMULATION' if simulate else 'LIVE'})")
         logger.info(f"   Steps: {len(route.steps)}")
@@ -330,6 +343,9 @@ class PacmanExecutor:
     def _get_hbar_price_usd(self) -> float:
         """Fetch current HBAR price in USD from PriceManager."""
         from pacman_price_manager import price_manager
+        # Ensure it's loaded
+        if price_manager.hbar_price == 0:
+            price_manager.reload()
         return price_manager.get_hbar_price()
 
     
@@ -415,7 +431,8 @@ class PacmanExecutor:
                  needed_balance = int(amount_in_expected * 1.01)
             
             if current_balance < needed_balance:
-                return ExecutionResult(success=False, error=f"Insufficient funds")
+                # RAISE EXCEPTION instead of returning fail
+                raise InsufficientFundsError(f"Insufficient funds: Have {current_balance}, Need {needed_balance}")
 
             if not is_native_hbar:
                 current_allowance = self.client.get_allowance(from_token_id, self.client.eoa, self.client.router_address)
@@ -475,6 +492,8 @@ class PacmanExecutor:
                 hbar_usd_price=hbar_price,
                 gas_cost_usd=gas_cost_hbar * hbar_price
             )
+        except InsufficientFundsError as e:
+            return ExecutionResult(success=False, error=str(e))
         except Exception as e:
             return ExecutionResult(success=False, error=str(e))
     

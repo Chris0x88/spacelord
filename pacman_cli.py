@@ -3,376 +3,214 @@
 Pacman CLI - Operational Trading Interface
 ==========================================
 
-The single entry point for the Pacman terminal.
-Pipelines: Natural Language -> Translator -> Router -> Executor.
+The View Layer.
+Responsible ONLY for:
+1. Handling User Input (Arguments, Interactive)
+2. Displaying Output (Colors, Tables, Errors)
+3. Calling the Logic Layer (PacmanApp)
 """
 
 import sys
-import os
 import json
-
-# Load environment early (fast, no heavy deps)
-from dotenv import load_dotenv
-load_dotenv()
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _resolve_id(variant: str) -> str:
-    """Resolve a variant name to its Hedera Token ID."""
-    IDS = {
-        "WBTC_HTS": "0.0.10082597",
-        "WBTC_ERC20": "0.0.1055483",
-        "WETH_HTS": "0.0.9770617",
-        "WETH_ERC20": "0.0.541564",
-        "HBAR": "0.0.0",
-        "0.0.0": "0.0.0"
-    }
-    if variant in IDS: return IDS[variant]
-
-    try:
-        with open("data/tokens.json") as f:
-            tokens_data = json.load(f)
-            if variant in tokens_data:
-                return tokens_data[variant].get("id", variant)
-    except: pass
-    return variant
-
-def init_executor():
-    """Initialize the executor instantly."""
-    from pacman_display import C
-    from pacman_executor import PacmanExecutor
-    from pacman_logger import logger
-
-    print(f"\n  {C.BOLD}{C.ACCENT}Initializing Engine...{C.R}", end="", flush=True)
-
-    from web3 import Web3
-    from saucerswap_v2_client import SaucerSwapV2
-    from pacman_price_manager import price_manager
-
-    pk_env = os.getenv("PACMAN_PRIVATE_KEY")
-    force_sim = os.getenv("PACMAN_SIMULATE", "false").lower() == "true"
-
-    if not pk_env:
-        logger.warning("No private key found. Simulation mode.")
-        executor = PacmanExecutor(private_key="0x" + "0" * 64)
-        executor.is_sim = True
-    else:
-        executor = PacmanExecutor(private_key=pk_env)
-        executor.is_sim = force_sim
-
-    executor.price_manager = price_manager
-    print(f" {C.OK}DONE{C.R}")
-    return executor
-
+from pacman_app import PacmanApp
+from pacman_errors import PacmanError, ConfigurationError
+from pacman_display import (
+    C, PACMAN_BANNER, print_security_warning,
+    show_help, show_tokens, show_sources, show_price,
+    show_balance, show_account, show_history,
+    print_receipt, print_transfer_receipt
+)
+from pacman_translator import translate
 
 # ---------------------------------------------------------------------------
-# Command Handlers
+# Command Handlers (View Logic)
 # ---------------------------------------------------------------------------
 
-def cmd_help(ctx):
-    from pacman_display import show_help
+def cmd_help(app, args):
     show_help()
 
-def cmd_tokens(ctx):
-    from pacman_display import show_tokens
+def cmd_tokens(app, args):
     show_tokens()
 
-def cmd_sources(ctx):
-    from pacman_display import show_sources
+def cmd_sources(app, args):
     show_sources()
 
-def cmd_price(ctx):
-    parts = ctx['parts']
-    if len(parts) >= 2:
-        from pacman_translator import resolve_token
-        from pacman_display import show_price
-        target = resolve_token(parts[1]) or parts[1]
-        show_price(target)
+def cmd_price(app, args):
+    if len(args) >= 1:
+        show_price(args[0])
     else:
+        # Show all
         from pacman_display import show_all_prices
         show_all_prices()
 
-def cmd_account(ctx):
-    from pacman_display import show_account, C
-    if not ctx['executor']:
-        print(f"  {C.ERR}✗{C.R} Engine not initialized.")
-        return
-    show_account(ctx['executor'])
+def cmd_account(app, args):
+    show_account(app.executor)
 
-def cmd_balance(ctx):
-    from pacman_display import show_balance, C
-    if not ctx['executor']:
-        print(f"  {C.ERR}✗{C.R} Engine not initialized.")
-        return
+def cmd_balance(app, args):
+    token = args[0] if args else None
+    show_balance(app.executor, single_token=token)
 
-    parts = ctx['parts']
-    target = parts[1] if len(parts) >= 2 else None
-    show_balance(ctx['executor'], single_token=target)
+def cmd_history(app, args):
+    show_history(app.executor)
 
-def cmd_history(ctx):
-    from pacman_display import show_history, C
-    if not ctx['executor']:
-        print(f"  {C.ERR}✗{C.R} Engine not initialized.")
-        return
-    show_history(ctx['executor'])
-
-def cmd_send(ctx):
-    from pacman_cli import handle_send
-    from pacman_display import C
-    if not ctx['executor']:
-        print(f"  {C.ERR}✗{C.R} Engine not initialized.")
-        return
-    handle_send(ctx['text'], ctx['executor'])
-
-# ---------------------------------------------------------------------------
-# Logic Handlers (Swap/Convert)
-# ---------------------------------------------------------------------------
-
-def handle_swap(req: dict, router, executor):
-    """Execute a token swap."""
-    from pacman_display import print_receipt, C
-
-    from_token, to_token = req["from_token"], req["to_token"]
-    amount, mode = req["amount"], req["mode"]
-
-    print(f"\n  {C.ACCENT}⟳{C.R} Analyzing: {C.TEXT}{amount}{C.R} {from_token} → {to_token} ({mode})")
-
-    route = router.recommend_route(from_token, to_token, user_preference="auto", amount_usd=100.0)
-    if not route:
-        print(f"  {C.ERR}✗{C.R} No route found for {from_token} → {to_token}")
-        return
-
-    from_id = _resolve_id(route.from_variant)
-    to_id = _resolve_id(route.to_variant)
-
-    print(f"\n  {C.BOLD}Proposed Route:{C.R}")
-    print(f"  {C.TEXT}{route.from_variant}{C.R} {C.MUTED}({from_id}){C.R} → {C.TEXT}{route.to_variant}{C.R} {C.MUTED}({to_id}){C.R}")
-    print(route.explain())
-
-    if os.getenv("PACMAN_AUTO_CONFIRM") != "true":
-        confirm = input(f"\n  Execute swap? {C.MUTED}(y/n){C.R} ").strip().lower()
-        if confirm not in ["y", "yes"]:
-            print(f"  {C.MUTED}Cancelled.{C.R}")
-            return
-
-    res = executor.execute_swap(route, amount_usd=amount, mode=mode, simulate=executor.is_sim)
-
-    if res.success:
-        print_receipt(res, route, route.from_variant, route.to_variant, amount, mode, executor)
-    else:
-        print(f"\n  {C.ERR}✗{C.R} FAILED: {res.error}")
-
-def handle_convert(req: dict, router, executor):
-    """Handle wrap/unwrap conversion requests."""
-    from pacman_variant_router import RouteStep, VariantRoute
-    from pacman_display import C
-
-    from_token, to_token = req["from_token"], req["to_token"]
-    amount = req["amount"]
-
-    is_wrap = ("ERC20" in to_token or "LZ" in to_token)
-    is_unwrap = ("HTS" in to_token and ("ERC20" in from_token or "LZ" in from_token))
-
-    if not is_wrap and not is_unwrap:
-        if "ERC20" in to_token and ("HTS" in from_token or from_token in ["WBTC", "WETH"]): is_wrap = True
-        elif ("HTS" in to_token or to_token in ["WBTC", "WETH"]) and "ERC20" in from_token: is_unwrap = True
-
-    if not is_wrap and not is_unwrap:
-        print(f"  {C.WARN}⚠{C.R}  Cannot determine conversion type.")
-        return
-
-    from_id = _resolve_id(from_token)
-    to_id = _resolve_id(to_token)
-    step_type = "wrap" if is_wrap else "unwrap"
-
-    step = RouteStep(
-        step_type=step_type, from_token=from_token, to_token=to_token,
-        contract="0.0.9675688", gas_estimate_hbar=0.02,
-        details={"token_in_id": from_id, "token_out_id": to_id}
-    )
-    route = VariantRoute(
-        from_variant=from_token, to_variant=to_token, steps=[step],
-        total_fee_percent=0.0, total_gas_hbar=0.02, total_cost_hbar=0.02,
-        estimated_time_seconds=10, output_format="HTS" if is_unwrap else "ERC20",
-        hashpack_visible=is_unwrap, confidence=1.0
-    )
-
-    decimals = 8 if "WBTC" in from_token else 18
-    step.amount_raw = int(amount * (10**decimals))
-
-    print(f"\n  {C.BOLD}{step_type.upper()}{C.R}")
-    print(f"  {C.TEXT}{amount}{C.R} {from_token} {C.MUTED}({from_id}){C.R}")
-    print(f"  → {C.TEXT}{amount}{C.R} {to_token} {C.MUTED}({to_id}){C.R}")
-
-    if os.getenv("PACMAN_AUTO_CONFIRM") != "true":
-        confirm = input(f"\n  Execute? {C.MUTED}(y/n){C.R} ").strip().lower()
-        if confirm not in ["y", "yes"]:
-            print(f"  {C.MUTED}Cancelled.{C.R}")
-            return
-
-    res = executor.execute_swap(route, amount_usd=amount, mode="exact_in", simulate=executor.is_sim)
-
-    if res.success:
-        print(f"\n  {C.OK}✓{C.R} {step_type.upper()} complete: {res.tx_hash}")
-    else:
-        print(f"\n  {C.ERR}✗{C.R} FAILED: {res.error}")
-
-def handle_send(text: str, executor):
-    """Handle send command."""
-    from pacman_display import C, print_transfer_receipt
-    from pacman_transfers import execute_transfer
-    
-    parts = text.strip().split()
-    if len(parts) < 5 or parts[3].lower() != "to":
+def cmd_send(app, args):
+    # Syntax: send <amount> <token> to <recipient>
+    # args: [100, HBAR, to, 0.0.123]
+    if len(args) < 4 or args[2].lower() != "to":
         print(f"  {C.ERR}✗{C.R} Usage: {C.BOLD}send <amount> <token> to <recipient>{C.R}")
-        print(f"  {C.MUTED}Example: send 100 HBAR to 0.0.12345{C.R}")
         return
 
     try:
-        amount = float(parts[1])
-    except:
-        print(f"  {C.ERR}✗{C.R} Invalid amount: {parts[1]}")
+        amount = float(args[0])
+    except ValueError:
+        print(f"  {C.ERR}✗{C.R} Invalid amount: {args[0]}")
         return
-        
-    symbol = parts[2].upper()
-    recipient = parts[4]
-    
+
+    symbol = args[1].upper()
+    recipient = args[3]
+
     print(f"\n  {C.ACCENT}↗{C.R} Transfer: {C.TEXT}{amount} {symbol}{C.R} → {C.TEXT}{recipient}{C.R}")
-    
-    if os.getenv("PACMAN_AUTO_CONFIRM") != "true":
+
+    if app.config.require_confirmation:
         confirm = input(f"  Confirm? {C.MUTED}(y/n){C.R} ").strip().lower()
         if confirm not in ["y", "yes"]:
             print(f"  {C.MUTED}Cancelled.{C.R}")
             return
-            
+
     print(f"  {C.MUTED}Submitting...{C.R}")
-    res = execute_transfer(executor, symbol, amount, recipient)
-    
+    res = app.transfer(symbol, amount, recipient)
+
     if res["success"]:
         print_transfer_receipt(res)
     else:
-        print(f"\n  {C.ERR}✗{C.R} FAILED: {res['error']}")
+        print(f"\n  {C.ERR}✗{C.R} FAILED: {res.get('error')}")
 
-
-# ---------------------------------------------------------------------------
-# Main Controller
-# ---------------------------------------------------------------------------
-
-def process_command(text: str, router, executor):
-    """Parse and execute a single command using a dispatcher."""
-    from pacman_translator import translate
-    from pacman_display import C
-
-    parts = text.strip().split()
-    if not parts: return
-
-    cmd = parts[0].lower()
-    ctx = {'text': text, 'parts': parts, 'router': router, 'executor': executor}
-
-    # 1. Direct Commands
-    HANDLERS = {
-        'help': cmd_help, '--help': cmd_help, '-h': cmd_help, '?': cmd_help,
-        'tokens': cmd_tokens,
-        'sources': cmd_sources,
-        'price': cmd_price,
-        'account': cmd_account,
-        'balance': cmd_balance,
-        'history': cmd_history,
-        'send': cmd_send,
-    }
-
-    if cmd in HANDLERS:
-        HANDLERS[cmd](ctx)
-        return
-
-    # 2. NLP Commands (Swap/Convert)
-    if not executor:
-        print(f"  {C.ERR}✗{C.R} Engine not initialized. Run 'balance' first.")
-        return
-
+def handle_natural_language(app, text):
+    """Process NLP commands like 'swap 10 HBAR for USDC'."""
     req = translate(text)
     if not req:
         print(f"  {C.ERR}✗{C.R} Unknown command. Type {C.TEXT}help{C.R} for options.")
         return
 
     intent = req.get("intent")
+
     if intent == "swap":
-        handle_swap(req, router, executor)
+        _do_swap(app, req)
     elif intent == "convert":
-        handle_convert(req, router, executor)
+        _do_swap(app, req) # Convert is handled by swap logic in App
     elif intent == "balance":
-        cmd_balance(ctx)
+        cmd_balance(app, [])
     elif intent == "help":
-        cmd_help(ctx)
-    elif intent == "tokens":
-        cmd_tokens(ctx)
-    elif intent == "history":
-        cmd_history(ctx)
+        cmd_help(app, [])
     else:
         print(f"  {C.ERR}✗{C.R} Unhandled intent: {intent}")
 
-def handle_oneshot(args: list, router):
-    """Handle a single CLI command and exit."""
-    cmd = args[0].lower()
+def _do_swap(app, req):
+    from_token = req["from_token"]
+    to_token = req["to_token"]
+    amount = req["amount"]
+    mode = req["mode"]
 
-    # Fast commands (no engine)
-    if cmd in ['help', '--help', '-h', '?', 'tokens', 'sources', 'price']:
-        process_command(" ".join(args), router, None)
-        return
+    print(f"\n  {C.ACCENT}⟳{C.R} Analyzing: {C.TEXT}{amount}{C.R} {from_token} → {to_token} ({mode})")
 
-    # Heavy commands
-    executor = init_executor()
-    process_command(" ".join(args), router, executor)
+    try:
+        route = app.get_route(from_token, to_token, amount)
+        if not route:
+            print(f"  {C.ERR}✗{C.R} No route found for {from_token} → {to_token}")
+            return
+
+        print(f"\n  {C.BOLD}Proposed Route:{C.R}")
+        print(f"  {C.TEXT}{route.from_variant}{C.R} → {C.TEXT}{route.to_variant}{C.R}")
+        print(route.explain())
+
+        if app.config.require_confirmation:
+            confirm = input(f"\n  Execute swap? {C.MUTED}(y/n){C.R} ").strip().lower()
+            if confirm not in ["y", "yes"]:
+                print(f"  {C.MUTED}Cancelled.{C.R}")
+                return
+
+        res = app.executor.execute_swap(route, amount_usd=amount, mode=mode)
+
+        if res.success:
+            print_receipt(res, route, route.from_variant, route.to_variant, amount, mode, app.executor)
+        else:
+            print(f"\n  {C.ERR}✗{C.R} FAILED: {res.error}")
+
+    except PacmanError as e:
+        print(f"  {C.ERR}✗{C.R} Error: {e}")
+
+# ---------------------------------------------------------------------------
+# Dispatcher
+# ---------------------------------------------------------------------------
+
+COMMANDS = {
+    "help": cmd_help, "?": cmd_help, "-h": cmd_help,
+    "tokens": cmd_tokens,
+    "sources": cmd_sources,
+    "price": cmd_price,
+    "account": cmd_account,
+    "balance": cmd_balance,
+    "history": cmd_history,
+    "send": cmd_send
+}
+
+def process_input(app, text):
+    parts = text.strip().split()
+    if not parts: return
+
+    cmd = parts[0].lower()
+    args = parts[1:]
+
+    if cmd in COMMANDS:
+        try:
+            COMMANDS[cmd](app, args)
+        except PacmanError as e:
+            print(f"  {C.ERR}✗{C.R} {e}")
+        except Exception as e:
+            print(f"  {C.ERR}✗{C.R} Unexpected Error: {e}")
+    else:
+        # Fallback to NLP
+        try:
+            handle_natural_language(app, text)
+        except PacmanError as e:
+            print(f"  {C.ERR}✗{C.R} {e}")
+
+# ---------------------------------------------------------------------------
+# Entry Point
+# ---------------------------------------------------------------------------
 
 def main():
-    from pacman_display import PACMAN_BANNER, print_security_warning, show_help, C
-
     print(PACMAN_BANNER)
     print_security_warning()
 
+    # Initialize App (Logic)
     try:
-        from pacman_variant_router import PacmanVariantRouter
-        router = PacmanVariantRouter()
-        router.load_pools(pools_file="data/pacman_data_raw.json")
-    except Exception as e:
-        print(f"  {C.ERR}✗{C.R} Failed to initialize: {e}")
+        app = PacmanApp()
+        print(f"\n  {C.BOLD}{C.ACCENT}System Online{C.R}")
+    except ConfigurationError as e:
+        print(f"  {C.ERR}✗{C.R} Config Error: {e}")
         return
 
-    # One-shot mode
+    # One-Shot Mode
     if len(sys.argv) > 1:
-        handle_oneshot(sys.argv[1:], router)
+        process_input(app, " ".join(sys.argv[1:]))
         return
 
-    # REPL
-    show_help()
-    executor = None
-
+    # Interactive Mode
+    cmd_help(app, [])
     while True:
         try:
             user_input = input(f"\n  {C.ACCENT}ᗧ{C.R} ").strip()
             if not user_input: continue
-
             if user_input.lower() in ["exit", "quit", "q"]:
                 print(f"  {C.MUTED}Shutting down.{C.R}")
                 break
 
-            # Lazy Init
-            needs_engine = any(w in user_input.lower() for w in [
-                "swap", "buy", "sell", "convert", "balance", "history", "account", "send"
-            ])
-            if needs_engine and executor is None:
-                executor = init_executor()
-
-            process_command(user_input, router, executor)
+            process_input(app, user_input)
 
         except KeyboardInterrupt:
             print(f"\n  {C.MUTED}Interrupted.{C.R}")
             break
-        except Exception as e:
-            print(f"  {C.ERR}✗{C.R} {e}")
 
 if __name__ == "__main__":
     main()
