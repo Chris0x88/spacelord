@@ -27,3 +27,4 @@ package.json
 # IDEs
 .vscode/
 .idea/
+pacman_env/

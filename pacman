@@ -3,10 +3,31 @@
 # Usage: ./pacman [command] [args]
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-VENV_PY="$DIR/pacman_env/bin/python3"
+VENV_DIR="$DIR/pacman_env"
+VENV_PY="$VENV_DIR/bin/python3"
+REQUIREMENTS="$DIR/requirements.txt"
 
+# 1. Auto-Initialize Virtual Environment
+if [ ! -d "$VENV_DIR" ]; then
+    echo "📦  Initializing Pacman Environment..."
+    python3 -m venv "$VENV_DIR"
+fi
+
+# 2. Check & Install Dependencies
+# We check for a core package (web3) to see if we need to install
+if [ -f "$REQUIREMENTS" ]; then
+    if ! "$VENV_PY" -c "import web3" &> /dev/null; then
+        echo "⬇️   Installing dependencies..."
+        "$VENV_DIR/bin/pip" install -r "$REQUIREMENTS"
+        echo "✅  Dependencies installed."
+        echo
+    fi
+fi
+
+# 3. Run Application
 if [ -x "$VENV_PY" ]; then
     "$VENV_PY" "$DIR/pacman_cli.py" "$@"
 else
-    python3 "$DIR/pacman_cli.py" "$@"
+    echo "❌  Error: Virtual environment python not executable."
+    exit 1
 fi
