@@ -185,9 +185,13 @@ class PacmanConfig:
         print(f"   Auto-recording: {'✅ ON' if self.auto_record else '❌ OFF'}")
         print("="*60)
 
-def create_env_template():
-    """Create a template .env file."""
-    template = """# Pacman Configuration
+# ---------------------------------------------------------------------------
+# Environment Template
+# ---------------------------------------------------------------------------
+
+_default_config = PacmanConfig()
+
+ENV_TEMPLATE = f"""# Pacman Configuration
 # Copy this to .env and fill in your values
 
 # Required for live trading
@@ -197,25 +201,37 @@ PACMAN_PRIVATE_KEY=your_private_key_here_without_0x_prefix
 HEDERA_ACCOUNT_ID=0.0.123456
 
 # Network (mainnet or testnet)
-PACMAN_NETWORK=mainnet
+PACMAN_NETWORK={_default_config.network}
 
-# Safety limits (max $1.00 per swap, $10.00 daily)
-PACMAN_MAX_SWAP=1.00
-PACMAN_MAX_DAILY=10.00
-PACMAN_MAX_SLIPPAGE=1.0
+# Safety limits (max ${_default_config.max_swap_amount_usd:.2f} per swap, ${_default_config.max_daily_volume_usd:.2f} daily)
+PACMAN_MAX_SWAP={_default_config.max_swap_amount_usd:.2f}
+PACMAN_MAX_DAILY={_default_config.max_daily_volume_usd:.2f}
+PACMAN_MAX_SLIPPAGE={_default_config.max_slippage_percent:.1f}
 
 # Execution mode
-PACMAN_SIMULATE=true
-PACMAN_CONFIRM=true
-PACMAN_VERBOSE=false
+PACMAN_SIMULATE={'true' if _default_config.simulate_mode else 'false'}
+PACMAN_CONFIRM={'true' if _default_config.require_confirmation else 'false'}
+PACMAN_VERBOSE={'true' if _default_config.verbose_mode else 'false'}
 """
+
+def create_env_template():
+    """Create a template .env file and initial .env if needed."""
+    template_path = Path(__file__).parent / ".env.template"
+    env_path = Path(__file__).parent / ".env"
     
-    env_path = Path(__file__).parent / ".env.template"
-    with open(env_path, 'w') as f:
-        f.write(template)
-    
-    print(f"✅ Created {env_path}")
-    print("   Copy to .env and add your private key to enable live trading")
+    # 1. Update/Create .env.template
+    with open(template_path, 'w') as f:
+        f.write(ENV_TEMPLATE)
+    print(f"✅ Updated {template_path}")
+
+    # 2. Create .env if it doesn't exist
+    if not env_path.exists():
+        with open(env_path, 'w') as f:
+            f.write(ENV_TEMPLATE)
+        print(f"✅ Created {env_path}")
+        print("   Added default configuration. Please add your private key to .env")
+    else:
+        print(f"ℹ️  {env_path} already exists. Skipping creation.")
 
 # CLI
 if __name__ == "__main__":
