@@ -244,3 +244,202 @@
 2026-02-14 20:57:23 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
 2026-02-14 20:57:23 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
 2026-02-14 20:57:23 | pacman | INFO |    Network:        mainnet
+2026-02-15 07:40:22 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 07:41:09 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-15 07:41:09 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-15 07:41:09 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-15 07:41:09 | pacman | INFO |    Network:        mainnet
+2026-02-15 07:43:08 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 07:43:12 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 07:43:14 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-15 07:43:14 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-15 07:43:14 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-15 07:43:14 | pacman | INFO |    Network:        mainnet
+2026-02-15 07:44:07 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 07:44:51 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 07:56:40 | pacman | DEBUG | Verbose Mode Enabled
+2026-02-15 07:56:40 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 08:00:53 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-15 08:00:53 | pacman | DEBUG |    RPC Provider:   https://mainnet.hashio.io/api
+2026-02-15 08:00:53 | pacman | DEBUG |    Chain ID:      146
+2026-02-15 08:00:53 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-15 08:00:53 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-15 08:00:53 | pacman | INFO |    Network:        mainnet
+2026-02-15 08:10:42 | pacman | DEBUG | Verbose Mode Enabled
+2026-02-15 08:12:47 | pacman | DEBUG | Verbose Mode Enabled
+2026-02-15 08:12:47 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 08:12:47 | pacman | DEBUG | Routing request: HBAR -> USDC ($5.0)
+2026-02-15 08:12:47 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:12:47 | pacman | DEBUG |       [✓] Direct pool found for ('HBAR', 'USDC')
+2026-02-15 08:12:47 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:12:47 | pacman | DEBUG |       [✓] Direct pool found for ('HBAR', 'USDC')
+2026-02-15 08:14:52 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 08:15:47 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 08:15:55 | pacman | DEBUG | Verbose Mode Enabled (Initialization)
+2026-02-15 08:15:55 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 08:16:00 | pacman | DEBUG | Routing request: HBAR -> USDC ($1.0)
+2026-02-15 08:16:00 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:16:00 | pacman | DEBUG |       [✓] Direct pool found for ('HBAR', 'USDC')
+2026-02-15 08:16:00 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:16:00 | pacman | DEBUG |       [✓] Direct pool found for ('HBAR', 'USDC')
+2026-02-15 08:16:06 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-15 08:16:06 | pacman | DEBUG |    RPC Provider:   https://mainnet.hashio.io/api
+2026-02-15 08:16:06 | pacman | DEBUG |    Chain ID:      146
+2026-02-15 08:16:06 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-15 08:16:06 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-15 08:16:06 | pacman | INFO |    Network:        mainnet
+2026-02-15 08:16:06 | pacman | INFO | 
+🚀 Executing swap: 1.0 HBAR → USDC
+2026-02-15 08:16:06 | pacman | INFO |    Mode: EXACT_IN (LIVE)
+2026-02-15 08:16:06 | pacman | INFO |    Steps: 1
+2026-02-15 08:16:07 | pacman | INFO |    ✅ Associated.
+2026-02-15 08:16:07 | pacman | INFO | 
+📍 Step 1/1: SWAP
+2026-02-15 08:16:07 | pacman | DEBUG |    From: HBAR -> To: USDC
+2026-02-15 08:16:07 | pacman | DEBUG |    Contract: 0.0.3949434
+2026-02-15 08:16:09 | pacman | INFO |    ⏳ Waiting for on-chain confirmation...
+2026-02-15 08:16:14 | pacman | INFO |    ✅ Confirmed! Cost: 274708200.00000000 HBAR (33501 gas)
+2026-02-15 08:16:14 | pacman | INFO |    ⏳ Verifying transaction on-chain: b10aba44d7e01b1070e5d56e938ec0f28eb22e865ff6c404d07dc457f0443236...
+2026-02-15 08:16:15 | pacman | INFO | 
+📝 Execution recorded: execution_records/exec_20260215_081615_HBAR_to_USDC.json
+2026-02-15 08:17:56 | pacman | DEBUG | Verbose Mode Enabled (Initialization)
+2026-02-15 08:17:56 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 08:17:56 | pacman | DEBUG | Routing request: HBAR -> USDC ($5.0)
+2026-02-15 08:17:56 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:17:56 | pacman | DEBUG |       [✓] Direct pool found for ('HBAR', 'USDC')
+2026-02-15 08:17:56 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:17:56 | pacman | DEBUG |       [✓] Direct pool found for ('HBAR', 'USDC')
+2026-02-15 08:19:05 | pacman | DEBUG | Verbose Mode Enabled (Initialization)
+2026-02-15 08:19:05 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 08:19:05 | pacman | DEBUG | Routing request: HBAR -> USDC ($5.0)
+2026-02-15 08:19:05 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:19:05 | pacman | DEBUG |       [✓] Direct pool found for ('HBAR', 'USDC')
+2026-02-15 08:19:05 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:19:05 | pacman | DEBUG |       [✓] Direct pool found for ('HBAR', 'USDC')
+2026-02-15 08:21:29 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 08:21:44 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-15 08:21:44 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-15 08:21:44 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-15 08:21:44 | pacman | INFO |    Network:        mainnet
+2026-02-15 08:21:44 | pacman | INFO | 
+🚀 Executing swap: 1.0 HBAR → USDC
+2026-02-15 08:21:44 | pacman | INFO |    Mode: EXACT_IN (LIVE)
+2026-02-15 08:21:45 | pacman | INFO |    ✅ Associated.
+2026-02-15 08:21:45 | pacman | INFO | 
+📍 Step 1/1: SWAP
+2026-02-15 08:21:47 | pacman | INFO |    ⏳ Waiting for on-chain confirmation...
+2026-02-15 08:21:54 | pacman | INFO |    ✅ Confirmed! Cost: 274708200.00000000 HBAR (33501 gas)
+2026-02-15 08:21:54 | pacman | INFO |    ⏳ Verifying transaction on-chain: 1fc4dc00dcb43053af740162a339fa1a21168edfdd892f4d5867a9258ec7b693...
+2026-02-15 08:21:54 | pacman | INFO | 
+📝 Execution recorded: execution_records/exec_20260215_082154_HBAR_to_USDC.json
+2026-02-15 08:36:03 | pacman | DEBUG | Verbose Mode Enabled (Initialization)
+2026-02-15 08:36:03 | pacman | INFO | Loaded 15 unique pools from data/pacman_data_raw.json
+2026-02-15 08:36:03 | pacman | DEBUG | Routing request: HBAR -> USDC ($1.0)
+2026-02-15 08:36:03 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:36:03 | pacman | DEBUG |       [✓] Direct pool found for ('USDC[HTS]', 'USDC')
+2026-02-15 08:36:03 | pacman | DEBUG |       [✓] Direct pool found for ('SAUCE', 'USDC')
+2026-02-15 08:36:03 | pacman | DEBUG |       [✗] No viable path found in graph
+2026-02-15 08:36:03 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:36:03 | pacman | DEBUG |       [✓] Direct pool found for ('USDC[HTS]', 'USDC')
+2026-02-15 08:36:03 | pacman | DEBUG |       [✓] Direct pool found for ('SAUCE', 'USDC')
+2026-02-15 08:36:03 | pacman | DEBUG |       [✗] No viable path found in graph
+2026-02-15 08:38:44 | pacman | DEBUG | Verbose Mode Enabled (Initialization)
+2026-02-15 08:38:44 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 08:38:44 | pacman | DEBUG | Routing request: HBAR -> USDC ($1.0)
+2026-02-15 08:38:44 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:38:44 | pacman | DEBUG |       [✓] Direct pool found for ('HBAR', 'USDC')
+2026-02-15 08:38:44 | pacman | DEBUG |       - Symbols: HBAR -> USDC
+2026-02-15 08:38:44 | pacman | DEBUG |       [✓] Direct pool found for ('HBAR', 'USDC')
+2026-02-15 08:39:08 | pacman | DEBUG | Confirmation received, starting execution phase...
+2026-02-15 08:39:09 | pacman | DEBUG |    [RPC] Connecting to https://mainnet.hashio.io/api (timeout=10s)...
+2026-02-15 08:39:09 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-15 08:39:09 | pacman | DEBUG |    RPC Provider:   https://mainnet.hashio.io/api
+2026-02-15 08:39:09 | pacman | DEBUG |    Chain ID:      146
+2026-02-15 08:39:09 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-15 08:39:09 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-15 08:39:09 | pacman | INFO |    Network:        mainnet
+2026-02-15 08:39:09 | pacman | INFO | 
+🚀 Executing swap: 1.0 HBAR → USDC
+2026-02-15 08:39:09 | pacman | INFO |    Mode: EXACT_IN (LIVE)
+2026-02-15 08:39:09 | pacman | DEBUG |    [DEBUG] Steps: 1
+2026-02-15 08:39:09 | pacman | DEBUG |      -> SWAP: HBAR to USDC
+2026-02-15 08:39:09 | pacman | INFO |    ✅ Associated.
+2026-02-15 08:39:09 | pacman | INFO | 
+📍 Step 1/1: SWAP
+2026-02-15 08:39:09 | pacman | DEBUG |    From: HBAR -> To: USDC
+2026-02-15 08:39:09 | pacman | DEBUG |    Contract: 0.0.3949434
+2026-02-15 08:39:09 | pacman | DEBUG |       - Requesting Quote (Exact In): 100000000 0.0.1456986 -> 0.0.456858 @ fee 1500
+2026-02-15 08:39:10 | pacman | DEBUG |       - Quote received: 104461
+2026-02-15 08:39:10 | pacman | DEBUG |       - Fetching HBAR balance...
+2026-02-15 08:39:10 | pacman | DEBUG |       - Current Balance: 254959146080000000000, Needed: 100000000
+2026-02-15 08:39:11 | pacman | INFO |    ⏳ Waiting for on-chain confirmation...
+2026-02-15 08:39:20 | pacman | INFO |    ✅ Confirmed! Cost: 1527405800.00000000 HBAR (186269 gas)
+2026-02-15 08:39:20 | pacman | INFO |    ⏳ Verifying transaction on-chain: 57dabb3f71dd6a0a3b575e108f3235bae5f74245c64513e016148f193b37d2de...
+2026-02-15 08:39:21 | pacman | INFO | 
+📝 Execution recorded: execution_records/exec_20260215_083921_HBAR_to_USDC.json
+2026-02-15 08:46:43 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 08:46:53 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-15 08:46:53 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-15 08:46:53 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-15 08:46:53 | pacman | INFO |    Network:        mainnet
+2026-02-15 08:46:53 | pacman | INFO | 
+🚀 Executing swap: 1.0 HBAR → USDC
+2026-02-15 08:46:53 | pacman | INFO |    Mode: EXACT_IN (LIVE)
+2026-02-15 08:46:53 | pacman | INFO |    ✅ Associated.
+2026-02-15 08:46:53 | pacman | INFO | 
+📍 Step 1/1: SWAP
+2026-02-15 08:46:55 | pacman | INFO |    ⏳ Waiting for on-chain confirmation...
+2026-02-15 08:47:00 | pacman | INFO |    ✅ Confirmed! Cost: 1527405800.00000000 HBAR (186269 gas)
+2026-02-15 08:47:00 | pacman | INFO |    ⏳ Verifying transaction on-chain: f7c375050630e8e19ce8ff25a77db2bbfeedad92b2d3d4c488a3f7144d0ad59b...
+2026-02-15 08:47:01 | pacman | INFO | 
+📝 Execution recorded: execution_records/exec_20260215_084701_HBAR_to_USDC.json
+2026-02-15 09:28:46 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:28:46 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:28:54 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:29:30 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:31:25 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:33:17 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:35:41 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:35:42 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:35:49 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:35:49 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:35:57 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:36:05 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:36:26 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:36:27 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:36:35 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:36:36 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:36:50 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:37:00 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:38:06 | pacman | INFO | Loaded 44 unique pools from data/pacman_data_raw.json
+2026-02-15 09:45:39 | pacman | ERROR | Failed to load pool data: 'PacmanVariantRouter' object has no attribute 'load_pools'
+2026-02-15 09:45:39 | pacman | ERROR | Failed to load pool data: 'PacmanVariantRouter' object has no attribute 'load_pools'
+2026-02-15 09:45:48 | pacman | ERROR | Failed to load pool data: 'PacmanVariantRouter' object has no attribute 'load_pools'
+2026-02-15 09:46:04 | pacman | INFO | Loaded 7 unique pools into routing graph.
+2026-02-15 09:46:04 | pacman | INFO | Loaded 7 unique pools into routing graph.
+2026-02-15 16:11:26 | pacman | INFO | Loaded 7 unique pools into routing graph.
+2026-02-15 16:13:57 | pacman | INFO | Loaded 7 unique pools into routing graph.
+2026-02-15 16:14:15 | pacman | INFO | Loaded 7 unique pools into routing graph.
+2026-02-15 16:17:49 | pacman | DEBUG | Verbose Mode Enabled (Initialization)
+2026-02-15 16:17:49 | pacman | INFO | Loaded 7 unique pools into routing graph.
+2026-02-15 16:19:54 | pacman | INFO | Loaded 7 unique pools into routing graph.
+2026-02-15 16:20:36 | pacman | INFO | Loaded 7 unique pools into routing graph.
+2026-02-15 16:22:05 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-15 16:22:05 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-15 16:22:05 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-15 16:22:05 | pacman | INFO |    Network:        mainnet
+2026-02-15 17:01:07 | pacman | INFO | Loaded 7 unique pools into routing graph.
+2026-02-15 17:01:07 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-15 17:01:07 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-15 17:01:07 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-15 17:01:07 | pacman | INFO |    Network:        mainnet
+2026-02-15 17:01:41 | pacman | INFO | Loaded 7 unique pools into routing graph.
+2026-02-15 17:01:41 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-15 17:01:41 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-15 17:01:41 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-15 17:01:41 | pacman | INFO |    Network:        mainnet
+2026-02-15 17:02:20 | pacman | INFO | Loaded 7 unique pools into routing graph.
+2026-02-15 17:02:20 | pacman | INFO | ✅ PacmanExecutor initialized
+2026-02-15 17:02:20 | pacman | INFO |    Hedera Account: 0.0.8213379 (Native ID)
+2026-02-15 17:02:20 | pacman | INFO |    EVM Address:    0x76D2580A07Eebaa790a286df2BD1f8b13655C5fa (Ethereum Mirror)
+2026-02-15 17:02:20 | pacman | INFO |    Network:        mainnet
