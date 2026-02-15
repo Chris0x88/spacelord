@@ -4,16 +4,37 @@ Pacman Display - Terminal UI Rendering Engine
 ==============================================
 
 Pure rendering module — takes data, prints formatted output.
-All ANSI color, ASCII art, progress animations, and layout logic lives here.
-No business logic, no side-effects beyond stdout.
+
+ARCHITECTURAL NOTE:
+-------------------
+This module is "Dumb". It contains NO business logic.
+- Sorting, Filtering, and Data Preparation are delegated to `data.pacman_filter`.
+- Execution is delegated to `pacman_executor`.
+- Configuration is loaded via the filter or app controller.
+
+Its only job is to print ANSI-colored text to stdout.
 """
 
-import json
 import sys
 import time
 import os
-from pathlib import Path
 from typing import Optional, List, Dict
+
+# Central Logic Layer
+try:
+    from data.pacman_filter import ui_filter
+except ImportError:
+    # Fallback for when running from scripts/ or root without package
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from data.pacman_filter import ui_filter
+
+try:
+    from data.text_content import HELP_COMMANDS, HELP_EXAMPLES, PACMAN_BANNER_TEMPLATE
+except ImportError:
+    # Fallback default if file missing
+    HELP_COMMANDS = []
+    HELP_EXAMPLES = []
+    PACMAN_BANNER_TEMPLATE = "Pacman"
 
 
 # ---------------------------------------------------------------------------
@@ -51,17 +72,19 @@ class C:
 # ASCII Art Banner
 # ---------------------------------------------------------------------------
 
-PACMAN_BANNER = f"""{C.ACCENT}
-    ██████╗  █████╗  ██████╗███╗   ███╗ █████╗ ███╗   ██╗
-    ██╔══██╗██╔══██╗██╔════╝████╗ ████║██╔══██╗████╗  ██║
-    ██████╔╝███████║██║     ██╔████╔██║███████║██╔██╗ ██║
-    ██╔═══╝ ██╔══██║██║     ██║╚██╔╝██║██╔══██║██║╚██╗██║
-    ██║     ██║  ██║╚██████╗██║ ╚═╝ ██║██║  ██║██║ ╚████║
-    ╚═╝     ╚═╝  ╚═╝ ╚═════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝{C.R}
+# ---------------------------------------------------------------------------
+# ASCII Art Banner
+# ---------------------------------------------------------------------------
 
-{C.CHROME}    ╭──────────────────────────────────────────────────────╮{C.R}
-{C.ACCENT}     ᗧ{C.R}{C.MUTED}· · ·{C.R}{C.OK} 👾{C.R}  {C.TEXT}SaucerSwap V2{C.R} {C.MUTED}on{C.R} {C.BRAND}Hedera{C.R} {C.MUTED}Hashgraph{C.R}
-{C.CHROME}    ╰──────────────────────────────────────────────────────╯{C.R}"""
+PACMAN_BANNER = PACMAN_BANNER_TEMPLATE.format(
+    ACCENT=C.ACCENT,
+    CHROME=C.CHROME,
+    R=C.R,
+    MUTED=C.MUTED,
+    OK=C.OK,
+    TEXT=C.TEXT,
+    BRAND=C.BRAND
+)
 
 
 # ---------------------------------------------------------------------------
@@ -101,34 +124,14 @@ def show_help():
     print(f"\n{C.BOLD}{C.TEXT}  COMMANDS{C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
 
-    commands = [
-        ("swap <amt> <A> for <B>",   "Exact input swap"),
-        ("swap <A> for <amt> <B>",   "Exact output swap"),
-        ("convert <A> for <amt> <B>","Wrap / Unwrap tokens"),
-        ("send <amt> <tk> to <rcp>", "Transfer crypto"),
-        ("receive <token>",          "Get addr & associate"),
-        ("balance",                  "All wallet balances"),
-        ("balance <token>",          "Single token balance"),
-        ("price",                    "List all market prices"),
-        ("price <token>",            "Check single price"),
-        ("sources",                  "Show all price sources"),
-        ("account",                  "Wallet & network info"),
-        ("tokens",                   "Supported token list"),
-        ("history",                  "Transaction history"),
-        ("verbose",                  "Toggle debug logging"),
-        ("help",                     "This menu"),
-        ("exit",                     "Quit Pacman"),
-    ]
-
-    for cmd, desc in commands:
+    for cmd, desc in HELP_COMMANDS:
         print(f"  {C.ACCENT}{cmd:30s}{C.R} {C.MUTED}{desc}{C.R}")
 
     print(f"\n{C.BOLD}  EXAMPLES{C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
-    print(f"  {C.MUTED}${C.R} swap 10 HBAR for USDC")
-    print(f"  {C.MUTED}${C.R} swap USDC for 0.001 WBTC")
-    print(f"  {C.MUTED}${C.R} balance HBAR")
-    print(f"  {C.MUTED}${C.R} price SAUCE")
+    
+    for ex_cmd, ex_desc in HELP_EXAMPLES:
+         print(f"  {C.ACCENT}{ex_cmd:30s}{C.R} {C.MUTED}{ex_desc}{C.R}")
     print()
 
 
@@ -364,57 +367,56 @@ def _show_all_balances(executor, price_manager):
 
         print(f"  {C.ACCENT}HBAR{C.R}       {C.TEXT}{hbar_readable:>14.6f}{C.R}  {C.OK}${hbar_usd:>10.2f}{C.R}")
 
-        with open("data/tokens.json") as f:
-            tokens_data = json.load(f)
-
+        tokens_data = ui_filter.get_token_metadata()
         total_usd = hbar_usd
-        # 2. Load Settings for Blacklist and Sorting
-        settings = {"display_rules": {}}
-        settings_path = Path("data/settings.json")
-        if settings_path.exists():
-            try:
-                with open(settings_path) as f:
-                    settings = json.load(f)
-            except: pass
+
+        # --- LOGIC DELEGATION START ---
+        # The filter decides what to show and in what order.
+        # Display layer just iterates and prints.
+        # ------------------------------
         
-        display_rules = settings.get("display_rules", {})
-        blacklist_ids = display_rules.get("blacklist_ids", [])
-        wallet_order = display_rules.get("wallet_balance_order", [])
-
-        def sort_key(item):
-            sym = item[0].upper()
-            # 1. Check exact matches in wallet_order
-            for i, psym in enumerate(wallet_order):
-                if psym.upper() == sym:
-                    return (0, i, sym)
-            # 2. Check contains (like "USDC" in "USDC[hts]")
-            for i, psym in enumerate(wallet_order):
-                if psym.upper() in sym:
-                    return (1, i, sym)
-            return (2, sym)
-
-        sorted_tokens = sorted(tokens_data.items(), key=sort_key)
-        for sym, meta in sorted_tokens:
+        # We need to build a list for the filter to sort
+        # List of (symbol, metadata, readable_balance, usd_value)
+        wallet_items = []
+        
+        for sym, meta in tokens_data.items():
             token_id = meta.get("id")
-            if not token_id or token_id in blacklist_ids:
+            
+            # Global Blacklist Check (Delegated to filter)
+            if not token_id or ui_filter.is_blacklisted(token_id):
                 continue
+                
             try:
+                # Execution Layer: Fetch raw balance
                 raw_bal = executor.client.get_token_balance(token_id)
+                
                 if raw_bal > 0:
                     decimals = meta.get("decimals", 8)
                     readable = raw_bal / (10**decimals)
                     price = price_manager.get_price(token_id)
                     usd_val = readable * price
-
-                    assoc = ""
-                    if not executor.check_token_association(token_id):
-                        assoc = f" {C.WARN}[!]{C.R}"
-
-                    sym_display = meta.get("symbol", sym)[:10]
-                    print(f"  {C.ACCENT}{sym_display:10s}{C.R} {C.TEXT}{readable:>14.8f}{C.R}  {C.OK}${usd_val:>10.2f}{C.R}{assoc}")
-                    total_usd += usd_val
-            except:
+                    
+                    wallet_items.append((sym, meta, readable, usd_val))
+            except Exception:
+                # Silently skip tokens that fail to load to keep UI clean
                 continue
+
+        # Sort (Delegated to filter)
+        # The filter applies user preferences from settings.json
+        sorted_items = ui_filter.sort_wallet_balances(wallet_items)
+
+        # Render
+        for sym, meta, readable, usd_val in sorted_items:
+            token_id = meta.get("id")
+            assoc = ""
+            if not executor.check_token_association(token_id):
+                assoc = f" {C.WARN}[!]{C.R}"
+
+            # Use symbol from metadata if available, else key
+            sym_display = meta.get("symbol", sym)[:10]
+            
+            print(f"  {C.ACCENT}{sym_display:10s}{C.R} {C.TEXT}{readable:>14.8f}{C.R}  {C.OK}${usd_val:>10.2f}{C.R}{assoc}")
+            total_usd += usd_val
 
         print(f"  {C.CHROME}{'─' * 56}{C.R}")
         print(f"  {C.BOLD}{'TOTAL':10s}{C.R} {' ':>14s}  {C.BOLD}{C.OK}${total_usd:>10.2f}{C.R}")
@@ -440,79 +442,26 @@ def show_tokens():
     print(f"\n{C.BOLD}{C.TEXT}  TOKENS{C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
 
+    print(f"  {C.BOLD}Supported Tokens / Market Map{C.R}")
+    print(f"  {C.CHROME}{'─' * 56}{C.R}")
+    print(f"  {C.BOLD}{'Token':<12} {'Ticker':<8} {'ID / Contract':<16} {'Aliases'}{C.R}")
+
     try:
-        from pacman_translator import ALIASES
-        # 1. Load the comprehensive token database (curated list)
-        with open("data/tokens.json") as f:
-            tokens_data = json.load(f)
-
-        # 2. Build reverse alias map (ID -> [nicknames])
-        id_to_aliases = {}
-        for alias, canon in ALIASES.items():
-            target_id = None
-            if canon in tokens_data:
-                target_id = tokens_data[canon].get("id")
-            elif canon == "HBAR":
-                target_id = "0.0.0"
-                
-            if target_id:
-                if target_id not in id_to_aliases:
-                    id_to_aliases[target_id] = []
-                if alias.lower() != target_id.lower():
-                    id_to_aliases[target_id].append(alias)
-
-        # 3. Load Settings for Blacklist and Priority
-        settings = {"display_rules": {}}
-        settings_path = Path("data/settings.json")
-        if settings_path.exists():
-            try:
-                with open(settings_path) as f:
-                    settings = json.load(f)
-            except: pass
+        # Load and Sort Data (Delegated)
+        sorted_tokens = ui_filter.get_sorted_tokens()
         
-        display_rules = settings.get("display_rules", {})
-        blacklist_ids = display_rules.get("blacklist_ids", [])
-        priority_syms = display_rules.get("priority_symbols", [])
-
-        def sort_key(item):
-            sym, meta = item
-            tid = meta.get("id", "")
-            if tid == "0.0.0" or sym == "HBAR": return (0, "")
-            
-            upper_sym = sym.upper()
-            for i, psym in enumerate(priority_syms):
-                if psym.upper() in upper_sym:
-                    return (1, i, upper_sym)
-            return (2, upper_sym)
-
-        # Header - Increased width for ALIASES
-        print(f"  {C.MUTED}{'ID':15s}  {'SYMBOL':10s}  {'NAME':20s}  {'ALIASES'}{C.R}")
-        print(f"  {C.CHROME}{'─'*15}  {'─'*10}  {'─'*20}  {'─'*40}{C.R}")
-
-        # 4. Iterate over tokens.json (The real source of truth)
-        # Add HBAR manually as it's often not in the JSON but is the core asset
-        display_list = list(tokens_data.items())
-        if not any(meta.get("id") == "0.0.0" for _, meta in display_list):
-             display_list.append(("HBAR", {"id": "0.0.0", "symbol": "HBAR", "name": "Hedera Native"}))
-
-        sorted_tokens = sorted(display_list, key=sort_key)
-        
-        for sym_key, meta in sorted_tokens:
+        for sym, meta in sorted_tokens:
             tid = meta.get("id", "Unknown")
             
-            # Skip WHBAR (0.0.1456986) to keep UI clean - users only care about HBAR 0.0.0
-            if tid == "0.0.1456986": continue
-            
-            # Skip blacklisted tokens unless they are HBAR
-            if tid in BLACKLIST and tid != "0.0.0":
+            # Skip blacklisted tokens (Delegated)
+            if ui_filter.is_blacklisted(tid):
                 continue
                 
-            sym = meta.get("symbol", sym_key)
+            sym = meta.get("symbol", sym)
             name = meta.get("name", "Unknown")
             
-            # Fetch nicknames from our reverse map
-            aliases = id_to_aliases.get(tid, [])
-            alias_str = ", ".join(sorted(list(set(aliases))))
+            # Fetch nicknames from filter
+            alias_str = ui_filter.get_display_aliases(tid)
 
             print(f"  {C.MUTED}{tid:15s}{C.R}  {C.ACCENT}{sym:10s}{C.R}  {C.TEXT}{name[:20]:20s}{C.R}  {C.MUTED}{alias_str}{C.R}")
 
