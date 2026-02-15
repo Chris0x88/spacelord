@@ -11,7 +11,7 @@ from typing import Dict, Optional, List
 from dataclasses import dataclass, field
 from pathlib import Path
 from pacman_logger import logger
-from pacman_config import PacmanConfig
+from pacman_config import PacmanConfig, SecureString
 from pacman_errors import ConfigurationError, ExecutionError, InsufficientFundsError
 
 # ERC20 Wrapper contract (from btc-rebalancer2)
@@ -94,7 +94,7 @@ class PacmanExecutor:
             # In sim mode, we might proceed with a dummy key if missing
             if not self.config.private_key:
                 logger.warning("Simulation Mode: Using dummy private key.")
-                self.config.private_key = "0x" + "0" * 64
+                self.config.private_key = SecureString("0x" + "0" * 64)
 
         self.network = config.network
         self.rpc_url = config.rpc_url
@@ -107,7 +107,13 @@ class PacmanExecutor:
         # We skip is_connected() as it can hang on some providers
         # Connection will be tested on first actual RPC call
         
-        self.client = SaucerSwapV2(self.w3, network=self.network, private_key=self.config.private_key)
+        # Reveal private key only for client initialization
+        pk_revealed = self.config.private_key.reveal() if self.config.private_key else None
+        try:
+            self.client = SaucerSwapV2(self.w3, network=self.network, private_key=pk_revealed)
+        finally:
+            if pk_revealed:
+                del pk_revealed
         self.eoa = self.client.eoa
         self.chain_id = 295 if self.network == "mainnet" else 296 # Hedera Chain IDs
 
@@ -391,7 +397,7 @@ class PacmanExecutor:
         
         env = os.environ.copy()
         if self.config.private_key:
-            env["PACMAN_PRIVATE_KEY"] = self.config.private_key
+            env["PACMAN_PRIVATE_KEY"] = self.config.private_key.reveal()
         if self.config.hedera_account_id:
             env["HEDERA_ACCOUNT_ID"] = self.config.hedera_account_id
             
@@ -600,8 +606,14 @@ class PacmanExecutor:
                 "from": self.eoa, "gas": 2_000_000, "gasPrice": self.w3.eth.gas_price,
                 "nonce": self.w3.eth.get_transaction_count(self.eoa), "chainId": self.client.chain_id,
             })
-            signed = self.w3.eth.account.sign_transaction(tx, self.config.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+
+            pk_revealed = self.config.private_key.reveal()
+            try:
+                signed = self.w3.eth.account.sign_transaction(tx, pk_revealed)
+                tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            finally:
+                del pk_revealed
+
             return ExecutionResult(success=True, tx_hash=tx_hash.hex(), amount_in_raw=amount_raw, amount_out_raw=amount_raw)
         except Exception as e: return ExecutionResult(success=False, error=str(e))
     
@@ -645,8 +657,14 @@ class PacmanExecutor:
                 "from": self.eoa, "gas": 2_000_000, "gasPrice": self.w3.eth.gas_price,
                 "nonce": self.w3.eth.get_transaction_count(self.eoa), "chainId": self.client.chain_id,
             })
-            signed = self.w3.eth.account.sign_transaction(tx, self.config.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+
+            pk_revealed = self.config.private_key.reveal()
+            try:
+                signed = self.w3.eth.account.sign_transaction(tx, pk_revealed)
+                tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            finally:
+                del pk_revealed
+
             return ExecutionResult(success=True, tx_hash=tx_hash.hex(), amount_in_raw=amount_raw, amount_out_raw=amount_raw)
         except Exception as e: return ExecutionResult(success=False, error=str(e))
     
