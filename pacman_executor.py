@@ -7,6 +7,7 @@ Handles swap execution + wrap/unwrap operations with full recording.
 import os
 import json
 import time
+import requests
 from typing import Dict, Optional, List
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -374,13 +375,64 @@ class PacmanExecutor:
         if "WBTC" in sym: return 8
         if "WETH" in sym: return 8
         return 8 # Default for HBAR 
+
     def check_token_association(self, token_id: str) -> bool:
+        """
+        Check if the account is associated with the token.
+
+        Strategy:
+        1. Optimistic Check: If balance > 0, we are definitely associated.
+        2. Robust Check: If balance == 0, we MUST check Mirror Node to confirm association.
+           (balanceOf returns 0 for unassociated accounts on Hedera EVM).
+        """
         if token_id.upper() in ["HBAR", "0.0.0"]: return True
+
+        # 1. Optimistic Check (Fast)
         try:
             balance = self.client.get_token_balance(token_id)
-            return True 
-        except Exception:
-            return False
+            if balance > 0:
+                return True
+        except Exception as e:
+            logger.warning(f"   ⚠️  Balance check failed during association verify: {e}")
+            # Fall through to Mirror Node check
+
+        # 2. Robust Check (Mirror Node)
+        return self._check_association_via_mirror(token_id)
+
+    def _check_association_via_mirror(self, token_id: str) -> bool:
+        """Verify association using Hedera Mirror Node API."""
+        try:
+            # Determine Account ID to check
+            account_id = self.hedera_account_id
+            if not account_id or account_id == "Unknown":
+                account_id = self.eoa # Mirror Node supports EVM address lookup
+
+            base_url = "https://mainnet.mirrornode.hedera.com"
+            if self.network == "testnet":
+                base_url = "https://testnet.mirrornode.hedera.com"
+
+            url = f"{base_url}/api/v1/accounts/{account_id}/tokens"
+            params = {"token.id": token_id, "limit": 1}
+
+            logger.debug(f"   🔍 Checking association via Mirror Node: {url} {params}")
+            response = requests.get(url, params=params, timeout=5)
+
+            if response.status_code == 200:
+                data = response.json()
+                if "tokens" in data and len(data["tokens"]) > 0:
+                    return True # Found association record
+                else:
+                    return False # No record found = Not associated
+            elif response.status_code == 404:
+                # Account not found?
+                return False
+            else:
+                logger.warning(f"   ⚠️  Mirror Node returned {response.status_code}")
+                return False # Assume false to trigger safety association attempt
+
+        except Exception as e:
+            logger.error(f"   ❌ Mirror Node check failed: {e}")
+            return False # Fail safe: Assume not associated
 
     def associate_token(self, token_id: str) -> bool:
         """Associate HTS token using the native SDK script."""
