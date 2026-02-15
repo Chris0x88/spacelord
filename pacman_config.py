@@ -6,17 +6,52 @@ Handles private keys, RPC endpoints, and safety limits.
 
 import os
 import math
+import secrets
+import itertools
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
 from pacman_errors import ConfigurationError
+
+class SecureString:
+    """
+    A string wrapper that obfuscates the content in memory using XOR with a random key.
+    Prevents casual inspection via memory dumps or accidental printing.
+    """
+    def __init__(self, secret: str):
+        if not secret:
+            self._data = b''
+            self._key = b''
+            return
+
+        self._key = secrets.token_bytes(32)
+        secret_bytes = secret.encode('utf-8')
+        # XOR obfuscation
+        self._data = bytes(a ^ b for a, b in zip(secret_bytes, itertools.cycle(self._key)))
+
+    def reveal(self) -> str:
+        """Decrypts and returns the original string."""
+        if not self._data:
+            return ""
+
+        decrypted_bytes = bytes(a ^ b for a, b in zip(self._data, itertools.cycle(self._key)))
+        return decrypted_bytes.decode('utf-8')
+
+    def __repr__(self):
+        return "<SecureString: ***HIDDEN***>"
+
+    def __str__(self):
+        return "<SecureString: ***HIDDEN***>"
+
+    def __bool__(self):
+        return bool(self._data)
 
 @dataclass
 class PacmanConfig:
     """Secure configuration for Pacman trading."""
     
     # Required
-    private_key: Optional[str] = None
+    private_key: Optional[SecureString] = None
     
     # Network
     network: str = "mainnet"
@@ -65,8 +100,11 @@ class PacmanConfig:
         
         config = cls()
         
-        # Required: Private key
-        config.private_key = os.getenv("PACMAN_PRIVATE_KEY") or os.getenv("PRIVATE_KEY")
+        # Required: Private key (Securely Wrapped)
+        raw_key = os.getenv("PACMAN_PRIVATE_KEY") or os.getenv("PRIVATE_KEY")
+        if raw_key:
+            config.private_key = SecureString(raw_key)
+            del raw_key # Attempt to clear local ref
         
         # Network settings
         config.network = os.getenv("PACMAN_NETWORK", "mainnet")
@@ -103,14 +141,18 @@ class PacmanConfig:
                 raise ConfigurationError("Private key required for live execution (Set PACMAN_PRIVATE_KEY)")
 
             # Validate private key format (should be 64 hex chars)
-            clean_key = self.private_key.replace("0x", "")
-            if len(clean_key) != 64:
-                raise ConfigurationError(f"Invalid private key format (expected 64 hex chars, got {len(clean_key)})")
-
+            # Reveal momentarily for validation
+            clean_key = self.private_key.reveal().replace("0x", "")
             try:
-                int(clean_key, 16)
-            except ValueError:
-                raise ConfigurationError("Private key contains non-hex characters")
+                if len(clean_key) != 64:
+                    raise ConfigurationError(f"Invalid private key format (expected 64 hex chars, got {len(clean_key)})")
+
+                try:
+                    int(clean_key, 16)
+                except ValueError:
+                    raise ConfigurationError("Private key contains non-hex characters")
+            finally:
+                del clean_key # Ensure cleanup
         
         # Validate limits
         if math.isnan(self.max_swap_amount_usd) or self.max_swap_amount_usd > 1.00 or self.max_swap_amount_usd < 0:
