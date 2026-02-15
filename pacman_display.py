@@ -11,7 +11,9 @@ No business logic, no side-effects beyond stdout.
 import json
 import sys
 import time
-from typing import Optional
+import os
+from pathlib import Path
+from typing import Optional, List, Dict
 
 
 # ---------------------------------------------------------------------------
@@ -366,19 +368,35 @@ def _show_all_balances(executor, price_manager):
             tokens_data = json.load(f)
 
         total_usd = hbar_usd
-        BLACKLIST = PacmanVariantRouter.BLACKLISTED_TOKENS
+        # 2. Load Settings for Blacklist and Sorting
+        settings = {"display_rules": {}}
+        settings_path = Path("data/settings.json")
+        if settings_path.exists():
+            try:
+                with open(settings_path) as f:
+                    settings = json.load(f)
+            except: pass
+        
+        display_rules = settings.get("display_rules", {})
+        blacklist_ids = display_rules.get("blacklist_ids", [])
+        wallet_order = display_rules.get("wallet_balance_order", [])
 
         def sort_key(item):
-            sym = item[0]
-            if "USDC" in sym: return (0, sym)
-            if "WBTC" in sym: return (1, sym)
-            if "WETH" in sym: return (2, sym)
-            return (3, sym)
+            sym = item[0].upper()
+            # 1. Check exact matches in wallet_order
+            for i, psym in enumerate(wallet_order):
+                if psym.upper() == sym:
+                    return (0, i, sym)
+            # 2. Check contains (like "USDC" in "USDC[hts]")
+            for i, psym in enumerate(wallet_order):
+                if psym.upper() in sym:
+                    return (1, i, sym)
+            return (2, sym)
 
         sorted_tokens = sorted(tokens_data.items(), key=sort_key)
         for sym, meta in sorted_tokens:
             token_id = meta.get("id")
-            if not token_id or token_id in BLACKLIST:
+            if not token_id or token_id in blacklist_ids:
                 continue
             try:
                 raw_bal = executor.client.get_token_balance(token_id)
@@ -424,19 +442,13 @@ def show_tokens():
 
     try:
         from pacman_translator import ALIASES
-        from pacman_variant_router import PacmanVariantRouter
-
-        BLACKLIST = PacmanVariantRouter.BLACKLISTED_TOKENS
-        
         # 1. Load the comprehensive token database (curated list)
         with open("data/tokens.json") as f:
             tokens_data = json.load(f)
 
         # 2. Build reverse alias map (ID -> [nicknames])
-        # This lets us show "bitcoin" next to WBTC even if "bitcoin" isn't in tokens.json
         id_to_aliases = {}
         for alias, canon in ALIASES.items():
-            # Find the ID for this canonical name
             target_id = None
             if canon in tokens_data:
                 target_id = tokens_data[canon].get("id")
@@ -446,12 +458,21 @@ def show_tokens():
             if target_id:
                 if target_id not in id_to_aliases:
                     id_to_aliases[target_id] = []
-                # Add to aliases if it's not the raw ID
                 if alias.lower() != target_id.lower():
                     id_to_aliases[target_id].append(alias)
 
-        # 3. Define display priority
-        PRIORITY_SYMS = ["USDC", "WBTC", "WETH", "QNT", "LINK", "AVAX", "SAUCE", "XSAUCE", "BONZO"]
+        # 3. Load Settings for Blacklist and Priority
+        settings = {"display_rules": {}}
+        settings_path = Path("data/settings.json")
+        if settings_path.exists():
+            try:
+                with open(settings_path) as f:
+                    settings = json.load(f)
+            except: pass
+        
+        display_rules = settings.get("display_rules", {})
+        blacklist_ids = display_rules.get("blacklist_ids", [])
+        priority_syms = display_rules.get("priority_symbols", [])
 
         def sort_key(item):
             sym, meta = item
@@ -459,8 +480,8 @@ def show_tokens():
             if tid == "0.0.0" or sym == "HBAR": return (0, "")
             
             upper_sym = sym.upper()
-            for i, psym in enumerate(PRIORITY_SYMS):
-                if psym in upper_sym:
+            for i, psym in enumerate(priority_syms):
+                if psym.upper() in upper_sym:
                     return (1, i, upper_sym)
             return (2, upper_sym)
 

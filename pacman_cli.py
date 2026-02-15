@@ -14,6 +14,7 @@ import sys
 import json
 from pacman_app import PacmanApp
 from pacman_errors import PacmanError, ConfigurationError
+from pacman_logger import logger
 from pacman_display import (
     C, PACMAN_BANNER, print_security_warning,
     show_help, show_tokens, show_sources, show_price,
@@ -209,7 +210,6 @@ def _do_swap(app, req):
                 print(f"  {C.MUTED}Cancelled.{C.R}")
                 return
         
-        from pacman_logger import logger
         logger.debug("Confirmation received, starting execution phase...")
 
         res = app.executor.execute_swap(route, amount_usd=amount, mode=mode)
@@ -233,8 +233,7 @@ def _do_swap(app, req):
 COMMANDS = {
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
     "tokens": cmd_tokens, "t": cmd_tokens,
-    "sources": cmd_sources, "source": cmd_sources, "s": cmd_sources,
-    "price": cmd_price,
+    "sources": cmd_sources, "source": cmd_sources, "s": cmd_sources,"source": cmd_sources,   "price": cmd_price,
     "account": cmd_account,
     "balance": cmd_balance,
     "history": cmd_history,

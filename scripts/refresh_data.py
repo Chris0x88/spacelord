@@ -38,6 +38,7 @@ DATA_DIR = BASE_DIR / "data"
 RAW_DATA_FILE = DATA_DIR / "pacman_data_raw.json"
 TOKENS_FILE = DATA_DIR / "tokens.json"
 POOLS_REGISTRY_FILE = DATA_DIR / "pools.json"
+SETTINGS_FILE = DATA_DIR / "settings.json"
 
 def refresh(full_fetch=False):
     print(f"\n  {C.BOLD}🔄 Refreshing SaucerSwap V2 Data{C.R}")
@@ -47,13 +48,24 @@ def refresh(full_fetch=False):
         # Ensure data directory exists
         DATA_DIR.mkdir(exist_ok=True)
 
-        # 1. Load Curation Whitelist
-        # We build the whitelist from:
-        # a) Official token metadata (tokens.json)
-        # b) Structural pool registry (pools.json)
-        whitelist = set()
+        # 1. Load Curation Rules from Settings
+        settings = {}
+        if SETTINGS_FILE.exists():
+            try:
+                with open(SETTINGS_FILE) as f:
+                    settings = json.load(f)
+            except: pass
         
-        # a) Tokens
+        refresh_rules = settings.get("refresh_rules", {})
+        # If strategy is "comprehensive", we fetch all pools (matching min_liquidity if we added that)
+        # Otherwise "curated" (registry only)
+        strategy = refresh_rules.get("strategy", "curated")
+        always_include = refresh_rules.get("always_include_ids", ["0.0.0", "0.0.1456986"])
+
+        # 2. Build Whitelist
+        whitelist = set(always_include)
+        
+        # Add Curated Tokens
         if TOKENS_FILE.exists():
             try:
                 with open(TOKENS_FILE) as f:
@@ -62,7 +74,7 @@ def refresh(full_fetch=False):
                         if "id" in item: whitelist.add(item["id"])
             except Exception: pass
             
-        # b) Registered Pools
+        # Add Registered Pools
         if POOLS_REGISTRY_FILE.exists():
             try:
                 with open(POOLS_REGISTRY_FILE) as f:
@@ -72,13 +84,9 @@ def refresh(full_fetch=False):
                         whitelist.add(pool.get("tokenB"))
             except Exception: pass
 
-        # Always include HBAR and WHBAR in whitelist
-        whitelist.add("0.0.1456986") # WHBAR
-        whitelist.add("0.0.0") # HBAR
-        whitelist.discard(None) # Remove any accidentally added Nones
+        whitelist.discard(None)
 
-        # 2. Fetch all pools from SaucerSwap V2 API
-        # WARNING: This endpoint can be rate-limited. Do not loop it aggressively.
+        # 3. Fetch all pools from SaucerSwap V2 API
         try:
             response = requests.get(POOLS_URL, timeout=30)
             if response.status_code == 401:
@@ -90,22 +98,22 @@ def refresh(full_fetch=False):
             print(f"  {C.WARN}⚠{C.R} API fetch failed ({e}). Protecting cached data.")
             return
         
-        # 3. Filter or Backup
+        # 4. Filter Based on Strategy
         relevant_pools = []
-        if full_fetch:
-            print(f"  {C.OK}✓{C.R} Full download requested. Skipping curation.")
+        if full_fetch or strategy == "comprehensive":
+            print(f"  {C.OK}✓{C.R} Full/Comprehensive download. No curation.")
             relevant_pools = all_pools
         else:
-            # Keep pool if EITHER token is in our curated whitelist
+            # Curated Mode: Keep pool only if BOTH tokens are in our curated whitelist
+            # WHY: This ensures the router only sees pools that we have verified metadata for.
             for pool in all_pools:
                 ta = pool.get("tokenA", {}).get("id")
                 tb = pool.get("tokenB", {}).get("id")
                 
-                if ta in whitelist or tb in whitelist:
+                if ta in whitelist and tb in whitelist:
                     relevant_pools.append(pool)
         
-        # 4. Save to Disk
-        # Only overwrite if we actually got data to save
+        # 5. Save to Disk
         if relevant_pools:
             with open(RAW_DATA_FILE, "w") as f:
                 json.dump(relevant_pools, f, indent=2)

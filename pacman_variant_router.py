@@ -73,8 +73,6 @@ class PacmanVariantRouter:
     providing a stable registry that survives API fluctuations.
     """
     
-    # WHBAR is strictly blacklisted for UI, but used for internal routing
-    BLACKLISTED_TOKENS = ["0.0.1456986"]
     
     def __init__(self, price_manager=None):
         self.pool_graph = {}  # (token_in, token_out) -> (pool_id, fee_bps, in_id, out_id)
@@ -200,17 +198,9 @@ class PacmanVariantRouter:
         return None
     
     def _get_token_meta(self, variant: str) -> Optional[dict]:
-        """Get best metadata for a variant, with fallback to symbols."""
-        if variant in TOKEN_VARIANTS:
-            return TOKEN_VARIANTS[variant]
-        
-        # Fallback: Check if it matches a symbol in pools (Case-insensitive)
-        variant_upper = variant.upper()
-        for pool in self.pools_data:
-            if pool["tokenA"]["symbol"].upper() == variant_upper:
-                return {"id": pool["tokenA"]["id"], "symbol": pool["tokenA"]["symbol"], "type": "HTS_NATIVE", "visible_in_hashpack": True}
-            if pool["tokenB"]["symbol"].upper() == variant_upper:
-                return {"id": pool["tokenB"]["id"], "symbol": pool["tokenB"]["symbol"], "type": "HTS_NATIVE", "visible_in_hashpack": True}
+        """Lookup token metadata from the variants registry."""
+        if variant in self.variants:
+            return self.variants[variant]
         return None
 
     def calculate_erc20_route(self, from_variant: str, to_variant: str, amount_usd: float = 100) -> Optional[VariantRoute]:
@@ -308,7 +298,7 @@ class PacmanVariantRouter:
             step = RouteStep(
                 step_type="unwrap",
                 from_token=meta_out["symbol"],
-                to_token=TOKEN_VARIANTS[hts_variant]["symbol"],
+                to_token=self.variants[hts_variant]["symbol"],
                 contract=meta_out.get("unwrap_contract", "0.0.9675688"),
                 gas_estimate_hbar=unwrap_gas
             )
