@@ -98,6 +98,7 @@ class PacmanExecutor:
 
         self.network = config.network
         self.rpc_url = config.rpc_url
+        self.hedera_account_id = config.hedera_account_id or "Unknown"
         
         # Initialize web3 and client
         logger.debug(f"   [RPC] Connecting to {self.rpc_url} (timeout=10s)...")
@@ -108,7 +109,11 @@ class PacmanExecutor:
         
         self.client = SaucerSwapV2(self.w3, network=self.network, private_key=self.config.private_key)
         self.eoa = self.client.eoa
-        self.chain_id = 146 if self.network == "mainnet" else 147 # Hedera Chain IDs
+        self.chain_id = 295 if self.network == "mainnet" else 296 # Hedera Chain IDs
+
+        # CRITICAL: Always use Alias address (self.eoa) for Hedera EVM.
+        # Long-zero addresses cause gas-burning reverts in contract calls.
+        self.eoa_long_zero = self.eoa 
         
         # Initialize wrapper contract
         self.wrapper_address = hedera_id_to_evm(ERC20_WRAPPER_ID)
@@ -120,13 +125,13 @@ class PacmanExecutor:
         # Recording system
         self.recordings_dir = Path("execution_records")
         self.recordings_dir.mkdir(exist_ok=True)
-        self.hedera_account_id = config.hedera_account_id or "Unknown"
         
         logger.info(f"✅ PacmanExecutor initialized")
         logger.debug(f"   RPC Provider:   {self.rpc_url}")
         logger.debug(f"   Chain ID:      {self.chain_id}")
         logger.info(f"   Hedera Account: {self.hedera_account_id} (Native ID)")
-        logger.info(f"   EVM Address:    {self.eoa} (Ethereum Mirror)")
+        logger.info(f"   EVM Address:    {self.eoa} (Alias/Signing)")
+        logger.info(f"   EVM Long-Zero:  {self.eoa_long_zero}")
         logger.info(f"   Network:        {self.network}")
 
     def get_balances(self) -> Dict[str, float]:
@@ -226,6 +231,8 @@ class PacmanExecutor:
     def _ensure_association(self, route) -> bool:
         """Ensure the target token is associated."""
         last_step = route.steps[-1]
+        print(f"   [DEBUG] Last Step Details: {last_step.details}")
+        print(f"   [DEBUG] Last Step To Token: {last_step.to_token}")
         final_token_id = last_step.details.get("token_out_id", last_step.to_token)
 
         print(f"   🛡️  Checking association for {route.to_variant}...")
@@ -286,9 +293,9 @@ class PacmanExecutor:
         if step.step_type == "swap":
             result = self._execute_swap_step(step, amount_raw_for_step, simulate, mode)
         elif step.step_type == "unwrap":
-            result = self._execute_unwrap_step(step, simulate)
+            result = self._execute_unwrap_step(step, amount_raw_for_step, simulate)
         elif step.step_type == "wrap":
-            result = self._execute_wrap_step(step, simulate)
+            result = self._execute_wrap_step(step, amount_raw_for_step, simulate)
         else:
             return ExecutionResult(success=False, error=f"Unknown step type: {step.step_type}"), current_val
 
@@ -376,9 +383,33 @@ class PacmanExecutor:
             return False
 
     def associate_token(self, token_id: str) -> bool:
-        """Associate HTS token using the HTS Precompile."""
+        """Associate HTS token using the native SDK script."""
         if token_id.upper() in ["HBAR", "0.0.0"]: return True
-        return self.client.associate_token_native(token_id)
+        
+        import subprocess
+        logger.info(f"   🛡️  Associating token {token_id} via Native SDK...")
+        
+        env = os.environ.copy()
+        if self.config.private_key:
+            env["PACMAN_PRIVATE_KEY"] = self.config.private_key
+        if self.config.hedera_account_id:
+            env["HEDERA_ACCOUNT_ID"] = self.config.hedera_account_id
+            
+        try:
+            subprocess.run(
+                ["node", "associate_hts_token.js", token_id],
+                env=env,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"   ❌ Association failed: {e.stderr}")
+            return False
+        except Exception as e:
+            logger.error(f"   ❌ Error calling association script: {e}")
+            return False
 
     def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in") -> ExecutionResult:
         """Execute a single swap step using one of the three engines."""
@@ -460,10 +491,12 @@ class PacmanExecutor:
             if not is_native_hbar:
                 current_allowance = self.client.get_allowance(from_token_id, self.client.eoa, self.client.router_address)
                 if current_allowance < needed_balance:
-                    logger.info(f"   🔓 Approving {step.from_token}...")
+                    logger.info(f"   🔓 Approving {step.from_token} (EVM/HTS Redirect)...")
+                    # Use EVM approve() for HTS tokens, which is more reliable for these contracts
+                    # as per proven working examples. Standard swaps use the SaucerSwap Router as spender.
                     safe_approval = max(needed_balance * 100, current_balance)
                     self.client.approve_token(from_token_id, int(safe_approval))
-                    time.sleep(2)
+                    time.sleep(3) # Wait slightly for HTS approval state to sync
 
             if mode == "exact_in":
                 min_out = int(amount_out_expected * 0.99)
@@ -528,40 +561,91 @@ class PacmanExecutor:
         except Exception as e:
             return ExecutionResult(success=False, error=str(e))
     
-    def _execute_unwrap_step(self, step, simulate: bool) -> ExecutionResult:
+    def _execute_unwrap_step(self, step, amount_raw: int, simulate: bool) -> ExecutionResult:
         try:
             WRAPPER_ID = "0.0.9675688"
             from_id = step.details.get("token_in_id", step.from_token)
-            amount_raw = getattr(step, 'amount_raw', 0)
-            if simulate: return ExecutionResult(success=True, tx_hash="SIMULATED_UNWRAP", amount_in_raw=amount_raw, amount_out_raw=amount_raw)
+            
+            # Amount is now passed in correctly from the previous step
+            if getattr(step, 'amount_raw', 0) > 0 and amount_raw == 0:
+                 amount_raw = getattr(step, 'amount_raw', 0)
+
+            if simulate:
+                return ExecutionResult(
+                    success=True, 
+                    tx_hash="SIMULATED_UNWRAP", 
+                    amount_in_raw=amount_raw, 
+                    amount_out_raw=amount_raw,
+                    gas_used=80000,
+                    gas_cost_hbar=0.05,
+                    gas_cost_usd=0.05 * self._get_hbar_price_usd(),
+                    hbar_usd_price=self._get_hbar_price_usd()
+                )
+
             from saucerswap_v2_client import hedera_id_to_evm
-            self.client.approve_token(from_id, amount_raw, spender=WRAPPER_ID)
+            
+            # EVM APPROVAL (HTS Redirect)
+            logger.info(f"   [UNWRAP] Approving {from_id} via EVM...")
+            # Match working snippet: 1,000,000 gas for approval
+            safe_approval = 2**256 - 1
+            self.client.approve_token(from_id, int(safe_approval), spender=WRAPPER_ID)
+            
+            logger.info(f"   [UNWRAP] Approval confirmed.")
+            time.sleep(3) # Wait for sync
+
             wrapper_addr = hedera_id_to_evm(WRAPPER_ID)
             wrapper_contract = self.w3.eth.contract(address=wrapper_addr, abi=ERC20_WRAPPER_ABI)
+            # Match btc_rebalancer2: Use Alias address (self.eoa) for both signer and account argument
             tx = wrapper_contract.functions.withdrawTo(self.eoa, amount_raw).build_transaction({
-                "from": self.eoa, "gas": 1_000_000, "gasPrice": self.w3.eth.gas_price,
+                "from": self.eoa, "gas": 2_000_000, "gasPrice": self.w3.eth.gas_price,
                 "nonce": self.w3.eth.get_transaction_count(self.eoa), "chainId": self.client.chain_id,
             })
-            signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            signed = self.w3.eth.account.sign_transaction(tx, self.config.private_key)
             tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
             return ExecutionResult(success=True, tx_hash=tx_hash.hex(), amount_in_raw=amount_raw, amount_out_raw=amount_raw)
         except Exception as e: return ExecutionResult(success=False, error=str(e))
     
-    def _execute_wrap_step(self, step, simulate: bool) -> ExecutionResult:
+    def _execute_wrap_step(self, step, amount_raw: int, simulate: bool) -> ExecutionResult:
         try:
             WRAPPER_ID = "0.0.9675688"
             from_id = step.details.get("token_in_id", step.from_token)
-            amount_raw = getattr(step, 'amount_raw', 0)
-            if simulate: return ExecutionResult(success=True, tx_hash="SIMULATED_WRAP", amount_in_raw=amount_raw, amount_out_raw=amount_raw)
+            
+            # Amount is now passed in correctly from the previous step
+            if getattr(step, 'amount_raw', 0) > 0 and amount_raw == 0:
+                 amount_raw = getattr(step, 'amount_raw', 0)
+
+            if simulate:
+                return ExecutionResult(
+                    success=True, 
+                    tx_hash="SIMULATED_WRAP", 
+                    amount_in_raw=amount_raw, 
+                    amount_out_raw=amount_raw,
+                    gas_used=80000,
+                    gas_cost_hbar=0.05,
+                    gas_cost_usd=0.05 * self._get_hbar_price_usd(),
+                    hbar_usd_price=self._get_hbar_price_usd()
+                )
+
             from saucerswap_v2_client import hedera_id_to_evm
-            self.client.approve_token(from_id, amount_raw, spender=WRAPPER_ID)
+            logger.info(f"   [WRAP] Executing Wrap: {amount_raw} units of {step.from_token} -> {WRAPPER_ID}")
+            
+            # EVM APPROVAL (HTS Redirect)
+            logger.info(f"   [WRAP] Approving {from_id} via EVM...")
+            # Match working snippet: 1,000,000 gas for approval
+            safe_approval = 2**256 - 1
+            self.client.approve_token(from_id, int(safe_approval), spender=WRAPPER_ID)
+
+            logger.info(f"   [WRAP] Approval confirmed.")
+            time.sleep(3) # Wait for sync
+
             wrapper_addr = hedera_id_to_evm(WRAPPER_ID)
             wrapper_contract = self.w3.eth.contract(address=wrapper_addr, abi=ERC20_WRAPPER_ABI)
+            # Match btc_rebalancer2: Use Alias address (self.eoa) for both signer and account argument
             tx = wrapper_contract.functions.depositFor(self.eoa, amount_raw).build_transaction({
-                "from": self.eoa, "gas": 1_000_000, "gasPrice": self.w3.eth.gas_price,
+                "from": self.eoa, "gas": 2_000_000, "gasPrice": self.w3.eth.gas_price,
                 "nonce": self.w3.eth.get_transaction_count(self.eoa), "chainId": self.client.chain_id,
             })
-            signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            signed = self.w3.eth.account.sign_transaction(tx, self.config.private_key)
             tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
             return ExecutionResult(success=True, tx_hash=tx_hash.hex(), amount_in_raw=amount_raw, amount_out_raw=amount_raw)
         except Exception as e: return ExecutionResult(success=False, error=str(e))

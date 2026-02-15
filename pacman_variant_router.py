@@ -73,9 +73,12 @@ class PacmanVariantRouter:
     providing a stable registry that survives API fluctuations.
     """
     
+    # WHBAR is strictly blacklisted for UI, but used for internal routing
+    BLACKLISTED_TOKENS = ["0.0.1456986"]
     
     def __init__(self, price_manager=None):
         self.pool_graph = {}  # (token_in, token_out) -> (pool_id, fee_bps, in_id, out_id)
+        self.pools_data = []  # Store raw pool data for metadata lookup
         
         # Load Static Metadata
         self.variants = self._load_json(VARIANTS_FILE, {})
@@ -122,13 +125,17 @@ class PacmanVariantRouter:
             tb_sym = self._id_to_sym(tb_id)
             
             if ta_sym and tb_sym:
-                self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id)
-                self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id)
+                if not self._is_blacklisted(ta_sym, tb_sym):
+                    self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id)
+                    self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id)
+                else:
+                    logger.warning(f"Skipping blacklisted pool {ta_sym}<->{tb_sym}")
 
         # 2. Layer in Live Pool Data (for discovery and validation)
         try:
             with open(pools_file) as f:
                 raw_data = json.load(f)
+                self.pools_data = raw_data # Keep reference for metadata lookup
                 for pool in raw_data:
                     cid = pool.get("contractId")
                     ta_id = pool.get("tokenA", {}).get("id")
@@ -145,25 +152,35 @@ class PacmanVariantRouter:
                     tb_sym = self._id_to_sym(tb_id)
                     
                     if ta_sym and tb_sym:
-                        fee = pool.get("fee", 3000)
-                        self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id)
-                        self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id)
+                        if not self._is_blacklisted(ta_sym, tb_sym):
+                            fee = pool.get("fee", 3000)
+                            self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id)
+                            self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id)
         except Exception as e:
             logger.warning(f"Live data {pools_file} not found or malformed. Using static registry only.")
 
         logger.info(f"Loaded {len(self.pool_graph)//2} unique pools into routing graph.")
 
+    def _is_blacklisted(self, sym_a: str, sym_b: str) -> bool:
+        """Check if a pair is blacklisted for direct routing."""
+        # broken pools or low liquidity direct pairs that should be routed via hub
+        BLACKLIST = [
+            {"HBAR", "WBTC[HTS]"}, # Direct pool is broken/reverting. Note: match _id_to_sym output.
+        ]
+        pair = {sym_a.upper(), sym_b.upper()}
+        return pair in BLACKLIST
+
     def _id_to_sym(self, token_id: str) -> Optional[str]:
         """Resolve a token ID to its internal routing symbol."""
-        # Check variants first (our internal canonical names)
-        if token_id in self.variant_by_id:
-            variant_key = self.variant_by_id[token_id]
-            # Strip _LZ or _HTS for the routing graph (they route the same)
-            return variant_key.split("_")[0]
-            
         # Fallback to HBAR
         if token_id == "0.0.0" or token_id == "0.0.1456986":
             return "HBAR"
+
+        # Check variants first (our internal canonical names)
+        if token_id in self.variant_by_id:
+            variant_key = self.variant_by_id[token_id]
+            # Use actual symbol to distinguish variants
+            return self.variants[variant_key]["symbol"].upper()
             
         return None
     
@@ -171,10 +188,8 @@ class PacmanVariantRouter:
         """Find a direct swap between two token symbols (Case-insensitive)."""
         idx = (from_symbol.upper(), to_symbol.upper())
         if idx in self.pool_graph:
-            logger.debug(f"      [✓] Direct pool found for {idx}")
             pool_id, fee_bps, id_in, id_out = self.pool_graph[idx]
-            # Fix Phase 32: Fee is 3000 (0.3%). We want 0.003.
-            # 3000 / 1,000,000 = 0.003
+            # Fee is 3000 (0.3%). We want 0.003 for human readable reporting.
             fee_pct = fee_bps / 1_000_000 
             
             return RouteStep(
@@ -183,7 +198,7 @@ class PacmanVariantRouter:
                 to_token=to_symbol,
                 contract="0.0.3949434",  # SaucerSwap Router
                 fee_percent=fee_pct,
-                gas_estimate_hbar=0.02,  # ~0.02 HBAR
+                gas_estimate_hbar=0.02,
                 details={"pool_id": pool_id, "fee_bps": fee_bps, "token_in_id": id_in, "token_out_id": id_out}
             )
         return None
@@ -198,26 +213,31 @@ class PacmanVariantRouter:
         return None
     
     def _get_token_meta(self, variant: str) -> Optional[dict]:
-        """Lookup token metadata from the variants registry."""
+        """Get best metadata for a variant, with fallback to symbols."""
         if variant in self.variants:
             return self.variants[variant]
+        
+        # Fallback: Check if it matches a symbol in pools (Case-insensitive)
+        variant_upper = variant.upper()
+        for pool in self.pools_data:
+            if pool["tokenA"]["symbol"].upper() == variant_upper:
+                return {"id": pool["tokenA"]["id"], "symbol": pool["tokenA"]["symbol"], "type": "HTS_NATIVE", "visible_in_hashpack": True}
+            if pool["tokenB"]["symbol"].upper() == variant_upper:
+                return {"id": pool["tokenB"]["id"], "symbol": pool["tokenB"]["symbol"], "type": "HTS_NATIVE", "visible_in_hashpack": True}
         return None
 
     def calculate_erc20_route(self, from_variant: str, to_variant: str, amount_usd: float = 100) -> Optional[VariantRoute]:
         """
-        Calculate cheapest route using ERC20 pools.
-        Result may be ERC20 tokens (invisible in HashPack).
+        Calculate cheapest route using specific hub strategy (User Preferred).
         """
         meta_in = self._get_token_meta(from_variant)
         meta_out = self._get_token_meta(to_variant)
         
         if not meta_in or not meta_out:
-            logger.debug(f"      [✗] Could not resolve metadata for {from_variant} -> {to_variant}")
             return None
             
         from_symbol = meta_in["symbol"]
         to_symbol = meta_out["symbol"]
-        logger.debug(f"      - Symbols: {from_symbol} -> {to_symbol}")
         
         steps = []
         total_fee = 0.0
@@ -230,7 +250,7 @@ class PacmanVariantRouter:
             total_fee = direct.fee_percent
             total_gas = direct.gas_estimate_hbar
         else:
-            # Try via multiple hubs
+            # Try via multiple hubs (Simplified Strategy from User's "Perfect" version)
             potential_hubs = ["USDC", "USDC[hts]", "HBAR", "SAUCE"]
             best_hub_route = None
             
@@ -241,16 +261,14 @@ class PacmanVariantRouter:
                         best_hub_route = hub_route
                         
             if best_hub_route:
-                logger.debug(f"      [✓] Found route via hub")
                 steps.extend(best_hub_route)
                 total_fee = sum(s.fee_percent for s in best_hub_route)
                 total_gas = sum(s.gas_estimate_hbar for s in best_hub_route)
             else:
-                logger.debug(f"      [✗] No viable path found in graph")
                 return None
         
         # Calculate total cost in HBAR
-        fee_in_hbar = (amount_usd * total_fee / 100) / self.htbar_price
+        fee_in_hbar = (amount_usd * total_fee) / self.htbar_price if self.htbar_price > 0 else 0
         total_cost = fee_in_hbar + total_gas
         
         return VariantRoute(
@@ -300,7 +318,8 @@ class PacmanVariantRouter:
                 from_token=meta_out["symbol"],
                 to_token=self.variants[hts_variant]["symbol"],
                 contract=meta_out.get("unwrap_contract", "0.0.9675688"),
-                gas_estimate_hbar=unwrap_gas
+                gas_estimate_hbar=unwrap_gas,
+                details={"token_in_id": meta_out["id"], "token_out_id": self.variants[hts_variant]["id"]}
             )
             erc20_route.steps.append(step)
             erc20_route.to_variant = hts_variant
@@ -330,22 +349,93 @@ class PacmanVariantRouter:
         
         return sorted(routes, key=lambda r: r.total_cost_hbar)
     
+    def calculate_strict_wrap_route(self, from_variant: str, to_variant: str, amount_usd: float = 100) -> Optional[VariantRoute]:
+        """
+        Calculate a strict Wrap/Unwrap route.
+        Returns a route ONLY if `from` -> `to` is a direct wrap/unwrap pair defined in variants.json.
+        """
+        meta_in = self._get_token_meta(from_variant)
+        meta_out = self._get_token_meta(to_variant)
+        
+        if not meta_in or not meta_out:
+            return None
+
+        # SAFETY: Prevent HBAR <-> WHBAR routing. User has flagged this as unsafe/lossy.
+        # WHBAR (0.0.1456986) is internal routing only.
+        if (meta_in.get("symbol") == "HBAR" and meta_out.get("id") == "0.0.1456986") or \
+           (meta_in.get("id") == "0.0.1456986" and meta_out.get("symbol") == "HBAR"):
+            logger.warning("SAFETY: Explicitly blocked HBAR <-> WHBAR wrap/unwrap.")
+            return None
+
+        # Check Wrap (HTS -> LZ)
+        if meta_in.get("wrap_to") == to_variant:
+            wrap_gas = meta_in.get("wrap_gas_hbar", 0.02)
+            return VariantRoute(
+                from_variant=from_variant,
+                to_variant=to_variant,
+                steps=[RouteStep(
+                    step_type="wrap",
+                    from_token=meta_in["symbol"],
+                    to_token=meta_out["symbol"],
+                    contract=meta_in.get("wrap_contract", "0.0.9675688"),
+                    gas_estimate_hbar=wrap_gas,
+                    details={"token_in_id": meta_in["id"], "token_out_id": meta_out["id"]}
+                )],
+                total_fee_percent=0.0,
+                total_gas_hbar=wrap_gas,
+                total_cost_hbar=wrap_gas,
+                estimated_time_seconds=5,
+                output_format="ERC20", 
+                hashpack_visible=meta_out.get("visible_in_hashpack", False),
+                confidence=1.0
+            )
+
+        # Check Unwrap (LZ -> HTS)
+        if meta_in.get("unwrap_to") == to_variant:
+            unwrap_gas = meta_in.get("unwrap_gas_hbar", 0.02)
+            return VariantRoute(
+                from_variant=from_variant,
+                to_variant=to_variant,
+                steps=[RouteStep(
+                    step_type="unwrap",
+                    from_token=meta_in["symbol"],
+                    to_token=meta_out["symbol"],
+                    contract=meta_in.get("unwrap_contract", "0.0.9675688"),
+                    gas_estimate_hbar=unwrap_gas,
+                    details={"token_in_id": meta_in["id"], "token_out_id": meta_out["id"]}
+                )],
+                total_fee_percent=0.0,
+                total_gas_hbar=unwrap_gas,
+                total_cost_hbar=unwrap_gas,
+                estimated_time_seconds=5,
+                output_format="HTS",
+                hashpack_visible=meta_out.get("visible_in_hashpack", True),
+                confidence=1.0
+            )
+            
+        return None
+
     def recommend_route(self, from_variant: str, to_variant: str, 
                        user_preference: str = "auto",
                        amount_usd: float = 100) -> Optional[VariantRoute]:
         """
-        Recommend best route based on user preference.
+        Recommend best route for a SWAP.
         
-        user_preference:
-        - "cheapest": Lowest cost, even if ERC20
-        - "visible": HTS only (HashPack friendly)
-        - "auto": ERC20 acceptable if saves > 5%
+        Logic:
+        1. Check if it's a direct Wrap/Unwrap (Efficiency Check).
+        2. If not, perform full graph search for Swap routes.
         """
+        # 1. Efficiency Check: Is this just a wrap?
+        direct_wrap = self.calculate_strict_wrap_route(from_variant, to_variant, amount_usd)
+        if direct_wrap:
+            return direct_wrap
+
+        # 2. Graph Search (Swaps)
         routes = self.get_all_routes(from_variant, to_variant, amount_usd)
         
         if not routes:
             return None
-        
+            
         if user_preference == "cheapest":
             return routes[0]
         

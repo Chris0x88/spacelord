@@ -398,6 +398,30 @@ class SaucerSwapV2:
         except Exception as e:
             raise RuntimeError(f"Multi-hop quote failed: {e}")
 
+    def get_allowance(self, token_id: str, spender: str | None = None) -> int:
+        """Get allowance for spender from self.eoa (Alias)."""
+        token_evm = hedera_id_to_evm(token_id)
+        spender_val = spender or CONTRACTS[self.network]["router"]
+        spender_evm = hedera_id_to_evm(spender_val)
+        
+        token = self.w3.eth.contract(address=token_evm, abi=ERC20_ABI)
+        try:
+            # Always query using self.eoa (Alias) as Hedera EVM prefers it for owner
+            return token.functions.allowance(self.eoa, spender_evm).call()
+        except Exception as e:
+            # Querying Long-Zero as owner can revert on certain HTS tokens
+            print(f"   ⚠️ Allowance check failed (might be 0): {e}")
+            return 0
+
+    def ensure_approval(self, token_id: str, amount: int, spender: str | None = None) -> bool:
+        """Only call approve_token if current allowance is insufficient."""
+        current = self.get_allowance(token_id, spender)
+        if current >= amount:
+            return False
+            
+        self.approve_token(token_id, amount, spender)
+        return True
+
     def approve_token(self, token_id: str, amount: int | None = None, spender: str | None = None) -> str:
         """
         Approve router or custom spender to spend token_id for amount (or max uint256).
@@ -420,7 +444,7 @@ class SaucerSwapV2:
 
         tx = token.functions.approve(spender_evm, amount).build_transaction({
             "from": self.eoa,
-            "gas": 800_000,
+            "gas": 2_000_000,
             "gasPrice": self.w3.eth.gas_price,
             "nonce": self.w3.eth.get_transaction_count(self.eoa),
             "chainId": self.chain_id,
@@ -428,6 +452,13 @@ class SaucerSwapV2:
 
         signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+
+        # Wait for confirmation to ensure allowance is set before next transaction (matching btc_rebalancer2)
+        print(f"   ⏳ Waiting for approval confirmation ({tx_hash.hex()})...")
+        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+        if receipt.status != 1:
+            raise RuntimeError(f"Approval failed on-chain: {tx_hash.hex()}")
+
         return tx_hash.hex()
 
     def associate_token_native(self, token_id: str) -> bool:
