@@ -1,3 +1,8 @@
+# Archived files (moved during restructure - keep structure but ignore content)
+archive/
+archive_internal/
+legacy/
+
 # Environments
 .env
 .env.local
