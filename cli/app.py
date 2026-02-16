@@ -101,7 +101,28 @@ class PacmanApp:
         from_token = from_token.upper()
         to_token = to_token.upper()
 
-        logger.debug(f"Routing request: {from_token} -> {to_token} (${amount})")
+        logger.debug(f"Routing request: {from_token} -> {to_token} (Amount: {amount})")
+
+        # 1. Calculate USD Value for Accurate Fee Estimation
+        # Router expects 'amount_usd' to be actual USD value to calculate HBAR fees correctly
+        usd_value = amount
+        try:
+            # Attempt to resolve price using router's metadata
+            meta = self.router._get_token_meta(from_token)
+            if meta and "id" in meta:
+                # Ensure price manager has data
+                if price_manager.hbar_price == 0:
+                    price_manager.reload()
+
+                price = price_manager.get_price(meta["id"])
+                if price > 0:
+                    usd_value = amount * price
+            elif from_token in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:
+                 price = price_manager.get_hbar_price()
+                 if price > 0:
+                     usd_value = amount * price
+        except Exception as e:
+            logger.warning(f"Failed to calculate USD value for routing: {e}")
 
         # Resolve Variants (e.g. USDC -> USDC[hts] if preferred)
         # For now, simplistic routing logic from the variant router
@@ -109,7 +130,7 @@ class PacmanApp:
             from_variant=from_token,
             to_variant=to_token,
             user_preference="auto",
-            amount_usd=amount # Approximation
+            amount_usd=usd_value
         )
 
     def swap(self, from_token: str, to_token: str, amount: float, mode: str = "exact_in") -> ExecutionResult:

@@ -128,6 +128,10 @@ class PacmanExecutor:
             address=self.wrapper_address,
             abi=ERC20_WRAPPER_ABI
         )
+
+        # Initialize Price Manager (Global Singleton)
+        from pacman_price_manager import price_manager
+        self.price_manager = price_manager
         
         # Recording system
         self.recordings_dir = Path("execution_records")
@@ -194,6 +198,10 @@ class PacmanExecutor:
     def execute_swap(self, route, amount_usd: float, mode: str = "exact_in") -> ExecutionResult:
         """
         Execute a swap route consisting of one or more steps.
+
+        WARNING: `amount_usd` is a historical misnomer. It actually represents the
+        RAW TOKEN AMOUNT (e.g. 100 HBAR or 0.5 WBTC), not the USD value.
+        Refactoring the name would break external interfaces, so we clarify here.
         """
         simulate = self.config.simulate_mode
 
@@ -336,7 +344,11 @@ class PacmanExecutor:
                 result.gas_price_hbar = eff_gas_price_wei / (10**18)
                 result.gas_cost_hbar = (result.gas_used * eff_gas_price_wei) / (10**18)
 
-                result.hbar_usd_price = self._get_hbar_price_usd()
+                # Ensure price manager is loaded
+                if self.price_manager.hbar_price == 0:
+                    self.price_manager.reload()
+
+                result.hbar_usd_price = self.price_manager.get_hbar_price()
                 result.gas_cost_usd = result.gas_cost_hbar * result.hbar_usd_price
 
                 if step.step_type == "swap" and result.amount_in_raw > 0:
@@ -441,32 +453,22 @@ class PacmanExecutor:
             return False # Fail safe: Assume not associated
 
     def associate_token(self, token_id: str) -> bool:
-        """Associate HTS token using the native SDK script."""
+        """Associate HTS token using Native Precompiles (Python-only)."""
         if token_id.upper() in ["HBAR", "0.0.0"]: return True
         
-        import subprocess
-        logger.info(f"   🛡️  Associating token {token_id} via Native SDK...")
+        logger.info(f"   🛡️  Associating token {token_id} via HTS Precompile...")
         
-        env = os.environ.copy()
-        if self.config.private_key:
-            env["PACMAN_PRIVATE_KEY"] = self.config.private_key.reveal()
-        if self.config.hedera_account_id:
-            env["HEDERA_ACCOUNT_ID"] = self.config.hedera_account_id
-            
         try:
-            subprocess.run(
-                ["node", "associate_hts_token.js", token_id],
-                env=env,
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            return True
-        except subprocess.CalledProcessError as e:
-            logger.error(f"   ❌ Association failed: {e.stderr}")
-            return False
+            # Use native python client instead of external node script
+            success = self.client.associate_token_native(token_id)
+            if success:
+                logger.info(f"   ✅ Association Confirmed.")
+                return True
+            else:
+                logger.error(f"   ❌ Association failed on-chain.")
+                return False
         except Exception as e:
-            logger.error(f"   ❌ Error calling association script: {e}")
+            logger.error(f"   ❌ Association error: {e}")
             return False
 
     def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in") -> ExecutionResult:

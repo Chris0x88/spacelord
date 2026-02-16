@@ -186,7 +186,10 @@ def show_price(token_name: str):
 def show_all_prices():
     """Display prices for all tracked tokens."""
     from pacman_price_manager import price_manager
-    import refresh_data
+    try:
+        from scripts import refresh_data
+    except ImportError:
+        import refresh_data
     
     # 1. Fetch fresh data (Online)
     refresh_data.refresh()
@@ -621,8 +624,10 @@ def print_receipt(res, route, from_token: str, to_token: str, amount_val: float,
         settle_usd = net_received
     else:
         net_received = amount_out
-        from pacman_cli import get_token_id_for_variant
-        tp = executor.price_manager.get_price(get_token_id_for_variant(to_token))
+        # Use local resolver instead of broken import
+        tid = _resolve_token_id(to_token)
+        # Access exposed price_manager from executor
+        tp = executor.price_manager.get_price(tid) if tid else 0
         settle_usd = net_received * tp if tp > 0 else 0
 
     row("Net Received", f"{net_received:.8f} {to_token}", C.OK)

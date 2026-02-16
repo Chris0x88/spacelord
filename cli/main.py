@@ -98,9 +98,12 @@ def cmd_send(app, args):
         print(f"\n  {C.ERR}✗{C.R} FAILED: {res.get('error')}")
 
 def cmd_receive(app, args):
-    """Show wallet address and check token associations."""
-    from pacman_display import C
+    """
+    Show wallet address and check token associations.
 
+    Usage: receive [token_symbol]
+    If token provided, checks if account is associated (and offers to associate).
+    """
     if not app.executor:
         print(f"  {C.ERR}✗{C.R} Engine not initialized.")
         return
@@ -154,9 +157,6 @@ def cmd_receive(app, args):
             print(f"  {C.OK}✓{C.R} Successfully associated {token_symbol}!")
         else:
             print(f"  {C.ERR}✗{C.R} Association failed.")
-    print()
-
-    print()
     print()
 
 def cmd_verbose(app, args):
@@ -244,7 +244,7 @@ def _do_swap(app, req):
 COMMANDS = {
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
     "tokens": cmd_tokens, "t": cmd_tokens,
-    "sources": cmd_sources, "source": cmd_sources, "s": cmd_sources,"source": cmd_sources,   "price": cmd_price,
+    "sources": cmd_sources, "source": cmd_sources, "s": cmd_sources, "price": cmd_price,
     "account": cmd_account,
     "balance": cmd_balance,
     "history": cmd_history,
