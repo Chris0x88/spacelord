@@ -397,8 +397,9 @@ def _show_all_balances(executor, price_manager):
         wallet_items = []
 
         # Use Optimized Multicall
-        sys.stdout.write(f"  {C.MUTED}Scanning assets...{C.R}")
-        sys.stdout.flush()
+        if executor.config.verbose_mode:
+            sys.stdout.write(f"  {C.MUTED}Scanning assets...{C.R}")
+            sys.stdout.flush()
         
         all_balances = executor.get_balances()
         
@@ -433,8 +434,9 @@ def _show_all_balances(executor, price_manager):
             wallet_items.append((sym, meta, bal, usd_val))
 
         # Clear progress line
-        sys.stdout.write("\r" + " " * 40 + "\r")
-        sys.stdout.flush()
+        if executor.config.verbose_mode:
+            sys.stdout.write("\r" + " " * 40 + "\r")
+            sys.stdout.flush()
 
         # Sort (Delegated to filter)
         sorted_items = ui_filter.sort_wallet_balances(wallet_items)

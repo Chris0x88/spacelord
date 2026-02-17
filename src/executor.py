@@ -206,7 +206,7 @@ class PacmanExecutor:
         if not calls:
             return balances
             
-        logger.info(f"   ⚡ Batch fetching {len(calls)} token balances via Multicall...")
+        logger.debug(f"   ⚡ Batch fetching {len(calls)} token balances via Multicall...")
         
         try:
             mc = Multicall(self.w3)
