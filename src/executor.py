@@ -354,12 +354,12 @@ class PacmanExecutor:
             logger.info(f"   ✅ Associated.")
             return True
 
-    def _calculate_backwards_pass(self, route, amount_out_usd: float) -> Optional[Dict[int, int]]:
+    def _calculate_backwards_pass(self, route, raw_amount_out: float) -> Optional[Dict[int, int]]:
         """Calculate required inputs for each step in a multi-hop exact output swap."""
         logger.info("   🔙 Performing Backwards Pass for Multi-Hop Exact Output...")
         targets = {}
         last_decimals = self._get_token_decimals(route.steps[-1].to_token)
-        next_needed_raw = int(amount_out_usd * (10 ** last_decimals))
+        next_needed_raw = int(raw_amount_out * (10 ** last_decimals))
 
         try:
             for i in range(len(route.steps) - 1, -1, -1):
@@ -833,10 +833,10 @@ class PacmanExecutor:
         except Exception as e: return ExecutionResult(success=False, error=str(e))
     
     
-    def _record_execution(self, route, amount_val: float, results: list, simulate: bool):
+    def _record_execution(self, route, token_amount: float, results: list, simulate: bool):
         """Record execution details for AI training."""
         # Use centralized PriceManager (Phase 32)
-        from pacman_price_manager import price_manager
+        from lib.prices import price_manager
         
         # Determine Price
         if route.from_variant in ["HBAR", "0.0.0"]:
@@ -872,7 +872,7 @@ class PacmanExecutor:
             usd_price = price_manager.get_price(token_id)
             
         # Phase 33: Record both amounts for history
-        actual_amount_token = amount_val
+        actual_amount_token = token_amount
         if results and decimals > 0:
             raw_in = results[0].amount_in_raw
             if raw_in > 0:

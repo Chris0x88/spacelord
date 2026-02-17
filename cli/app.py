@@ -91,7 +91,7 @@ class PacmanApp:
             from_variant=from_token,
             to_variant=to_token,
             user_preference="auto",
-            amount_usd=usd_value
+            volume_usd=usd_value
         )
 
     def swap(self, from_token: str, to_token: str, amount: float, mode: str = "exact_in") -> ExecutionResult:

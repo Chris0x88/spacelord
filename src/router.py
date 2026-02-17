@@ -226,7 +226,7 @@ class PacmanVariantRouter:
                 return {"id": pool["tokenB"]["id"], "symbol": pool["tokenB"]["symbol"], "type": "HTS_NATIVE", "visible_in_hashpack": True}
         return None
 
-    def calculate_erc20_route(self, from_variant: str, to_variant: str, amount_usd: float = 100) -> Optional[VariantRoute]:
+    def calculate_erc20_route(self, from_variant: str, to_variant: str, volume_usd: float = 100) -> Optional[VariantRoute]:
         """
         Calculate cheapest route using specific hub strategy (User Preferred).
         """
@@ -268,7 +268,7 @@ class PacmanVariantRouter:
                 return None
         
         # Calculate total cost in HBAR
-        fee_in_hbar = (amount_usd * total_fee) / self.htbar_price if self.htbar_price > 0 else 0
+        fee_in_hbar = (volume_usd * total_fee) / self.htbar_price if self.htbar_price > 0 else 0
         total_cost = fee_in_hbar + total_gas
         
         return VariantRoute(
@@ -284,7 +284,7 @@ class PacmanVariantRouter:
             confidence=0.95 if len(steps) == 1 else 0.85
         )
     
-    def calculate_hts_route(self, from_variant: str, to_variant: str, amount_usd: float = 100) -> Optional[VariantRoute]:
+    def calculate_hts_route(self, from_variant: str, to_variant: str, volume_usd: float = 100) -> Optional[VariantRoute]:
         """
         Calculate route to HTS-native output (visible in HashPack).
         If ERC20 is cheaper, adds unwrap step.
@@ -297,19 +297,19 @@ class PacmanVariantRouter:
             
         # If target already HTS, standard routing is fine
         if meta_out.get("type") == "HTS_NATIVE":
-            return self.calculate_erc20_route(from_variant, to_variant, amount_usd)
+            return self.calculate_erc20_route(from_variant, to_variant, volume_usd)
         
         # Target is ERC20, need to find HTS variant
         hts_variant = meta_out.get("unwrap_to")
         if not hts_variant:
             # If no unwrap_to, we just do ERC20 and hope for the best
-            return self.calculate_erc20_route(from_variant, to_variant, amount_usd)
+            return self.calculate_erc20_route(from_variant, to_variant, volume_usd)
         
         # Option 1: Direct to HTS variant
-        hts_route = self.calculate_erc20_route(from_variant, hts_variant, amount_usd)
+        hts_route = self.calculate_erc20_route(from_variant, hts_variant, volume_usd)
         
         # Option 2: To ERC20 then unwrap
-        erc20_route = self.calculate_erc20_route(from_variant, to_variant, amount_usd)
+        erc20_route = self.calculate_erc20_route(from_variant, to_variant, volume_usd)
         if erc20_route:
             # Add unwrap step
             unwrap_gas = meta_out.get("unwrap_gas_hbar", 0.02)
@@ -332,24 +332,24 @@ class PacmanVariantRouter:
         
         return hts_route
     
-    def get_all_routes(self, from_variant: str, to_variant: str, amount_usd: float = 100) -> List[VariantRoute]:
+    def get_all_routes(self, from_variant: str, to_variant: str, volume_usd: float = 100) -> List[VariantRoute]:
 
         """Get all possible routes for comparison."""
         routes = []
         
         # Route via ERC20 (cheapest, may be invisible)
-        erc20_route = self.calculate_erc20_route(from_variant, to_variant, amount_usd)
+        erc20_route = self.calculate_erc20_route(from_variant, to_variant, volume_usd)
         if erc20_route:
             routes.append(erc20_route)
         
         # Route to HTS (HashPack visible)
-        hts_route = self.calculate_hts_route(from_variant, to_variant, amount_usd)
+        hts_route = self.calculate_hts_route(from_variant, to_variant, volume_usd)
         if hts_route and hts_route not in routes:
             routes.append(hts_route)
         
         return sorted(routes, key=lambda r: r.total_cost_hbar)
     
-    def calculate_strict_wrap_route(self, from_variant: str, to_variant: str, amount_usd: float = 100) -> Optional[VariantRoute]:
+    def calculate_strict_wrap_route(self, from_variant: str, to_variant: str, volume_usd: float = 100) -> Optional[VariantRoute]:
         """
         Calculate a strict Wrap/Unwrap route.
         Returns a route ONLY if `from` -> `to` is a direct wrap/unwrap pair defined in variants.json.
@@ -417,7 +417,7 @@ class PacmanVariantRouter:
 
     def recommend_route(self, from_variant: str, to_variant: str, 
                        user_preference: str = "auto",
-                       amount_usd: float = 100) -> Optional[VariantRoute]:
+                       volume_usd: float = 100) -> Optional[VariantRoute]:
         """
         Recommend best route for a SWAP.
         
@@ -426,12 +426,12 @@ class PacmanVariantRouter:
         2. If not, perform full graph search for Swap routes.
         """
         # 1. Efficiency Check: Is this just a wrap?
-        direct_wrap = self.calculate_strict_wrap_route(from_variant, to_variant, amount_usd)
+        direct_wrap = self.calculate_strict_wrap_route(from_variant, to_variant, volume_usd)
         if direct_wrap:
             return direct_wrap
 
         # 2. Graph Search (Swaps)
-        routes = self.get_all_routes(from_variant, to_variant, amount_usd)
+        routes = self.get_all_routes(from_variant, to_variant, volume_usd)
         
         if not routes:
             return None
@@ -487,7 +487,7 @@ def test_variant_router():
         print(f"From: {from_variant} → To: {to_variant} | Preference: {preference}")
         print("="*80)
         
-        route = router.recommend_route(from_variant, to_variant, preference, amount_usd=100)
+        route = router.recommend_route(from_variant, to_variant, preference, volume_usd=100)
         
         if route:
             print(route.explain())
