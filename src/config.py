@@ -71,6 +71,14 @@ class PacmanConfig:
     # Hedera Accounts
     hedera_account_id: Optional[str] = None  # 0.0.xxx format
 
+    @property
+    def debug(self) -> bool:
+        return self.verbose_mode
+
+    @debug.setter
+    def debug(self, value: bool):
+        self.verbose_mode = value
+
     @staticmethod
     def _safe_float(val: Optional[str], default: float) -> float:
         """Safely parse float from string, handling NaN and invalid values."""

@@ -119,3 +119,10 @@ class PacmanApp:
     def get_history(self, limit: int = 10):
         """Get execution history."""
         return self.executor.get_execution_history(limit)
+
+    def toggle_verbose(self):
+        """Toggle debug logging."""
+        from pacman_logger import set_verbose
+        self.config.debug = not self.config.debug
+        set_verbose(self.config.debug)
+        return self.config.debug
