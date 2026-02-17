@@ -368,7 +368,9 @@ def _show_all_balances(executor, price_manager):
     """Display all wallet balances in a formatted table."""
     from pacman_variant_router import PacmanVariantRouter
 
-    print(f"\n{C.BOLD}{C.TEXT}  WALLET{C.R}")
+    import time
+    ts = time.strftime("%H:%M")
+    print(f"\n{C.BOLD}{C.TEXT}  WALLET (Live {ts}){C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
 
     try:

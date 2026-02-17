@@ -109,6 +109,10 @@ class PacmanPriceManager:
         
         if tid in ["hbar", "0.0.0"]:
             return self.get_hbar_price(), self.sources.get("0.0.0", "SaucerSwap V2")
+        
+        # Try Live Fetch for major tokens
+        if tid in ["0.0.731861", "0.0.456858"]: # SAUCE, USDC
+             return self._get_live_price(tid)
             
         # if tid == "0.0.1456986":
         #    return self.get_price_with_source("0.0.1456986") # recursive but handled in get call
@@ -129,12 +133,85 @@ class PacmanPriceManager:
                 price = data.get("hedera-hashgraph", {}).get("usd", 0)
                 if price > 0:
                     self.hbar_price = price
-                    self.sources["0.0.0"] = "CoinGecko (Live)"
+                    import time
+                    ts = time.strftime("%H:%M")
+                    self.sources["0.0.0"] = f"CoinGecko (Live {ts})"
+                    return price
+        except:
+            pass
+
+        # Try Binance
+        try:
+            import requests
+            url = "https://api.binance.com/api/v3/ticker/price?symbol=HBARUSDT"
+            r = requests.get(url, timeout=1.5)
+            if r.status_code == 200:
+                data = r.json()
+                price = float(data.get("price", 0))
+                if price > 0:
+                    self.hbar_price = price
+                    import time
+                    ts = time.strftime("%H:%M")
+                    self.sources["0.0.0"] = f"Binance (Live {ts})"
                     return price
         except:
             pass
             
         return self.hbar_price
+
+    def _get_live_price(self, token_id: str) -> tuple[float, str]:
+        """
+        Try to fetch live price from CoinGecko -> Binance -> Cache.
+        """
+        import time
+        ts = time.strftime("%H:%M")
+
+        # 1. Map ID to CoinGecko/Binance Keys
+        # Extend this as needed. HBAR is handled separately usually but can be here.
+        cg_map = {
+            "0.0.0": "hedera-hashgraph",
+            "0.0.1456986": "hedera-hashgraph", # WHBAR
+            "0.0.731861": "saucerswap", # SAUCE
+            "0.0.456858": "usd-coin", # USDC
+            "0.0.624505": "wrapped-bitcoin", # WBTC (hts) - approximate
+        }
+        binance_map = {
+            "0.0.0": "HBARUSDT",
+        }
+
+        cg_id = cg_map.get(token_id)
+        
+        # A. CoinGecko
+        if cg_id:
+            try:
+                import requests
+                url = f"https://api.coingecko.com/api/v3/simple/price?ids={cg_id}&vs_currencies=usd"
+                r = requests.get(url, timeout=1.5)
+                if r.status_code == 200:
+                    data = r.json()
+                    price = data.get(cg_id, {}).get("usd", 0)
+                    if price > 0:
+                        return price, f"CoinGecko (Live {ts})"
+            except: pass
+
+        # B. Binance (Only for major pairs)
+        bn_sym = binance_map.get(token_id)
+        if bn_sym:
+            try:
+                import requests
+                url = f"https://api.binance.com/api/v3/ticker/price?symbol={bn_sym}"
+                r = requests.get(url, timeout=1.5)
+                if r.status_code == 200:
+                    data = r.json()
+                    price = float(data.get("price", 0))
+                    if price > 0:
+                        return price, f"Binance (Live {ts})"
+            except: pass
+
+        # C. Cache Fallback
+        price = self.prices.get(token_id, 0.0)
+        source = self.sources.get(token_id, "Unknown Source")
+        return price, source
 
     def reload(self) -> None:
         """Force a reload of data from the disk."""
