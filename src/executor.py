@@ -336,8 +336,8 @@ class PacmanExecutor:
     def _ensure_association(self, route) -> bool:
         """Ensure the target token is associated."""
         last_step = route.steps[-1]
-        print(f"   [DEBUG] Last Step Details: {last_step.details}")
-        print(f"   [DEBUG] Last Step To Token: {last_step.to_token}")
+        logger.debug(f"   [DEBUG] Last Step Details: {last_step.details}")
+        logger.debug(f"   [DEBUG] Last Step To Token: {last_step.to_token}")
         final_token_id = last_step.details.get("token_out_id", last_step.to_token)
 
         print(f"   🛡️  Checking association for {route.to_variant}...")
@@ -431,8 +431,8 @@ class PacmanExecutor:
                 tx_details = self.w3.eth.get_transaction(result.tx_hash)
                 eff_gas_price_wei = receipt.get('effectiveGasPrice', tx_details.get('gasPrice', 0))
 
-                result.gas_price_hbar = eff_gas_price_wei / (10**18)
-                result.gas_cost_hbar = (result.gas_used * eff_gas_price_wei) / (10**18)
+                result.gas_price_hbar = eff_gas_price_wei / 100_000_000.0
+                result.gas_cost_hbar = (result.gas_used * eff_gas_price_wei) / 100_000_000.0
 
                 # Ensure price manager is loaded
                 if self.price_manager.hbar_price == 0:
@@ -915,7 +915,7 @@ class PacmanExecutor:
         with open(filepath, 'w') as f:
             json.dump(record, f, indent=2)
         
-        from pacman_logger import logger
+        from src.logger import logger
         logger.info(f"\n📝 Execution recorded: {filepath}")
         
         training_file = Path("training_data/live_executions.jsonl")
