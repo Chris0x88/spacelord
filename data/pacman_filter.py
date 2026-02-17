@@ -115,18 +115,19 @@ class UIFilter:
     def get_display_aliases(self, token_id: str) -> Optional[str]:
         """Get display alias for a token."""
         aliases = self._load_json("aliases.json") or {}
-        variants = self._load_json("variants.json") or {}
+        # Use tokens.json as the Source of Truth for ID Lookups
+        tokens = self._load_tokens()
         
         found = []
-        for alias, variant_key in aliases.items():
-            # Check if alias points directly to this token ID
-            if variant_key == token_id:
+        for alias, token_key in aliases.items():
+            # 1. Check if alias points directly to this token ID
+            if token_key == token_id:
                 found.append(alias)
                 continue
                 
-            # Check if alias points to a Variant Key that has this ID
-            if variant_key in variants:
-                if variants[variant_key].get("id") == token_id:
+            # 2. Check if alias points to a Token Key that has this ID
+            if token_key in tokens:
+                if tokens[token_key].get("id") == token_id:
                     found.append(alias)
                     
         # Sort for consistency (shorter aliases first)

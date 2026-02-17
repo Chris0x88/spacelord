@@ -20,19 +20,14 @@ VARIANTS_FILE = DATA_DIR / "variants.json"
 
 # Global Data
 ALIASES: Dict[str, str] = {}
-VARIANTS: Dict[str, dict] = {}
 
 def load_static_aliases():
-    """Load manually curated nicknames from aliases.json and variants.json."""
-    global ALIASES, VARIANTS
+    """Load manually curated nicknames from aliases.json."""
+    global ALIASES
     try:
         if ALIASES_FILE.exists():
             with open(ALIASES_FILE) as f:
                 ALIASES.update(json.load(f))
-        
-        if VARIANTS_FILE.exists():
-            with open(VARIANTS_FILE) as f:
-                VARIANTS.update(json.load(f))
     except Exception:
         pass
 
@@ -46,22 +41,14 @@ def resolve_token(name: str) -> Optional[str]:
     if clean in ALIASES:
         return ALIASES[clean]
     
-    # 2. Variant Match (Key or Symbol)
-    if clean in VARIANTS:
-        return clean
-        
-    for v_key, v_data in VARIANTS.items():
-        if v_data.get("symbol", "").upper() == clean:
-            return v_key
-    
-    # 3. Key Match in Tokens.json
+    # 2. Key Match in Tokens.json
     try:
         with open(TOKENS_FILE) as f:
             t_data = json.load(f)
             if clean in t_data:
                 return clean
             
-            # 4. Symbol Match in Tokens.json
+            # 3. Symbol Match in Tokens.json
             for key, meta in t_data.items():
                 if meta.get("symbol", "").upper() == clean:
                     return key
