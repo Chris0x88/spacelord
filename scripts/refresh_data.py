@@ -26,9 +26,38 @@ POOLS_URL = "https://api.saucerswap.finance/v2/pools"
 RAW_DATA_FILE = DATA_DIR / "pacman_data_raw.json"
 TOKENS_FILE = DATA_DIR / "tokens.json"
 
+# Official SaucerSwap Demo Key (Publicly available in docs)
+# Used as fallback if user has not configured their own in .env
+PUBLIC_DEMO_KEY = "875e1017-87b8-4b12-8301-6aa1f1aa073b"
+
 import time
 
+def load_env():
+    """Load variables from .env file into os.environ."""
+    env_path = ROOT_DIR / ".env"
+    if env_path.exists():
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if '=' in line and not line.startswith('#'):
+                    key, value = line.split('=', 1)
+                    if key not in os.environ:
+                        os.environ[key] = value
+
 def refresh(force=False):
+    load_env()
+    network = os.getenv("PACMAN_NETWORK", "mainnet").lower()
+    
+    # Get API Key
+    if network == "testnet":
+        api_key = os.getenv("SAUCERSWAP_API_KEY_TESTNET")
+    else:
+        api_key = os.getenv("SAUCERSWAP_API_KEY_MAINNET")
+        
+    # ABSOLUTELY CRITICAL FALLBACK: Use Demo Key if no private key provided
+    if not api_key:
+        api_key = PUBLIC_DEMO_KEY
+        print(f"  {C.R}ℹ️  Using Public Fallback (Demo Key){C.R}")
     # Rate Limit Check (60 seconds)
     if not force and RAW_DATA_FILE.exists():
         age = time.time() - RAW_DATA_FILE.stat().st_mtime
@@ -68,6 +97,10 @@ def refresh(force=False):
                 "Sec-Fetch-User": "?1"
             }
 
+            if api_key:
+                headers["x-api-key"] = api_key
+                print(f"  {C.OK}🔑 Using SaucerSwap API Key ({network}){C.R}")
+
             response = requests.get(POOLS_URL, headers=headers, timeout=30)
 
             if response.status_code in [401, 403]:
@@ -75,10 +108,12 @@ def refresh(force=False):
                 import subprocess
                 try:
                     # Curl fallback - often bypasses TLS fingerprinting issues
-                    result = subprocess.run(
-                        ["curl", "-s", "-H", "User-Agent: Mozilla/5.0", POOLS_URL],
-                        capture_output=True, text=True, check=True
-                    )
+                    cmd = ["curl", "-s"]
+                    if api_key:
+                         cmd.extend(["-H", f"x-api-key: {api_key}"])
+                    cmd.extend(["-H", "User-Agent: Mozilla/5.0", POOLS_URL])
+                    
+                    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
                     all_pools = json.loads(result.stdout)
                 except Exception as curl_e:
                      print(f"  {C.WARN}⚠{C.R}  Curl fallback failed: {curl_e}")
@@ -100,14 +135,16 @@ def refresh(force=False):
             print(f"  {C.WARN}⚠{C.R}  Requests failed ({e}). Trying curl fallback...")
             import subprocess
             try:
-                result = subprocess.run(
-                    ["curl", "-s", "-H", "User-Agent: Mozilla/5.0", POOLS_URL],
-                    capture_output=True, text=True, check=True
-                )
+                cmd = ["curl", "-s"]
+                if api_key:
+                     cmd.extend(["-H", f"x-api-key: {api_key}"])
+                cmd.extend(["-H", "User-Agent: Mozilla/5.0", POOLS_URL])
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
                 try:
                     all_pools = json.loads(result.stdout)
                 except json.JSONDecodeError:
-                    print(f"  {C.WARN}⚠{C.R}  Curl output not JSON.")
+                    print(f"  {C.WARN}⚠{C.R}  Curl output not JSON. Body start: {result.stdout[:100]}")
                     return
 
                 if isinstance(all_pools, dict):
