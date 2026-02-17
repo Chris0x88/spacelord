@@ -15,6 +15,7 @@ from pathlib import Path
 class C:
     R = "\033[0m"
     WARN = "\033[93m"
+    OK = "\033[92m"
 
 # Determine the project root (one level up from scripts/)
 ROOT_DIR = Path(__file__).parent.parent
@@ -52,6 +53,7 @@ def refresh(force=False):
 
         # 2. Fetch all pools
         try:
+
             # Full browser headers to bypass 401/403 blocks
             headers = {
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -65,6 +67,7 @@ def refresh(force=False):
                 "Sec-Fetch-Site": "none",
                 "Sec-Fetch-User": "?1"
             }
+
             response = requests.get(POOLS_URL, headers=headers, timeout=30)
 
             if response.status_code in [401, 403]:
