@@ -431,8 +431,8 @@ class PacmanExecutor:
                 tx_details = self.w3.eth.get_transaction(result.tx_hash)
                 eff_gas_price_wei = receipt.get('effectiveGasPrice', tx_details.get('gasPrice', 0))
 
-                result.gas_price_hbar = eff_gas_price_wei / 100_000_000.0
-                result.gas_cost_hbar = (result.gas_used * eff_gas_price_wei) / 100_000_000.0
+                result.gas_price_hbar = eff_gas_price_wei / (10**18)
+                result.gas_cost_hbar = (result.gas_used * eff_gas_price_wei) / (10**18)
 
                 # Ensure price manager is loaded
                 if self.price_manager.hbar_price == 0:
@@ -684,7 +684,7 @@ class PacmanExecutor:
                     receipt = self.client.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
                     gas_used = receipt['gasUsed']
                     effective_gas_price = receipt.get('effectiveGasPrice', self.client.w3.eth.gas_price)
-                    gas_cost_hbar = (gas_used * effective_gas_price) / 100_000_000.0
+                    gas_cost_hbar = (gas_used * effective_gas_price) / (10**18)
                     logger.info(f"   ✅ Confirmed! Cost: {gas_cost_hbar:.8f} HBAR ({gas_used} gas)")
                 except Exception as e:
                     logger.warning(f"   ⚠️ Could not fetch receipt stats: {e}")
