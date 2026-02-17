@@ -51,7 +51,13 @@ def resolve_token(name: str) -> Optional[str]:
             
             # 3. Symbol Match in Tokens.json
             for key, meta in t_data.items():
-                if meta.get("symbol", "").upper() == clean:
+                sym = meta.get("symbol", "").upper()
+                if sym == clean:
+                    return key
+                
+                # 4. Partial Symbol Match (e.g. "DAI" fits "DAI[hts]")
+                clean_sym = sym.split("[")[0].strip()
+                if clean_sym == clean:
                     return key
     except Exception:
         pass

@@ -119,16 +119,31 @@ class UIFilter:
         tokens = self._load_tokens()
         
         found = []
+        
+        # 1. Automatic Alias: Use Symbol (lowercase, stripped of [hts] etc)
+        # This makes it robust even if aliases.json is incomplete.
+        for key, meta in tokens.items():
+            if meta.get("id") == token_id:
+                sym = meta.get("symbol", key).lower()
+                clean_sym = sym.split("[")[0].strip() # "DAI[hts]" -> "dai"
+                found.append(clean_sym)
+                if clean_sym != sym:
+                    found.append(sym)
+                break
+
+        # 2. Manual Aliases from aliases.json
         for alias, token_key in aliases.items():
-            # 1. Check if alias points directly to this token ID
+            # Check if alias points directly to this token ID
             if token_key == token_id:
-                found.append(alias)
+                if alias not in found:
+                    found.append(alias)
                 continue
                 
-            # 2. Check if alias points to a Token Key that has this ID
+            # Check if alias points to a Token Key that has this ID
             if token_key in tokens:
                 if tokens[token_key].get("id") == token_id:
-                    found.append(alias)
+                    if alias not in found:
+                        found.append(alias)
                     
         # Sort for consistency (shorter aliases first)
         found.sort(key=len)

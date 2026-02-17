@@ -474,30 +474,40 @@ def show_tokens():
     the translator.
     """
     print(f"\n{C.BOLD}{C.TEXT}  TOKENS{C.R}")
-    print(f"  {C.CHROME}{'─' * 56}{C.R}")
+    print(f"  {C.CHROME}{'─' * 80}{C.R}")
 
     print(f"  {C.BOLD}Supported Tokens / Market Map{C.R}")
-    print(f"  {C.CHROME}{'─' * 56}{C.R}")
-    print(f"  {C.BOLD}{'Token':<12} {'Ticker':<8} {'ID / Contract':<16} {'Aliases'}{C.R}")
+    print(f"  {C.CHROME}{'─' * 80}{C.R}")
+    print(f"  {C.BOLD}{'Token ID':<15} {'Ticker':<12} {'Name':<25} {'Aliases'}{C.R}")
 
     try:
         # Load and Sort Data (Delegated)
         sorted_tokens = ui_filter.get_sorted_tokens()
         
-        for sym, meta in sorted_tokens:
+        for sym_key, meta in sorted_tokens:
             tid = meta.get("id", "Unknown")
             
             # Skip blacklisted tokens (Delegated)
             if ui_filter.is_blacklisted(tid):
                 continue
                 
-            sym = meta.get("symbol", sym)
-            name = meta.get("name", "Unknown")
+            sym = meta.get("symbol", sym_key)
+            name = meta.get("name", "Unknown")[:25] # Truncate raw string first
             
             # Fetch nicknames from filter
-            alias_str = ui_filter.get_display_aliases(tid)
+            alias_str = ui_filter.get_display_aliases(tid) or "-"
 
-            print(f"  {C.MUTED}{tid:15s}{C.R}  {C.ACCENT}{sym:10s}{C.R}  {C.TEXT}{name[:20]:20s}{C.R}  {C.MUTED}{alias_str}{C.R}")
+            # Align Name Column manually for Unicode support (approximate)
+            # count double-width chars
+            vis_len = 0
+            for c in name:
+                vis_len += 2 if ord(c) > 0x2E80 else 1 
+            
+            pad_len = 25 - vis_len
+            if pad_len < 1: pad_len = 1
+            name_padded = name + " " * pad_len
+
+            print(f"  {C.MUTED}{tid:<15}{C.R} {C.ACCENT}{sym:<12.12}{C.R} {C.TEXT}{name_padded}{C.R} {C.MUTED}{alias_str}{C.R}")
 
         print()
     except Exception as e:
