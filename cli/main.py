@@ -280,6 +280,64 @@ def process_input(app, text):
         except PacmanError as e:
             print(f"  {C.ERR}✗{C.R} {e}")
 
+def check_saucerswap_api_key(app):
+    """Check if SaucerSwap API key is set, and prompt if missing."""
+    import os
+    from pathlib import Path
+    
+    # Check if we are in a one-shot command or interactive
+    if len(sys.argv) > 1 and sys.argv[1] not in ["account", "balance"]:
+        # Don't prompt during quick swap commands to avoid blocking
+        return
+
+    # We only care about Mainnet for now as it's the primary use case
+    key = os.getenv("SAUCERSWAP_API_KEY_MAINNET")
+    if key:
+        return
+
+    print(f"\n  {C.WARN}⚠ SaucerSwap API Key Missing{C.R}")
+    print(f"  {C.TEXT}To get full pool liquidity depth and high-accuracy price discovery,{C.R}")
+    print(f"  {C.TEXT}it is recommended to set your own SaucerSwap API key.{C.R}")
+    print(f"  {C.MUTED}Public fallbacks (CoinGecko/Binance) will be used otherwise.{C.R}")
+    print(f"  {C.MUTED}Warning: You will not have full visibility into high-liquidity depth.{C.R}")
+    print(f"  {C.MUTED}See docs/SAUCERSWAP_API_GUIDE.md for details.{C.R}")
+    
+    try:
+        choice = input(f"\n  {C.BOLD}1) Set Key now{C.R}\n  {C.BOLD}2) Use public fallbacks{C.R}\n  Selection [2]: ").strip()
+        
+        if choice == "1":
+            new_key = input(f"  Enter your SaucerSwap Mainnet API Key: ").strip()
+            if new_key:
+                _update_env_api_key(new_key)
+                os.environ["SAUCERSWAP_API_KEY_MAINNET"] = new_key
+                print(f"  {C.OK}✅ API Key saved to .env and loaded.{C.R}")
+        else:
+            print(f"  {C.MUTED}Using public fallbacks with limited accuracy.{C.R}")
+    except (KeyboardInterrupt, EOFError):
+        print(f"\n  {C.MUTED}Proceeding with public fallbacks.{C.R}")
+
+def _update_env_api_key(key):
+    """Helper to update .env file with the API key."""
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    if not env_path.exists():
+        return
+    
+    lines = []
+    found = False
+    with open(env_path, "r") as f:
+        for line in f:
+            if line.startswith("SAUCERSWAP_API_KEY_MAINNET="):
+                lines.append(f"SAUCERSWAP_API_KEY_MAINNET={key}\n")
+                found = True
+            else:
+                lines.append(line)
+    
+    if not found:
+        lines.append(f"\nSAUCERSWAP_API_KEY_MAINNET={key}\n")
+        
+    with open(env_path, "w") as f:
+        f.writelines(lines)
+
 # ---------------------------------------------------------------------------
 # Entry Point
 # ---------------------------------------------------------------------------
@@ -302,6 +360,10 @@ def main():
             os.environ["PACMAN_VERBOSE"] = "true"
             
         app = PacmanApp()
+        
+        # Check for API Key if not in simulation or if specifically needed
+        check_saucerswap_api_key(app)
+        
         print(f"\n  {C.BOLD}{C.ACCENT}System Online{C.R}")
     except ConfigurationError as e:
         print(f"  {C.ERR}✗{C.R} Config Error: {e}")
