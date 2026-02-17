@@ -30,7 +30,7 @@ class PacmanApp:
     def __init__(self, config_path: str = "config.yaml"):
         """Initialize the application components."""
         try:
-            self.config = PacmanConfig.load(config_path)
+            self.config = PacmanConfig.from_env()
             self.executor = PacmanExecutor(self.config)
             self.router = PacmanVariantRouter(price_manager=price_manager)
             
