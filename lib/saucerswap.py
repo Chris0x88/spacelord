@@ -87,6 +87,8 @@ class SaucerSwapV2:
         self.w3 = w3
         self.network = network
         self.private_key = private_key
+        # Expose ABI for Executor Multicall
+        self._erc20_abi = ERC20_ABI
 
         if private_key:
             self.account = w3.eth.account.from_key(private_key)
