@@ -12,7 +12,7 @@ Usage:
 
 import time
 from typing import Optional, Dict, Any
-from pacman_logger import logger
+from src.logger import logger
 from lib.saucerswap import hedera_id_to_evm, ERC20_ABI
 
 def execute_transfer(executor, token_symbol: str, amount: float, recipient: str) -> dict:

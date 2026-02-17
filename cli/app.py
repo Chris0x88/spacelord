@@ -15,12 +15,12 @@ It provides a high-level API for the CLI to interact with.
 import logging
 from typing import Optional, Dict
 
-from pacman_config import PacmanConfig
-from pacman_logger import logger
-from pacman_errors import PacmanError, ConfigurationError
-from pacman_executor import PacmanExecutor, ExecutionResult
-from pacman_variant_router import PacmanVariantRouter, VariantRoute
-from pacman_price_manager import price_manager
+from src.config import PacmanConfig
+from src.logger import logger
+from src.errors import PacmanError, ConfigurationError
+from src.executor import PacmanExecutor, ExecutionResult
+from src.router import PacmanVariantRouter, VariantRoute
+from lib.prices import price_manager
 
 class PacmanApp:
     """
@@ -113,7 +113,7 @@ class PacmanApp:
         """
         Send tokens to another address.
         """
-        from pacman_transfers import execute_transfer
+        from lib.transfers import execute_transfer
         return execute_transfer(self.executor, token_symbol, amount, recipient)
 
     def get_history(self, limit: int = 10):
@@ -122,7 +122,7 @@ class PacmanApp:
 
     def toggle_verbose(self):
         """Toggle debug logging."""
-        from pacman_logger import set_verbose
+        from src.logger import set_verbose
         self.config.debug = not self.config.debug
         set_verbose(self.config.debug)
         return self.config.debug

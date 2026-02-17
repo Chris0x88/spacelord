@@ -171,7 +171,7 @@ def show_account(executor):
 
 def show_price(token_name: str):
     """Show the current price for a specific token."""
-    from pacman_price_manager import price_manager
+    from lib.prices import price_manager
     
     # 1. Fetch fresh data (Live)
     try:
@@ -205,7 +205,7 @@ def show_price(token_name: str):
 
 def show_all_prices():
     """Display prices for all tracked tokens."""
-    from pacman_price_manager import price_manager
+    from lib.prices import price_manager
     try:
         from scripts import refresh_data
     except ImportError:
@@ -266,7 +266,7 @@ def show_sources():
     authenticity and liquidity depth. This command bridges the raw SaucerSwap
     pool data with human-readable token identities.
     """
-    from pacman_price_manager import price_manager
+    from lib.prices import price_manager
     price_manager.reload()
     
     # Load metadata to map IDs back to Symbols/Names
@@ -305,7 +305,7 @@ def show_sources():
 
 def show_balance(executor, single_token: str = None):
     """Display wallet balances. If single_token is given, show only that one."""
-    from pacman_price_manager import price_manager
+    from lib.prices import price_manager
     price_manager.reload()
 
     if single_token:

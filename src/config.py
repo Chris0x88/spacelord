@@ -11,7 +11,7 @@ import itertools
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
-from pacman_errors import ConfigurationError
+from src.errors import ConfigurationError
 
 class SecureString:
     """

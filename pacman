@@ -27,7 +27,7 @@ fi
 
 # 3. Run Application
 if [ -x "$VENV_PY" ]; then
-    "$VENV_PY" "$DIR/pacman_cli.py" "$@"
+    "$VENV_PY" "$DIR/cli/main.py" "$@"
 else
     echo "❌  Error: Virtual environment python not executable."
     exit 1

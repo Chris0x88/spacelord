@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
 # Use centralized logger
-from pacman_logger import logger
+from src.logger import logger
 
 # --- CONFIGURATION & PATHS ---
 BASE_DIR = Path(__file__).resolve().parent.parent # Root dir
@@ -88,7 +88,7 @@ class PacmanVariantRouter:
         self.variant_by_id = {v["id"]: k for k, v in self.variants.items()}
 
         # Phase 32: Live Pricing
-        from pacman_price_manager import price_manager as pm
+        from lib.prices import price_manager as pm
         self.price_manager = price_manager or pm
         
     def _load_json(self, path: Path, default):

@@ -11,17 +11,23 @@ Responsible ONLY for:
 """
 
 import sys
+from pathlib import Path
+
+# Add project root to sys.path
+root_dir = Path(__file__).resolve().parent.parent
+sys.path.append(str(root_dir))
+
 import json
-from pacman_app import PacmanApp
-from pacman_errors import PacmanError, ConfigurationError
-from pacman_logger import logger
+from cli.app import PacmanApp
+from src.errors import PacmanError, ConfigurationError
+from src.logger import logger
 from cli.display import (
     C, print_security_warning,
     show_help, show_tokens, show_sources, show_price,
     show_balance, show_account, show_history,
     print_receipt, print_transfer_receipt
 )
-from pacman_translator import translate
+from src.translator import translate
 
 # Load banner from data.text_content
 try:
@@ -52,7 +58,7 @@ def cmd_price(app, args):
         show_price(args[0])
     else:
         # Show all
-        from pacman_display import show_all_prices
+        from cli.display import show_all_prices
         show_all_prices()
 
 def cmd_account(app, args):

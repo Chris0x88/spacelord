@@ -11,9 +11,9 @@ import requests
 from typing import Dict, Optional, List
 from dataclasses import dataclass, field
 from pathlib import Path
-from pacman_logger import logger
-from pacman_config import PacmanConfig, SecureString
-from pacman_errors import ConfigurationError, ExecutionError, InsufficientFundsError
+from src.logger import logger
+from src.config import PacmanConfig, SecureString
+from src.errors import ConfigurationError, ExecutionError, InsufficientFundsError
 
 # ERC20 Wrapper contract (from btc-rebalancer2)
 ERC20_WRAPPER_ID = "0.0.9675688"
@@ -80,7 +80,7 @@ class PacmanExecutor:
     
     def __init__(self, config: PacmanConfig):
         """Initialize executor with configuration."""
-        from saucerswap_v2_client import SaucerSwapV2, hedera_id_to_evm
+        from lib.saucerswap import SaucerSwapV2, hedera_id_to_evm
         from web3 import Web3
 
         self.config = config
@@ -130,7 +130,7 @@ class PacmanExecutor:
         )
 
         # Initialize Price Manager (Global Singleton)
-        from pacman_price_manager import price_manager
+        from lib.prices import price_manager
         self.price_manager = price_manager
         
         # Recording system
@@ -151,7 +151,7 @@ class PacmanExecutor:
         This reduces 30+ RPC calls to 1-2 chunks.
         """
         from lib.multicall import Multicall
-        from saucerswap_v2_client import hedera_id_to_evm
+        from lib.saucerswap import hedera_id_to_evm
         
         balances = {}
         
@@ -462,7 +462,7 @@ class PacmanExecutor:
     
     def _get_hbar_price_usd(self) -> float:
         """Fetch current HBAR price in USD from PriceManager."""
-        from pacman_price_manager import price_manager
+        from lib.prices import price_manager
         # Ensure it's loaded
         if price_manager.hbar_price == 0:
             price_manager.reload()
@@ -558,7 +558,7 @@ class PacmanExecutor:
     def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in") -> ExecutionResult:
         """Execute a single swap step using one of the three engines."""
         try:
-            from pacman_price_manager import price_manager
+            from lib.prices import price_manager
             hbar_price = price_manager.get_hbar_price()
 
             from_token_id = step.details.get("token_in_id", step.from_token)
@@ -726,7 +726,7 @@ class PacmanExecutor:
                     hbar_usd_price=self._get_hbar_price_usd()
                 )
 
-            from saucerswap_v2_client import hedera_id_to_evm
+            from lib.saucerswap import hedera_id_to_evm
             
             # EVM APPROVAL (HTS Redirect)
             logger.info(f"   [UNWRAP] Approving {from_id} via EVM...")
@@ -786,7 +786,7 @@ class PacmanExecutor:
                     hbar_usd_price=self._get_hbar_price_usd()
                 )
 
-            from saucerswap_v2_client import hedera_id_to_evm
+            from lib.saucerswap import hedera_id_to_evm
             logger.info(f"   [WRAP] Executing Wrap: {amount_raw} units of {step.from_token} -> {WRAPPER_ID}")
             
             # EVM APPROVAL (HTS Redirect)
