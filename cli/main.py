@@ -35,7 +35,8 @@ try:
     import socket
     hostname = socket.gethostname()
     PACMAN_BANNER = PACMAN_BANNER_TEMPLATE.format(
-        ACCENT=C.ACCENT, DIM=C.DIM, BOLD=C.BOLD, R=C.R
+        ACCENT=C.ACCENT, CHROME=C.CHROME, MUTED=C.MUTED, 
+        OK=C.OK, TEXT=C.TEXT, BRAND=C.BRAND, R=C.R
     )
 except Exception:
     PACMAN_BANNER = f"{C.ACCENT}╔══════════════════════════════════════════╗{C.R}\n{C.ACCENT}║           PACMAN TRADING CLI           ║{C.R}\n{C.ACCENT}╚══════════════════════════════════════════╝{C.R}"
