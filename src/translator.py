@@ -16,6 +16,7 @@ from typing import Optional, Dict
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 TOKENS_FILE = DATA_DIR / "tokens.json"
+ALIASES_FILE = DATA_DIR / "aliases.json"
 VARIANTS_FILE = DATA_DIR / "variants.json"
 
 # Global Data
