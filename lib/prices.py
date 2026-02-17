@@ -108,7 +108,7 @@ class PacmanPriceManager:
         tid = token_id.lower()
         
         if tid in ["hbar", "0.0.0"]:
-            return self.hbar_price, self.sources.get("0.0.0", "SaucerSwap V2")
+            return self.get_hbar_price(), self.sources.get("0.0.0", "SaucerSwap V2")
             
         # if tid == "0.0.1456986":
         #    return self.get_price_with_source("0.0.1456986") # recursive but handled in get call
@@ -119,6 +119,21 @@ class PacmanPriceManager:
 
     def get_hbar_price(self) -> float:
         """Get the current live price of native HBAR."""
+        # Try fetching live from CoinGecko
+        try:
+            import requests
+            url = "https://api.coingecko.com/api/v3/simple/price?ids=hedera-hashgraph&vs_currencies=usd"
+            r = requests.get(url, timeout=1.5)
+            if r.status_code == 200:
+                data = r.json()
+                price = data.get("hedera-hashgraph", {}).get("usd", 0)
+                if price > 0:
+                    self.hbar_price = price
+                    self.sources["0.0.0"] = "CoinGecko (Live)"
+                    return price
+        except:
+            pass
+            
         return self.hbar_price
 
     def reload(self) -> None:

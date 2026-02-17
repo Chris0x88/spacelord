@@ -162,6 +162,14 @@ def show_account(executor):
 def show_price(token_name: str):
     """Show the current price for a specific token."""
     from pacman_price_manager import price_manager
+    
+    # 1. Fetch fresh data (Live)
+    try:
+        from scripts import refresh_data
+    except ImportError:
+        import refresh_data
+    refresh_data.refresh()
+
     price_manager.reload()
 
     # Try to resolve token name to ID
