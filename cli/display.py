@@ -384,61 +384,59 @@ def _show_all_balances(executor, price_manager):
 
         tokens_data = ui_filter.get_token_metadata()
         total_usd = hbar_usd
-
-        # Build list for sorting
         wallet_items = []
-        
-        # Show progress for multiple assets
-        asset_count = len(tokens_data)
-        sys.stdout.write(f"  {C.MUTED}Scanning {asset_count} assets...{C.R}")
-        sys.stdout.flush()
 
-        for i, (sym, meta) in enumerate(tokens_data.items()):
+        # Use Optimized Multicall
+        sys.stdout.write(f"  {C.MUTED}Scanning assets...{C.R}")
+        sys.stdout.flush()
+        
+        all_balances = executor.get_balances()
+        
+        # Merge balances with metadata
+        for sym, bal in all_balances.items():
+            # Skip HBAR (handled above)
+            if sym == "HBAR": continue
+            
+            # Find metadata
+            meta = tokens_data.get(sym)
+            if not meta:
+                # Try to find by symbol match if key fails
+                for k, m in tokens_data.items():
+                    if m.get("symbol") == sym:
+                        meta = m
+                        break
+            
+            if not meta: continue
+            
             token_id = meta.get("id")
             
-            # Progress indicator (every 5 assets)
-            if i % 5 == 0:
-                sys.stdout.write(f"\r  {C.MUTED}Scanning assets ({i}/{asset_count})...{C.R}")
-                sys.stdout.flush()
-
-            # Global Blacklist Check (Delegated to filter)
+            # Global Blacklist Check
             if not token_id or ui_filter.is_blacklisted(token_id):
                 continue
                 
-            # Skip redundant HBAR/WHBAR in the token table (already shown at top)
-            if token_id in ["0.0.0", "0.0.1456986"] or sym.upper() == "WHBAR":
-                continue
-
-            try:
-                # Execution Layer: Fetch raw balance
-                raw_bal = executor.client.get_token_balance(token_id)
-                
-                if raw_bal > 0:
-                    decimals = meta.get("decimals", 8)
-                    readable = raw_bal / (10**decimals)
-                    price = price_manager.get_price(token_id)
-                    usd_val = readable * price
-                    
-                    wallet_items.append((sym, meta, readable, usd_val))
-            except Exception:
-                continue
+            # Skip WHBAR to avoid confusion (users see HBAR)
+            if token_id == "0.0.1456986": continue
+            
+            price = price_manager.get_price(token_id)
+            usd_val = bal * price
+            
+            wallet_items.append((sym, meta, bal, usd_val))
 
         # Clear progress line
         sys.stdout.write("\r" + " " * 40 + "\r")
         sys.stdout.flush()
 
         # Sort (Delegated to filter)
-        # The filter applies user preferences from settings.json
         sorted_items = ui_filter.sort_wallet_balances(wallet_items)
 
         # Render
         for sym, meta, readable, usd_val in sorted_items:
             token_id = meta.get("id")
             assoc = ""
+            # Association check is fast in memory now (optimistic)
             if not executor.check_token_association(token_id):
                 assoc = f" {C.WARN}[!]{C.R}"
 
-            # Use symbol from metadata if available, else key
             sym_display = meta.get("symbol", sym)[:10]
             
             print(f"  {C.ACCENT}{sym_display:10s}{C.R} {C.TEXT}{readable:>14.8f}{C.R}  {C.OK}${usd_val:>10.2f}{C.R}{assoc}")
