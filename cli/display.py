@@ -18,6 +18,8 @@ Its only job is to print ANSI-colored text to stdout.
 import sys
 import time
 import os
+import json
+from pathlib import Path
 from typing import Optional, List, Dict
 
 # Central Logic Layer
@@ -373,22 +375,30 @@ def _show_all_balances(executor, price_manager):
         tokens_data = ui_filter.get_token_metadata()
         total_usd = hbar_usd
 
-        # --- LOGIC DELEGATION START ---
-        # The filter decides what to show and in what order.
-        # Display layer just iterates and prints.
-        # ------------------------------
-        
-        # We need to build a list for the filter to sort
-        # List of (symbol, metadata, readable_balance, usd_value)
+        # Build list for sorting
         wallet_items = []
         
-        for sym, meta in tokens_data.items():
+        # Show progress for multiple assets
+        asset_count = len(tokens_data)
+        sys.stdout.write(f"  {C.MUTED}Scanning {asset_count} assets...{C.R}")
+        sys.stdout.flush()
+
+        for i, (sym, meta) in enumerate(tokens_data.items()):
             token_id = meta.get("id")
             
+            # Progress indicator (every 5 assets)
+            if i % 5 == 0:
+                sys.stdout.write(f"\r  {C.MUTED}Scanning assets ({i}/{asset_count})...{C.R}")
+                sys.stdout.flush()
+
             # Global Blacklist Check (Delegated to filter)
             if not token_id or ui_filter.is_blacklisted(token_id):
                 continue
                 
+            # Skip redundant HBAR/WHBAR in the token table (already shown at top)
+            if token_id in ["0.0.0", "0.0.1456986"] or sym.upper() == "WHBAR":
+                continue
+
             try:
                 # Execution Layer: Fetch raw balance
                 raw_bal = executor.client.get_token_balance(token_id)
@@ -401,8 +411,11 @@ def _show_all_balances(executor, price_manager):
                     
                     wallet_items.append((sym, meta, readable, usd_val))
             except Exception:
-                # Silently skip tokens that fail to load to keep UI clean
                 continue
+
+        # Clear progress line
+        sys.stdout.write("\r" + " " * 40 + "\r")
+        sys.stdout.flush()
 
         # Sort (Delegated to filter)
         # The filter applies user preferences from settings.json
@@ -694,14 +707,29 @@ def print_transfer_receipt(res: dict):
 def _resolve_token_id(token_name: str) -> Optional[str]:
     """Resolve a token name/symbol to its Hedera token ID."""
     name = token_name.upper()
-    if name in ["HBAR", "WHBAR"]:
+    if name == "HBAR":
+        return "0.0.0"
+    if name == "WHBAR":
         return "0.0.1456986"
 
     try:
-        with open("data/tokens.json") as f:
+        # Use robust relative path
+        root = Path(__file__).resolve().parent.parent
+        tpath = root / "data" / "tokens.json"
+        if not tpath.exists():
+            tpath = Path("data/tokens.json")
+
+        with open(tpath) as f:
             tokens_data = json.load(f)
-        for sym, meta in tokens_data.items():
-            if sym.upper() == name or meta.get("symbol", "").upper() == name:
+            
+        # Check by Key
+        for key, meta in tokens_data.items():
+            if key.upper() == name:
+                return meta.get("id")
+        
+        # Check by Symbol
+        for key, meta in tokens_data.items():
+            if meta.get("symbol", "").upper() == name:
                 return meta.get("id")
     except:
         pass

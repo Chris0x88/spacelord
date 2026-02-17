@@ -12,7 +12,7 @@
     },
     "WBTC_HTS": {
         "id": "0.0.10082597",
-        "symbol": "WBTC[hts]",
+        "symbol": "HTS-WBTC",
         "type": "HTS_NATIVE",
         "layer": "Hedera",
         "visible_in_hashpack": true,
@@ -23,7 +23,7 @@
     },
     "WETH_LZ": {
         "id": "0.0.9770617",
-        "symbol": "WETH[hts]",
+        "symbol": "HTS-WETH",
         "type": "ERC20_BRIDGED",
         "layer": "LayerZero",
         "visible_in_hashpack": false,

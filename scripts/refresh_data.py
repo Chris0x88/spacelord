@@ -16,17 +16,22 @@ class C:
     R = "\033[0m"
     WARN = "\033[93m"
 
+# Determine the project root (one level up from scripts/)
+ROOT_DIR = Path(__file__).parent.parent
+DATA_DIR = ROOT_DIR / "data/"
+DATA_DIR.mkdir(exist_ok=True)
+
 POOLS_URL = "https://api.saucerswap.finance/v2/pools"
-RAW_DATA_FILE = Path(__file__).parent / "pacman_data_raw.json"
+RAW_DATA_FILE = DATA_DIR / "pacman_data_raw.json"
+TOKENS_FILE = DATA_DIR / "tokens.json"
 
 def refresh():
     print(f"Fetching fresh pool data from {POOLS_URL}...")
     try:
         # 1. Load Whitelist from tokens.json
-        tokens_file = Path(__file__).parent / "tokens.json"
         whitelist = set()
-        if tokens_file.exists():
-            with open(tokens_file) as f:
+        if TOKENS_FILE.exists():
+            with open(TOKENS_FILE) as f:
                 tdata = json.load(f)
                 for item in tdata.values():
                     if "id" in item:
@@ -50,7 +55,7 @@ def refresh():
         
         # 3. Filter relevant pools
         # Keep pool if EITHER token is in our whitelist
-        relevant_pools = all_pools #
+        relevant_pools = []
         for pool in all_pools:
             ta = pool.get("tokenA", {}).get("id")
             tb = pool.get("tokenB", {}).get("id")

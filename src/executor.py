@@ -137,13 +137,13 @@ class PacmanExecutor:
         self.recordings_dir = Path("execution_records")
         self.recordings_dir.mkdir(exist_ok=True)
         
-        logger.info(f"✅ PacmanExecutor initialized")
+        logger.debug(f"✅ PacmanExecutor initialized")
         logger.debug(f"   RPC Provider:   {self.rpc_url}")
         logger.debug(f"   Chain ID:      {self.chain_id}")
-        logger.info(f"   Hedera Account: {self.hedera_account_id} (Native ID)")
-        logger.info(f"   EVM Address:    {self.eoa} (Alias/Signing)")
-        logger.info(f"   EVM Long-Zero:  {self.eoa_long_zero}")
-        logger.info(f"   Network:        {self.network}")
+        logger.debug(f"   Hedera Account: {self.hedera_account_id} (Native ID)")
+        logger.debug(f"   EVM Address:    {self.eoa} (Alias/Signing)")
+        logger.debug(f"   EVM Long-Zero:  {self.eoa_long_zero}")
+        logger.debug(f"   Network:        {self.network}")
 
     def get_balances(self) -> Dict[str, float]:
         """Fetch all non-zero token balances for the account."""
@@ -157,7 +157,13 @@ class PacmanExecutor:
             
         # Token Balances from tokens.json
         try:
-            tokens_path = os.path.join(os.path.dirname(__file__), "data/tokens.json")
+            # Look for data/tokens.json in the project root
+            root = Path(__file__).parent.parent
+            tokens_path = root / "data" / "tokens.json"
+            if not tokens_path.exists():
+                 # Fallback to current working directory
+                 tokens_path = Path("data/tokens.json")
+
             with open(tokens_path) as f:
                 tokens_data = json.load(f)
                 
@@ -186,13 +192,33 @@ class PacmanExecutor:
             return "0.0.0"
             
         try:
-            tokens_path = os.path.join(os.path.dirname(__file__), "data/tokens.json")
+            root = Path(__file__).parent.parent
+            tokens_path = root / "data" / "tokens.json"
+            if not tokens_path.exists():
+                 tokens_path = Path("data/tokens.json")
+
             with open(tokens_path) as f:
                 tokens_data = json.load(f)
-            meta = tokens_data.get(symbol)
+            
+            # 1. Exact Key Match (Case-Insensitive)
+            search_sym = symbol.upper()
+            meta = None
+            for key, data in tokens_data.items():
+                if key.upper() == search_sym:
+                    meta = data
+                    break
+            
+            # 2. Symbol Field Match (if key match failed)
+            if not meta:
+                for key, data in tokens_data.items():
+                    if data.get("symbol", "").upper() == search_sym:
+                        meta = data
+                        break
+            
             if meta:
                 return meta.get("id")
-        except: pass
+        except Exception:
+            pass
         return None
 
     def execute_swap(self, route, amount_usd: float, mode: str = "exact_in") -> ExecutionResult:
