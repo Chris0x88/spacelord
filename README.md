@@ -82,5 +82,9 @@ Pacman is designed to be "Consumed" by AI agents. Every command generates struct
 
 ---
 
-**Release Status**: `V1.0-BETA` (Experimental / Testing Only)
-**Legal**: Use at your own risk. This is experimental financial software.
+```markdown
+**Release Status**: `v0.2` (Experimental / Testing Only)
+```
+```markdown
+**Legal**: Use at your own risk. This is experimental software released for criticism and feedback, input and growth. We suggest using testnet accounts while testing.
+```
