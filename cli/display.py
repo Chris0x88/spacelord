@@ -376,7 +376,7 @@ def _show_single_balance(executor, token_name: str, price_manager):
 
 def _show_all_balances(executor, price_manager):
     """Display all wallet balances in a formatted table."""
-    from pacman_variant_router import PacmanVariantRouter
+    from src.router import PacmanVariantRouter
 
     import time
     ts = time.strftime("%H:%M")
@@ -522,7 +522,7 @@ def show_tokens():
 
 def show_history(executor):
     """Display operations history with live-priced USD values."""
-    from pacman_price_manager import price_manager
+    from lib.prices import price_manager
 
     hist = executor.get_execution_history(limit=10)
     if not hist:

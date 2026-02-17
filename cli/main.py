@@ -179,7 +179,7 @@ def cmd_verbose(app, args):
             print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}verbose [on/off]{C.R}")
             return
     
-    from pacman_display import C
+    from cli.display import C
     status = f"{C.OK}ON{C.R}" if enabled else f"{C.WARN}OFF{C.R}"
     print(f"  Verbose Mode: {status}")
 

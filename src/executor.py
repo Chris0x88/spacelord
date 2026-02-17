@@ -279,17 +279,23 @@ class PacmanExecutor:
             pass
         return None
 
-    def execute_swap(self, route, amount_usd: float, mode: str = "exact_in") -> ExecutionResult:
+    def execute_swap(self, route, raw_amount: float = 0.0, mode: str = "exact_in", **kwargs) -> ExecutionResult:
         """
         Execute a swap route consisting of one or more steps.
-
-        WARNING: `amount_usd` is a historical misnomer. It actually represents the
-        RAW TOKEN AMOUNT (e.g. 100 HBAR or 0.5 WBTC), not the USD value.
-        Refactoring the name would break external interfaces, so we clarify here.
+        
+        Args:
+            route: The route to execute
+            raw_amount: The amount of tokens to swap (e.g. 100.0 HBAR, not USD value)
+            mode: "exact_in" or "exact_out"
         """
+        # Backward compatibility for old calls using amount_usd
+        if raw_amount == 0.0 and "amount_usd" in kwargs:
+            raw_amount = kwargs["amount_usd"]
+
+        amount_val = raw_amount # Internal variable name for clarity
         simulate = self.config.simulate_mode
 
-        logger.info(f"\n🚀 Executing swap: {amount_usd} {route.from_variant} → {route.to_variant}")
+        logger.info(f"\n🚀 Executing swap: {amount_val} {route.from_variant} → {route.to_variant}")
         logger.info(f"   Mode: {mode.upper()} ({'SIMULATION' if simulate else 'LIVE'})")
         logger.debug(f"   [DEBUG] Steps: {len(route.steps)}")
         for step in route.steps:
@@ -303,13 +309,13 @@ class PacmanExecutor:
         # 2. Backwards Pass (for Exact Output)
         targets = None
         if mode == "exact_out" and len(route.steps) > 1:
-            targets = self._calculate_backwards_pass(route, amount_usd)
+            targets = self._calculate_backwards_pass(route, amount_val)
             if targets is None:
                 return ExecutionResult(success=False, error="Backwards pass calculation failed")
 
         # 3. Execution Loop
         results = []
-        current_amount_val = amount_usd
+        current_amount_val = amount_val
 
         for i, step in enumerate(route.steps):
             step_result, current_amount_val = self._process_step(
@@ -317,14 +323,14 @@ class PacmanExecutor:
             )
             
             if not step_result.success:
-                self._record_execution(route, amount_usd, results + [step_result], simulate)
+                self._record_execution(route, amount_val, results + [step_result], simulate)
                 return step_result
 
             results.append(step_result)
 
         # 4. Finalize
         final_result = self._aggregate_results(results, route)
-        self._record_execution(route, amount_usd, results, simulate)
+        self._record_execution(route, amount_val, results, simulate)
         return final_result
 
     def _ensure_association(self, route) -> bool:
