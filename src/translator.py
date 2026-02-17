@@ -28,7 +28,9 @@ def load_static_aliases():
     try:
         if ALIASES_FILE.exists():
             with open(ALIASES_FILE) as f:
-                ALIASES.update(json.load(f))
+                data = json.load(f)
+                # Normalize keys to UPPERCASE for robust matching
+                ALIASES.update({k.upper(): v for k, v in data.items()})
     except Exception:
         pass
 
@@ -36,7 +38,8 @@ def resolve_token(name: str) -> Optional[str]:
     """Resolve a nickname or symbol to its internal token key (e.g. WBTC_HTS)."""
     if not name: return None
     
-    clean = name.strip().upper()
+    # Normalize input: UPPERCASE and handle hyphens as underscores
+    clean = name.strip().upper().replace("-", "_")
     
     # 1. Direct Alias Match
     if clean in ALIASES:
@@ -62,7 +65,7 @@ def resolve_token(name: str) -> Optional[str]:
     except Exception:
         pass
         
-    return clean # Fallback to original cleaned string
+    return clean # Fallback to original normalized string
 
 def translate_command(text: str) -> Optional[dict]:
     """Main entry point for command interpretation."""
@@ -83,7 +86,8 @@ def translate_command(text: str) -> Optional[dict]:
         token = resolve_token(m.group(1))
         return {"intent": "price", "token": token}
 
-    # Pattern 2: "swap AMOUNT TOKEN for TOKEN"
+    # Pattern 2: "swap AMOUNT TOKEN to TOKEN" (Exact In)
+    # e.g. "swap 100 hbar for usdc"
     m = re.match(r"(?:swap|trade|exchange|convert)\s+([\d\.]+)\s+(.+?)\s+(?:for|to|into)\s+(.+)", t)
     if m:
         amount = float(m.group(1))
@@ -91,30 +95,41 @@ def translate_command(text: str) -> Optional[dict]:
         to_token = resolve_token(m.group(3))
         return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_in"}
 
-    # Pattern 3: "swap TOKEN for TOKEN" (No amount -> Default 1.0)
-    m = re.match(r"(?:swap|trade|exchange|convert)\s+(.+?)\s+(?:for|to|into)\s+(.+)", t)
+    # Pattern 3: "swap TOKEN to AMOUNT TOKEN" (Exact Out)
+    # e.g. "swap hbar to 10 usdc"
+    m = re.match(r"(?:swap|trade|exchange|convert)\s+(.+?)\s+(?:for|to|into)\s+([\d\.]+)\s+(.+)", t)
     if m:
-        # Check if the first group starts with a number to avoid double matching
-        if not re.match(r"^[\d\.]+\s+", m.group(1)):
-            from_token = resolve_token(m.group(1))
-            to_token = resolve_token(m.group(2))
-            return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": 1.0, "mode": "exact_in"}
+        from_token = resolve_token(m.group(1))
+        amount = float(m.group(2))
+        to_token = resolve_token(m.group(3))
+        return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_out"}
 
-    # Pattern 4: "send AMOUNT TOKEN to RECIPIENT"
-    m = re.match(r"(?:send|transfer|give)\s+([\d\.]+)\s+(.+?)\s+to\s+(.+)", t)
-    if m:
-        amount = float(m.group(1))
-        token = resolve_token(m.group(2))
-        recipient = m.group(3).strip()
-        return {"intent": "send", "token": token, "amount": amount, "recipient": recipient}
-
-    # Pattern 5: "buy AMOUNT TOKEN with TOKEN" (Exact Out)
+    # Pattern 4: "buy AMOUNT TOKEN with TOKEN" (Exact Out)
+    # e.g. "buy 1 wbtc with usdc"
     m = re.match(r"(?:buy|get|receive)\s+([\d\.]+)\s+(.+?)\s+with\s+(.+)", t)
     if m:
         amount = float(m.group(1))
         to_token = resolve_token(m.group(2))
         from_token = resolve_token(m.group(3))
         return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_out"}
+
+    # Pattern 5: "swap TOKEN to TOKEN" (No amount -> Default 1.0)
+    # e.g. "swap hbar for usdc"
+    m = re.match(r"(?:swap|trade|exchange|convert)\s+(.+?)\s+(?:for|to|into)\s+(.+)", t)
+    if m:
+        from_token = resolve_token(m.group(1))
+        to_token = resolve_token(m.group(2))
+        # Ensure we didn't just match a previous pattern's fragment
+        if from_token and to_token:
+            return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": 1.0, "mode": "exact_in"}
+
+    # Pattern 6: "send AMOUNT TOKEN to RECIPIENT"
+    m = re.match(r"(?:send|transfer|give)\s+([\d\.]+)\s+(.+?)\s+to\s+(.+)", t)
+    if m:
+        amount = float(m.group(1))
+        token = resolve_token(m.group(2))
+        recipient = m.group(3).strip()
+        return {"intent": "send", "token": token, "amount": amount, "recipient": recipient}
 
     return None
 
