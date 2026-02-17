@@ -295,7 +295,10 @@ class PacmanExecutor:
         amount_val = raw_amount # Internal variable name for clarity
         simulate = self.config.simulate_mode
 
-        logger.info(f"\n🚀 Executing swap: {amount_val} {route.from_variant} → {route.to_variant}")
+        if mode == "exact_in":
+            logger.info(f"\n🚀 Executing swap: {amount_val} {route.from_variant} → {route.to_variant}")
+        else:
+            logger.info(f"\n🚀 Executing swap: {route.from_variant} → {amount_val} {route.to_variant}")
         logger.info(f"   Mode: {mode.upper()} ({'SIMULATION' if simulate else 'LIVE'})")
         logger.debug(f"   [DEBUG] Steps: {len(route.steps)}")
         for step in route.steps:

@@ -230,7 +230,10 @@ def _do_swap(app, req):
     amount = req["amount"]
     mode = req["mode"]
 
-    print(f"\n  {C.ACCENT}⟳{C.R} Analyzing: {C.TEXT}{amount}{C.R} {from_token} → {to_token} ({mode})")
+    if mode == "exact_in":
+        print(f"\n  {C.ACCENT}⟳{C.R} Analyzing: {C.TEXT}{amount}{C.R} {from_token} → {to_token} ({mode})")
+    else:
+        print(f"\n  {C.ACCENT}⟳{C.R} Analyzing: {from_token} → {C.TEXT}{amount}{C.R} {to_token} ({mode})")
 
     try:
         route = app.get_route(from_token, to_token, amount)
