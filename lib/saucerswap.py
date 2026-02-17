@@ -140,31 +140,26 @@ class SaucerSwapV2:
         except Exception as e:
             raise RuntimeError(f"Quote Exact Output failed: {e}")
 
-    def swap_exact_output(self, token_in: str, token_out: str, amount_out: int, max_amount_in: int, fee: int = 1500, recipient: str = None, value: int = 0) -> str:
+    def swap_exact_output(self, token_in: str, token_out: str, amount_out: int, max_amount_in: int, fee: int = 1500, recipient: str = None, value: int = 0, dry_run: bool = False) -> str:
         """
         Execute a swap for an exact output amount.
         """
-        if not self.private_key:
+        if not self.private_key and not dry_run:
             raise ValueError("Private key required")
 
         recipient = recipient or self.eoa
-        deadline = int(time.time() * 1000) + 600000 # 10 mins (Hedera needs milliseconds)
+        deadline = int(time.time() * 1000) + 600000 # 10 mins
 
-        # Path for exactOutput is reversed: [tokenOut, tokenIn]
         path = encode_path([token_out, token_in], [fee])
+        params = (path, recipient, deadline, amount_out, max_amount_in)
 
-        params = (
-            path,
-            recipient,
-            deadline,
-            amount_out,
-            max_amount_in
-        )
-
-        # Scale HBAR value to 18 decimals for relay compatibility
+        # Scale HBAR value
         scaled_value = value * 10**10 if value > 0 else 0
 
-        # Estimate gas? Or just set high.
+        if dry_run:
+            self.router.functions.exactOutput(params).call({"from": self.eoa, "value": scaled_value})
+            return "SIMULATED_OK"
+
         tx = self.router.functions.exactOutput(params).build_transaction({
             "from": self.eoa,
             "gas": 1_000_000,
@@ -178,28 +173,24 @@ class SaucerSwapV2:
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         return tx_hash.hex()
 
-    def swap_exact_input(self, token_in: str, token_out: str, amount_in: int, min_amount_out: int, fee: int = 1500, recipient: str = None, value: int = 0) -> str:
+    def swap_exact_input(self, token_in: str, token_out: str, amount_in: int, min_amount_out: int, fee: int = 1500, recipient: str = None, value: int = 0, dry_run: bool = False) -> str:
         """
         Execute a swap for an exact input amount.
         """
-        if not self.private_key:
+        if not self.private_key and not dry_run:
             raise ValueError("Private key required")
 
         recipient = recipient or self.eoa
-        deadline = int(time.time() * 1000) + 600000 # 10 mins (Hedera needs milliseconds)
+        deadline = int(time.time() * 1000) + 600000 # 10 mins
 
         path = encode_path([token_in, token_out], [fee])
+        params = (path, recipient, deadline, amount_in, min_amount_out)
 
-        params = (
-            path,
-            recipient,
-            deadline,
-            amount_in,
-            min_amount_out
-        )
-
-        # Scale HBAR value to 18 decimals for relay compatibility
         scaled_value = value * 10**10 if value > 0 else 0
+
+        if dry_run:
+            self.router.functions.exactInput(params).call({"from": self.eoa, "value": scaled_value})
+            return "SIMULATED_OK"
 
         tx = self.router.functions.exactInput(params).build_transaction({
             "from": self.eoa,
@@ -216,77 +207,46 @@ class SaucerSwapV2:
 
     def swap_exact_input_multicall(self, token_in: str, token_out: str, amount_in: int, min_amount_out: int,
                                  input_is_native: bool = False, output_is_native: bool = False,
-                                 fee: int = 1500, recipient: str = None) -> str:
+                                 fee: int = 1500, recipient: str = None, dry_run: bool = False) -> str:
         """
         Execute a swap using multicall for Native HBAR handling.
         """
-        if not self.private_key:
+        if not self.private_key and not dry_run:
             raise ValueError("Private key required")
 
         recipient = self.eoa if not recipient else recipient
-        deadline = int(time.time() * 1000) + 600000 # 10 mins (Hedera needs milliseconds)
+        deadline = int(time.time() * 1000) + 600000 # 10 mins
 
-        # Path Encoding
-        # If input is native, token_in provided should be WHBAR ID for path
-        # If output is native, token_out provided should be WHBAR ID for path
         path = encode_path([token_in, token_out], [fee])
-
         encoded_calls = []
         value_to_send = 0
 
         if input_is_native:
-            # HBAR -> Token
-            # 1. exactInput (recipient=self.eoa)
-            # 2. refundETH
-
-            # Params for exactInput
             params = (path, self.eoa, deadline, amount_in, min_amount_out)
-
-            # Encode exactInput
             swap_calldata = self.router.encode_abi("exactInput", [params])
             encoded_calls.append(swap_calldata)
-
-            # Encode refundETH
-            print(f"   🔄 Executing Multicall (ExactInput + RefundETH)...")
             refund_calldata = self.router.encode_abi("refundETH")
             encoded_calls.append(refund_calldata)
-
             value_to_send = amount_in
-
         elif output_is_native:
-            # Token -> HBAR
-            # 1. exactInput (recipient=ROUTER)
-            # 2. unwrapWHBAR(minAmount, recipient)
-
-            # Params for exactInput: recipient MUST be ROUTER
             params = (path, self.router_address, deadline, amount_in, min_amount_out)
-
             swap_calldata = self.router.encode_abi("exactInput", [params])
             encoded_calls.append(swap_calldata)
-
-            # Encode unwrapWHBAR
-            # amountMinimum=0 (slippage already handled by exactInput), recipient=self.eoa
-            print(f"   🔄 Executing Multicall (ExactInput + unwrapWHBAR)...")
-            print(f"      - Path: {path.hex()}")
-            print(f"      - Recipient (Swap): {self.router_address}")
-            print(f"      - Recipient (Unwrap): {self.eoa}")
             unwrap_calldata = self.router.encode_abi("unwrapWHBAR", [0, self.eoa])
             encoded_calls.append(unwrap_calldata)
-
-            value_to_send = 0 # ERC20 used
-
+            value_to_send = 0 
         else:
             raise ValueError("Use standard swap_exact_input for non-native swaps")
 
-        # Scale HBAR value to 18 decimals for relay compatibility
         scaled_value = value_to_send * 10**10 if value_to_send > 0 else 0
-        if scaled_value > 0:
-            print(f"   🔧 Scaled HBAR Value: {scaled_value} (pseudo-Wei)")
 
-        # Build Multicall Transaction
+        if dry_run:
+            self.router.functions.multicall(encoded_calls).call({"from": self.eoa, "value": scaled_value})
+            return "SIMULATED_OK"
+
         tx = self.router.functions.multicall(encoded_calls).build_transaction({
             "from": self.eoa,
-            "gas": 2_500_000, # Increased gas for multicall (V2 complex paths)
+            "gas": 2_500_000,
             "gasPrice": self.w3.eth.gas_price,
             "nonce": self.w3.eth.get_transaction_count(self.eoa),
             "chainId": self.chain_id,
@@ -297,58 +257,40 @@ class SaucerSwapV2:
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         return tx_hash.hex()
 
-    def swap_exact_output_multicall(self, token_in: str, token_out: str, amount_out: int, max_amount_in: int, input_is_native: bool = False, output_is_native: bool = False, fee: int = 1500) -> str:
+    def swap_exact_output_multicall(self, token_in: str, token_out: str, amount_out: int, max_amount_in: int, input_is_native: bool = False, output_is_native: bool = False, fee: int = 1500, dry_run: bool = False) -> str:
         """
         Execute multicall for exact output swaps involving native HBAR.
-        Similar to swap_exact_input_multicall but for exactOutput.
         """
-        if not self.private_key:
+        if not self.private_key and not dry_run:
             raise ValueError("Private key required")
 
-        deadline = int(time.time() * 1000) + 600000 # 10 mins
-
-        # Path for exactOutput is reversed: [tokenOut, tokenIn]
+        deadline = int(time.time() * 1000) + 600000 
         path = encode_path([token_out, token_in], [fee])
-
         encoded_calls = []
         value_to_send = 0
 
         if input_is_native:
-            # HBAR -> Token
-            # 1. exactOutput (recipient=self.eoa, amountOut=amount_out, maxAmountIn=max_amount_in)
-            # 2. refundETH
             params = (path, self.eoa, deadline, amount_out, max_amount_in)
             swap_calldata = self.router.encode_abi("exactOutput", [params])
             encoded_calls.append(swap_calldata)
-
-            print(f"   🔄 Executing Multicall (ExactOutput + RefundETH)...")
             refund_calldata = self.router.encode_abi("refundETH")
             encoded_calls.append(refund_calldata)
-
-            value_to_send = max_amount_in # Max we are willing to spend
-
+            value_to_send = max_amount_in 
         elif output_is_native:
-            # Token -> HBAR
-            # 1. exactOutput (recipient=ROUTER)
-            # 2. unwrapWHBAR(amountOut, recipient)
-
-            # Recipient for exactOutput MUST be ROUTER so it can unwrap
             params = (path, self.router_address, deadline, amount_out, max_amount_in)
             swap_calldata = self.router.encode_abi("exactOutput", [params])
             encoded_calls.append(swap_calldata)
-
-            print(f"   🔄 Executing Multicall (ExactOutput + unwrapWHBAR)...")
-            # For exactOutput, we unwrap the exact amount_out requested
             unwrap_calldata = self.router.encode_abi("unwrapWHBAR", [amount_out, self.eoa])
             encoded_calls.append(unwrap_calldata)
-
             value_to_send = 0
-
         else:
             raise ValueError("Use standard swap_exact_output for non-native swaps")
 
-        # Scale HBAR value
         scaled_value = value_to_send * 10**10 if value_to_send > 0 else 0
+
+        if dry_run:
+            self.router.functions.multicall(encoded_calls).call({"from": self.eoa, "value": scaled_value})
+            return "SIMULATED_OK"
 
         tx = self.router.functions.multicall(encoded_calls).build_transaction({
             "from": self.eoa,

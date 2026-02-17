@@ -681,6 +681,16 @@ class PacmanExecutor:
 
             wrapper_addr = hedera_id_to_evm(WRAPPER_ID)
             wrapper_contract = self.w3.eth.contract(address=wrapper_addr, abi=ERC20_WRAPPER_ABI)
+
+            # MANDATORY SIMULATION (Rule 7, 22)
+            try:
+                logger.info("   🔍 Simulating unwrap via eth_call...")
+                wrapper_contract.functions.withdrawTo(self.eoa, amount_raw).call({"from": self.eoa})
+                logger.info("   ✅ Simulation passed.")
+            except Exception as e:
+                logger.error(f"   ❌ Simulation REVERTED: {e}")
+                raise ExecutionError(f"Transaction would fail on Hedera (Simulation Revert): {e}")
+
             # Match btc_rebalancer2: Use Alias address (self.eoa) for both signer and account argument
             tx = wrapper_contract.functions.withdrawTo(self.eoa, amount_raw).build_transaction({
                 "from": self.eoa, "gas": 2_000_000, "gasPrice": self.w3.eth.gas_price,
@@ -732,6 +742,16 @@ class PacmanExecutor:
 
             wrapper_addr = hedera_id_to_evm(WRAPPER_ID)
             wrapper_contract = self.w3.eth.contract(address=wrapper_addr, abi=ERC20_WRAPPER_ABI)
+
+            # MANDATORY SIMULATION (Rule 7, 22)
+            try:
+                logger.info("   🔍 Simulating wrap via eth_call...")
+                wrapper_contract.functions.depositFor(self.eoa, amount_raw).call({"from": self.eoa})
+                logger.info("   ✅ Simulation passed.")
+            except Exception as e:
+                logger.error(f"   ❌ Simulation REVERTED: {e}")
+                raise ExecutionError(f"Transaction would fail on Hedera (Simulation Revert): {e}")
+
             # Match btc_rebalancer2: Use Alias address (self.eoa) for both signer and account argument
             tx = wrapper_contract.functions.depositFor(self.eoa, amount_raw).build_transaction({
                 "from": self.eoa, "gas": 2_000_000, "gasPrice": self.w3.eth.gas_price,

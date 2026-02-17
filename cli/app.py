@@ -1,131 +1,92 @@
 #!/usr/bin/env python3
 """
-Pacman App - The Controller
-===========================
+Pacman App - Main Application Controller
+=========================================
 
-The central brain that orchestrates:
-1. Configuration (Env/User)
-2. Routing (Finding paths)
-3. Execution (Swapping/Bridging)
-4. State Management (Balances/History)
+The PacmanApp class coordinates the various components of the Pacman CLI:
+- Configuration (PacmanConfig)
+- Routing (PacmanVariantRouter)
+- Execution (PacmanExecutor)
+- Price Management (PacmanPriceManager)
 
-This class is the "Public API" of the Pacman library.
+It provides a high-level API for the CLI to interact with.
 """
 
-from typing import Optional, Dict, List, Any
-from pacman_logger import logger, set_verbose
+import logging
+from typing import Optional, Dict
+
 from pacman_config import PacmanConfig
+from pacman_logger import logger
 from pacman_errors import PacmanError, ConfigurationError
-from pacman_variant_router import PacmanVariantRouter, VariantRoute
 from pacman_executor import PacmanExecutor, ExecutionResult
+from pacman_variant_router import PacmanVariantRouter, VariantRoute
 from pacman_price_manager import price_manager
 
 class PacmanApp:
     """
-    High-level controller for Hedera DeFi operations.
+    Main application class for Pacman.
     """
 
-    def __init__(self, config: Optional[PacmanConfig] = None):
-        """
-        Initialize the Pacman Application.
-
-        Args:
-            config: Optional pre-loaded config. If None, loads from env.
-        """
-        # 1. Load Configuration
-        self.config = config or PacmanConfig.from_env()
-
-        # 2. Set Logging Level
-        if self.config.verbose_mode:
-            set_verbose(True)
-            logger.debug("Verbose Mode Enabled (Initialization)")
-
-        # 3. Initialize Components
-        self.router = PacmanVariantRouter()
-
-        # Executor is lazy-loaded to allow lightweight usage (e.g. quote only)
-        self._executor: Optional[PacmanExecutor] = None
-
-        # 4. Load static data
+    def __init__(self, config_path: str = "config.yaml"):
+        """Initialize the application components."""
         try:
-            self.router.load_pools(pools_file="data/pacman_data_raw.json")
+            self.config = PacmanConfig.load(config_path)
+            self.executor = PacmanExecutor(self.config)
+            self.router = PacmanVariantRouter(price_manager=price_manager)
+            
+            # Record account details for display
+            self.account_id = self.config.hedera_account_id
+            self.network = self.config.network
+            
+        except ConfigurationError as e:
+            logger.error(f"Configuration error: {e}")
+            raise
         except Exception as e:
-            logger.error(f"Failed to load pool data: {e}")
+            logger.error(f"Failed to initialize PacmanApp: {e}")
+            raise
 
-    def toggle_verbose(self, enabled: Optional[bool] = None) -> bool:
+    def get_balances(self) -> Dict[str, float]:
+        """Fetch all non-zero token balances for the account."""
+        return self.executor.get_all_balances()
+
+    def get_route(self, from_token: str, to_token: str, amount: float, mode: str = "exact_in") -> Optional[VariantRoute]:
         """
-        Toggle or set verbose logging mode.
-        
-        Args:
-            enabled: Specific state to set, or None to toggle.
-        """
-        if enabled is None:
-            enabled = not self.config.verbose_mode
-        
-        self.config.verbose_mode = enabled
-        set_verbose(enabled)
-        return enabled
-
-    @property
-    def executor(self) -> PacmanExecutor:
-        """Lazy-load the executor."""
-        if not self._executor:
-            # Validate config before initializing executor
-            if not self.config.private_key and not self.config.simulate_mode:
-                raise ConfigurationError("Private key required for live execution.")
-
-            self._executor = PacmanExecutor(self.config)
-        return self._executor
-
-    def get_balance(self, token_symbol: Optional[str] = None) -> Dict[str, float]:
-        """
-        Get wallet balance(s).
-
-        Args:
-            token_symbol: Specific token (e.g. "USDC") or None for all.
-        """
-        balances = self.executor.get_balances()
-        if token_symbol:
-            # Fuzzy match or exact match
-            normalized = token_symbol.upper()
-            if normalized in balances:
-                return {normalized: balances[normalized]}
-            return {}
-        return balances
-
-    def get_route(self, from_token: str, to_token: str, amount: float) -> Optional[VariantRoute]:
-        """
-        Find the best route for a swap.
+        Recommend the best route between variants.
         """
         # Clean inputs
         from_token = from_token.upper()
         to_token = to_token.upper()
 
-        logger.debug(f"Routing request: {from_token} -> {to_token} (Amount: {amount})")
+        logger.debug(f"Routing request: {from_token} -> {to_token} (Amount: {amount}, Mode: {mode})")
 
-        # 1. Calculate USD Value for Accurate Fee Estimation
-        # Router expects 'amount_usd' to be actual USD value to calculate HBAR fees correctly
+        # 1. Calculate USD Value (Estimated) for Routing logic
+        # For exact_in, amount is in from_token. For exact_out, amount is in to_token.
+        basis_token = from_token if mode == "exact_in" else to_token
         usd_value = amount
+        
         try:
-            # Attempt to resolve price using router's metadata
-            meta = self.router._get_token_meta(from_token)
-            if meta and "id" in meta:
-                # Ensure price manager has data
+            meta = self.router._get_token_meta(basis_token)
+            token_id = meta["id"] if meta and "id" in meta else None
+            
+            if not token_id and basis_token in ["HBAR", "0.0.0", "WHBAR"]:
+                token_id = "0.0.0"
+
+            if token_id:
                 if price_manager.hbar_price == 0:
                     price_manager.reload()
-
-                price = price_manager.get_price(meta["id"])
+                
+                # Get price from manager
+                if token_id == "0.0.0":
+                    price = price_manager.get_hbar_price()
+                else:
+                    price = price_manager.get_price(token_id)
+                
                 if price > 0:
                     usd_value = amount * price
-            elif from_token in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:
-                 price = price_manager.get_hbar_price()
-                 if price > 0:
-                     usd_value = amount * price
         except Exception as e:
             logger.warning(f"Failed to calculate USD value for routing: {e}")
 
-        # Resolve Variants (e.g. USDC -> USDC[hts] if preferred)
-        # For now, simplistic routing logic from the variant router
+        # Router calculates fee impact in HBAR using this USD value
         return self.router.recommend_route(
             from_variant=from_token,
             to_variant=to_token,
@@ -136,23 +97,15 @@ class PacmanApp:
     def swap(self, from_token: str, to_token: str, amount: float, mode: str = "exact_in") -> ExecutionResult:
         """
         Execute a swap.
-
-        Args:
-            from_token: Input token symbol.
-            to_token: Output token symbol.
-            amount: Amount of input (or output if exact_out).
-            mode: "exact_in" or "exact_out".
         """
-        route = self.get_route(from_token, to_token, amount)
+        route = self.get_route(from_token, to_token, amount, mode=mode)
         if not route:
             raise PacmanError(f"No route found for {from_token} -> {to_token}")
 
-        # Security: Check limits (Hardcoded in config, but good to enforce here)
-        # Ideally we check USD value here.
-
+        # Execution using the refactored raw_amount parameter
         return self.executor.execute_swap(
             route=route,
-            amount_usd=amount, # Passing raw amount as 'usd' param in legacy executor signature
+            raw_amount=amount,
             mode=mode
         )
 
@@ -160,15 +113,9 @@ class PacmanApp:
         """
         Send tokens to another address.
         """
-        # This requires porting execute_transfer logic to be a method of Executor or App
-        # For now, we delegate to the existing transfer module but wrap it
         from pacman_transfers import execute_transfer
         return execute_transfer(self.executor, token_symbol, amount, recipient)
 
-    def resolve_token_id(self, symbol: str) -> Optional[str]:
-        """Resolve symbol to Hedera ID."""
-        return self.executor._get_token_id(symbol)
-
-    def get_history(self, limit: int = 10) -> List[dict]:
-        """Get transaction history."""
+    def get_history(self, limit: int = 10):
+        """Get execution history."""
         return self.executor.get_execution_history(limit)
