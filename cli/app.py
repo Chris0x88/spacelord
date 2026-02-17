@@ -33,6 +33,7 @@ class PacmanApp:
             self.config = PacmanConfig.from_env()
             self.executor = PacmanExecutor(self.config)
             self.router = PacmanVariantRouter(price_manager=price_manager)
+            self.router.load_pools() # Build routing graph from cached data
             
             # Record account details for display
             self.account_id = self.config.hedera_account_id
