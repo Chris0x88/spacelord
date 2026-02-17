@@ -46,7 +46,27 @@ except Exception:
 # ---------------------------------------------------------------------------
 
 def cmd_help(app, args):
-    show_help()
+    topic = args[0] if args else None
+    
+    # Map Aliases
+    aliases = {
+        "trade": "swap",
+        "buy":   "swap",
+        "get":   "swap",
+        "convert":"swap",
+        "transfers": "send",
+        "transfer": "send",
+        "wallet": "balance",
+        "prices": "price",
+        "natural": "nlp",
+        "rules":   "nlp",
+        "grammar": "nlp"
+    }
+    
+    if topic and topic.lower() in aliases:
+        topic = aliases[topic.lower()]
+        
+    show_help(topic)
 
 def cmd_tokens(app, args):
     show_tokens()

@@ -31,11 +31,15 @@ except ImportError:
     from data.pacman_filter import ui_filter
 
 try:
-    from data.text_content import HELP_COMMANDS, HELP_EXAMPLES, PACMAN_BANNER_TEMPLATE
+    from data.text_content import (
+        HELP_COMMANDS, HELP_EXAMPLES, 
+        PACMAN_BANNER_TEMPLATE, HELP_EXPLAINERS
+    )
 except ImportError:
     # Fallback default if file missing
     HELP_COMMANDS = []
     HELP_EXAMPLES = []
+    HELP_EXPLAINERS = {}
     PACMAN_BANNER_TEMPLATE = "Pacman"
 
 
@@ -121,8 +125,22 @@ def print_security_warning():
 # Help Menu
 # ---------------------------------------------------------------------------
 
-def show_help():
-    """Display the command reference."""
+def show_help(topic: str = None):
+    """Display the command reference or a specific depth explainer."""
+    if topic:
+        topic = topic.lower().strip()
+        if topic in HELP_EXPLAINERS:
+            explainer = HELP_EXPLAINERS[topic]
+            print(f"\n  {C.BOLD}{C.ACCENT}Deep Dive: {topic.upper()}{C.R}")
+            print(f"  {C.CHROME}{'─' * 56}{C.R}")
+            # Format the explainer if it uses placeholders
+            print(f"  {explainer.replace('{C.', '{').format(**vars(C))}")
+            print(f"  {C.CHROME}{'─' * 56}{C.R}")
+            print(f"  {C.MUTED}Type 'help' for all commands.{C.R}\n")
+            return
+        else:
+            print(f"  {C.WARN}⚠  No detailed help for '{topic}'.{C.R}")
+
     print(f"\n{C.BOLD}{C.TEXT}  COMMANDS{C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
 
@@ -134,7 +152,9 @@ def show_help():
     
     for ex_cmd, ex_desc in HELP_EXAMPLES:
          print(f"  {C.ACCENT}{ex_cmd:30s}{C.R} {C.MUTED}{ex_desc}{C.R}")
-    print()
+    
+    print(f"\n  {C.MUTED}For in-depth help, type: {C.R}{C.TEXT}help <command>{C.R}")
+    print(f"  {C.MUTED}Topics: swap, send, balance, price, nlp{C.R}\n")
 
 
 # ---------------------------------------------------------------------------
