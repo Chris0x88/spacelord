@@ -143,15 +143,25 @@ def show_help():
 
 def show_account(executor):
     """Display wallet and network information."""
+    from lib.saucerswap import hedera_id_to_evm
+
+    long_zero = "Unknown"
+    if executor.hedera_account_id and executor.hedera_account_id != "Unknown":
+        try:
+             long_zero = hedera_id_to_evm(executor.hedera_account_id)
+        except:
+             pass
+
     print(f"\n{C.BOLD}{C.TEXT}  ACCOUNT{C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
-    print(f"  {C.MUTED}Hedera ID{C.R}    {C.TEXT}{executor.hedera_account_id}{C.R}")
-    print(f"  {C.MUTED}EVM Address{C.R}  {C.TEXT}{executor.eoa}{C.R}")
-    print(f"  {C.MUTED}Network{C.R}      {C.OK}{executor.network.upper()}{C.R}")
-    print(f"  {C.MUTED}RPC{C.R}          {C.MUTED}{executor.rpc_url}{C.R}")
+    print(f"  {C.MUTED}Hedera ID{C.R}      {C.TEXT}{executor.hedera_account_id}{C.R}")
+    print(f"  {C.MUTED}EVM Alias{C.R}      {C.TEXT}{executor.eoa}{C.R}")
+    print(f"  {C.MUTED}Long-Zero Addr{C.R} {C.TEXT}{long_zero}{C.R}")
+    print(f"  {C.MUTED}Network{C.R}        {C.OK}{executor.network.upper()}{C.R}")
+    print(f"  {C.MUTED}RPC{C.R}            {C.MUTED}{executor.rpc_url}{C.R}")
 
     sim_status = f"{C.WARN}SIMULATION{C.R}" if executor.is_sim else f"{C.OK}LIVE{C.R}"
-    print(f"  {C.MUTED}Mode{C.R}         {sim_status}")
+    print(f"  {C.MUTED}Mode{C.R}           {sim_status}")
     print()
 
 
