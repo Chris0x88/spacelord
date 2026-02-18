@@ -11,6 +11,7 @@ It is designed to be imported by CLIs, Daemons, or Web APIs.
 """
 
 import logging
+import requests
 from typing import Optional, Dict
 
 from src.config import PacmanConfig
@@ -125,6 +126,34 @@ class PacmanController:
         self.config.debug = not self.config.debug
         set_verbose(self.config.debug)
         return self.config.debug
+
+    def resolve_account_id(self, eoa: str) -> Optional[str]:
+        """
+        Query Mirror Node to find the Hedera Account ID associated with an EVM EOA.
+        Returns the '0.0.xxx' ID or None if not found.
+        """
+        if not eoa or not eoa.startswith("0x"):
+            return None
+
+        network = self.config.network
+        base_url = "https://mainnet-public.mirrornode.hedera.com" if network == "mainnet" else "https://testnet.mirrornode.hedera.com"
+        url = f"{base_url}/api/v1/accounts/{eoa}"
+
+        try:
+            logger.debug(f"Discovering Hedera ID for {eoa}...")
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("account")
+            elif response.status_code == 404:
+                logger.warning(f"Account {eoa} not found on Mirror Node. might be new/uninitialized.")
+                return None
+            else:
+                logger.error(f"Mirror Node error ({response.status_code}): {response.text}")
+                return None
+        except Exception as e:
+            logger.error(f"Failed to resolve account ID: {e}")
+            return None
 
     def approve_pool(self, pool_data: dict, protocol: str = "v2"):
         """

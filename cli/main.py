@@ -463,44 +463,81 @@ def cmd_setup(app, args):
     """
     import getpass
     import os
-    from pathlib import Path
+    from lib.saucerswap import SaucerSwapV2
+    from web3 import Web3
 
     print(f"\n{C.BOLD}{C.TEXT}  SECURE WALLET SETUP{C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
     print(f"  {C.MUTED}This will update your .env file.{C.R}")
-    print(f"  {C.MUTED}Your key is masked and never stored in history.{C.R}")
+    print(f"  {C.MUTED}Type 'x' or 'cancel' to exit at any time.{C.R}")
 
     try:
-        # 1. Account ID
-        current_id = os.getenv("HEDERA_ACCOUNT_ID", "Not set")
-        print(f"\n  {C.BOLD}Step 1: Account ID{C.R} (Current: {C.ACCENT}{current_id}{C.R})")
-        new_id = input(f"  Enter Hedera Account ID (0.0.xxx): ").strip()
-        if new_id:
-            _update_env("HEDERA_ACCOUNT_ID", new_id)
-            os.environ["HEDERA_ACCOUNT_ID"] = new_id
-            print(f"  {C.OK}✅ Account ID updated.{C.R}")
-
-        # 2. Private Key
-        print(f"\n  {C.BOLD}Step 2: Private Key{C.R}")
+        # 1. Private Key Entry
+        print(f"\n  {C.BOLD}Step 1: Private Key{C.R}")
         print(f"  {C.MUTED}Paste your ECDSA or ED25519 hex key (64 chars).{C.R}")
-        new_key = getpass.getpass(f"  Private Key: ").strip()
-        if new_key:
-            # Clean key
-            new_key = new_key.replace("0x", "")
-            if len(new_key) != 64:
-                print(f"  {C.ERR}✗{C.R} Invalid length ({len(new_key)}). Must be 64 hex chars.")
-            else:
-                _update_env("PACMAN_PRIVATE_KEY", new_key)
-                # We don't update os.environ here for security unless specifically needed
-                # But for the current session to work we might:
-                from src.config import SecureString
-                app.config.private_key = SecureString(new_key)
-                print(f"  {C.OK}✅ Private Key saved securely.{C.R}")
+        
+        # Use simple input initially to detect 'x' easily, or a loop
+        prompt = f"  Private Key: "
+        new_key = getpass.getpass(prompt).strip()
+        
+        if new_key.lower() in ["x", "cancel"]:
+            print(f"  {C.MUTED}Setup cancelled.{C.R}\n")
+            return
 
-        print(f"\n  {C.OK}Wallet setup complete!{C.R}")
-        print(f"  {C.MUTED}You can now use 'pools search' to find trading pairs.{C.R}")
+        if not new_key:
+            return
+
+        # Clean key
+        new_key = new_key.replace("0x", "")
+        if len(new_key) != 64:
+            print(f"  {C.ERR}✗{C.R} Invalid length ({len(new_key)}). Must be 64 hex chars.")
+            return
+
+        # 2. Derive EOA and Discover Account ID
+        print(f"  {C.MUTED}Deriving address...{C.R}")
+        try:
+            temp_w3 = Web3()
+            acc = temp_w3.eth.account.from_key(new_key)
+            eoa = acc.address
+            print(f"  {C.MUTED}EVM Address: {C.TEXT}{eoa}{C.R}")
+        except Exception as e:
+            print(f"  {C.ERR}✗{C.R} Failed to derive address: {e}")
+            return
+
+        print(f"  {C.MUTED}Discovering Hedera ID via Mirror Node...{C.R}")
+        hedera_id = app.resolve_account_id(eoa)
+        
+        if not hedera_id:
+            print(f"\n  {C.WARN}⚠  Account Not Linked{C.R}")
+            print(f"  {C.TEXT}Your address {C.BOLD}{eoa}{C.R} is not yet indexed on Hedera.{C.R}")
+            print(f"  {C.MUTED}This usually means the account is brand new or has no HBAR.{C.R}")
+            
+            choice = input(f"\n  Enter Account ID manually? (0.0.xxx) {C.MUTED}(y/n){C.R} ").strip().lower()
+            if choice in ["y", "yes"]:
+                hedera_id = input(f"  Hedera ID: ").strip()
+                if not hedera_id or not hedera_id.startswith("0.0."):
+                    print(f"  {C.ERR}✗{C.R} Invalid ID format.")
+                    return
+            else:
+                print(f"  {C.MUTED}Setup aborted.{C.R}")
+                return
+        else:
+            print(f"  {C.OK}✅ Found Account ID: {C.BOLD}{hedera_id}{C.R}")
+
+        # 3. Save to .env
+        _update_env("PACMAN_PRIVATE_KEY", new_key)
+        _update_env("HEDERA_ACCOUNT_ID", hedera_id)
+        
+        # Immediate config update for active session
+        from src.config import SecureString
+        app.config.private_key = SecureString(new_key)
+        app.config.hedera_account_id = hedera_id
+        
+        print(f"\n  {C.OK}✅ Wallet setup complete!{C.R}")
+        print(f"  {C.MUTED}You can now use 'pools search' or check your 'balance'.{C.R}\n")
+
     except (KeyboardInterrupt, EOFError):
-        print(f"\n  {C.MUTED}Setup cancelled.{C.R}")
+        print(f"\n  {C.MUTED}Setup cancelled.{C.R}\n")
 
 def check_wallet_setup(app):
     """Check for wallet keys on startup and guide onboarding."""
@@ -515,7 +552,8 @@ def check_wallet_setup(app):
 
     if not key or not acc_id:
         print(f"\n  {C.WARN}⚠  Wallet Not Configured{C.R}")
-        print(f"  {C.TEXT}To execute live swaps, you need to set your Account ID and Private Key.{C.R}")
+        print(f"  {C.TEXT}To execute live swaps, you need to set your Secure Private Key.{C.R}")
+        print(f"  {C.MUTED}Note: Pacman will automatically resolve your Hedera ID.{C.R}")
         
         try:
             choice = input(f"  Configure now? {C.MUTED}(y/n){C.R} ").strip().lower()
