@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pacman-cli"
+version = "0.9.3"
+description = "Terminal-based trading engine for Hedera Hashgraph"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Chris0x88" }
+]
+dependencies = [
+    "web3>=6.0.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "networkx>=3.0",
+    "cryptography>=41.0.0",
+]
+
+[project.scripts]
+pacman = "cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*", "cli*", "lib*", "data*"]
