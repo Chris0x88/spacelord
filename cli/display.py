@@ -154,7 +154,7 @@ def show_help(topic: str = None):
          print(f"  {C.ACCENT}{ex_cmd:30s}{C.R} {C.MUTED}{ex_desc}{C.R}")
     
     print(f"\n  {C.MUTED}For in-depth help, type: {C.R}{C.TEXT}help <command>{C.R}")
-    print(f"  {C.MUTED}Topics: swap, send, balance, price, pools, nlp{C.R}\n")
+    print(f"  {C.MUTED}Topics: swap, send, balance, price, pools, setup, nlp{C.R}\n")
 
 
 # ---------------------------------------------------------------------------

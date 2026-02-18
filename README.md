@@ -39,14 +39,14 @@ cd pacman
 ./pacman  # This will auto-initialize the venv and dependencies
 ```
 
-### 2. Configuration
-Copy the template and add your credentials:
-```bash
-cp .env.template .env
-# Edit .env and add your PACMAN_PRIVATE_KEY and HEDERA_ACCOUNT_ID
-```
-> [!TIP]
-> **SaucerSwap API**: On first run, Pacman will prompt you to set your SaucerSwap API key. You can choose to use the public fallback, but a personal key is recommended for high-accuracy liquidity depth mapping.
+### 2. Configuration (Onboarding)
+Once the CLI starts, Pacman will guide you through the setup:
+1.  **Wallet Setup**: Run `setup` to securely enter your Account ID and Private Key (masked input).
+2.  **API Key**: Set your SaucerSwap API key when prompted for high-accuracy pricing.
+3.  **Bootstrap Liquidity**: Run `pools search USDC` and `pools approve <ID>` to whitelist your first trading pairs.
+
+> [!IMPORTANT]
+> **Modular Discovery**: Pacman does not ship with a bloated pool list. You must "Approve" the pools you want to trade in to keep your routing engine fast and curated.
 
 ---
 

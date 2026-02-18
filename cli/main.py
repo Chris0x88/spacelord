@@ -440,7 +440,8 @@ COMMANDS = {
     "send": cmd_send,
     "receive": cmd_receive,
     "verbose": cmd_verbose,
-    "pools": cmd_pools, "pool": cmd_pools
+    "pools": cmd_pools, "pool": cmd_pools,
+    "setup": cmd_setup
 }
 
 def process_input(app, text):
@@ -464,60 +465,126 @@ def process_input(app, text):
         except PacmanError as e:
             print(f"  {C.ERR}✗{C.R} {e}")
 
+def cmd_setup(app, args):
+    """
+    Securely configure your Hedera wallet credentials.
+    Usage: setup
+    """
+    import getpass
+    import os
+    from pathlib import Path
+
+    print(f"\n{C.BOLD}{C.TEXT}  SECURE WALLET SETUP{C.R}")
+    print(f"  {C.CHROME}{'─' * 56}{C.R}")
+    print(f"  {C.MUTED}This will update your .env file.{C.R}")
+    print(f"  {C.MUTED}Your key is masked and never stored in history.{C.R}")
+
+    try:
+        # 1. Account ID
+        current_id = os.getenv("HEDERA_ACCOUNT_ID", "Not set")
+        print(f"\n  {C.BOLD}Step 1: Account ID{C.R} (Current: {C.ACCENT}{current_id}{C.R})")
+        new_id = input(f"  Enter Hedera Account ID (0.0.xxx): ").strip()
+        if new_id:
+            _update_env("HEDERA_ACCOUNT_ID", new_id)
+            os.environ["HEDERA_ACCOUNT_ID"] = new_id
+            print(f"  {C.OK}✅ Account ID updated.{C.R}")
+
+        # 2. Private Key
+        print(f"\n  {C.BOLD}Step 2: Private Key{C.R}")
+        print(f"  {C.MUTED}Paste your ECDSA or ED25519 hex key (64 chars).{C.R}")
+        new_key = getpass.getpass(f"  Private Key: ").strip()
+        if new_key:
+            # Clean key
+            new_key = new_key.replace("0x", "")
+            if len(new_key) != 64:
+                print(f"  {C.ERR}✗{C.R} Invalid length ({len(new_key)}). Must be 64 hex chars.")
+            else:
+                _update_env("PACMAN_PRIVATE_KEY", new_key)
+                # We don't update os.environ here for security unless specifically needed
+                # But for the current session to work we might:
+                from src.config import SecureString
+                app.config.private_key = SecureString(new_key)
+                print(f"  {C.OK}✅ Private Key saved securely.{C.R}")
+
+        print(f"\n  {C.OK}Wallet setup complete!{C.R}")
+        print(f"  {C.MUTED}You can now use 'pools search' to find trading pairs.{C.R}")
+    except (KeyboardInterrupt, EOFError):
+        print(f"\n  {C.MUTED}Setup cancelled.{C.R}")
+
+def check_wallet_setup(app):
+    """Check for wallet keys on startup and guide onboarding."""
+    import os
+    
+    # Don't prompt if running a one-shot command unrelated to trading
+    if len(sys.argv) > 1 and sys.argv[1] in ["help", "pools", "tokens", "price"]:
+        return
+
+    key = os.getenv("PACMAN_PRIVATE_KEY") or os.getenv("PRIVATE_KEY")
+    acc_id = os.getenv("HEDERA_ACCOUNT_ID")
+
+    if not key or not acc_id:
+        print(f"\n  {C.WARN}⚠  Wallet Not Configured{C.R}")
+        print(f"  {C.TEXT}To execute live swaps, you need to set your Account ID and Private Key.{C.R}")
+        
+        try:
+            choice = input(f"  Configure now? {C.MUTED}(y/n){C.R} ").strip().lower()
+            if choice in ["y", "yes"]:
+                cmd_setup(app, [])
+        except (KeyboardInterrupt, EOFError):
+            print()
+            return
+
 def check_saucerswap_api_key(app):
     """Check if SaucerSwap API key is set, and prompt if missing."""
     import os
-    from pathlib import Path
     
-    # Check if we are in a one-shot command or interactive
-    if len(sys.argv) > 1 and sys.argv[1] not in ["account", "balance"]:
-        # Don't prompt during quick swap commands to avoid blocking
+    # Skip if specifically requested or in help
+    if len(sys.argv) > 1 and sys.argv[1] in ["help"]:
         return
 
-    # We only care about Mainnet for now as it's the primary use case
     key = os.getenv("SAUCERSWAP_API_KEY_MAINNET")
     if key:
         return
 
     print(f"\n  {C.WARN}⚠ SaucerSwap API Key Missing{C.R}")
-    print(f"  {C.TEXT}To get full pool liquidity depth and high-accuracy price discovery,{C.R}")
-    print(f"  {C.TEXT}it is recommended to set your own SaucerSwap API key.{C.R}")
-    print(f"  {C.MUTED}Public fallbacks (CoinGecko/Binance) will be used otherwise.{C.R}")
-    print(f"  {C.MUTED}Warning: You will not have full visibility into high-liquidity depth.{C.R}")
-    print(f"  {C.MUTED}See docs/SAUCERSWAP_API_GUIDE.md for details.{C.R}")
+    print(f"  {C.TEXT}It is recommended to set your own SaucerSwap API key for better accuracy.{C.R}")
     
     try:
-        choice = input(f"\n  {C.BOLD}1) Set Key now{C.R}\n  {C.BOLD}2) Use public fallbacks{C.R}\n  Selection [2]: ").strip()
-        
-        if choice == "1":
-            new_key = input(f"  Enter your SaucerSwap Mainnet API Key: ").strip()
+        choice = input(f"  Set Key now? {C.MUTED}(y/n) [n]{C.R} ").strip().lower()
+        if choice in ["y", "yes"]:
+            new_key = input(f"  Enter Your API Key: ").strip()
             if new_key:
-                _update_env_api_key(new_key)
+                _update_env("SAUCERSWAP_API_KEY_MAINNET", new_key)
                 os.environ["SAUCERSWAP_API_KEY_MAINNET"] = new_key
-                print(f"  {C.OK}✅ API Key saved to .env and loaded.{C.R}")
-        else:
-            print(f"  {C.MUTED}Using public fallbacks with limited accuracy.{C.R}")
+                print(f"  {C.OK}✅ API Key saved.{C.R}")
     except (KeyboardInterrupt, EOFError):
-        print(f"\n  {C.MUTED}Proceeding with public fallbacks.{C.R}")
+        print()
 
-def _update_env_api_key(key):
-    """Helper to update .env file with the API key."""
+def _update_env(key, value):
+    """Update or add a key-value pair in the .env file."""
+    from pathlib import Path
     env_path = Path(__file__).resolve().parent.parent / ".env"
+    
+    # Create file if missing
     if not env_path.exists():
-        return
+        with open(env_path, "w") as f:
+            f.write("# Pacman .env\n")
     
     lines = []
     found = False
     with open(env_path, "r") as f:
         for line in f:
-            if line.startswith("SAUCERSWAP_API_KEY_MAINNET="):
-                lines.append(f"SAUCERSWAP_API_KEY_MAINNET={key}\n")
+            if line.strip().startswith(f"{key}="):
+                lines.append(f"{key}={value}\n")
                 found = True
             else:
                 lines.append(line)
     
     if not found:
-        lines.append(f"\nSAUCERSWAP_API_KEY_MAINNET={key}\n")
+        # Add newline if needed
+        if lines and not lines[-1].endswith("\n"):
+            lines.append("\n")
+        lines.append(f"{key}={value}\n")
         
     with open(env_path, "w") as f:
         f.writelines(lines)
@@ -545,7 +612,8 @@ def main():
             
         app = PacmanController()
         
-        # Check for API Key if not in simulation or if specifically needed
+        # Check for API Key and Wallet Setup
+        check_wallet_setup(app)
         check_saucerswap_api_key(app)
         
         print(f"\n  {C.BOLD}{C.ACCENT}System Online{C.R}")

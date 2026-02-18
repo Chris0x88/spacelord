@@ -34,6 +34,7 @@ HELP_COMMANDS = [
     ("history",                  "Transaction history"),
     ("verbose",                  "Toggle debug logging"),
     ("pools",                    "Manage pool registries"),
+    ("setup",                    "Secure wallet configuration"),
     ("help",                     "This menu"),
     ("exit",                     "Quit Pacman"),
 ]
@@ -140,5 +141,22 @@ are used for routing.
   By "approving" a pool, you whitelist it for the routing engine.
   This allows you to access new pairs instantly or strip out 
   low-liquidity pools that might cause high slippage.""",
+
+    "setup": """{C.BOLD}SECURE WALLET CONFIGURATION{C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+Guide to configuring your Hedera credentials safely.
+
+{C.ACCENT}Command:{C.R}
+  {C.TEXT}ᗧ setup{C.R}
+
+{C.ACCENT}Process:{C.R}
+  1. {C.BOLD}Account ID{C.R}: Enter your 0.0.xxx format ID.
+  2. {C.BOLD}Private Key{C.R}: Paste your hex key (masked input).
+
+{C.ACCENT}Security Note:{C.R}
+  Pacman uses {C.BOLD}getpass{C.R} to mask your private key input. This 
+  prevents the key from appearing in your terminal history 
+  or scrollback. The key is saved to your local {C.TEXT}.env{C.R}, 
+  which is already ignored by git.""",
 }
 
