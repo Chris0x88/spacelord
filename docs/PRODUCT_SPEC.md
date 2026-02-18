@@ -83,10 +83,11 @@ A complete breakdown of every file's responsibility.
 -   **`translator.py`**: The NLP Engine.
     -   `translate_command()`: Converts string -> JSON intent.
     -   `resolve_token()`: Fuzzy matches token names.
--   **`config.py`**: Configuration Management.
-    -   `PacmanConfig`: Dataclass for settings.
-    -   `SecureString`: Memory obfuscation for private keys.
-
+-   **`config.py`**:### Configuration
+- **Environment Variables**:
+    - `PRIVATE_KEY`: Standard Ethereum private key for signing.
+    - `HEDERA_ACCOUNT_ID`: 0.0.xxx format (optional, auto-resolved).
+    - `PACMAN_SIMULATE`: Boolean to enable/disable safety mode.
 ## `/data` (The Knowledge Base)
 -   **`tokens.json`**: The Token Registry.
     -   Schema: `{"SYMBOL": {"id": "0.0.x", "decimals": 6}}`

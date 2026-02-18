@@ -109,8 +109,7 @@ class PacmanConfig:
         config = cls()
         
         # Required: Private key (Securely Wrapped)
-        # PRIORITIZE standard PRIVATE_KEY, fallback to legacy PACMAN_PRIVATE_KEY
-        raw_key = os.getenv("PRIVATE_KEY") or os.getenv("PACMAN_PRIVATE_KEY")
+        raw_key = os.getenv("PRIVATE_KEY")
         if raw_key:
             config.private_key = SecureString(raw_key)
             del raw_key # Attempt to clear local ref

@@ -28,8 +28,8 @@ Trading on Hedera often involves complex token variants (HTS vs ERC20 bridged) a
 # 1. Install Dependencies
 pip install web3 networkx python-dotenv
 
-# 2. Configure Environment (.env)
-PACMAN_PRIVATE_KEY="0x..."
+# 2. Configure# Required for live trading (Standard Ethereum Format)
+PRIVATE_KEY=your_private_key_here_without_0x_prefix
 PACMAN_SIMULATE=true  # Start in safety mode
 
 # 3. Just Swap

@@ -30,7 +30,7 @@ router.load_pools()
 route = router.recommend_route(req['from_token'], req['to_token'])
 
 # 3. Execute with Hardened Safety
-executor = PacmanExecutor(private_key=os.getenv("PACMAN_PRIVATE_KEY"))
+executor = PacmanExecutor(private_key=os.getenv("PRIVATE_KEY"))
 result = executor.execute_swap(route, amount_usd=req['amount'])
 ```
 

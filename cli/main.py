@@ -619,7 +619,7 @@ def check_wallet_setup(app):
     if len(sys.argv) > 1 and sys.argv[1] in ["help", "pools", "tokens", "price"]:
         return
 
-    key = os.getenv("PRIVATE_KEY") or os.getenv("PACMAN_PRIVATE_KEY")
+    key = os.getenv("PRIVATE_KEY")
     acc_id = os.getenv("HEDERA_ACCOUNT_ID")
 
     if not key or not acc_id:

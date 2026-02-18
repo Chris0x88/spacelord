@@ -46,7 +46,7 @@ async function main() {
 
     // Get credentials from environment
     const accountIdStr = process.env.HEDERA_ACCOUNT_ID;
-    let privateKeyStr = process.env.PRIVATE_KEY || process.env.PACMAN_PRIVATE_KEY;
+    let privateKeyStr = process.env.PRIVATE_KEY;
 
     if (!accountIdStr) {
         console.error("Error: HEDERA_ACCOUNT_ID not set");

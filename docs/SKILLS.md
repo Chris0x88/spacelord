@@ -7,7 +7,9 @@
 
 ## 🛠 Prerequisites
 - **CLI**: `python3 pacman_cli.py "[command]"`
-- **Environment**: `.env` with `PACMAN_PRIVATE_KEY` (0x hex format).
+- **Setup**:
+    - Ensure `.env` has `PRIVATE_KEY` set.
+    - Run `python cli/main.py setup` to configure if needed.
 - **Safety**: Set `PACMAN_SIMULATE=true` to preview routes without execution.
 
 ---
