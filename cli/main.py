@@ -239,17 +239,42 @@ def cmd_stake(app, args):
     # Initialize Manager
     try:
         manager = StakingManager(network=app.config.network)
+        # Validate and Force-Reload Account ID from .env
+        # This prevents stale environment variables (e.g. 0.0.123) from causing PAYER_ACCOUNT_NOT_FOUND
+        import os
+        from pathlib import Path
         
-        # Set Operator (Private Key is already standardized in app.config)
+        env_id = None
+        try:
+            env_path = Path(__file__).resolve().parent.parent / ".env"
+            if env_path.exists():
+                with open(env_path) as f:
+                    for line in f:
+                        if line.strip().startswith("HEDERA_ACCOUNT_ID="):
+                            env_id = line.strip().split("=")[1].strip()
+                            break
+        except Exception:
+            pass
+
+        # Prefer .env value if found, otherwise stick to config
+        active_account_id = env_id if env_id else app.config.hedera_account_id
+        
+        if not active_account_id:
+             print(f"  {C.ERR}✗{C.R} Account ID not configured.")
+             return
+
+        # Set Operator
         # We must reveal it momentarily to pass to the SDK
         pk = app.config.private_key.reveal()
-        manager.set_operator(app.config.hedera_account_id, pk)
+        manager.set_operator(active_account_id, pk)
         del pk # Cleanup
 
         if node_id == 5:
-            print(f"\n  {C.ACCENT}⟳{C.R} Staking to {C.BOLD}Google Council Node (5){C.R}...")
+            print(f"\n  {C.ACCENT}⟳{C.R} Staking for Account {C.BOLD}{active_account_id}{C.R}...")
+            print(f"  {C.ACCENT}⟳{C.R} To {C.BOLD}Google Council Node (5){C.R}...")
         else:
-            print(f"\n  {C.ACCENT}⟳{C.R} Staking to Node {C.BOLD}{node_id}{C.R}...")
+            print(f"\n  {C.ACCENT}⟳{C.R} Staking for Account {C.BOLD}{active_account_id}{C.R}...")
+            print(f"  {C.ACCENT}⟳{C.R} To Node {C.BOLD}{node_id}{C.R}...")
         
         print(f"  {C.MUTED}ℹ This stakes your {C.BOLD}full liquid balance{C.R}{C.MUTED}.{C.R}")
         print(f"  {C.MUTED}ℹ Funds remain available for use immediately.{C.R}")
@@ -310,11 +335,33 @@ def cmd_unstake(app, args):
 
     try:
         manager = StakingManager(network=app.config.network)
+        
+        # Validate and Force-Reload Account ID from .env
+        import os
+        from pathlib import Path
+        env_id = None
+        try:
+            env_path = Path(__file__).resolve().parent.parent / ".env"
+            if env_path.exists():
+                with open(env_path) as f:
+                    for line in f:
+                        if line.strip().startswith("HEDERA_ACCOUNT_ID="):
+                            env_id = line.strip().split("=")[1].strip()
+                            break
+        except Exception:
+            pass
+        
+        active_account_id = env_id if env_id else app.config.hedera_account_id
+        
+        if not active_account_id:
+             print(f"  {C.ERR}✗{C.R} Account ID not configured.")
+             return
+
         pk = app.config.private_key.reveal()
-        manager.set_operator(app.config.hedera_account_id, pk)
+        manager.set_operator(active_account_id, pk)
         del pk
 
-        print(f"\n  {C.ACCENT}⟳{C.R} Unstaking from network...")
+        print(f"\n  {C.ACCENT}⟳{C.R} Unstaking for Account {C.BOLD}{active_account_id}{C.R}...")
         
         # Safety Check (Address Verification)
         try:
