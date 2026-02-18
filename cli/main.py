@@ -53,7 +53,6 @@ def cmd_help(app, args):
         "trade": "swap",
         "buy":   "swap",
         "get":   "swap",
-        "convert":"swap",
         "transfers": "send",
         "transfer": "send",
         "wallet": "balance",
@@ -404,8 +403,6 @@ def handle_natural_language(app, text):
 
     if intent == "swap":
         _do_swap(app, req)
-    elif intent == "convert":
-        _do_swap(app, req) # Convert is handled by swap logic in App
     elif intent == "balance":
         cmd_balance(app, [])
     elif intent == "help":
@@ -623,17 +620,18 @@ def _update_env(key, value):
 # ---------------------------------------------------------------------------
 
 COMMANDS = {
-    "help": cmd_help, "?": cmd_help, "-h": cmd_help,
-    "tokens": cmd_tokens, "t": cmd_tokens,
-    "sources": cmd_sources, "source": cmd_sources, "s": cmd_sources, "price": cmd_price,
+    "setup": cmd_setup,
     "account": cmd_account,
     "balance": cmd_balance,
+    "tokens": cmd_tokens, "t": cmd_tokens,
+    "pools": cmd_pools, "pool": cmd_pools,
+    "price": cmd_price,
     "history": cmd_history,
     "send": cmd_send,
     "receive": cmd_receive,
+    "sources": cmd_sources, "source": cmd_sources, "s": cmd_sources,
     "verbose": cmd_verbose,
-    "pools": cmd_pools, "pool": cmd_pools,
-    "setup": cmd_setup
+    "help": cmd_help, "?": cmd_help, "-h": cmd_help,
 }
 
 def process_input(app, text):

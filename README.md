@@ -20,7 +20,7 @@
 
 ## 🌪️ Features
 
-- **Natural Language Execution**: Swap, convert, and send using intuitive commands: `swap 10 HBAR for USDC`.
+- **Natural Language Execution**: Swap and send using intuitive commands: `swap 10 HBAR for USDC`.
 - **Intelligent Variant Routing**: Automatically discovers the optimal path through HTS and ERC20-wrapped variants.
 - **Proactive Association**: Pacman detects missing token associations and initializes them on-chain automatically.
 - **Multi-Tier Price Discovery**: Aggregates live data from SaucerSwap V2, CoinGecko, and Binance.
@@ -58,7 +58,6 @@ Simply run `./pacman` to enter the interactive trading shell:
 | :--- | :--- |
 | **Swap (Exact In)** | `swap 100 HBAR for USDC` |
 | **Swap (Exact Out)** | `swap HBAR for 20 USDC` |
-| **Wrap/Unwrap** | `convert 10 HBAR for WHBAR` |
 | **Transfer** | `send 50 USDC to 0.0.1234` |
 | **Wallet Balance** | `balance` |
 | **Market Prices** | `price` |

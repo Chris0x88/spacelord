@@ -21,20 +21,19 @@ PACMAN_BANNER_TEMPLATE = """{ACCENT}
 HELP_COMMANDS = [
     ("swap <amt> <A> for <B>",   "Exact input swap"),
     ("swap <A> for <amt> <B>",   "Exact output swap"),
-    ("convert <A> for <amt> <B>","Wrap / Unwrap tokens"),
-    ("send <amt> <tk> to <rcp>", "Transfer crypto"),
-    ("receive <token>",          "Get addr & associate"),
+    ("setup",                    "Secure wallet configuration"),
+    ("account",                  "Wallet & network info"),
     ("balance",                  "All wallet balances"),
     ("balance <token>",          "Single token balance"),
+    ("tokens",                   "Supported token list"),
+    ("pools",                    "Manage pool registries"),
     ("price",                    "List all market prices"),
     ("price <token>",            "Check single price"),
-    ("sources",                  "Show all price sources"),
-    ("account",                  "Wallet & network info"),
-    ("tokens",                   "Supported token list"),
     ("history",                  "Transaction history"),
+    ("send <amt> <tk> to <rcp>", "Transfer crypto"),
+    ("receive <token>",          "Get addr & associate"),
+    ("sources",                  "Show all price sources"),
     ("verbose",                  "Toggle debug logging"),
-    ("pools",                    "Manage pool registries"),
-    ("setup",                    "Secure wallet configuration"),
     ("help",                     "This menu"),
     ("exit",                     "Quit Pacman"),
 ]
@@ -43,7 +42,6 @@ HELP_EXAMPLES = [
     ("swap 100 HBAR for USDC",    "Swap ~100 HBAR to USDC"),
     ("swap HBAR for 10 USDC",     "Swap enough HBAR to get 10 USDC"),
     ("swap 100 USDC for HBAR",    "Swap 100 USDC to HBAR"),
-    ("convert 100 HBAR for WHBAR", "Wrap HBAR to WHBAR"),
     ("send 100 USDC to 0.0.1234", "Send token to external account"),
     ("balance SAUCE",             "Check SAUCE balance"),
 ]
@@ -71,7 +69,7 @@ Follow these rules for the best results:
    - {C.BOLD}Exact Out{C.R}: "swap A for {C.OK}10{C.R} B" (You get exactly 10 B)
    - {C.BOLD}Buy Mode{C.R}:  "buy 10 B with A" (Exact Output mode)""",
 
-    "swap": """{C.BOLD}SWAPPING & CONVERSION{C.R}
+    "swap": """{C.BOLD}SWAPPING ASSETS{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}
 Pacman finds the most efficient path through the SaucerSwap 
 V2 Liquidity Graph.
@@ -79,7 +77,6 @@ V2 Liquidity Graph.
 {C.ACCENT}Usage examples:{C.R}
   {C.TEXT}ᗧ swap 10 HBAR for USDC{C.R}   (Exact Input)
   {C.TEXT}ᗧ swap HBAR for 10 USDC{C.R}   (Exact Output)
-  {C.TEXT}ᗧ convert 10 HBAR to WHBAR{C.R} (Wrap/Unwrap)
 
 {C.ACCENT}Smart Routing:{C.R}
   Pacman will automatically route through intermediate pools 
