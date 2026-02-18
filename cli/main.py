@@ -88,22 +88,28 @@ def cmd_account(app, args):
     print(f"\n  {C.TEXT}Sub-account management:{C.R}")
     print(f"  {C.ACCENT}[S]{C.R} Create new Sub-account (same key)")
     
-    choice = input(f"\n  Choice {C.MUTED}(s or enter to exit){C.R}: ").strip().lower()
-    if choice == 's':
-        print(f"\n  {C.MUTED}Creating sub-account on {app.network}...{C.R}")
-        new_id = app.create_sub_account(initial_balance=1.0)
-        if not new_id:
-            print(f"  {C.ERR}✗{C.R} Creation failed.")
-            return
+    while True:
+        choice = input(f"\n  Choice {C.MUTED}(s or enter to exit){C.R}: ").strip().lower()
+        if not choice:
+            break
+        if choice == 's':
+            print(f"\n  {C.MUTED}Creating sub-account on {app.network}...{C.R}")
+            new_id = app.create_sub_account(initial_balance=1.0)
+            if not new_id:
+                print(f"  {C.ERR}✗{C.R} Creation failed.")
+                return
+                
+            print(f"  {C.OK}✅ Created Sub-account: {C.BOLD}{new_id}{C.R}")
+            print(f"  {C.MUTED}This account uses your existing Private Key.{C.R}")
             
-        print(f"  {C.OK}✅ Created Sub-account: {C.BOLD}{new_id}{C.R}")
-        print(f"  {C.MUTED}This account uses your existing Private Key.{C.R}")
-        
-        confirm = input(f"\n  Switch .env to this new ID? {C.MUTED}(y/n){C.R} ").strip().lower()
-        if confirm in ["y", "yes"]:
-            _update_env("HEDERA_ACCOUNT_ID", new_id, force=True)
-            app.config.hedera_account_id = new_id
-            print(f"  {C.OK}✅ Account ID updated to {new_id}.{C.R}")
+            confirm = input(f"\n  Switch .env to this new ID? {C.MUTED}(y/n){C.R} ").strip().lower()
+            if confirm in ["y", "yes"]:
+                _update_env("HEDERA_ACCOUNT_ID", new_id, force=True)
+                app.config.hedera_account_id = new_id
+                print(f"  {C.OK}✅ Account ID updated to {new_id}.{C.R}")
+            break
+        else:
+            print(f"  {C.MUTED}Invalid choice. Type 's' or press enter.{C.R}")
 
 def cmd_balance(app, args):
     token = args[0] if args else None
@@ -714,7 +720,7 @@ COMMANDS = {
     "history": cmd_history,
     "send": cmd_send,
     "receive": cmd_receive,
-    "sources": cmd_sources, "source": cmd_sources, "s": cmd_sources,
+    "sources": cmd_sources, "source": cmd_sources,
     "verbose": cmd_verbose,
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
 }
