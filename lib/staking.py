@@ -39,17 +39,20 @@ class StakingManager:
             raise ValueError("Account ID and Private Key are required.")
 
         # Aggressive ECDSA Enforcement
-        # Since this app is EVM-centric (Ethereum keys), we prioritize ECDSA.
-        # The SDK defaults to Ed25519 for raw 32-byte hex strings, which causes invalid signatures for EVM keys.
+        # We manually decode the hex to bytes and call the explicit 
+        # ECDSA constructor to avoid the ambiguous 32-byte warning.
         
         clean_key = private_key.strip().replace("0x", "")
         
         try:
             # 1. Try ECDSA First (Most likely for this user)
             try:
-                pk_obj = PrivateKey.from_string_ecdsa(clean_key)
+                # Convert hex string to raw bytes (32 bytes)
+                key_bytes = bytes.fromhex(clean_key)
+                # Call specific ECDSA method to silence SDK warning
+                pk_obj = PrivateKey.from_bytes_ecdsa(key_bytes)
             except:
-                # 2. Fallback to generic parsing (Ed25519 or DER)
+                # 2. Fallback: Re-try with string parser or standard from_bytes
                 pk_obj = PrivateKey.from_string(private_key)
             
             # Verify basic key validity
