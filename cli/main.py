@@ -217,18 +217,25 @@ def cmd_pools(app, args):
         print(f"  {C.TEXT}pools approve <id>{C.R}    Add pool to approved list")
         print(f"  {C.TEXT}pools delete <id>{C.R}     Remove pool from list")
         print(f"  {C.CHROME}{'─' * 56}{C.R}")
-        print(f"  Use {C.MUTED}--v1{C.R} or {C.MUTED}--v2{C.R} to filter protocol (Default: V2)")
+        print(f"  {C.MUTED}Flags: -1 (V1), -2 (V2). Default: V2{C.R}")
         print()
         return
 
-    action = args[0].lower()
-    sub_args = args[1:]
+    # 1. Robust Flag Extraction (Any position, various aliases)
+    v1_aliases = ["--v1", "-v1", "--1", "-1"]
+    v2_aliases = ["--v2", "-v2", "--2", "-2", "v--2", "--v2"] # Added user's typo for safety
     
-    # Extract flags
-    v1_flag = "--v1" in sub_args
-    v2_flag = "--v2" in sub_args
-    if v1_flag: sub_args.remove("--v1")
-    if v2_flag: sub_args.remove("--v2")
+    v1_flag = any(f in args for f in v1_aliases)
+    v2_flag = any(f in args for f in v2_aliases)
+    
+    # Clean args from flags
+    clean_args = [a for a in args if a not in v1_aliases and a not in v2_aliases]
+    
+    if not clean_args:
+        return cmd_pools(app, []) # Show help if no action left
+
+    action = clean_args[0].lower()
+    sub_args = clean_args[1:]
     
     protocol = "v1" if v1_flag else "v2"
 
@@ -305,19 +312,24 @@ def _pools_search(app, query, protocol):
             continue
             
         found_any = True
-        print(f"\n  {C.BOLD}{p_type.upper()} Results:{C.R}")
-        print(f"  {C.CHROME}{'ID':<12} {'PAIR':<20} {'LIQUIDITY':<15}{C.R}")
+        print(f"\n  {C.BOLD}{p_type.upper()} Liquidity Sources{C.R}")
+        print(f"  {C.CHROME}{'ID':<12} {'PAIR':<25} {'FEE':<8}{C.R}")
+        print(f"  {C.CHROME}{'─' * 50}{C.R}")
+        
         for r in results[:10]: # Cap at 10 for readability
             cid = r.get("contractId", "N/A")
             tA = r.get("tokenA", {}).get("symbol", "???")
             tB = r.get("tokenB", {}).get("symbol", "???")
             idA = r.get("tokenA", {}).get("id", "???")
             idB = r.get("tokenB", {}).get("id", "???")
-            # Liquidity handling varies by protocol in API
-            liq = r.get("tvlUsd") or r.get("liquidityUsd") or 0
-            liq_str = f"${float(liq):,.0f}" if liq else "N/A"
             
-            print(f"  {C.TEXT}{cid:<12} {tA}/{tB:<18} {liq_str:<15}{C.R}")
+            # Fee handling
+            fee = r.get("fee")
+            if p_type == "v1" and fee is None:
+                fee = 3000
+            fee_str = f"{fee/10000:.2f}%" if fee is not None else "N/A"
+            
+            print(f"  {C.TEXT}{cid:<12} {tA}/{tB:<24} {fee_str:<8}{C.R}")
             print(f"               {C.MUTED}{idA} / {idB}{C.R}")
             
     if not found_any:
