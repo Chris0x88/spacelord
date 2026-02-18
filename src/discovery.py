@@ -67,12 +67,13 @@ class DiscoveryManager:
                 tA = pool.get("tokenA", {})
                 tB = pool.get("tokenB", {})
                 
-                # Match symbol or ID
+                # Match symbol, ID, or contractId
                 match = (
                     query in (tA.get("symbol", "").upper()) or
                     query in (tB.get("symbol", "").upper()) or
                     query == tA.get("id") or
-                    query == tB.get("id")
+                    query == tB.get("id") or
+                    query == pool.get("contractId")
                 )
                 
                 if match:

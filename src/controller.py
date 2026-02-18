@@ -125,3 +125,75 @@ class PacmanController:
         self.config.debug = not self.config.debug
         set_verbose(self.config.debug)
         return self.config.debug
+
+    def approve_pool(self, pool_data: dict, protocol: str = "v2"):
+        """
+        Add a pool to the local approved registry.
+        """
+        import json
+        from pathlib import Path
+        
+        protocol = protocol.lower()
+        reg_file = "data/pools.json" if protocol == "v2" else "data/v1_pools_approved.json"
+        reg_path = Path(reg_file)
+        
+        # 1. Load existing
+        registry = []
+        if reg_path.exists():
+            with open(reg_path) as f:
+                registry = json.load(f)
+                
+        # 2. Check if already exists
+        pool_id = pool_data.get("contractId")
+        if any(p.get("contractId") == pool_id for p in registry):
+            logger.info(f"Pool {pool_id} already in {protocol} registry.")
+            return False
+
+        # 3. Convert format if needed
+        # Expected: {contractId, tokenA, tokenB, fee, label}
+        entry = {
+            "contractId": pool_id,
+            "tokenA": pool_data.get("tokenA", {}).get("id") if isinstance(pool_data.get("tokenA"), dict) else pool_data.get("tokenA"),
+            "tokenB": pool_data.get("tokenB", {}).get("id") if isinstance(pool_data.get("tokenB"), dict) else pool_data.get("tokenB"),
+            "fee": pool_data.get("fee"),
+            "label": f"{pool_data.get('tokenA', {}).get('symbol')}/{pool_data.get('tokenB', {}).get('symbol')}"
+        }
+        
+        registry.append(entry)
+        
+        # 4. Save
+        with open(reg_path, "w") as f:
+            json.dump(registry, f, indent=4)
+        
+        logger.info(f"Approved {protocol} pool: {entry['label']} ({pool_id})")
+        self.router.load_pools() # Reload graph
+        return True
+
+    def remove_pool(self, pool_id: str, protocol: str = "v2"):
+        """
+        Remove a pool from the local approved registry.
+        """
+        import json
+        from pathlib import Path
+        
+        protocol = protocol.lower()
+        reg_file = "data/pools.json" if protocol == "v2" else "data/v1_pools_approved.json"
+        reg_path = Path(reg_file)
+        
+        if not reg_path.exists():
+            return False
+            
+        with open(reg_path) as f:
+            registry = json.load(f)
+            
+        new_registry = [p for p in registry if p.get("contractId") != pool_id]
+        
+        if len(new_registry) == len(registry):
+            return False
+            
+        with open(reg_path, "w") as f:
+            json.dump(new_registry, f, indent=4)
+            
+        logger.info(f"Removed {protocol} pool: {pool_id}")
+        self.router.load_pools() # Reload graph
+        return True
