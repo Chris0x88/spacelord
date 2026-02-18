@@ -426,45 +426,6 @@ def _do_swap(app, req):
         import traceback
         logger.debug(traceback.format_exc())
 
-# ---------------------------------------------------------------------------
-# Dispatcher
-# ---------------------------------------------------------------------------
-
-COMMANDS = {
-    "help": cmd_help, "?": cmd_help, "-h": cmd_help,
-    "tokens": cmd_tokens, "t": cmd_tokens,
-    "sources": cmd_sources, "source": cmd_sources, "s": cmd_sources, "price": cmd_price,
-    "account": cmd_account,
-    "balance": cmd_balance,
-    "history": cmd_history,
-    "send": cmd_send,
-    "receive": cmd_receive,
-    "verbose": cmd_verbose,
-    "pools": cmd_pools, "pool": cmd_pools,
-    "setup": cmd_setup
-}
-
-def process_input(app, text):
-    parts = text.strip().split()
-    if not parts: return
-
-    cmd = parts[0].lower()
-    args = parts[1:]
-
-    if cmd in COMMANDS:
-        try:
-            COMMANDS[cmd](app, args)
-        except PacmanError as e:
-            print(f"  {C.ERR}✗{C.R} {e}")
-        except Exception as e:
-            print(f"  {C.ERR}✗{C.R} Unexpected Error: {e}")
-    else:
-        # Fallback to NLP
-        try:
-            handle_natural_language(app, text)
-        except PacmanError as e:
-            print(f"  {C.ERR}✗{C.R} {e}")
-
 def cmd_setup(app, args):
     """
     Securely configure your Hedera wallet credentials.
@@ -588,6 +549,45 @@ def _update_env(key, value):
         
     with open(env_path, "w") as f:
         f.writelines(lines)
+
+# ---------------------------------------------------------------------------
+# Dispatcher
+# ---------------------------------------------------------------------------
+
+COMMANDS = {
+    "help": cmd_help, "?": cmd_help, "-h": cmd_help,
+    "tokens": cmd_tokens, "t": cmd_tokens,
+    "sources": cmd_sources, "source": cmd_sources, "s": cmd_sources, "price": cmd_price,
+    "account": cmd_account,
+    "balance": cmd_balance,
+    "history": cmd_history,
+    "send": cmd_send,
+    "receive": cmd_receive,
+    "verbose": cmd_verbose,
+    "pools": cmd_pools, "pool": cmd_pools,
+    "setup": cmd_setup
+}
+
+def process_input(app, text):
+    parts = text.strip().split()
+    if not parts: return
+
+    cmd = parts[0].lower()
+    args = parts[1:]
+
+    if cmd in COMMANDS:
+        try:
+            COMMANDS[cmd](app, args)
+        except PacmanError as e:
+            print(f"  {C.ERR}✗{C.R} {e}")
+        except Exception as e:
+            print(f"  {C.ERR}✗{C.R} Unexpected Error: {e}")
+    else:
+        # Fallback to NLP
+        try:
+            handle_natural_language(app, text)
+        except PacmanError as e:
+            print(f"  {C.ERR}✗{C.R} {e}")
 
 # ---------------------------------------------------------------------------
 # Entry Point
