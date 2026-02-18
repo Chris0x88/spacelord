@@ -109,7 +109,8 @@ class PacmanConfig:
         config = cls()
         
         # Required: Private key (Securely Wrapped)
-        raw_key = os.getenv("PACMAN_PRIVATE_KEY") or os.getenv("PRIVATE_KEY")
+        # PRIORITIZE standard PRIVATE_KEY, fallback to legacy PACMAN_PRIVATE_KEY
+        raw_key = os.getenv("PRIVATE_KEY") or os.getenv("PACMAN_PRIVATE_KEY")
         if raw_key:
             config.private_key = SecureString(raw_key)
             del raw_key # Attempt to clear local ref
@@ -146,7 +147,7 @@ class PacmanConfig:
         
         if not self.simulate_mode:
             if not self.private_key:
-                raise ConfigurationError("Private key required for live execution (Set PACMAN_PRIVATE_KEY)")
+                raise ConfigurationError("Private key required for live execution (Set PRIVATE_KEY in .env)")
 
             # Validate private key format (should be 64 hex chars)
             # Reveal momentarily for validation
@@ -202,8 +203,8 @@ _default_config = PacmanConfig()
 ENV_TEMPLATE = f"""# Pacman Configuration
 # Copy this to .env and fill in your values
 
-# Required for live trading
-PACMAN_PRIVATE_KEY=your_private_key_here_without_0x_prefix
+# Required for live trading (Standard Ethereum Format)
+PRIVATE_KEY=your_private_key_here_without_0x_prefix
 
 # Optional: Hedera account ID (0.0.xxx format)
 HEDERA_ACCOUNT_ID=0.0.123456

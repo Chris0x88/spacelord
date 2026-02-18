@@ -82,8 +82,12 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str)
                     "symbol": token_symbol
                 }
 
-            signed = executor.w3.eth.account.sign_transaction(tx, executor.private_key)
-            tx_hash = executor.w3.eth.send_raw_transaction(signed.raw_transaction).hex()
+            pk = executor.config.private_key.reveal()
+            try:
+                signed = executor.w3.eth.account.sign_transaction(tx, pk)
+                tx_hash = executor.w3.eth.send_raw_transaction(signed.raw_transaction).hex()
+            finally:
+                del pk # Secure cleanup
             
         # 3. Token Transfer (ERC20/HTS)
         else:
@@ -126,8 +130,12 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str)
                     "symbol": token_symbol
                 }
 
-            signed = executor.w3.eth.account.sign_transaction(tx, executor.private_key)
-            tx_hash = executor.w3.eth.send_raw_transaction(signed.raw_transaction).hex()
+            pk = executor.config.private_key.reveal()
+            try:
+                signed = executor.w3.eth.account.sign_transaction(tx, pk)
+                tx_hash = executor.w3.eth.send_raw_transaction(signed.raw_transaction).hex()
+            finally:
+                del pk
 
         # 4. Wait for Receipt
         logger.info(f"   ⏳ Submitted. Hash: {tx_hash}")

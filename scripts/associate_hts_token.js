@@ -21,7 +21,7 @@ async function main() {
 
     const tokenIdStr = args[0];
     const accountIdStr = process.env.HEDERA_ACCOUNT_ID;
-    let privateKeyStr = process.env.PACMAN_PRIVATE_KEY;
+    let privateKeyStr = process.env.PRIVATE_KEY || process.env.PACMAN_PRIVATE_KEY;
 
     if (!accountIdStr || !privateKeyStr) {
         console.error("Error: HEDERA_ACCOUNT_ID or PACMAN_PRIVATE_KEY not set");

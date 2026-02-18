@@ -497,125 +497,119 @@ def cmd_setup(app, args):
     print(f"  {C.MUTED}This will update your .env file.{C.R}")
     print(f"  {C.MUTED}Type 'x' or 'cancel' to exit at any time.{C.R}")
 
-    try:
-        # 0. Selection
-        print(f"\n  {C.TEXT}How would you like to start?{C.R}")
-        print(f"  {C.ACCENT}[P]{C.R} Paste existing Private Key")
-        print(f"  {C.ACCENT}[C]{C.R} Create completely fresh Account")
+    # 0. Selection
+    print(f"\n  {C.TEXT}How would you like to start?{C.R}")
+    print(f"  {C.ACCENT}[P]{C.R} Paste existing Private Key")
+    print(f"  {C.ACCENT}[C]{C.R} Create completely fresh Account")
+    
+    choice = input(f"\n  Choice {C.MUTED}(p/c){C.R}: ").strip().lower()
+    if choice in ["x", "cancel"]:
+        print(f"  {C.MUTED}Setup cancelled.{C.R}\n")
+        return
         
-        choice = input(f"\n  Choice {C.MUTED}(p/c){C.R}: ").strip().lower()
-        if choice in ["x", "cancel"]:
-            print(f"  {C.MUTED}Setup cancelled.{C.R}\n")
+    if choice == 'c':
+        print(f"\n  {C.MUTED}Creating fresh ECDSA account on {app.network}...{C.R}")
+        new_id, new_key = app.create_new_account(initial_balance=1.0)
+        if not new_id:
+            print(f"  {C.ERR}✗{C.R} Creation failed. Check your network or funding account.")
             return
-            
-        if choice == 'c':
-            print(f"\n  {C.MUTED}Creating fresh ECDSA account on {app.network}...{C.R}")
-            new_id, new_key = app.create_new_account(initial_balance=1.0)
-            if not new_id:
-                print(f"  {C.ERR}✗{C.R} Creation failed. Check your network or funding account.")
-                return
-            
-            print(f"  {C.OK}✅ Created Account: {C.BOLD}{new_id}{C.R}")
-            print(f"  {C.WARN}⚠  IMPORTANT: Write down your Private Key!{C.R}")
-            print(f"  {C.TEXT}{new_key}{C.R}")
-            
-            # Save to .env
-            _update_env("PACMAN_PRIVATE_KEY", new_key, force=True)
-            _update_env("HEDERA_ACCOUNT_ID", new_id, force=True)
-            
-            # Immediate config update
-            from src.config import SecureString
-            app.config.private_key = SecureString(new_key)
-            app.config.hedera_account_id = new_id
-            
-            print(f"\n  {C.OK}✅ Wallet setup complete!{C.R}")
-            return
-
-        # 1. Private Key Entry (Existing Flow)
-        print(f"\n  {C.BOLD}Step 1: Private Key{C.R}")
-        print(f"  {C.MUTED}Paste your ECDSA or ED25519 hex key (64 chars).{C.R}")
         
-        prompt = f"  Private Key: "
-        new_key = getpass.getpass(prompt).strip()
+        print(f"  {C.OK}✅ Created Account: {C.BOLD}{new_id}{C.R}")
+        print(f"  {C.WARN}⚠  IMPORTANT: Write down your Private Key!{C.R}")
+        print(f"  {C.TEXT}{new_key}{C.R}")
         
-        if new_key.lower() in ["x", "cancel"]:
-            print(f"  {C.MUTED}Setup cancelled.{C.R}\n")
-            return
-
-        if not new_key:
-            return
-
-        # Clean key
-        new_key = new_key.replace("0x", "")
-        if len(new_key) != 64:
-            print(f"  {C.ERR}✗{C.R} Invalid length ({len(new_key)}). Must be 64 hex chars.")
-            return
-
-        # 2. Derive EOA and Discover Account ID
-        print(f"  {C.MUTED}Deriving address...{C.R}")
-        try:
-            temp_w3 = Web3()
-            acc = temp_w3.eth.account.from_key(new_key)
-            eoa = acc.address
-            print(f"  {C.MUTED}EVM Address: {C.TEXT}{eoa}{C.R}")
-        except Exception as e:
-            print(f"  {C.ERR}✗{C.R} Failed to derive address: {e}")
-            return
-
-        print(f"  {C.MUTED}Discovering Hedera ID via Mirror Node...{C.R}")
-        hedera_id = app.resolve_account_id(eoa)
+        # Save to .env
+        _update_env("PRIVATE_KEY", new_key)
+        _update_env("HEDERA_ACCOUNT_ID", new_id)
         
-        if not hedera_id:
-            from src.utils import is_valid_account_id
-            print(f"\n  {C.WARN}⚠  Account Not Linked{C.R}")
-            print(f"  {C.TEXT}Your address {C.BOLD}{eoa}{C.R} is not yet indexed on Hedera.{C.R}")
-            print(f"  {C.MUTED}This usually means the account is brand new or has no HBAR.{C.R}")
-            
-            choice = input(f"\n  Enter Account ID manually? (0.0.xxx) {C.MUTED}(y/n){C.R} ").strip().lower()
-            if choice in ["y", "yes"]:
-                while True:
-                    hedera_id = input(f"  Hedera ID: ").strip()
-                    if not hedera_id:
-                        print(f"  {C.MUTED}Setup aborted.{C.R}")
-                        return
-                    if hedera_id.lower() in ["x", "cancel"]:
-                        print(f"  {C.MUTED}Setup aborted.{C.R}")
-                        return
-                    
-                    if is_valid_account_id(hedera_id):
-                        break
-                    else:
-                        print(f"  {C.ERR}✗{C.R} Invalid format. Expected {C.BOLD}0.0.xxx{C.R}")
-            else:
-                print(f"  {C.MUTED}Setup aborted.{C.R}")
-                return
-        else:
-            print(f"  {C.OK}✅ Found Account ID: {C.BOLD}{hedera_id}{C.R}")
-
-        # 3. Confirmation and Save
-        existing_id = os.getenv("HEDERA_ACCOUNT_ID")
-        if existing_id and existing_id != hedera_id:
-            print(f"\n  {C.WARN}⚠  WARNING: Overwriting Existing ID{C.R}")
-            print(f"  Existing: {C.BOLD}{existing_id}{C.R}")
-            print(f"  New:      {C.BOLD}{hedera_id}{C.R}")
-            confirm = input(f"  Are you sure? {C.MUTED}(y/n){C.R} ").strip().lower()
-            if confirm not in ["y", "yes"]:
-                print(f"  {C.MUTED}Setup aborted. Existing values kept.{C.R}")
-                return
-
-        _update_env("PACMAN_PRIVATE_KEY", new_key, force=True)
-        _update_env("HEDERA_ACCOUNT_ID", hedera_id, force=True)
-        
-        # Immediate config update for active session
+        # Immediate config update
         from src.config import SecureString
         app.config.private_key = SecureString(new_key)
-        app.config.hedera_account_id = hedera_id
+        app.config.hedera_account_id = new_id
         
         print(f"\n  {C.OK}✅ Wallet setup complete!{C.R}")
-        print(f"  {C.MUTED}You can now use 'pools search' or check your 'balance'.{C.R}\n")
+        return
 
-    except (KeyboardInterrupt, EOFError):
-        print(f"\n  {C.MUTED}Setup cancelled.{C.R}\n")
+    # 1. Private Key Entry (Existing Flow)
+    print(f"\n  {C.BOLD}Step 1: Enter your Private Key{C.R}")
+    print(f"  {C.MUTED}(Masked input, will be saved to .env as PRIVATE_KEY){C.R}")
+    
+    while True:
+        key_input = getpass.getpass(f"  {C.ACCENT}Private Key:{C.R} ").strip()
+        if key_input.lower() in ['x', 'cancel', 'exit']:
+            print(f"  {C.MUTED}Setup cancelled.{C.R}")
+            return
+
+        clean_key = key_input.replace("0x", "")
+        if len(clean_key) == 64 and all(c in '0123456789abcdefABCDEF' for c in clean_key):
+             break
+        print(f"  {C.ERR}✗{C.R} Invalid format. Must be 64 hex characters.")
+
+    # Update .env
+    _update_env("PRIVATE_KEY", clean_key)
+    
+    # 2. Account ID Discovery
+    print(f"\n  {C.BOLD}Step 2: Account ID Discovery{C.R}")
+    try:
+        temp_w3 = Web3()
+        acc = temp_w3.eth.account.from_key(clean_key) # Use clean_key here
+        eoa = acc.address
+        print(f"  {C.MUTED}EVM Address: {C.TEXT}{eoa}{C.R}")
+    except Exception as e:
+        print(f"  {C.ERR}✗{C.R} Failed to derive address: {e}")
+        return
+
+    print(f"  {C.MUTED}Discovering Hedera ID via Mirror Node...{C.R}")
+    hedera_id = app.resolve_account_id(eoa)
+    
+    if not hedera_id:
+        from src.utils import is_valid_account_id
+        print(f"\n  {C.WARN}⚠  Account Not Linked{C.R}")
+        print(f"  {C.TEXT}Your address {C.BOLD}{eoa}{C.R} is not yet indexed on Hedera.{C.R}")
+        print(f"  {C.MUTED}This usually means the account is brand new or has no HBAR.{C.R}")
+        
+        choice = input(f"\n  Enter Account ID manually? (0.0.xxx) {C.MUTED}(y/n){C.R} ").strip().lower()
+        if choice in ["y", "yes"]:
+            while True:
+                hedera_id = input(f"  Hedera ID: ").strip()
+                if not hedera_id:
+                    print(f"  {C.MUTED}Setup aborted.{C.R}")
+                    return
+                if hedera_id.lower() in ["x", "cancel"]:
+                    print(f"  {C.MUTED}Setup aborted.{C.R}")
+                    return
+                
+                if is_valid_account_id(hedera_id):
+                    break
+                else:
+                    print(f"  {C.ERR}✗{C.R} Invalid format. Expected {C.BOLD}0.0.xxx{C.R}")
+        else:
+            print(f"  {C.MUTED}Setup aborted.{C.R}")
+            return
+    else:
+        print(f"  {C.OK}✅ Found Account ID: {C.BOLD}{hedera_id}{C.R}")
+
+    # 3. Confirmation and Save
+    existing_id = os.getenv("HEDERA_ACCOUNT_ID")
+    if existing_id and existing_id != hedera_id:
+        print(f"\n  {C.WARN}⚠  WARNING: Overwriting Existing ID{C.R}")
+        print(f"  Existing: {C.BOLD}{existing_id}{C.R}")
+        print(f"  New:      {C.BOLD}{hedera_id}{C.R}")
+        confirm = input(f"  Are you sure? {C.MUTED}(y/n){C.R} ").strip().lower()
+        if confirm not in ["y", "yes"]:
+            print(f"  {C.MUTED}Setup aborted. Existing values kept.{C.R}")
+            return
+
+    _update_env("PRIVATE_KEY", clean_key, force=True)
+    _update_env("HEDERA_ACCOUNT_ID", hedera_id, force=True)
+    
+    # Immediate config update for active session
+    from src.config import SecureString
+    app.config.private_key = SecureString(clean_key)
+    app.config.hedera_account_id = hedera_id
+    
+    print(f"\n  {C.OK}✅ Wallet setup complete!{C.R}")
+    print(f"  {C.MUTED}You can now use 'pools search' or check your 'balance'.{C.R}\n")
 
 def check_wallet_setup(app):
     """Check for wallet keys on startup and guide onboarding."""
@@ -625,7 +619,7 @@ def check_wallet_setup(app):
     if len(sys.argv) > 1 and sys.argv[1] in ["help", "pools", "tokens", "price"]:
         return
 
-    key = os.getenv("PACMAN_PRIVATE_KEY") or os.getenv("PRIVATE_KEY")
+    key = os.getenv("PRIVATE_KEY") or os.getenv("PACMAN_PRIVATE_KEY")
     acc_id = os.getenv("HEDERA_ACCOUNT_ID")
 
     if not key or not acc_id:
