@@ -18,7 +18,7 @@ root_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(root_dir))
 
 import json
-from cli.app import PacmanApp
+from src.controller import PacmanController
 from src.errors import PacmanError, ConfigurationError
 from src.logger import logger
 from cli.display import (
@@ -383,7 +383,7 @@ def main():
             import os
             os.environ["PACMAN_VERBOSE"] = "true"
             
-        app = PacmanApp()
+        app = PacmanController()
         
         # Check for API Key if not in simulation or if specifically needed
         check_saucerswap_api_key(app)

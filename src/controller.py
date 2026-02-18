@@ -1,15 +1,13 @@
-#!/usr/bin/env python3
 """
-Pacman App - Main Application Controller
+Pacman Controller - Headless Trading SDK
 =========================================
 
-The PacmanApp class coordinates the various components of the Pacman CLI:
+The PacmanController class orchestrates the business logic:
 - Configuration (PacmanConfig)
 - Routing (PacmanVariantRouter)
 - Execution (PacmanExecutor)
-- Price Management (PacmanPriceManager)
 
-It provides a high-level API for the CLI to interact with.
+It is designed to be imported by CLIs, Daemons, or Web APIs.
 """
 
 import logging
@@ -22,9 +20,9 @@ from src.executor import PacmanExecutor, ExecutionResult
 from src.router import PacmanVariantRouter, VariantRoute
 from lib.prices import price_manager
 
-class PacmanApp:
+class PacmanController:
     """
-    Main application class for Pacman.
+    Main controller class for Pacman.
     """
 
     def __init__(self, config_path: str = "config.yaml"):
