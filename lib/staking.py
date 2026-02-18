@@ -38,16 +38,18 @@ class StakingManager:
         if not account_id or not private_key:
             raise ValueError("Account ID and Private Key are required.")
 
-        # Strict ECDSA enforcement for EVM keys
-        is_evm = private_key.strip().lower().startswith("0x")
-        clean_key = private_key.replace("0x", "")
+        # Aggressive ECDSA Enforcement
+        # Since this app is EVM-centric (Ethereum keys), we prioritize ECDSA.
+        # The SDK defaults to Ed25519 for raw 32-byte hex strings, which causes invalid signatures for EVM keys.
+        
+        clean_key = private_key.strip().replace("0x", "")
         
         try:
-            if is_evm:
-                # User provided 0x prefix -> It IS an EVM key (ECDSA)
+            # 1. Try ECDSA First (Most likely for this user)
+            try:
                 pk_obj = PrivateKey.from_string_ecdsa(clean_key)
-            else:
-                # Fallback to SDK auto-detection (might guess Ed25519)
+            except:
+                # 2. Fallback to generic parsing (Ed25519 or DER)
                 pk_obj = PrivateKey.from_string(private_key)
             
             # Verify basic key validity
@@ -74,13 +76,7 @@ class StakingManager:
     def stake_to_node(self, node_id: int, simulate: bool = False) -> dict:
         """
         Update account to stake to a specific Node ID.
-        
-        Args:
-            node_id: Integer ID of the node (e.g. 5 for Google).
-            simulate: If True, do not broadcast (return mock success).
-            
-        Returns:
-            dict with success status and transaction info.
+        Use node_id=-1 to UNSTAKE.
         """
         if simulate:
             return {
@@ -96,10 +92,14 @@ class StakingManager:
             if not operator_id:
                 raise RuntimeError("Operator not set. Call set_operator first.")
 
-            tx = AccountUpdateTransaction() \
-                .set_account_id(operator_id) \
-                .set_staked_node_id(node_id) \
-                .set_transaction_memo("Pacman Staking Update")
+            tx = AccountUpdateTransaction().set_account_id(operator_id)
+            
+            if node_id == -1:
+                tx.clear_staked_node_id()
+                tx.set_transaction_memo("Pacman Unstake")
+            else:
+                tx.set_staked_node_id(node_id)
+                tx.set_transaction_memo("Pacman Staking Update")
 
             # Execute
             response = tx.execute(self.client)

@@ -33,6 +33,7 @@ HELP_COMMANDS = [
     ("send <amt> <tk> to <rcp>", "Transfer crypto"),
     ("receive <token>",          "Get addr & associate"),
     ("stake [node_id]",          "Stake HBAR to node"),
+    ("unstake",                  "Stop earning rewards"),
     ("sources",                  "Show all price sources"),
     ("verbose",                  "Toggle debug logging"),
     ("help",                     "This menu"),
