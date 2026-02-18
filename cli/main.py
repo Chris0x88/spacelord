@@ -101,7 +101,7 @@ def cmd_account(app, args):
         
         confirm = input(f"\n  Switch .env to this new ID? {C.MUTED}(y/n){C.R} ").strip().lower()
         if confirm in ["y", "yes"]:
-            _update_env("HEDERA_ACCOUNT_ID", new_id)
+            _update_env("HEDERA_ACCOUNT_ID", new_id, force=True)
             app.config.hedera_account_id = new_id
             print(f"  {C.OK}✅ Account ID updated to {new_id}.{C.R}")
 
@@ -514,8 +514,8 @@ def cmd_setup(app, args):
             print(f"  {C.TEXT}{new_key}{C.R}")
             
             # Save to .env
-            _update_env("PACMAN_PRIVATE_KEY", new_key)
-            _update_env("HEDERA_ACCOUNT_ID", new_id)
+            _update_env("PACMAN_PRIVATE_KEY", new_key, force=True)
+            _update_env("HEDERA_ACCOUNT_ID", new_id, force=True)
             
             # Immediate config update
             from src.config import SecureString
@@ -560,25 +560,45 @@ def cmd_setup(app, args):
         hedera_id = app.resolve_account_id(eoa)
         
         if not hedera_id:
+            from src.utils import is_valid_account_id
             print(f"\n  {C.WARN}⚠  Account Not Linked{C.R}")
             print(f"  {C.TEXT}Your address {C.BOLD}{eoa}{C.R} is not yet indexed on Hedera.{C.R}")
             print(f"  {C.MUTED}This usually means the account is brand new or has no HBAR.{C.R}")
             
             choice = input(f"\n  Enter Account ID manually? (0.0.xxx) {C.MUTED}(y/n){C.R} ").strip().lower()
             if choice in ["y", "yes"]:
-                hedera_id = input(f"  Hedera ID: ").strip()
-                if not hedera_id or not hedera_id.startswith("0.0."):
-                    print(f"  {C.ERR}✗{C.R} Invalid ID format.")
-                    return
+                while True:
+                    hedera_id = input(f"  Hedera ID: ").strip()
+                    if not hedera_id:
+                        print(f"  {C.MUTED}Setup aborted.{C.R}")
+                        return
+                    if hedera_id.lower() in ["x", "cancel"]:
+                        print(f"  {C.MUTED}Setup aborted.{C.R}")
+                        return
+                    
+                    if is_valid_account_id(hedera_id):
+                        break
+                    else:
+                        print(f"  {C.ERR}✗{C.R} Invalid format. Expected {C.BOLD}0.0.xxx{C.R}")
             else:
                 print(f"  {C.MUTED}Setup aborted.{C.R}")
                 return
         else:
             print(f"  {C.OK}✅ Found Account ID: {C.BOLD}{hedera_id}{C.R}")
 
-        # 3. Save to .env
-        _update_env("PACMAN_PRIVATE_KEY", new_key)
-        _update_env("HEDERA_ACCOUNT_ID", hedera_id)
+        # 3. Confirmation and Save
+        existing_id = os.getenv("HEDERA_ACCOUNT_ID")
+        if existing_id and existing_id != hedera_id:
+            print(f"\n  {C.WARN}⚠  WARNING: Overwriting Existing ID{C.R}")
+            print(f"  Existing: {C.BOLD}{existing_id}{C.R}")
+            print(f"  New:      {C.BOLD}{hedera_id}{C.R}")
+            confirm = input(f"  Are you sure? {C.MUTED}(y/n){C.R} ").strip().lower()
+            if confirm not in ["y", "yes"]:
+                print(f"  {C.MUTED}Setup aborted. Existing values kept.{C.R}")
+                return
+
+        _update_env("PACMAN_PRIVATE_KEY", new_key, force=True)
+        _update_env("HEDERA_ACCOUNT_ID", hedera_id, force=True)
         
         # Immediate config update for active session
         from src.config import SecureString
@@ -641,7 +661,7 @@ def check_saucerswap_api_key(app):
     except (KeyboardInterrupt, EOFError):
         print()
 
-def _update_env(key, value):
+def _update_env(key, value, force=False):
     """Update or add a key-value pair in the .env file."""
     from pathlib import Path
     env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -653,9 +673,19 @@ def _update_env(key, value):
     
     lines = []
     found = False
+    current_value = None
+    
     with open(env_path, "r") as f:
         for line in f:
             if line.strip().startswith(f"{key}="):
+                current_value = line.split("=", 1)[1].strip()
+                if not force and current_value and current_value != value:
+                    print(f"\n  {C.WARN}⚠  Warning: {key} already has a value.{C.R}")
+                    confirm = input(f"  Overwrite? {C.MUTED}(y/n){C.R} ").strip().lower()
+                    if confirm not in ["y", "yes"]:
+                        print(f"  {C.MUTED}Update skipped.{C.R}")
+                        return False
+                
                 lines.append(f"{key}={value}\n")
                 found = True
             else:
