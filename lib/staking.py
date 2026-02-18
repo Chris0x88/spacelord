@@ -106,13 +106,26 @@ class StakingManager:
 
             # Execute
             response = tx.execute(self.client)
-            receipt = response.get_receipt(self.client)
             
+            # Handle potential difference in SDK return types
+            # Some contexts return TransactionResponse (needs get_receipt)
+            # Others might return TransactionReceipt directly
+            if hasattr(response, "get_receipt"):
+                receipt = response.get_receipt(self.client)
+                tx_id = str(response.transaction_id)
+            else:
+                # Assume it's already a receipt
+                receipt = response
+                # Try to extract tx_id if available, else placeholder
+                tx_id = str(getattr(receipt, "transaction_id", "unknown_tx_id"))
+            
+            is_success = (str(receipt.status) == "SUCCESS")
             return {
-                "success": str(receipt.status) == "SUCCESS",
+                "success": is_success,
                 "status": str(receipt.status),
                 "node_id": node_id,
-                "tx_id": str(response.transaction_id)
+                "tx_id": tx_id,
+                "error": None if is_success else f"Transaction Status: {receipt.status}"
             }
 
         except Exception as e:
