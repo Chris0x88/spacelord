@@ -46,5 +46,39 @@ def set_verbose(enabled: bool = True):
             else:
                 h.setFormatter(logging.Formatter('%(message)s'))
 
+def log_ui(message: str):
+    """
+    Log a UI message to the file without ANSI colors.
+    Useful for mirroring the CLI experience in logs.
+    """
+    import re
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    clean_message = ansi_escape.sub('', str(message))
+    logger.info(f"[UI] {clean_message}")
+
+class MirrorStream:
+    """Wraps a stream (like stdout) to also write to the logger."""
+    def __init__(self, original_stream):
+        self.original_stream = original_stream
+        import re
+        self.ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+
+    def write(self, data):
+        self.original_stream.write(data)
+        if data.strip():
+            clean_data = self.ansi_escape.sub('', data)
+            if clean_data.strip():
+                # We use info but prefix it so it's searchable
+                logger.info(f"[UI] {clean_data.strip()}")
+
+    def flush(self):
+        self.original_stream.flush()
+
+def setup_mirror():
+    """Redirect stdout to MirrorStream to capture all CLI output."""
+    import sys
+    if not isinstance(sys.stdout, MirrorStream):
+        sys.stdout = MirrorStream(sys.stdout)
+
 # Primary app logger
 logger = setup_logger("pacman")

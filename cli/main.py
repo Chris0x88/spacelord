@@ -753,6 +753,9 @@ def process_input(app, text):
 # ---------------------------------------------------------------------------
 
 def main():
+    from src.logger import setup_mirror
+    setup_mirror()
+
     # Verbose Mode Detection (CLI Override)
     verbose_requested = False
     if "--verbose" in sys.argv or "-v" in sys.argv:
