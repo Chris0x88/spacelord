@@ -38,16 +38,15 @@ class StakingManager:
         if not account_id or not private_key:
             raise ValueError("Account ID and Private Key are required.")
 
-        # Auto-detect ECDSA (Ethereum style)
-        is_evm = private_key.strip().startswith("0x")
-        clean_key = private_key.replace("0x", "")
-        
+        # Hiero SDK's from_string handles various formats (hex, der, etc.)
+        # We pass it directly. If it starts with 0x, it should be treated as ECDSA.
         try:
-            if is_evm:
-                 pk_obj = PrivateKey.from_string_ecdsa(clean_key)
-            else:
-                 pk_obj = PrivateKey.from_string(clean_key)
-                 
+            pk_obj = PrivateKey.from_string(private_key)
+            
+            # Verify basic key validity
+            if not pk_obj:
+                raise ValueError("Could not parse Private Key.")
+
             self.client.set_operator(
                 AccountId.from_string(account_id),
                 pk_obj

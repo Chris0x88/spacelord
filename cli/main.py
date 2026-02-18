@@ -246,7 +246,13 @@ def cmd_stake(app, args):
         manager.set_operator(app.config.hedera_account_id, pk)
         del pk # Cleanup
 
-        print(f"\n  {C.ACCENT}⟳{C.R} Staking to Node {C.BOLD}{node_id}{C.R}...")
+        if node_id == 5:
+            print(f"\n  {C.ACCENT}⟳{C.R} Staking to {C.BOLD}Google Council Node (5){C.R}...")
+        else:
+            print(f"\n  {C.ACCENT}⟳{C.R} Staking to Node {C.BOLD}{node_id}{C.R}...")
+        
+        print(f"  {C.MUTED}ℹ This stakes your {C.BOLD}full liquid balance{C.R}{C.MUTED}.{C.R}")
+        print(f"  {C.MUTED}ℹ Funds remain available for use immediately.{C.R}")
         
         # Execute (or Simulate)
         is_sim = app.config.simulate_mode
