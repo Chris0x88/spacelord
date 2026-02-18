@@ -212,6 +212,61 @@ def cmd_receive(app, args):
             print(f"  {C.ERR}✗{C.R} Association failed.")
     print()
 
+def cmd_stake(app, args):
+    """
+    Stake your account to a consensus node for HBAR rewards.
+    Usage: stake [node_id] (Default: 5 - Google)
+    """
+    try:
+        from lib.staking import StakingManager
+    except ImportError:
+        print(f"  {C.WARN}⚠ Staking Plugin not installed.{C.R}")
+        print(f"  {C.MUTED}Missing lib/staking.py{C.R}")
+        return
+
+    # default to Google (Node 5)
+    try:
+        node_id = int(args[0]) if args else 5
+    except ValueError:
+        print(f"  {C.ERR}✗{C.R} Invalid Node ID. Must be an integer.")
+        return
+
+    if not app.config.private_key:
+        print(f"  {C.ERR}✗{C.R} Staking requires a configured Private Key.")
+        print(f"  {C.MUTED}Run 'setup' to configure.{C.R}")
+        return
+
+    # Initialize Manager
+    try:
+        manager = StakingManager(network=app.config.network)
+        
+        # Set Operator (Private Key is already standardized in app.config)
+        # We must reveal it momentarily to pass to the SDK
+        pk = app.config.private_key.reveal()
+        manager.set_operator(app.config.hedera_account_id, pk)
+        del pk # Cleanup
+
+        print(f"\n  {C.ACCENT}⟳{C.R} Staking to Node {C.BOLD}{node_id}{C.R}...")
+        
+        # Execute (or Simulate)
+        is_sim = app.config.simulate_mode
+        if is_sim:
+             print(f"  {C.WARN}⚠ Simulation Mode: Transaction will not be broadcast.{C.R}")
+
+        res = manager.stake_to_node(node_id, simulate=is_sim)
+
+        if res.get("success"):
+            status_icon = "✅" if not is_sim else "⚠️ [SIM]"
+            print(f"  {C.OK}{status_icon} Successfully staked to Node {node_id}!{C.R}")
+            if not is_sim:
+                 print(f"  {C.MUTED}Tx ID: {res.get('tx_id')}{C.R}")
+            print(f"  {C.MUTED}Rewards will begin accruing automatically.{C.R}")
+        else:
+             print(f"  {C.ERR}✗{C.R} Staking Failed: {res.get('error')}")
+
+    except Exception as e:
+         print(f"  {C.ERR}✗{C.R} Plugin Error: {e}")
+
 def cmd_verbose(app, args):
     """Toggle or set verbose mode."""
     if not args:
@@ -714,6 +769,7 @@ COMMANDS = {
     "history": cmd_history,
     "send": cmd_send,
     "receive": cmd_receive,
+    "stake": cmd_stake,
     "sources": cmd_sources, "source": cmd_sources,
     "verbose": cmd_verbose,
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,

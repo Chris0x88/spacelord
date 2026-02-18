@@ -121,10 +121,14 @@ class PacmanController:
         """Get execution history."""
         return self.executor.get_execution_history(limit)
 
-    def toggle_verbose(self):
+    def toggle_verbose(self, enabled: bool = None):
         """Toggle debug logging."""
         from src.logger import set_verbose
-        self.config.debug = not self.config.debug
+        if enabled is not None:
+             self.config.debug = enabled
+        else:
+             self.config.debug = not self.config.debug
+             
         set_verbose(self.config.debug)
         return self.config.debug
 
