@@ -38,13 +38,19 @@ class StakingManager:
         if not account_id or not private_key:
             raise ValueError("Account ID and Private Key are required.")
 
-        # Clean private key
+        # Auto-detect ECDSA (Ethereum style)
+        is_evm = private_key.strip().startswith("0x")
         clean_key = private_key.replace("0x", "")
         
         try:
+            if is_evm:
+                 pk_obj = PrivateKey.from_string_ecdsa(clean_key)
+            else:
+                 pk_obj = PrivateKey.from_string(clean_key)
+                 
             self.client.set_operator(
                 AccountId.from_string(account_id),
-                PrivateKey.from_string(clean_key)
+                pk_obj
             )
         except Exception as e:
             raise ValueError(f"Invalid credentials: {e}")
