@@ -151,11 +151,15 @@ class PacmanController:
 
         # 3. Convert format if needed
         # Expected: {contractId, tokenA, tokenB, fee, label}
+        fee = pool_data.get("fee")
+        if protocol == "v1" and fee is None:
+            fee = 3000 # Default V1 fee is 0.3%
+
         entry = {
             "contractId": pool_id,
             "tokenA": pool_data.get("tokenA", {}).get("id") if isinstance(pool_data.get("tokenA"), dict) else pool_data.get("tokenA"),
             "tokenB": pool_data.get("tokenB", {}).get("id") if isinstance(pool_data.get("tokenB"), dict) else pool_data.get("tokenB"),
-            "fee": pool_data.get("fee"),
+            "fee": fee,
             "label": f"{pool_data.get('tokenA', {}).get('symbol')}/{pool_data.get('tokenB', {}).get('symbol')}"
         }
         

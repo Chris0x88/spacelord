@@ -248,7 +248,11 @@ def cmd_pools(app, args):
         if not sub_args:
             print(f"  {C.ERR}✗{C.R} Missing pool ID.")
             return
-        _pools_delete(app, sub_args[0], protocol)
+        # If no protocol specifically requested, try both
+        if not (v1_flag or v2_flag):
+            _pools_delete(app, sub_args[0], "both")
+        else:
+            _pools_delete(app, sub_args[0], protocol)
     else:
         print(f"  {C.ERR}✗{C.R} Unknown action: {action}")
 
@@ -307,11 +311,14 @@ def _pools_search(app, query, protocol):
             cid = r.get("contractId", "N/A")
             tA = r.get("tokenA", {}).get("symbol", "???")
             tB = r.get("tokenB", {}).get("symbol", "???")
+            idA = r.get("tokenA", {}).get("id", "???")
+            idB = r.get("tokenB", {}).get("id", "???")
             # Liquidity handling varies by protocol in API
             liq = r.get("tvlUsd") or r.get("liquidityUsd") or 0
             liq_str = f"${float(liq):,.0f}" if liq else "N/A"
             
             print(f"  {C.TEXT}{cid:<12} {tA}/{tB:<18} {liq_str:<15}{C.R}")
+            print(f"               {C.MUTED}{idA} / {idB}{C.R}")
             
     if not found_any:
         print(f"  {C.WARN}⚠ No pools found matching query.{C.R}")
@@ -357,11 +364,22 @@ def _pools_approve(app, pool_id, protocol):
 
 def _pools_delete(app, pool_id, protocol):
     """Remove pool from registry."""
-    success = app.remove_pool(pool_id, protocol=protocol)
-    if success:
-        print(f"  {C.OK}✅ Removed {protocol.upper()} pool {pool_id} from registry.{C.R}")
+    if protocol == "both":
+        success = app.remove_pool(pool_id, protocol="v1")
+        if not success:
+            success = app.remove_pool(pool_id, protocol="v2")
+            if success:
+                print(f"  {C.OK}✅ Removed V2 pool {pool_id} from registry.{C.R}")
+            else:
+                print(f"  {C.WARN}⚠ Pool {pool_id} not found in V1 or V2 registries.{C.R}")
+        else:
+            print(f"  {C.OK}✅ Removed V1 pool {pool_id} from registry.{C.R}")
     else:
-        print(f"  {C.WARN}⚠ Pool not found in {protocol.upper()} registry.{C.R}")
+        success = app.remove_pool(pool_id, protocol=protocol)
+        if success:
+            print(f"  {C.OK}✅ Removed {protocol.upper()} pool {pool_id} from registry.{C.R}")
+        else:
+            print(f"  {C.WARN}⚠ Pool not found in {protocol.upper()} registry.{C.R}")
 
 def handle_natural_language(app, text):
     """Process NLP commands like 'swap 10 HBAR for USDC'."""
