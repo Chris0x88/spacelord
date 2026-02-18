@@ -165,8 +165,13 @@ class PacmanController:
             # If we have a key, set it as operator
             if self.config.private_key:
                 pk = self.config.private_key.reveal()
-                if self.account_id:
-                    self._account_manager.set_operator(self.account_id, pk)
+                # Basic validation: must be 64-char hex string (32 bytes)
+                clean_pk = pk.replace("0x", "")
+                if len(clean_pk) == 64 and self.account_id and "." in str(self.account_id):
+                    try:
+                        self._account_manager.set_operator(self.account_id, pk)
+                    except Exception as e:
+                        logger.warning(f"Could not set operator with ID '{self.account_id}': {e}")
                 del pk
         return self._account_manager
 

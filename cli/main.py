@@ -422,6 +422,8 @@ def handle_natural_language(app, text):
 
     intent = req.get("intent")
 
+    logger.debug(f"NLP Interpretation: {intent} (Tokens: {tokens}, Amt: {amt})")
+    
     if intent == "swap":
         _do_swap(app, req)
     elif intent == "balance":
@@ -688,6 +690,7 @@ COMMANDS = {
 }
 
 def process_input(app, text):
+    logger.info(f"User Input: {text}")
     parts = text.strip().split()
     if not parts: return
 
@@ -700,6 +703,7 @@ def process_input(app, text):
         except PacmanError as e:
             print(f"  {C.ERR}✗{C.R} {e}")
         except Exception as e:
+            logger.error(f"Command Error ({cmd}): {e}", exc_info=True)
             print(f"  {C.ERR}✗{C.R} Unexpected Error: {e}")
     else:
         # Fallback to NLP
