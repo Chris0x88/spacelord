@@ -35,6 +35,21 @@ def setup_logger(name: str, log_file: str = "pacman.log", level=logging.INFO):
 
     return logger
 
+# Primary app logger (Console + File)
+logger = setup_logger("pacman")
+
+# UI Mirror Logger (File ONLY)
+# We create a child logger or separate logger that only has the file handler
+ui_logger = logging.getLogger("pacman.ui")
+ui_logger.setLevel(logging.INFO)
+ui_logger.propagate = False # Prevent double-logging to parent 'pacman' handlers
+
+# Add ONLY the file handler to ui_logger
+_file_formatter = logging.Formatter('%(asctime)s | UI | %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+_file_h = logging.FileHandler(LOG_DIR / "pacman.log")
+_file_h.setFormatter(_file_formatter)
+ui_logger.addHandler(_file_h)
+
 def set_verbose(enabled: bool = True):
     """Dynamically switch to verbose logging."""
     lvl = logging.DEBUG if enabled else logging.INFO
@@ -54,7 +69,7 @@ def log_ui(message: str):
     import re
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     clean_message = ansi_escape.sub('', str(message))
-    logger.info(f"[UI] {clean_message}")
+    ui_logger.info(clean_message)
 
 class MirrorStream:
     """Wraps a stream (like stdout) to also write to the logger."""
@@ -65,11 +80,12 @@ class MirrorStream:
 
     def write(self, data):
         self.original_stream.write(data)
-        if data.strip():
+        if data and data.strip():
+            # Strip colors for the log file
             clean_data = self.ansi_escape.sub('', data)
             if clean_data.strip():
-                # We use info but prefix it so it's searchable
-                logger.info(f"[UI] {clean_data.strip()}")
+                # Write to the file-only ui_logger
+                ui_logger.info(clean_data.strip())
 
     def flush(self):
         self.original_stream.flush()
@@ -79,6 +95,3 @@ def setup_mirror():
     import sys
     if not isinstance(sys.stdout, MirrorStream):
         sys.stdout = MirrorStream(sys.stdout)
-
-# Primary app logger
-logger = setup_logger("pacman")
