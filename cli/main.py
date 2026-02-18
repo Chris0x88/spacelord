@@ -83,6 +83,27 @@ def cmd_price(app, args):
 
 def cmd_account(app, args):
     show_account(app.executor)
+    
+    # Sub-account creation option
+    print(f"\n  {C.TEXT}Sub-account management:{C.R}")
+    print(f"  {C.ACCENT}[S]{C.R} Create new Sub-account (same key)")
+    
+    choice = input(f"\n  Choice {C.MUTED}(s or enter to exit){C.R}: ").strip().lower()
+    if choice == 's':
+        print(f"\n  {C.MUTED}Creating sub-account on {app.network}...{C.R}")
+        new_id = app.create_sub_account(initial_balance=1.0)
+        if not new_id:
+            print(f"  {C.ERR}✗{C.R} Creation failed.")
+            return
+            
+        print(f"  {C.OK}✅ Created Sub-account: {C.BOLD}{new_id}{C.R}")
+        print(f"  {C.MUTED}This account uses your existing Private Key.{C.R}")
+        
+        confirm = input(f"\n  Switch .env to this new ID? {C.MUTED}(y/n){C.R} ").strip().lower()
+        if confirm in ["y", "yes"]:
+            _update_env("HEDERA_ACCOUNT_ID", new_id)
+            app.config.hedera_account_id = new_id
+            print(f"  {C.OK}✅ Account ID updated to {new_id}.{C.R}")
 
 def cmd_balance(app, args):
     token = args[0] if args else None
@@ -469,11 +490,43 @@ def cmd_setup(app, args):
     print(f"  {C.MUTED}Type 'x' or 'cancel' to exit at any time.{C.R}")
 
     try:
-        # 1. Private Key Entry
+        # 0. Selection
+        print(f"\n  {C.TEXT}How would you like to start?{C.R}")
+        print(f"  {C.ACCENT}[P]{C.R} Paste existing Private Key")
+        print(f"  {C.ACCENT}[C]{C.R} Create completely fresh Account")
+        
+        choice = input(f"\n  Choice {C.MUTED}(p/c){C.R}: ").strip().lower()
+        if choice in ["x", "cancel"]:
+            print(f"  {C.MUTED}Setup cancelled.{C.R}\n")
+            return
+            
+        if choice == 'c':
+            print(f"\n  {C.MUTED}Creating fresh ECDSA account on {app.network}...{C.R}")
+            new_id, new_key = app.create_new_account(initial_balance=1.0)
+            if not new_id:
+                print(f"  {C.ERR}✗{C.R} Creation failed. Check your network or funding account.")
+                return
+            
+            print(f"  {C.OK}✅ Created Account: {C.BOLD}{new_id}{C.R}")
+            print(f"  {C.WARN}⚠  IMPORTANT: Write down your Private Key!{C.R}")
+            print(f"  {C.TEXT}{new_key}{C.R}")
+            
+            # Save to .env
+            _update_env("PACMAN_PRIVATE_KEY", new_key)
+            _update_env("HEDERA_ACCOUNT_ID", new_id)
+            
+            # Immediate config update
+            from src.config import SecureString
+            app.config.private_key = SecureString(new_key)
+            app.config.hedera_account_id = new_id
+            
+            print(f"\n  {C.OK}✅ Wallet setup complete!{C.R}")
+            return
+
+        # 1. Private Key Entry (Existing Flow)
         print(f"\n  {C.BOLD}Step 1: Private Key{C.R}")
         print(f"  {C.MUTED}Paste your ECDSA or ED25519 hex key (64 chars).{C.R}")
         
-        # Use simple input initially to detect 'x' easily, or a loop
         prompt = f"  Private Key: "
         new_key = getpass.getpass(prompt).strip()
         

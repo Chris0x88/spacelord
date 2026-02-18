@@ -139,6 +139,16 @@ are used for routing.
   This allows you to access new pairs instantly or strip out 
   low-liquidity pools that might cause high slippage.""",
 
+    "account": """{C.BOLD}WALLET & NETWORK INFO{C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+View your current Hedera Account ID, EVM address, and 
+connected network status.
+
+{C.ACCENT}Sub-account Management:{C.R}
+  Pacman allows you to create multiple Account IDs (0.0.xxx) 
+  that share the same Private Key. This is a native Hedera 
+  feature for organizational and privacy purposes.""",
+
     "setup": """{C.BOLD}SECURE WALLET CONFIGURATION{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}
 Guide to configuring your Hedera credentials safely.
@@ -147,13 +157,12 @@ Guide to configuring your Hedera credentials safely.
   {C.TEXT}ᗧ setup{C.R}
 
 {C.ACCENT}Process:{C.R}
-  1. {C.BOLD}Account ID{C.R}: Enter your 0.0.xxx format ID.
-  2. {C.BOLD}Private Key{C.R}: Paste your hex key (masked input).
+  1. {C.BOLD}Setup Mode{C.R}: Choose between [P] Paste Key or [C] Create New.
+  2. {C.BOLD}Auto-Discovery{C.R}: Pacman automatically finds your Hedera ID.
+  3. {C.BOLD}Secure Save{C.R}: Credentials are saved masked to your .env.
 
-{C.ACCENT}Security Note:{C.R}
-  Pacman uses {C.BOLD}getpass{C.R} to mask your private key input. This 
-  prevents the key from appearing in your terminal history 
-  or scrollback. The key is saved to your local {C.TEXT}.env{C.R}, 
-  which is already ignored by git.""",
+{C.ACCENT}Sub-accounts:{C.R}
+  Use the {C.TEXT}account{C.R} command to manage sub-accounts or create 
+  new IDs sharing your existing key.""",
 }
 

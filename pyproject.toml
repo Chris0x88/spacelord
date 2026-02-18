@@ -17,6 +17,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "networkx>=3.0",
     "cryptography>=41.0.0",
+    "hiero-sdk-python>=0.2.0",
 ]
 
 [project.scripts]

@@ -37,6 +37,7 @@ class PacmanController:
             # Record account details for display
             self.account_id = self.config.hedera_account_id
             self.network = self.config.network
+            self._account_manager = None
             
         except ConfigurationError as e:
             logger.error(f"Configuration error: {e}")
@@ -154,6 +155,33 @@ class PacmanController:
         except Exception as e:
             logger.error(f"Failed to resolve account ID: {e}")
             return None
+
+    @property
+    def account_manager(self):
+        """Lazy initialization of the AccountManager plugin."""
+        if self._account_manager is None:
+            from src.plugins.account_manager import AccountManager
+            self._account_manager = AccountManager(network=self.network)
+            # If we have a key, set it as operator
+            if self.config.private_key:
+                pk = self.config.private_key.reveal()
+                if self.account_id:
+                    self._account_manager.set_operator(self.account_id, pk)
+                del pk
+        return self._account_manager
+
+    def create_new_account(self, initial_balance: float = 1.0) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Create a completely new Hedera account with a fresh private key.
+        The creation is funded by the current operator account.
+        """
+        return self.account_manager.create_account(initial_balance_hbar=initial_balance)
+
+    def create_sub_account(self, initial_balance: float = 1.0) -> Optional[str]:
+        """
+        Create a new Account ID that uses the SAME private key as the current account.
+        """
+        return self.account_manager.create_sub_account(initial_balance_hbar=initial_balance)
 
     def approve_pool(self, pool_data: dict, protocol: str = "v2"):
         """
