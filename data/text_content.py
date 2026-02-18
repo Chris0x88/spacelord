@@ -33,6 +33,7 @@ HELP_COMMANDS = [
     ("tokens",                   "Supported token list"),
     ("history",                  "Transaction history"),
     ("verbose",                  "Toggle debug logging"),
+    ("pools",                    "Manage pool registries"),
     ("help",                     "This menu"),
     ("exit",                     "Quit Pacman"),
 ]
@@ -120,5 +121,24 @@ Get real-time market rates and spread data.
   1. Primary: SaucerSwap V2 Liquidity Pools
   2. Fallback: CoinGecko API / Binance
   3. Network: Hedera Mainnet / Testnet""",
+
+    "pools": """{C.BOLD}POOL REGISTRY MANAGEMENT{C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+Pacman allows you to surgically manage which liquidity pools 
+are used for routing.
+
+{C.ACCENT}Sub-Commands:{C.R}
+  {C.TEXT}list{C.R}             Show all currently approved pools.
+  {C.TEXT}search <q>{C.R}      Find pools on-chain (Symbol or ID).
+  {C.TEXT}approve <id>{C.R}   Add a pool to your trading registry.
+  {C.TEXT}delete <id>{C.R}    Remove a pool from your registry.
+
+{C.ACCENT}Protocol Toggles:{C.R}
+  Use {C.TEXT}--v1{C.R} or {C.TEXT}--v2{C.R} to filter your search. V2 is default.
+
+{C.ACCENT}Why manage pools?{C.R}
+  By "approving" a pool, you whitelist it for the routing engine.
+  This allows you to access new pairs instantly or strip out 
+  low-liquidity pools that might cause high slippage.""",
 }
 
