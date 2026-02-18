@@ -545,6 +545,44 @@ class PacmanExecutor:
             logger.error(f"   ❌ Mirror Node check failed: {e}")
             return False # Fail safe: Assume not associated
 
+    def get_staking_info(self) -> Dict:
+        """
+        Fetch staking info from Mirror Node.
+        Returns: {
+            "is_staked": bool,
+            "node_id": int or None,
+            "period_start": str or None,
+            "pending_reward": int (tinybar)
+        }
+        """
+        try:
+            account_id = self.hedera_account_id
+            if not account_id or account_id == "Unknown":
+                # Try to resolve via EOA if ID unknown
+                account_id = self.eoa
+            
+            base_url = "https://mainnet-public.mirrornode.hedera.com"
+            if self.network == "testnet":
+                base_url = "https://testnet.mirrornode.hedera.com"
+            
+            url = f"{base_url}/api/v1/accounts/{account_id}"
+            resp = requests.get(url, timeout=5)
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                staked_node_id = data.get("staked_node_id")
+                
+                return {
+                    "is_staked": staked_node_id is not None,
+                    "node_id": staked_node_id,
+                    "pending_reward": data.get("pending_reward", 0),
+                    "decline_reward": data.get("decline_reward", False)
+                }
+        except Exception as e:
+            logger.warning(f"   ⚠️ Failed to fetch staking info: {e}")
+        
+        return {"is_staked": False, "node_id": None, "pending_reward": 0}
+
     def associate_token(self, token_id: str) -> bool:
         """Associate HTS token using Native Precompiles (Python-only)."""
         if token_id.upper() in ["HBAR", "0.0.0"]: return True

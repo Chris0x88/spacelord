@@ -411,6 +411,21 @@ def _show_all_balances(executor, price_manager):
         hbar_usd = hbar_readable * hbar_price
 
         print(f"  {C.ACCENT}HBAR{C.R}       {C.TEXT}{hbar_readable:>14.6f}{C.R}  {C.OK}${hbar_usd:>10.2f}{C.R}")
+        
+        # Staking Info
+        try:
+            stake_info = executor.get_staking_info()
+            if stake_info.get("is_staked"):
+                node_id = stake_info.get("node_id")
+                reward = stake_info.get("pending_reward", 0) / 100_000_000.0
+                
+                # Determine node name (simple mapping for now)
+                node_name = "Google" if node_id == 5 else f"Node {node_id}"
+                
+                print(f"  {C.MUTED}↳ Staked to {node_name}{C.R} {C.OK}+{reward:.6f} HBAR pending{C.R}")
+            else:
+                print(f"  {C.MUTED}↳ Not Staked (Run 'stake' to earn rewards){C.R}")
+        except: pass
 
         tokens_data = ui_filter.get_token_metadata()
         total_usd = hbar_usd
