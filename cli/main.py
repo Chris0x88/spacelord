@@ -312,6 +312,17 @@ def cmd_stake(app, args):
             if not is_sim:
                  print(f"  {C.MUTED}Tx ID: {res.get('tx_id')}{C.R}")
             print(f"  {C.MUTED}Rewards will begin accruing automatically.{C.R}")
+            
+            # Record History
+            try:
+                app.executor._record_staking_transaction(
+                    mode="STAKE", 
+                    node_id=node_id, 
+                    tx_id=res.get('tx_id'), 
+                    success=True
+                )
+            except Exception as e:
+                if app.config.debug: print(f"  {C.WARN}History save failed: {e}{C.R}")
         else:
              print(f"  {C.ERR}✗{C.R} Staking Failed: {res.get('error')}")
 
@@ -382,6 +393,17 @@ def cmd_unstake(app, args):
         if res.get("success"):
             status_icon = "✅" if not is_sim else "⚠️ [SIM]"
             print(f"  {C.OK}{status_icon} Successfully Unstaked!{C.R}")
+            
+            # Record History
+            try:
+                app.executor._record_staking_transaction(
+                    mode="UNSTAKE", 
+                    node_id=-1, 
+                    tx_id=res.get('tx_id'), 
+                    success=True
+                )
+            except Exception as e:
+                if app.config.debug: print(f"  {C.WARN}History save failed: {e}{C.R}")
         else:
              print(f"  {C.ERR}✗{C.R} Unstaking Failed: {res.get('error')}")
 

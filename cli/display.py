@@ -563,17 +563,14 @@ def show_history(executor):
     """Display operations history with live-priced USD values."""
     from lib.prices import price_manager
 
-    hist = executor.get_execution_history(limit=10)
+    hist = executor.get_execution_history(limit=20)
     if not hist:
         print(f"\n  {C.MUTED}No transaction history found.{C.R}\n")
         return
 
-    print(f"\n{C.BOLD}{C.TEXT}  HISTORY{C.R}")
-    print(f"  {C.CHROME}{'─' * 56}{C.R}")
-
     price_manager.reload()
 
-    # Load token metadata
+    # Load token metadata (needed for legacy support/decimals)
     tokens_map = {}
     try:
         with open("data/tokens.json") as f:
@@ -585,53 +582,83 @@ def show_history(executor):
     except:
         pass
 
+    # Split into Transactions and Staking
+    tx_hist = []
+    staking_hist = []
     for h in hist:
-        status_icon = f"{C.OK}✓{C.R}" if h["success"] else f"{C.ERR}✗{C.R}"
-        mode = h.get("mode", "?")
-        route = h.get("route", {})
-        ft = route.get("from", "?")
-        tt = route.get("to", "?")
-
-        amt_token = h.get("amount_token", 0)
-        amt_usd = h.get("amount_usd", 0)
-
-        raw_in = 0
-        if "results" in h and h["results"]:
-            if isinstance(h["results"], list) and len(h["results"]) > 0:
-                if isinstance(h["results"][0], dict):
-                    raw_in = h["results"][0].get("amount_in_raw", 0)
-
-        if raw_in > 0:
-            decimals = 0
-            price = 0
-            token_id = None
-            meta = tokens_map.get(ft)
-            if not meta:
-                if ft.upper() in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:
-                    decimals = 8
-                    token_id = "0.0.1456986"
-            else:
-                decimals = meta.get("decimals", 8)
-                token_id = meta.get("id")
-
-            if token_id:
-                price = price_manager.get_price(token_id)
-            elif ft.upper() == "HBAR":
-                price = price_manager.get_hbar_price()
-
-            if decimals > 0:
-                amt_real = raw_in / (10**decimals)
-                amt_token = amt_real
-                if price > 0:
-                    amt_usd = amt_token * price
-
-        to_amt = h.get('to_amount_token', 0.0)
-        ts = h.get('timestamp', '?')[:19]
-
-        if to_amt > 0:
-            print(f"  {status_icon} {C.MUTED}{ts}{C.R}  {C.TEXT}{amt_token:>12.6f}{C.R} {C.ACCENT}{ft:6s}{C.R} → {C.TEXT}{to_amt:>12.6f}{C.R} {C.ACCENT}{tt:6s}{C.R}  {C.OK}${amt_usd:>8.2f}{C.R}")
+        if h.get("mode") in ["STAKE", "UNSTAKE"]:
+            staking_hist.append(h)
         else:
-            print(f"  {status_icon} {C.MUTED}{ts}{C.R}  {C.TEXT}{amt_token:>12.6f}{C.R} {C.ACCENT}{ft:6s}{C.R} → {C.ACCENT}{tt:6s}{C.R}  {C.OK}${amt_usd:>8.2f}{C.R}")
+            tx_hist.append(h)
+
+    # 1. TRANSACTIONS
+    if tx_hist:
+        print(f"\n{C.BOLD}{C.TEXT}  HISTORY{C.R}")
+        print(f"  {C.CHROME}{'─' * 56}{C.R}")
+
+        for h in tx_hist:
+            status_icon = f"{C.OK}✓{C.R}" if h.get("success", False) else f"{C.ERR}✗{C.R}"
+            route = h.get("route", {})
+            ft = route.get("from", "?")
+            tt = route.get("to", "?")
+            amt_token = h.get("amount_token", 0)
+            amt_usd = h.get("amount_usd", 0)
+
+            # Recalculate input amount if missing (legacy support)
+            if amt_usd == 0 and "results" in h and h["results"]:
+                raw_in = 0
+                if isinstance(h["results"], list) and len(h["results"]) > 0:
+                    if isinstance(h["results"][0], dict):
+                        raw_in = h["results"][0].get("amount_in_raw", 0)
+                
+                if raw_in > 0:
+                    decimals = 8
+                    price = 0
+                    token_id = None
+                    meta = tokens_map.get(ft)
+                    if meta:
+                        decimals = meta.get("decimals", 8)
+                        token_id = meta.get("id")
+                    elif ft.upper() in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:
+                        token_id = "0.0.1456986"
+
+                    if token_id:
+                        price = price_manager.get_price(token_id)
+                    elif ft.upper() == "HBAR":
+                        price = price_manager.get_hbar_price()
+
+                    if decimals > 0:
+                        amt_real = raw_in / (10**decimals)
+                        amt_token = amt_real
+                        if price > 0:
+                            amt_usd = amt_token * price
+
+            to_amt = h.get('to_amount_token', 0.0)
+            ts = h.get('timestamp', '?')[:19]
+
+            # PRESERVE OLD FORMULA but FIX ALIGNMENT (ft:10s, tt:10s)
+            if to_amt > 0:
+                print(f"  {status_icon} {C.MUTED}{ts}{C.R}  {C.TEXT}{amt_token:>12.6f}{C.R} {C.ACCENT}{ft:10s}{C.R} → {C.TEXT}{to_amt:>12.6f}{C.R} {C.ACCENT}{tt:10s}{C.R}  {C.OK}${amt_usd:>8.2f}{C.R}")
+            else:
+                # Pad for missing receiving amount to keep $ column aligned
+                print(f"  {status_icon} {C.MUTED}{ts}{C.R}  {C.TEXT}{amt_token:>12.6f}{C.R} {C.ACCENT}{ft:10s}{C.R} → {' '*13}{C.ACCENT}{tt:10s}{C.R}  {C.OK}${amt_usd:>8.2f}{C.R}")
+
+    # 2. STAKING RECORDS
+    if staking_hist:
+        print(f"\n{C.BOLD}{C.TEXT}  STAKING RECORDS{C.R}")
+        print(f"  {C.CHROME}{'─' * 56}{C.R}")
+
+        for h in staking_hist:
+            status_icon = f"{C.OK}✓{C.R}" if h.get("success", False) else f"{C.ERR}✗{C.R}"
+            ts = h.get('timestamp', '?')[:19]
+            mode = h.get("mode", "?")
+            route = h.get("route", {})
+            node_name = route.get("to", "Unknown") # Expecting "Node 5" or "Unstaked"
+            
+            action = "Stake" if mode == "STAKE" else "Unstake"
+            detail = node_name if mode == "STAKE" else "Stopped Rewards"
+            
+            print(f"  {status_icon} {C.MUTED}{ts}{C.R}  {C.ACCENT}{action:10s}{C.R}  {C.TEXT}{detail:30s}{C.R}")
 
     print()
 

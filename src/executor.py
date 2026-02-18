@@ -959,10 +959,43 @@ class PacmanExecutor:
         from src.logger import logger
         logger.info(f"\n📝 Execution recorded: {filepath}")
         
-        training_file = Path("training_data/live_executions.jsonl")
-        training_file.parent.mkdir(exist_ok=True)
         with open(training_file, 'a') as f:
             f.write(json.dumps(record) + "\n")
+
+    def _record_staking_transaction(self, mode: str, node_id: int, tx_id: str, success: bool, error: str = None):
+        """Record staking/unstaking operation to history."""
+        import time
+        import json
+        
+        # Consistent with execution record format where possible
+        record = {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "mode": mode,  # "STAKE" or "UNSTAKE"
+            "route": {
+                "from": "HBAR", 
+                "to": f"Node {node_id}" if node_id != -1 else "Unstaked",
+                "steps": []
+            },
+            "amount_token": 0,  # Staking involves full balance, no transfer amount
+            "to_amount_token": 0,
+            "amount_usd": 0,
+            "gas_used": 0, # Could fetch from receipt but 0 is fine for history summary
+            "gas_cost_hbar": 0,
+            "success": success,
+            "tx_id": tx_id,
+            "error": error,
+            "account": self.eoa,
+            "network": self.network
+        }
+        
+        filename = f"exec_{time.strftime('%Y%m%d_%H%M%S')}_{mode.lower()}.json"
+        
+        # Ensure dir exists
+        self.recordings_dir.mkdir(parents=True, exist_ok=True)
+        filepath = self.recordings_dir / filename
+        
+        with open(filepath, 'w') as f:
+            json.dump(record, f, indent=2)
     
     def get_execution_history(self, limit: int = 10) -> list:
         if not self.recordings_dir.exists(): return []

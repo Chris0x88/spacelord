@@ -119,10 +119,13 @@ class StakingManager:
                 # Try to extract tx_id if available, else placeholder
                 tx_id = str(getattr(receipt, "transaction_id", "unknown_tx_id"))
             
-            is_success = (str(receipt.status) == "SUCCESS")
+            # Status 22 is SUCCESS in Hedera
+            status_str = str(receipt.status)
+            is_success = (status_str == "SUCCESS" or status_str == "22")
+            
             return {
                 "success": is_success,
-                "status": str(receipt.status),
+                "status": status_str,
                 "node_id": node_id,
                 "tx_id": tx_id,
                 "error": None if is_success else f"Transaction Status: {receipt.status}"
