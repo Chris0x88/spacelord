@@ -21,6 +21,7 @@ PACMAN_BANNER_TEMPLATE = """{ACCENT}
 HELP_COMMANDS = [
     ("swap <amt> <A> for <B>",   "Exact input swap"),
     ("swap <A> for <amt> <B>",   "Exact output swap"),
+    ("swap-v1 <amt> <A> <B>",    "SaucerSwap V1 (Legacy) swap"),
     ("setup",                    "Secure wallet configuration"),
     ("account",                  "Wallet & network info"),
     ("balance",                  "All wallet balances"),
@@ -166,5 +167,20 @@ Guide to configuring your Hedera credentials safely.
 {C.ACCENT}Sub-accounts:{C.R}
   Use the {C.TEXT}account{C.R} command to manage sub-accounts or create 
   new IDs sharing your existing key.""",
+
+    "swap-v1": """{C.BOLD}V1 (LEGACY) SWAPS{C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+Execute swaps specifically on SaucerSwap V1 (Uniswap V2) 
+liquidity pools. 
+
+This command is strictly decoupled from the main engine.
+
+{C.ACCENT}Usage example:{C.R}
+  {C.TEXT}ᗧ swap-v1 100 HBAR DOSA{C.R}
+
+{C.ACCENT}Why use V1?{C.R}
+  Certain community tokens (like DOSA) only have liquidity 
+  in legacy V1 pools. This command gives you direct access 
+  without affecting the stability of the V2 routing engine.""",
 }
 

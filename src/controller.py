@@ -50,6 +50,10 @@ class PacmanController:
         """Fetch all non-zero token balances for the account."""
         return self.executor.get_all_balances()
 
+    def resolve_token_id(self, symbol: str) -> Optional[str]:
+        """Resolve a token symbol to a Hedera ID."""
+        return self.executor._get_token_id(symbol)
+
     def get_route(self, from_token: str, to_token: str, amount: float, mode: str = "exact_in") -> Optional[VariantRoute]:
         """
         Recommend the best route between variants.
@@ -267,3 +271,58 @@ class PacmanController:
         logger.info(f"Removed {protocol} pool: {pool_id}")
         self.router.load_pools() # Reload graph
         return True
+
+    def is_v1_only(self, symbol_in: str, symbol_out: str) -> bool:
+        """
+        Check if a pair only exists in the approved V1 registry.
+        Returns True if the pair is in V1 AND either token is not in V2.
+        """
+        import json
+        from pathlib import Path
+        
+        symbol_in = symbol_in.upper()
+        symbol_out = symbol_out.upper()
+        
+        # 1. Load V1
+        v1_reg_path = Path("data/v1_pools_approved.json")
+        if not v1_reg_path.exists():
+            return False
+            
+        try:
+            with open(v1_reg_path) as f:
+                v1_reg = json.load(f)
+                
+            in_v1 = False
+            for p in v1_reg:
+                label = p.get("label", "").upper()
+                if symbol_in in label and symbol_out in label:
+                    in_v1 = True
+                    break
+            
+            if not in_v1:
+                return False
+                
+            # 2. Check if either is completely missing from V2 pools
+            # Note: Native HBAR and major stables are guaranteed to be in V2 
+            # if the registry is healthy, but we check specifically for community tokens.
+            if symbol_in in ["HBAR", "0.0.0", "WHBAR", "USDC", "USDT"] and \
+               symbol_out in ["HBAR", "0.0.0", "WHBAR", "USDC", "USDT"]:
+                return False # Top pairs always have V2
+
+            v2_reg_path = Path("data/pools.json")
+            if not v2_reg_path.exists():
+                return True # No V2 registry means it's V1-only by default if it was in V1
+                
+            with open(v2_reg_path) as f2:
+                v2_reg = json.load(f2)
+                # Check tokens in V2 - symbols are often in the tokenA/tokenB symbol field in pools.json
+                # But router.py's pool_graph is the true source.
+                # However, for a simple hint, checking the pool metadata symbols is enough.
+                in_v2_in = any(p.get("tokenA", {}).get("symbol") == symbol_in or p.get("tokenB", {}).get("symbol") == symbol_in for p in v2_reg)
+                in_v2_out = any(p.get("tokenA", {}).get("symbol") == symbol_out or p.get("tokenB", {}).get("symbol") == symbol_out for p in v2_reg)
+                
+                return not (in_v2_in and in_v2_out)
+
+        except Exception as e:
+            logger.debug(f"is_v1_only check failed: {e}")
+            return False

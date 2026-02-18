@@ -626,7 +626,7 @@ def handle_natural_language(app, text):
 
     intent = req.get("intent")
 
-    logger.debug(f"NLP Interpretation: {intent} (Tokens: {tokens}, Amt: {amt})")
+    logger.debug(f"NLP Interpretation: {intent} (Req: {req})")
     
     if intent == "swap":
         _do_swap(app, req)
@@ -642,6 +642,13 @@ def _do_swap(app, req):
     to_token = req["to_token"]
     amount = req["amount"]
     mode = req["mode"]
+
+    # --- V1 POOL CHECK ---
+    # If the user is trying to swap something like DOSA which only exists in V1, 
+    # we should guide them to the V1-only command.
+    if app.is_v1_only(from_token, to_token):
+        print(f"  {C.WARN}⚠ Note: This pair appears to be V1-only.{C.R}")
+        print(f"  {C.WARN}  Use {C.TEXT}swap-v1{C.R} for legacy SaucerSwap V1 pools.{C.R}")
 
     if mode == "exact_in":
         print(f"\n  {C.ACCENT}⟳{C.R} Analyzing: {C.TEXT}{amount}{C.R} {from_token} → {to_token} ({mode})")
@@ -678,7 +685,56 @@ def _do_swap(app, req):
     except Exception as e:
         print(f"\n  {C.ERR}✗{C.R} Critical System Error: {e}")
         import traceback
-        logger.debug(traceback.format_exc())
+        logger.error(traceback.format_exc())
+
+def cmd_swap_v1(app, args):
+    """Explicit command for SaucerSwap V1 (Legacy) swaps."""
+    if not args or len(args) < 3:
+        print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}swap-v1 <amount> <from> <to>{C.R}")
+        print(f"  Example: {C.TEXT}swap-v1 100 hbar dosa{C.R}")
+        return
+
+    try:
+        amount = float(args[0])
+        from_token = args[1].upper()
+        to_token = args[2].upper()
+    except:
+        print(f"  {C.ERR}✗{C.R} Invalid format. Usage: {C.TEXT}swap-v1 <amount> <from> <to>{C.R}")
+        return
+
+    print(f"\n  {C.ACCENT}⟳{C.R} V1 SWAP: {C.TEXT}{amount}{C.R} {from_token} → {to_token}")
+
+    # Resolve IDs
+    from_id = app.resolve_token_id(from_token)
+    to_id = app.resolve_token_id(to_token)
+
+    # Allow raw ID input if symbol resolution fails
+    if not from_id and from_token.startswith("0.0."): from_id = from_token
+    if not to_id and to_token.startswith("0.0."): to_id = to_token
+
+    # Final fallback - check for DOSA specifically as requested for the test
+    if not from_id and from_token == "DOSA": from_id = "0.0.7894159"
+    if not to_id and to_token == "DOSA": to_id = "0.0.7894159"
+
+    if not from_id or not to_id:
+        print(f"  {C.ERR}✗{C.R} Could not resolve tokens. Use raw ID if symbol is unknown (e.g. 0.0.123).")
+        return
+
+    simulate = getattr(app.config, "simulate_mode", True)
+    confirm = "y"
+    if not simulate:
+        confirm = input(f"\n  Execute V1 Swap? {C.MUTED}(y/n){C.R} ").strip().lower()
+    
+    if confirm in ["y", "yes"]:
+        res = app.executor.execute_v1_swap(from_id, to_id, amount, simulate=simulate)
+        if res.success:
+            print(f"  {C.OK}✅ V1 Swap Successful!{C.R}")
+            if res.tx_hash != "SIMULATED_V1":
+                 print(f"  {C.MUTED}Tx: {res.tx_hash}{C.R}")
+        else:
+            print(f"  {C.ERR}✗{C.R} V1 FAILED: {res.error}")
+    else:
+        print(f"  {C.MUTED}Cancelled.{C.R}")
 
 def cmd_setup(app, args):
     """
@@ -912,6 +968,8 @@ COMMANDS = {
     "history": cmd_history,
     "send": cmd_send,
     "receive": cmd_receive,
+    "swap-v1": cmd_swap_v1,
+    "v1": cmd_swap_v1,
     "stake": cmd_stake,
     "unstake": cmd_unstake,
     "sources": cmd_sources, "source": cmd_sources,

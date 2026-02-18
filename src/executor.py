@@ -17,9 +17,7 @@ from src.errors import ConfigurationError, ExecutionError, InsufficientFundsErro
 
 # ERC20 Wrapper contract (from btc-rebalancer2)
 ERC20_WRAPPER_ID = "0.0.9675688"
-import json as _json
-from pathlib import Path as _Path
-ERC20_WRAPPER_ABI = _json.loads((_Path(__file__).parent.parent / "abi" / "erc20_wrapper.json").read_text())
+ERC20_WRAPPER_ABI = json.loads((Path(__file__).parent.parent / "abi" / "erc20_wrapper.json").read_text())
 
 @dataclass
 class ExecutionResult:
@@ -144,6 +142,50 @@ class PacmanExecutor:
         logger.debug(f"   EVM Address:    {self.eoa} (Alias/Signing)")
         logger.debug(f"   EVM Long-Zero:  {self.eoa_long_zero}")
         logger.debug(f"   Network:        {self.network}")
+
+    def execute_v1_swap(self, from_id: str, to_id: str, amount_hbar: float, simulate: bool = True) -> ExecutionResult:
+        """
+        Standalone V1 execution logic.
+        Decoupled from V2 to allow independent deletion.
+        """
+        from lib.v1_saucerswap import SaucerSwapV1
+        
+        logger.info(f"\n🚀 Executing V1 Swap: {amount_hbar} HBAR → {to_id}")
+        
+        # Initialize client
+        pk = self.config.private_key.reveal() if self.config.private_key else None
+        v1_client = SaucerSwapV1(self.w3, network=self.network, private_key=pk)
+        if pk: del pk
+
+        # Convert amount to tinybar
+        amount_raw = int(amount_hbar * 10**8) # HBAR decimals is 8
+
+        try:
+            # 1. Quote
+            logger.info("   🔍 Fetching V1 Quote...")
+            amount_out_expected = v1_client.get_quote_single(from_id, to_id, amount_raw)
+            min_out = int(amount_out_expected * 0.99)
+            
+            if simulate:
+                logger.info(f"   [SIM] V1 Swap Simulation OK. Expected: {amount_out_expected / 10**8:.6f} {to_id}")
+                return ExecutionResult(success=True, tx_hash="SIMULATED_V1")
+
+            # 2. Swap
+            logger.info("   ⚡ Broadcasting V1 Swap...")
+            tx_hash = v1_client.swap_exact_input(from_id, to_id, amount_raw, min_out)
+            
+            # 3. Verify
+            logger.info(f"   ⏳ Verifying V1 Tx: {tx_hash}...")
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+            
+            if receipt.status == 1:
+                return ExecutionResult(success=True, tx_hash=tx_hash)
+            else:
+                return ExecutionResult(success=False, error="V1 Transaction Reverted")
+
+        except Exception as e:
+            logger.error(f"   ❌ V1 Swap Failed: {e}")
+            return ExecutionResult(success=False, error=str(e))
 
     def get_balances(self) -> Dict[str, float]:
         """
