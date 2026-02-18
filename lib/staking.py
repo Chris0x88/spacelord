@@ -38,10 +38,17 @@ class StakingManager:
         if not account_id or not private_key:
             raise ValueError("Account ID and Private Key are required.")
 
-        # Hiero SDK's from_string handles various formats (hex, der, etc.)
-        # We pass it directly. If it starts with 0x, it should be treated as ECDSA.
+        # Strict ECDSA enforcement for EVM keys
+        is_evm = private_key.strip().lower().startswith("0x")
+        clean_key = private_key.replace("0x", "")
+        
         try:
-            pk_obj = PrivateKey.from_string(private_key)
+            if is_evm:
+                # User provided 0x prefix -> It IS an EVM key (ECDSA)
+                pk_obj = PrivateKey.from_string_ecdsa(clean_key)
+            else:
+                # Fallback to SDK auto-detection (might guess Ed25519)
+                pk_obj = PrivateKey.from_string(private_key)
             
             # Verify basic key validity
             if not pk_obj:
@@ -53,6 +60,16 @@ class StakingManager:
             )
         except Exception as e:
             raise ValueError(f"Invalid credentials: {e}")
+
+    def get_operator_evm_address(self) -> Optional[str]:
+        """Return the EVM address derived from the operator's private key."""
+        try:
+            if not self.client.operator_public_key:
+                return None
+            # Hiero SDK Public Key -> EVM Address string
+            return self.client.operator_public_key.to_evm_address()
+        except:
+            return None
 
     def stake_to_node(self, node_id: int, simulate: bool = False) -> dict:
         """

@@ -254,6 +254,26 @@ def cmd_stake(app, args):
         print(f"  {C.MUTED}ℹ This stakes your {C.BOLD}full liquid balance{C.R}{C.MUTED}.{C.R}")
         print(f"  {C.MUTED}ℹ Funds remain available for use immediately.{C.R}")
         
+        # SAFETY CHECK: Verify Key Derivation
+        # Ensure the key we loaded generated the same address as our main executor
+        # This catches the Ed25519 vs ECDSA mismatch before broadcasting
+        try:
+            derived_evm = manager.get_operator_evm_address()
+            expected_evm = app.executor.eoa
+            
+            # Normalize for comparison
+            if derived_evm and expected_evm:
+                if derived_evm.lower() != expected_evm.lower():
+                    print(f"  {C.ERR}✗{C.R} SAFETY STOP: Key derivation mismatch.")
+                    print(f"  {C.MUTED}Derived:  {derived_evm}{C.R}")
+                    print(f"  {C.MUTED}Expected: {expected_evm}{C.R}")
+                    print(f"  {C.WARN}Aborting to prevent INVALID_SIGNATURE.{C.R}")
+                    return
+        except Exception as e:
+            # If check fails (e.g. library missing method), we warn but proceed
+            if app.config.debug:
+                 print(f"  {C.WARN}⚠ Verification skipped: {e}{C.R}")
+
         # Execute (or Simulate)
         is_sim = app.config.simulate_mode
         if is_sim:
