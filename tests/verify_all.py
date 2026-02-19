@@ -1,15 +1,19 @@
 import sys
 import os
+from pathlib import Path
+
+# Add project root to sys.path
 sys.path.append(os.getcwd())
 
-from pacman_app import PacmanApp
+from src.controller import PacmanController
+from src.translator import translate
 
 # Force Simulation Mode
 os.environ["PACMAN_SIMULATE"] = "true"
 os.environ["PACMAN_CONFIRM"] = "false"
 
-app = PacmanApp()
-print(f"✅ PacmanApp initialized for verification.")
+app = PacmanController()
+print(f"✅ PacmanController initialized for verification.")
 
 tests = [
     ("Native to HTS", "swap 1 hbar to USDC"),
@@ -17,8 +21,6 @@ tests = [
     ("Variant to Variant", "swap 1 USDC to USDC[hts]"),
     ("Cross-Token (Exact Out)", "swap HTS-WBTC to 1 USDC")
 ]
-
-from pacman_translator import translate
 
 for name, cmd in tests:
     print(f"\n{'='*40}")
