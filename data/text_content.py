@@ -40,7 +40,7 @@ HELP_COMMANDS = [
 
     # Staking
     ("--- STAKING ---", ""),
-    ("stake [node_id]",          "Stake HBAR to node"),
+    ("stake [node_id]",          "Stake HBAR (default: Google node 5)"),
     ("unstake",                  "Stop earning rewards"),
 
     # Tools
@@ -55,7 +55,7 @@ HELP_COMMANDS = [
     # System
     ("--- SYSTEM ---", ""),
     ("verbose",                  "Toggle debug logging"),
-    ("help",                     "This menu"),
+    ("help <topic>",             "Deep dive (swap/send/nlp/stake/pools/whitelist)"),
     ("exit",                     "Quit Pacman"),
 ]
 
@@ -84,11 +84,22 @@ Follow these rules for the best results:
    You can use symbols ({C.TEXT}HBAR{C.R}), common names ({C.TEXT}Bitcoin{C.R}), 
    or variant keys ({C.TEXT}WBTC_HTS{C.R}). Pacman ignores casing and 
    handles hyphens vs underscores (e.g., {C.TEXT}HTS-WBTC{C.R} works).
+   
+   Check {C.TEXT}data/aliases.json{C.R} for supported nicknames.
 
 {C.ACCENT}3. Intent Detection{C.R}
    - {C.BOLD}Exact In{C.R}:  "swap {C.OK}10{C.R} A for B" (You spend exactly 10 A)
    - {C.BOLD}Exact Out{C.R}: "swap A for {C.OK}10{C.R} B" (You get exactly 10 B)
-   - {C.BOLD}Buy Mode{C.R}:  "buy 10 B with A" (Exact Output mode)""",
+   - {C.BOLD}Buy Mode{C.R}:  "buy 10 B with A" (Exact Output mode)
+   
+{C.ACCENT}4. Token Variants (IMPORTANT){C.R}
+   Hedera has TWO versions of bridged tokens:
+   - {C.TEXT}WBTC_HTS{C.R}  = HTS-native  (visible in HashPack)
+   - {C.TEXT}WBTC_LZ{C.R}   = ERC20       (invisible in HashPack)
+   
+   Using plain "WBTC" lets Pacman decide the best variant.
+   Use the explicit key to force a specific output format.
+   Type {C.TEXT}tokens{C.R} to see all supported variants.""",
 
     "swap": """{C.BOLD}SWAPPING ASSETS{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}
@@ -214,5 +225,39 @@ Live transfers are BLOCKED unless the address is whitelisted.
 {C.ACCENT}Note:{C.R}
   Direct EVM transfers (0x...) are currently blocked by default 
   in live mode. Use Hedera IDs (0.0.xxx) for maximum safety.""",
+
+    "stake": """{C.BOLD}HEDERA STAKING (HIP-406){C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+Stake your HBAR balance to a consensus node to earn rewards.
+
+{C.ACCENT}Commands:{C.R}
+  {C.TEXT}ᗧ stake{C.R}           Stake to Google Node (5) — default
+  {C.TEXT}ᗧ stake <node_id>{C.R} Stake to a specific node (0–28)
+  {C.TEXT}ᗧ unstake{C.R}         Stop staking
+
+{C.ACCENT}Details:{C.R}
+  - Staking is {C.BOLD}non-custodial{C.R}: funds remain 100% liquid.
+  - Rewards are issued daily by the Hedera network (~1% APY).
+  - First reward payment arrives ~24h after staking.
+  - Node 5 (Google) is the recommended default.
+
+{C.ACCENT}How it works:{C.R}
+  Uses a native {C.TEXT}CryptoUpdate{C.R} transaction (HIP-406) via the 
+  Hiero SDK. Does NOT lock or move your funds.""",
+
+    "history": """{C.BOLD}TRANSACTION HISTORY{C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+View your recent on-chain activity log.
+
+{C.ACCENT}Command:{C.R}
+  {C.TEXT}ᗧ history{C.R}
+
+{C.ACCENT}Data stored:{C.R}
+  Each execution is saved as a JSON file in {C.TEXT}execution_records/{C.R}.
+  History shows: Swaps, Transfers, Staking events.
+
+{C.ACCENT}Training data:{C.R}
+  Executions are also appended to {C.TEXT}training_data/live_executions.jsonl{C.R}
+  for use in AI model fine-tuning.""",
 }
 

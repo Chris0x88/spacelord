@@ -1,7 +1,37 @@
 #!/usr/bin/env python3
 """
 Pacman Executor - Live Transaction Execution
-Handles swap execution + wrap/unwrap operations with full recording.
+============================================
+
+Handles swap execution, wrap/unwrap operations, and full execution recording.
+
+ARCHITECTURE NOTE:
+-----------------
+This module is the "Engine Room". It has ONE job: take a VariantRoute
+(produced by PacmanVariantRouter) and execute it on-chain.
+
+Key design decisions:
+- `execute_swap()` is the single public entry point for ALL swap types.
+- `_process_step()` dispatches to the correct handler (_execute_swap_step,
+  _execute_wrap_step, _execute_unwrap_step) based on step.step_type.
+- `config.simulate_mode` is the master safety switch. When True, no
+  transactions are broadcast; we return synthetic SIMULATED results.
+- All private key material is revealed momentarily and deleted immediately.
+  Never store the revealed key in an instance variable.
+
+HEDERA-SPECIFIC TRAPS:
+---------------------
+1. ALWAYS use `self.eoa` (the ECDSA alias address) for signing and as
+   the `from` field. Long-zero addresses (0x0000...0001234) cause gas
+   reverts because Hedera's EVM treats them as precompile addresses.
+2. HTS tokens need `grantTokenApproval()` via the HTS Precompile
+   (0x0000000000000000000000000000000000000167), NOT standard ERC20
+   `approve()`. For now, `approve_token()` uses the EVM redirect shim
+   which works for the SaucerSwap router spender pattern.
+3. WHBAR (0.0.1456986) is strictly internal routing only. Never expose
+   it to users. Use HBAR (0.0.0) for the user-facing side.
+4. Always do an `eth_call` simulation before broadcast on wrap/unwrap.
+   The SaucerSwap router handles its own simulation internally.
 """
 
 import os
@@ -15,9 +45,12 @@ from src.logger import logger
 from src.config import PacmanConfig, SecureString
 from src.errors import ConfigurationError, ExecutionError, InsufficientFundsError
 
-# ERC20 Wrapper contract (from btc-rebalancer2)
+# ERC20 Wrapper contract (0.0.9675688) — handles HTS <-> ERC20 bridging (wrap/unwrap)
 ERC20_WRAPPER_ID = "0.0.9675688"
 ERC20_WRAPPER_ABI = json.loads((Path(__file__).parent.parent / "abi" / "erc20_wrapper.json").read_text())
+
+# Path for the AI training data JSONL log — one record per execution
+TRAINING_FILE = Path(__file__).parent.parent / "training_data" / "live_executions.jsonl"
 
 @dataclass
 class ExecutionResult:
@@ -709,6 +742,10 @@ class PacmanExecutor:
             decimals = self._get_token_decimals(step.from_token)
             lp_fee_val = lp_fee_raw / (10**decimals)
             
+            # Simulated gas constants (used in sim path AND as fallback sentinel for live path)
+            SIM_GAS_USED = 150_000
+            SIM_GAS_COST_HBAR = SIM_GAS_USED * 0.00000085
+
             if mode == "exact_in":
                 logger.debug(f"      - Requesting Quote (Exact In): {amount_raw} {from_token_id} -> {to_token_id} @ fee {fee_bps}")
                 quote = self.client.get_quote_single(from_token_id if not is_native_hbar else "0.0.1456986", to_token_id, amount_raw, fee_bps)
@@ -725,9 +762,6 @@ class PacmanExecutor:
                 amount_out_expected = amount_raw
 
             if simulate:
-                sim_gas_used = 150_000 
-                sim_gas_cost_hbar = sim_gas_used * 0.00000085
-                
                 return ExecutionResult(
                     success=True, 
                     tx_hash="SIMULATED", 
@@ -737,14 +771,14 @@ class PacmanExecutor:
                     quoted_rate=quoted_rate,
                     effective_rate=quoted_rate,
                     gas_offered=1_000_000,
-                    gas_used=sim_gas_used,
+                    gas_used=SIM_GAS_USED,
                     gas_price_hbar=0.00000085,
-                    gas_cost_hbar=sim_gas_cost_hbar,
+                    gas_cost_hbar=SIM_GAS_COST_HBAR,
                     account_id=self.hedera_account_id,
                     lp_fee_amount=lp_fee_val,
                     lp_fee_token=step.from_token,
                     hbar_usd_price=hbar_price,
-                    gas_cost_usd=sim_gas_cost_hbar * hbar_price
+                    gas_cost_usd=SIM_GAS_COST_HBAR * hbar_price
                 )
             
             if is_native_hbar:
@@ -828,8 +862,8 @@ class PacmanExecutor:
                 amount_out_raw=amount_out_expected,
                 quoted_rate=quoted_rate,
                 effective_rate=quoted_rate,
-                gas_offered=sim_gas_used if simulate else 1_000_000,
-                gas_used=sim_gas_used if simulate else gas_used,
+                gas_offered=1_000_000,
+                gas_used=gas_used,
                 gas_cost_hbar=gas_cost_hbar,
                 account_id=self.hedera_account_id,
                 lp_fee_amount=lp_fee_val,
@@ -1046,11 +1080,15 @@ class PacmanExecutor:
         with open(filepath, 'w') as f:
             json.dump(record, f, indent=2)
         
-        from src.logger import logger
         logger.info(f"\n📝 Execution recorded: {filepath}")
         
-        with open(training_file, 'a') as f:
-            f.write(json.dumps(record) + "\n")
+        # Also append to JSONL training log (used for AI model fine-tuning)
+        try:
+            TRAINING_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(TRAINING_FILE, 'a') as f:
+                f.write(json.dumps(record) + "\n")
+        except Exception as e:
+            logger.debug(f"Training log write failed (non-fatal): {e}")
 
     def _record_v1_execution(self, from_sym: str, to_sym: str, amount_hbar: float, res: ExecutionResult, simulate: bool = True):
         """Record V1 execution to history (mirrors V2 format)."""

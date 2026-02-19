@@ -12,7 +12,7 @@ It is designed to be imported by CLIs, Daemons, or Web APIs.
 
 import logging
 import requests
-from typing import Optional, Dict
+from typing import Optional, Dict, Tuple
 
 from src.config import PacmanConfig
 from src.logger import logger
@@ -48,7 +48,7 @@ class PacmanController:
 
     def get_balances(self) -> Dict[str, float]:
         """Fetch all non-zero token balances for the account."""
-        return self.executor.get_all_balances()
+        return self.executor.get_balances()
 
     def resolve_token_id(self, symbol: str) -> Optional[str]:
         """Resolve a token symbol to a Hedera ID."""

@@ -685,7 +685,7 @@ def _do_swap(app, req):
         
         logger.debug("Confirmation received, starting execution phase...")
 
-        res = app.executor.execute_swap(route, amount_usd=amount, mode=mode)
+        res = app.executor.execute_swap(route, raw_amount=amount, mode=mode)
 
         if res.success:
             print_receipt(res, route, route.from_variant, route.to_variant, amount, mode, app.executor)
