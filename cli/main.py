@@ -689,15 +689,20 @@ def _do_swap(app, req):
 
 def cmd_swap_v1(app, args):
     """Explicit command for SaucerSwap V1 (Legacy) swaps."""
-    if not args or len(args) < 3:
+    # Filter out conversational keywords
+    stop_words = ["FOR", "TO", "IN", "→", "->"]
+    clean_args = [a for a in args if a.upper() not in stop_words]
+
+    if not clean_args or len(clean_args) < 3:
         print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}swap-v1 <amount> <from> <to>{C.R}")
-        print(f"  Example: {C.TEXT}swap-v1 100 hbar dosa{C.R}")
+        print(f"  Example: {C.TEXT}swap-v1 100 hbar for dosa{C.R}")
         return
 
     try:
-        amount = float(args[0])
-        from_token = args[1].upper()
-        to_token = args[2].upper()
+        # Extract amount and tokens after filtering
+        amount = float(clean_args[0])
+        from_token = clean_args[1].upper()
+        to_token = clean_args[2].upper()
     except:
         print(f"  {C.ERR}✗{C.R} Invalid format. Usage: {C.TEXT}swap-v1 <amount> <from> <to>{C.R}")
         return

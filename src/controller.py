@@ -217,6 +217,8 @@ class PacmanController:
         pool_id = pool_data.get("contractId")
         if any(p.get("contractId") == pool_id for p in registry):
             logger.info(f"Pool {pool_id} already in {protocol} registry.")
+            # Still sync tokens in case they are missing from tokens.json
+            self._sync_pool_tokens(pool_data)
             return False
 
         # 3. Convert format if needed
@@ -239,9 +241,53 @@ class PacmanController:
         with open(reg_path, "w") as f:
             json.dump(registry, f, indent=4)
         
+        # 5. Sync tokens to main registry
+        self._sync_pool_tokens(pool_data)
+
         logger.info(f"Approved {protocol} pool: {entry['label']} ({pool_id})")
         self.router.load_pools() # Reload graph
         return True
+
+    def _sync_pool_tokens(self, pool_data: dict):
+        """Extract tokens from pool data and add to tokens.json if missing."""
+        import json
+        from pathlib import Path
+        
+        tokens_path = Path("data/tokens.json")
+        if not tokens_path.exists():
+            return
+            
+        try:
+            with open(tokens_path) as f:
+                tokens = json.load(f)
+                
+            updated = False
+            for key in ["tokenA", "tokenB"]:
+                t = pool_data.get(key)
+                if not isinstance(t, dict): continue
+                
+                tid = t.get("id")
+                symbol = t.get("symbol")
+                if not tid or not symbol: continue
+                
+                # Check if ID already exists under any key
+                exists = any(meta.get("id") == tid for meta in tokens.values())
+                if not exists:
+                    # Add to registry
+                    tokens[symbol] = {
+                        "id": tid,
+                        "decimals": t.get("decimals", 8),
+                        "symbol": symbol,
+                        "name": t.get("name", symbol)
+                    }
+                    updated = True
+                    logger.info(f"Sync: Added new token {symbol} ({tid}) to registry.")
+                    
+            if updated:
+                with open(tokens_path, "w") as f:
+                    json.dump(tokens, f, indent=2)
+        except Exception as e:
+            logger.debug(f"Token sync failed: {e}")
 
     def remove_pool(self, pool_id: str, protocol: str = "v2"):
         """

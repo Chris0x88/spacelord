@@ -80,83 +80,59 @@ def refresh(force=False):
         whitelist.add("0.0.1456986") # WHBAR
         whitelist.add("0.0.0") # HBAR
 
-        # 2. Fetch all pools
-        try:
+        # 2. Fetch all pools (V1 and V2)
+        all_pools = []
+        endpoints = [
+            ("V2", "https://api.saucerswap.finance/v2/pools"),
+            ("V1", "https://api.saucerswap.finance/pools")
+        ]
 
-            # Full browser headers to bypass 401/403 blocks
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.5",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1"
-            }
-
-            if api_key:
-                headers["x-api-key"] = api_key
-                print(f"  {C.OK}🔑 Using SaucerSwap API Key ({network}){C.R}")
-
-            response = requests.get(POOLS_URL, headers=headers, timeout=30)
-
-            if response.status_code in [401, 403]:
-                print(f"  {C.WARN}⚠{C.R}  API access restricted ({response.status_code}). Trying curl fallback...")
-                import subprocess
+        def fetch_url(url, label):
+            import subprocess
+            
+            # Helper for curl
+            def run_curl(target_url):
                 try:
-                    # Curl fallback - often bypasses TLS fingerprinting issues
-                    cmd = ["curl", "-s"]
+                    cmd = ["curl", "-s", "-L"]
                     if api_key:
                          cmd.extend(["-H", f"x-api-key: {api_key}"])
-                    cmd.extend(["-H", "User-Agent: Mozilla/5.0", POOLS_URL])
-                    
+                    cmd.extend(["-H", "User-Agent: Mozilla/5.0", target_url])
                     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-                    all_pools = json.loads(result.stdout)
-                except Exception as curl_e:
-                     print(f"  {C.WARN}⚠{C.R}  Curl fallback failed: {curl_e}")
-                     return
-            else:
-                response.raise_for_status()
-                all_pools = response.json()
-                
-            # Validate response structure
-            if isinstance(all_pools, dict):
-                 print(f"  {C.WARN}⚠{C.R}  API returned error: {all_pools.get('error', 'Unknown error')}")
-                 return
-            if not isinstance(all_pools, list):
-                 print(f"  {C.WARN}⚠{C.R}  Unexpected API response format.")
-                 return
+                    if not result.stdout.strip():
+                        return None
+                    return json.loads(result.stdout)
+                except Exception as e:
+                    print(f"  {C.WARN}⚠{C.R}  Curl failed for {label}: {e}")
+                    return None
 
-        except Exception as e:
-            # Try curl if requests failed completely
-            print(f"  {C.WARN}⚠{C.R}  Requests failed ({e}). Trying curl fallback...")
-            import subprocess
             try:
-                cmd = ["curl", "-s"]
+                # 1. Try requests first
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                }
                 if api_key:
-                     cmd.extend(["-H", f"x-api-key: {api_key}"])
-                cmd.extend(["-H", "User-Agent: Mozilla/5.0", POOLS_URL])
-                
-                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-                try:
-                    all_pools = json.loads(result.stdout)
-                except json.JSONDecodeError:
-                    print(f"  {C.WARN}⚠{C.R}  Curl output not JSON. Body start: {result.stdout[:100]}")
-                    return
+                    headers["x-api-key"] = api_key
 
-                if isinstance(all_pools, dict):
-                     print(f"  {C.WARN}⚠{C.R}  API returned error: {all_pools.get('error', 'Unknown error')}")
-                     return
-                if not isinstance(all_pools, list):
-                     print(f"  {C.WARN}⚠{C.R}  Unexpected API response format.")
-                     return
+                response = requests.get(url, headers=headers, timeout=12)
+                if response.status_code == 200:
+                    try:
+                        return response.json()
+                    except:
+                        # Fallback to curl if not JSON
+                        return run_curl(url)
+                else:
+                    return run_curl(url)
+            except Exception as e:
+                # 2. Hard fallback to curl
+                return run_curl(url)
 
-            except Exception as curl_e:
-                print(f"  {C.WARN}⚠{C.R}  Curl fallback failed: {curl_e}")
-                return
+        for label, url in endpoints:
+            print(f"Fetching fresh {label} pool data...")
+            result = fetch_url(url, label)
+            if isinstance(result, list):
+                all_pools.extend(result)
+            else:
+                print(f"  {C.WARN}⚠{C.R}  Unexpected {label} response format.")
         
         # 3. Filter relevant pools
         # Keep pool if EITHER token is in our whitelist
@@ -179,4 +155,6 @@ def refresh(force=False):
         # Don't exit, just let the app use old data if fetch fails
 
 if __name__ == "__main__":
-    refresh()
+    import sys
+    force = "--force" in sys.argv
+    refresh(force=force)
