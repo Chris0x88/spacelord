@@ -168,7 +168,22 @@ class PacmanExecutor:
             
             if simulate:
                 logger.info(f"   [SIM] V1 Swap Simulation OK. Expected: {amount_out_expected / 10**8:.6f} {to_id}")
-                return ExecutionResult(success=True, tx_hash="SIMULATED_V1")
+                final = ExecutionResult(success=True, tx_hash="SIMULATED_V1", amount_in_raw=amount_raw, amount_out_raw=amount_out_expected)
+                
+                # Record to history
+                from_token = "HBAR" if from_id in ["0.0.0", "0.0.1456986"] else from_id
+                to_token = to_id
+                try:
+                    with open("data/tokens.json") as f:
+                        tdata = json.load(f)
+                        for sym, meta in tdata.items():
+                            if meta.get("id") == to_id:
+                                to_token = sym
+                                break
+                except: pass
+                
+                self._record_v1_execution(from_token, to_token, amount_hbar, final, simulate=True)
+                return final
 
             # 2. Swap
             logger.info("   ⚡ Broadcasting V1 Swap...")
@@ -179,7 +194,40 @@ class PacmanExecutor:
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
             
             if receipt.status == 1:
-                return ExecutionResult(success=True, tx_hash=tx_hash)
+                # Use expected amount for history as log parsing is complex
+                final = ExecutionResult(
+                    success=True, 
+                    tx_hash=tx_hash,
+                    gas_used=receipt.gasUsed,
+                    amount_in_raw=amount_raw,
+                    amount_out_raw=amount_out_expected
+                )
+                
+                # Attempt to get better amount_out from logs if possible
+                # (V1 Uniswap V2 Pair Sweep)
+                
+                # Enrich for history
+                final.hbar_usd_price = self._get_hbar_price_usd()
+                final.gas_cost_hbar = (receipt.gasUsed * self.w3.eth.gas_price) / 10**18
+                final.gas_cost_usd = final.gas_cost_hbar * final.hbar_usd_price
+                
+                # Record to history
+                from lib.v1_saucerswap import V1_WHBAR_ID
+                from_token = "HBAR" if from_id in ["0.0.0", V1_WHBAR_ID] else from_id
+                to_token = to_id # We don't have a symbol here easily but ID is better than nothing
+                
+                # Try to resolve symbol for to_token if possible
+                try:
+                    with open("data/tokens.json") as f:
+                        tdata = json.load(f)
+                        for sym, meta in tdata.items():
+                            if meta.get("id") == to_id:
+                                to_token = sym
+                                break
+                except: pass
+
+                self._record_v1_execution(from_token, to_token, amount_hbar, final, simulate=False)
+                return final
             else:
                 return ExecutionResult(success=False, error="V1 Transaction Reverted")
 
@@ -1003,6 +1051,65 @@ class PacmanExecutor:
         
         with open(training_file, 'a') as f:
             f.write(json.dumps(record) + "\n")
+
+    def _record_v1_execution(self, from_sym: str, to_sym: str, amount_hbar: float, res: ExecutionResult, simulate: bool = True):
+        """Record V1 execution to history (mirrors V2 format)."""
+        import time
+        import json
+        
+        # Convert to_amount_token from raw if it's HexBytes (should be int now, but safety first)
+        raw_to = res.amount_out_raw
+        if hasattr(raw_to, "hex"):
+            try:
+                raw_to = int(raw_to.hex(), 16)
+            except: raw_to = 0
+            
+        # Get correct decimals for to_token
+        to_decimals = 8
+        try:
+            with open("data/tokens.json") as f:
+                tdata = json.load(f)
+                # Try to find decimals by symbol or ID
+                meta = tdata.get(to_sym)
+                if meta:
+                     to_decimals = meta.get("decimals", 8)
+                else:
+                    # Search by ID
+                    for m in tdata.values():
+                        if m.get("id") == to_sym:
+                            to_decimals = m.get("decimals", 8)
+                            break
+        except: pass
+
+        record = {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "mode": "SIMULATION" if simulate else "LIVE",
+            "protocol": "V1",
+            "route": {
+                "from": from_sym,
+                "to": to_sym,
+                "protocol": "V1",
+                "steps": 1,
+                "total_cost_hbar": amount_hbar,
+                "hashpack_visible": False
+            },
+            "amount_token": amount_hbar,
+            "to_amount_token": raw_to / 10**to_decimals if isinstance(raw_to, (int, float)) and raw_to > 0 else 0,
+            "amount_usd": round(amount_hbar * res.hbar_usd_price, 2) if res.hbar_usd_price > 0 else 0,
+            "gas_used": res.gas_used,
+            "gas_cost_hbar": res.gas_cost_hbar,
+            "results": [res.to_dict()],
+            "success": res.success,
+            "account": self.eoa,
+            "network": self.network
+        }
+        
+        filename = f"exec_{time.strftime('%Y%m%d_%H%M%S')}_{from_sym}_to_{to_sym}_V1.json"
+        filepath = self.recordings_dir / filename
+        with open(filepath, 'w') as f:
+            json.dump(record, f, indent=2)
+        
+        logger.info(f"   📝 V1 Execution recorded: {filepath}")
 
     def _record_staking_transaction(self, mode: str, node_id: int, tx_id: str, success: bool, error: str = None):
         """Record staking/unstaking operation to history."""
