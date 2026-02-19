@@ -68,8 +68,8 @@ Simply run `./pacman` to enter the interactive trading shell:
 
 Pacman is designed to be "Consumed" by AI agents. Every command generates structured terminal output that is easy for LLMs to parse, and detailed execution logs are stored in `logs/` for strategy auditing.
 
-- [AI Integration Guide](docs/SAUCERSWAP_API_GUIDE.md)
-- [Router Evolution Documentation](docs/ROUTER_EVOLUTION.md)
+- [AI Agent Interaction Guide](docs/AI_AGENT_GUIDE.md)
+- [Router Evolution Documentation](deprecated/ROUTER_EVOLUTION.md)
 
 ---
 

@@ -84,39 +84,25 @@ A complete breakdown of every file's responsibility.
 -   **`display.py`**: The rendering engine. Contains the `C` class (Colors) and helper functions for stylized output (frames, banners, tables). It is the *only* place where `print` formatting should happen.
 
 ## `/src` (The Logic)
+-   **`controller.py`**: The SDK / Facade. The primary interface for the CLI. Coordinates all other modules.
 -   **`router.py`**: The Pathfinding Engine.
     -   `PacmanVariantRouter`: The main class.
     -   `find_routes()`: Returns a list of `VariantRoute` objects.
-    -   `load_pools()`: Hydrates the in-memory graph.
 -   **`executor.py`**: The Execution Engine.
-    -   `PacmanExecutor`: Handles Web3 connections.
-    -   `execute_swap()`: The main public method.
-    -   `_process_step()`: Handles individual steps (Swap, Wrap, Unwrap).
-    -   `simulate_transaction()`: The safety guard.
+    -   `PacmanExecutor`: Handles Web3 connections and state machine.
+    -   `execute_swap()`: The main execution entry point.
 -   **`translator.py`**: The NLP Engine.
     -   `translate_command()`: Converts string -> JSON intent.
-    -   `resolve_token()`: Fuzzy matches token names.
--   **`config.py`**:### Configuration
-- **Environment Variables**:
-    - `PRIVATE_KEY`: Standard Ethereum private key for signing.
-    - `HEDERA_ACCOUNT_ID`: 0.0.xxx format (optional, auto-resolved).
-    - `PACMAN_SIMULATE`: Boolean to enable/disable safety mode.
-## `/data` (The Knowledge Base)
--   **`tokens.json`**: The Token Registry.
-    -   Schema: `{"SYMBOL": {"id": "0.0.x", "decimals": 6}}`
--   **`pools.json`**: The Pool Registry.
-    -   Schema: `[{"contractId": "0.0.x", "tokenA": "...", "tokenB": "..."}]`
--   **`variants.json`**: The Variant Rules.
-    -   Schema: `{"WBTC_LZ": {"type": "ERC20_BRIDGED", "unwrap_to": "WBTC_HTS"}}`
--   **`text_content.py`**: Hardcoded strings, ASCII art, and Help explainers.
+-   **`config.py`**: Configuration & Safety logic (`SecureString`).
+-   **`errors.py`**: Centralized exception hierarchy.
 
 ## `/lib` (The Drivers)
--   **`saucerswap.py`**: The Low-Level Client.
-    -   Contains raw ABI JSONs (`QUOTER_ABI`, `ROUTER_ABI`).
-    -   `get_quote()`: Calls `quoteExactInput`.
-    -   `encode_path()`: Packs bytes for the router.
--   **`multicall.py`**: Batch Request Handler.
-    -   Compresses 50 `balanceOf` calls into a single RPC call.
+-   **`saucerswap.py`**: SaucerSwap V2 low-level client.
+-   **`v1_saucerswap.py`**: SaucerSwap V1 legacy client.
+-   **`prices.py`**: `PriceManager` singleton for token USD quotes.
+-   **`multicall.py`**: Batch request handler (Multicall3).
+-   **`transfers.py`**: Native HBAR and HTS transfer logic.
+-   **`staking.py`**: Native HBAR staking (HIP-406).
 
 ---
 
@@ -130,11 +116,10 @@ The source of truth for token precision and IDs.
     "id": "0.0.456858",
     "decimals": 6,
     "symbol": "USDC",
-    "name": "USD Coin",
-    "icon": "..."
+    "name": "USD Coin"
   },
   "HBAR": {
-    "id": "0.0.1456986", // Actually WHBAR ID, treated as native conceptually
+    "id": "0.0.1456986",
     "decimals": 8,
     "symbol": "HBAR",
     "name": "Hedera"
@@ -211,9 +196,8 @@ User types: `swap 100 HBAR to USDC`
     -   Path 1: `HBAR -> USDC` (Direct Pool `0.0.x`)
     -   Path 2: `HBAR -> SAUCE -> USDC` (Multi-hop)
 3.  **Quoting**:
-    -   For each path, calls `client.getReserves` (Batch call).
-    -   Calculates `AmountOut` based on $xy=k$.
-4.  **Selection**: Sorts by `AmountOut`.
+    -   For each path, calls `client.get_quote_single()` or `client.get_quote_exact_output()`.
+    -   Selection: Sorts by `AmountOut`.
 
 ## 6.4 The UI (`cli/display.py`)
 Prints the "Proposed Route" box:

@@ -2,6 +2,7 @@
 archive/
 archive_internal/
 legacy/
+deprecated/
 
 # Environments
 .env

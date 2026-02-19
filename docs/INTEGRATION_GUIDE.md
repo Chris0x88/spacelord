@@ -17,21 +17,22 @@ Most agentic frameworks (like OpenClaw) can interact with Pacman simply by execu
 ### B. The Python SDK Pattern (Highest Control)
 If you are building a custom Python agent, import the core components directly.
 ```python
-from pacman_translator import translate
-from pacman_variant_router import PacmanVariantRouter
-from pacman_executor import PacmanExecutor
+from src.translator import translate
+from src.router import PacmanVariantRouter
+from src.executor import PacmanExecutor
+from src.controller import PacmanController
 
 # 1. Translate NL to Intent
 req = translate("swap 5 HBAR for USDC")
 
-# 2. Get Recommended Route
-router = PacmanVariantRouter()
-router.load_pools()
-route = router.recommend_route(req['from_token'], req['to_token'])
+# 2. Initialize Controller (handles sub-modules)
+app = PacmanController()
 
-# 3. Execute with Hardened Safety
-executor = PacmanExecutor(private_key=os.getenv("PRIVATE_KEY"))
-result = executor.execute_swap(route, amount_usd=req['amount'])
+# 3. Get Recommended Route
+route = app.get_route(req['from_token'], req['to_token'], req['amount'])
+
+# 4. Execute with Hardened Safety
+result = app.swap(req['from_token'], req['to_token'], amount=req['amount'])
 ```
 
 ### C. The MCP Pattern (Modern Standard)

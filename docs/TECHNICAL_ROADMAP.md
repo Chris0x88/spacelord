@@ -15,9 +15,9 @@
 - **`pacman setup`**: Interactive command to verify `.env`, check RPC health, and validate HTS associations.
 - **`pyproject.toml`**: Standardize package management for clean AI/human imports.
 
-### 1.3 Multi-Account Management
-- **Partially Implemented**: `account` command shows current status.
-- **Next**: Implement `profile switch` for managing multiple `.env` configurations.
+### 1.3 Multi-Account Management (DONE)
+- **Implemented**: `lib/transfers.py` and `controller.py` support sender/receiver resolution.
+- **Profiles**: Managed via environment variables and `SecureString`.
 
 ### 1.4 Native Staking (HIP-406) (DONE)
 - **Implemented**: `lib/staking.py` handles `CryptoUpdate` transactions.
@@ -42,13 +42,13 @@
 
 ## Phase 2: autonomous Features (The "Limbs")
 
-### 2.1 The "Sentinel" Daemon (Limit Orders)
+### 2.1 The "Sentinel" Daemon (Limit Orders) (IN PROGRESS)
 - Background process polling prices every block.
 - Logic: `if price < target: controller.swap(...)`
 
 ### 2.2 Connector Framework (Farming & Lending)
-- `connectors/bonzo.py`: Isolated lending logic.
-- `connectors/farm_v2.py`: SSV2 LP management.
+- `lib/transfers.py`: Hardened transfer logic with whitelist protection.
+- `lib/saucerswap.py`: V2 swap execution.
 
 ---
 
@@ -65,7 +65,7 @@
 
 ## Implementation Strategy: How we build without breaking
 
-1.  **Strict Isolation**: New protocols (V1, Bonzo, Farms) get their own `src/` files. No mixing of logic.
+1.  **Strict Isolation**: New protocols (V1, Bonzo, Farms) get their own `src/` or `lib/` files. No mixing of logic.
 2.  **Configuration-First**: Every new feature must be toggle-able in `PacmanConfig`.
 3.  **Simulation Guard**: All new transaction types MUST implement `eth_call` or Hedera Simulation before broadcasting.
 
@@ -77,8 +77,8 @@
 | **V1 Integration** | Low (Isolated) | [DONE] |
 | **Staking** | Low | [DONE] |
 | **Whitelisting** | Low | [DONE] |
-| **History Refactor** | Low | [DONE] |
-| **Limit Orders** | High | Planned |
+| **Multi-Account** | Medium | [DONE] |
+| **Limit Orders** | High | In Progress |
 | **HCS Swaps** | Very High | Researching |
 
-*This roadmap is a living document. Last updated: Feb 18, 2026.*
+*This roadmap is a living document. Last updated: Feb 19, 2026.*

@@ -138,6 +138,6 @@ Implementation lives in `lib/hcs_chat.py` (not yet created).
 ---
 
 ## File Archiving Policy
-Active docs: `CLAUDE.md` (this file), `docs/product_spec.md`, `docs/technical_roadmap.md`
+Active docs: `CLAUDE.md` (this file), `docs/PRODUCT_SPEC.md`, `docs/TECHNICAL_ROADMAP.md`
 Everything else in `docs/` is historical context — don't delete, don't actively load.
 The only docs an AI agent needs to load on startup: `CLAUDE.md`.

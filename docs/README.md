@@ -33,7 +33,7 @@ PRIVATE_KEY=your_private_key_here_without_0x_prefix
 PACMAN_SIMULATE=true  # Start in safety mode
 
 # 3. Just Swap
-python3 pacman_cli.py "swap 10 HBAR for USDC"
+python3 cli/main.py "swap 10 HBAR for USDC"
 ```
 
 ---
@@ -53,8 +53,8 @@ python3 pacman_cli.py "swap 10 HBAR for USDC"
 ## 🧠 For AI Agent Developers
 Pacman is built to be a **primitive for agentic infrastructure**. If you are building with OpenClaw, AutoGPT, or LangChain, check out our specialized guides:
 
-- [AI Agent Interaction Guide](docs/AI_AGENT_GUIDE.md)
-- [Infrastructure Integration Plan](docs/INTEGRATION_GUIDE.md)
+- [AI Agent Interaction Guide](AI_AGENT_GUIDE.md)
+- [Infrastructure Integration Plan](INTEGRATION_GUIDE.md)
 
 ---
 

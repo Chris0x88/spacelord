@@ -40,8 +40,8 @@ The CLI outputs professional transaction records. When reporting back to a user:
 - Mention **HTS Readiness** if the tool associated a new token for them.
 
 ## Operational Modes
-- **Interactive**: Just run `python3 pacman_cli.py` and type commands.
-- **One-Shot**: `python3 pacman_cli.py "swap 10 HBAR for USDC"` for direct pipeline execution.
+- **Interactive**: Just run `python3 cli/main.py` and type commands.
+- **One-Shot**: `python3 cli/main.py "swap 10 HBAR for USDC"` for direct pipeline execution.
 
 ---
 *Note: This CLI handles proactive HTS token association and approval hardening automatically. You do not need to manually associate tokens before suggesting a swap.*

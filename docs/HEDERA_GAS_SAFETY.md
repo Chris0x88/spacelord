@@ -14,7 +14,7 @@ Hedera's EVM behaves inconsistently with "Long-Zero" vs "Alias" addresses.
     - Signing (`from`)
     - Contract arguments (`account`, `recipient`, `owner`, `spender`)
     - Allowance/Balance queries
-- **Rule 5**: Avoid using/deriving the **Long-Zero Address** (e.g., `0x00...`) for any logic within the `PacmanExecutor`. It causes silent reverts in the HTS precompile that burn 100% of gas.
+- **Rule 5**: Avoid using/deriving the **Long-Zero Address** (e.g., `0x00...`) for any logic within the `PacmanExecutor` (`src/executor.py`). It causes silent reverts in the HTS precompile that burn 100% of gas.
 
 ## ✅ SAFE EXECUTION PATTERN
 1. **Check Allowance**: Use `eth_call` to check if `allowance >= amount`.
