@@ -1146,6 +1146,47 @@ class PacmanExecutor:
         with open(filepath, 'w') as f:
             json.dump(record, f, indent=2)
     
+    def _record_transfer_execution(self, res: dict):
+        """Record HBAR/HTS transfer to local history."""
+        import time
+        import json
+        from pathlib import Path
+
+        # Format matches swap history but specialized for TRANSFER
+        record = {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "mode": "SIMULATION" if res.get("tx_hash", "").startswith("SIMULATED") else "LIVE",
+            "type": "TRANSFER",
+            "protocol": "NATIVE",
+            "route": {
+                "from": self.eoa,
+                "to": res.get("recipient", "Unknown"),
+                "protocol": "NATIVE",
+                "steps": 1,
+                "total_cost_hbar": res.get("amount", 0) if res.get("symbol") == "HBAR" else 0
+            },
+            "amount_token": res.get("amount", 0),
+            "symbol": res.get("symbol"),
+            "to_amount_token": res.get("amount", 0), # Same for transfers
+            "to_symbol": res.get("symbol"),
+            "amount_usd": 0, # Could enrich but let's keep it simple for now
+            "gas_used": res.get("gas_used", 0),
+            "success": res.get("success", False),
+            "memo": res.get("memo"),
+            "tx_hash": res.get("tx_hash"),
+            "account": self.eoa,
+            "network": self.network
+        }
+
+        try:
+            filename = f"exec_{time.strftime('%Y%m%d_%H%M%S')}_{res.get('symbol')}_transfer.json"
+            record_path = self.recordings_dir / filename
+            with open(record_path, "w") as f:
+                json.dump(record, f, indent=4)
+        except Exception as e:
+            from src.logger import logger
+            logger.debug(f"Transfer recording failed: {e}")
+
     def get_execution_history(self, limit: int = 10) -> list:
         if not self.recordings_dir.exists(): return []
         files = sorted(self.recordings_dir.glob("exec_*.json"), reverse=True)

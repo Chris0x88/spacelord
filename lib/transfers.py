@@ -15,7 +15,7 @@ from typing import Optional, Dict, Any
 from src.logger import logger
 from lib.saucerswap import hedera_id_to_evm, ERC20_ABI
 
-def execute_transfer(executor, token_symbol: str, amount: float, recipient: str) -> dict:
+def execute_transfer(executor, token_symbol: str, amount: float, recipient: str, memo: str = None) -> dict:
     """
     Execute a transfer of HBAR or Tokens.
     
@@ -24,6 +24,7 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str)
         token_symbol: "HBAR" or token symbol (e.g. "USDC").
         amount: Amount in readable units (e.g. 100.0).
         recipient: Hedera ID (0.0.x) or EVM Address (0x...).
+        memo: Optional message to include (HBAR only for on-chain, both for local history).
         
     Returns:
         dict with success, tx_hash, error, and receipts.
@@ -32,14 +33,33 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str)
         # 1. Resolve Recipient Address
         if recipient.startswith("0.0."):
             to_address = hedera_id_to_evm(recipient)
+            # SAFETY CHECK: Whitelist
+            if not executor.is_sim:
+                import json
+                from pathlib import Path
+                try:
+                    with open("data/settings.json") as f:
+                        settings = json.load(f)
+                        whitelist = settings.get("transfer_whitelist", [])
+                        if recipient not in whitelist:
+                            return {"success": False, "error": f"SAFETY: Recipient {recipient} not in whitelist!"}
+                except Exception as e:
+                    return {"success": False, "error": f"SAFETY: Whitelist check failed: {e}"}
+
         elif recipient.startswith("0x") and len(recipient) == 42:
             to_address = executor.w3.to_checksum_address(recipient)
+            # Cannot easily whitelist EVM addresses without mapping, so BLOCK for now
+            if not executor.is_sim:
+                 return {"success": False, "error": "SAFETY: Direct EVM transfers blocked. Use Hedera ID."}
+
         else:
             return {"success": False, "error": f"Invalid recipient format: {recipient}"}
             
         is_native = token_symbol.upper() in ["HBAR", "0.0.0"]
         
         logger.info(f"\n💸 Initiating Transfer: {amount} {token_symbol} -> {recipient}")
+        if memo:
+            logger.info(f"   Memo: {memo}")
         logger.info(f"   EVM Recipient: {to_address}")
         
         tx_hash = None
@@ -52,7 +72,15 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str)
             
             # Gas Buffer (21000 gas * price)
             gas_price = executor.w3.eth.gas_price
-            gas_cost = 21000 * gas_price
+            
+            # If memo provided, add data field and increase gas
+            data = b""
+            gas_limit = 21000
+            if memo:
+                data = executor.w3.to_hex(text=memo)
+                gas_limit = 30000 # Small buffer for data field
+            
+            gas_cost = gas_limit * gas_price
             
             if balance_wei < (amount_wei + gas_cost):
                 return {"success": False, "error": f"Insufficient HBAR. Need {amount} + gas."}
@@ -61,10 +89,11 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str)
             tx = {
                 'to': to_address,
                 'value': amount_wei,
-                'gas': 21000,
+                'gas': gas_limit,
                 'gasPrice': gas_price,
                 'nonce': executor.w3.eth.get_transaction_count(executor.eoa),
-                'chainId': executor.chain_id
+                'chainId': executor.chain_id,
+                'data': data
             }
             
             if executor.is_sim:
@@ -72,15 +101,18 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str)
                 tx_hash = "SIMULATED_HBAR_TRANSFER"
                 # Mock receipt waiting
                 time.sleep(1)
-                return {
+                res = {
                     "success": True, 
                     "tx_hash": tx_hash,
                     "block": 0,
                     "gas_used": 21000,
                     "recipient": recipient,
                     "amount": amount,
-                    "symbol": token_symbol
+                    "symbol": token_symbol,
+                    "memo": memo
                 }
+                executor._record_transfer_execution(res)
+                return res
 
             pk = executor.config.private_key.reveal()
             try:
@@ -110,7 +142,7 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str)
             logger.info(f"   🛡️  Sending {token_symbol} (HTS/ERC20)...")
             tx = token_contract.functions.transfer(to_address, amount_raw).build_transaction({
                 'from': executor.eoa,
-                'gas': 60000, # Standard transfer usually ~40-50k
+                'gas': 100000, # Increased gas for safety
                 'gasPrice': executor.w3.eth.gas_price,
                 'nonce': executor.w3.eth.get_transaction_count(executor.eoa),
                 'chainId': executor.chain_id
@@ -120,15 +152,18 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str)
                 logger.info("   ⚠️  SIMULATION MODE: Skipping broadcast.")
                 tx_hash = f"SIMULATED_{token_symbol}_TRANSFER"
                 time.sleep(1)
-                return {
+                res = {
                     "success": True, 
                     "tx_hash": tx_hash,
                     "block": 0,
                     "gas_used": 50000,
                     "recipient": recipient,
                     "amount": amount,
-                    "symbol": token_symbol
+                    "symbol": token_symbol,
+                    "memo": memo
                 }
+                executor._record_transfer_execution(res)
+                return res
 
             pk = executor.config.private_key.reveal()
             try:
@@ -141,17 +176,22 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str)
         logger.info(f"   ⏳ Submitted. Hash: {tx_hash}")
         receipt = executor.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
         
+        # Prepare result for recording
+        res = {
+            "success": receipt.status == 1,
+            "tx_hash": tx_hash,
+            "block": receipt.blockNumber,
+            "gas_used": receipt.gasUsed,
+            "recipient": recipient,
+            "amount": amount,
+            "symbol": token_symbol,
+            "memo": memo
+        }
+        executor._record_transfer_execution(res)
+
         if receipt.status == 1:
             logger.info("   ✅ Transfer Successful!")
-            return {
-                "success": True, 
-                "tx_hash": tx_hash,
-                "block": receipt.blockNumber,
-                "gas_used": receipt.gasUsed,
-                "recipient": recipient,
-                "amount": amount,
-                "symbol": token_symbol
-            }
+            return res
         else:
             return {"success": False, "error": "Transaction reverted on-chain", "tx_hash": tx_hash}
 

@@ -119,10 +119,10 @@ def cmd_history(app, args):
     show_history(app.executor)
 
 def cmd_send(app, args):
-    # Syntax: send <amount> <token> to <recipient>
-    # args: [100, HBAR, to, 0.0.123]
+    # Syntax: send <amount> <token> to <recipient> [memo "your message"]
+    # args: [100, HBAR, to, 0.0.123] or [100, HBAR, to, 0.0.123, memo, "Lunch money"]
     if len(args) < 4 or args[2].lower() != "to":
-        print(f"  {C.ERR}✗{C.R} Usage: {C.BOLD}send <amount> <token> to <recipient>{C.R}")
+        print(f"  {C.ERR}✗{C.R} Usage: {C.BOLD}send <amount> <token> to <recipient> [memo <message>]{C.R}")
         return
 
     try:
@@ -133,8 +133,20 @@ def cmd_send(app, args):
 
     symbol = args[1].upper()
     recipient = args[3]
+    
+    # 1. Parse optional memo
+    memo = None
+    if len(args) > 4:
+        # Check for keywords
+        if args[4].lower() in ["memo", "message", "msg"]:
+            memo = " ".join(args[5:])
+        else:
+            # Just take everything else as the message
+            memo = " ".join(args[4:])
 
     print(f"\n  {C.ACCENT}↗{C.R} Transfer: {C.TEXT}{amount} {symbol}{C.R} → {C.TEXT}{recipient}{C.R}")
+    if memo:
+        print(f"  {C.MUTED}Memo: {memo}{C.R}")
 
     if app.config.require_confirmation:
         confirm = input(f"  Confirm? {C.MUTED}(y/n){C.R} ").strip().lower()
@@ -143,7 +155,7 @@ def cmd_send(app, args):
             return
 
     print(f"  {C.MUTED}Submitting...{C.R}")
-    res = app.transfer(symbol, amount, recipient)
+    res = app.transfer(symbol, amount, recipient, memo=memo)
 
     if res["success"]:
         print_transfer_receipt(res)
@@ -741,6 +753,56 @@ def cmd_swap_v1(app, args):
     else:
         print(f"  {C.MUTED}Cancelled.{C.R}")
 
+def cmd_whitelist(app, args):
+    """
+    Manage trusted transfer recipients.
+    Usage: whitelist [view|add|remove] [address]
+    """
+    if not args:
+        action = "view"
+    else:
+        action = args[0].lower()
+        
+    if action in ["view", "list", "ls"]:
+        whitelist = app.get_whitelist()
+        print(f"\n{C.BOLD}{C.TEXT}  Whitelisted Send Addresses{C.R}")
+        print(f"  {C.CHROME}{'─' * 56}{C.R}")
+        
+        if not whitelist:
+            print(f"  {C.MUTED}No addresses whitelisted.{C.R}")
+            print(f"  {C.WARN}⚠ All live transfers will be blocked.{C.R}")
+        else:
+            for addr in whitelist:
+                print(f"  {C.ACCENT}▪{C.R} {C.TEXT}{addr}{C.R}")
+        print()
+        return
+
+    if action == "add":
+        if len(args) < 2:
+            print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}whitelist add <0.0.xxx>{C.R}")
+            return
+        
+        address = args[1]
+        success = app.add_to_whitelist(address)
+        if success:
+            print(f"  {C.OK}✅ Added {address} to whitelist.{C.R}")
+        else:
+            print(f"  {C.ERR}✗{C.R} Failed to add address. Check format (0.0.xxx).")
+            
+    elif action in ["remove", "delete", "rm"]:
+        if len(args) < 2:
+            print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}whitelist remove <0.0.xxx>{C.R}")
+            return
+            
+        address = args[1]
+        success = app.remove_from_whitelist(address)
+        if success:
+            print(f"  {C.OK}✅ Removed {address} from whitelist.{C.R}")
+        else:
+            print(f"  {C.WARN}⚠ Address not found in whitelist.{C.R}")
+    else:
+        print(f"  {C.ERR}✗{C.R} Unknown action: {action}")
+
 def cmd_setup(app, args):
     """
     Securely configure your Hedera wallet credentials.
@@ -975,6 +1037,7 @@ COMMANDS = {
     "receive": cmd_receive,
     "swap-v1": cmd_swap_v1,
     "v1": cmd_swap_v1,
+    "whitelist": cmd_whitelist,
     "stake": cmd_stake,
     "unstake": cmd_unstake,
     "sources": cmd_sources, "source": cmd_sources,

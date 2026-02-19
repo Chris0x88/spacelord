@@ -145,6 +145,11 @@ def show_help(topic: str = None):
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
 
     for cmd, desc in HELP_COMMANDS:
+        if cmd.startswith("---"):
+            # Section Header
+            print(f"\n  {C.BOLD}{C.MUTED}{cmd.strip('- ')}{C.R}")
+            continue
+            
         print(f"  {C.ACCENT}{cmd:30s}{C.R} {C.MUTED}{desc}{C.R}")
 
     print(f"\n{C.BOLD}  EXAMPLES{C.R}")
@@ -154,7 +159,7 @@ def show_help(topic: str = None):
          print(f"  {C.ACCENT}{ex_cmd:30s}{C.R} {C.MUTED}{ex_desc}{C.R}")
     
     print(f"\n  {C.MUTED}For in-depth help, type: {C.R}{C.TEXT}help <command>{C.R}")
-    print(f"  {C.MUTED}Topics: swap, send, balance, price, pools, setup, nlp{C.R}\n")
+    print(f"  {C.MUTED}Topics: swap, send, balance, price, pools, setup, nlp, whitelist{C.R}\n")
 
 
 # ---------------------------------------------------------------------------
@@ -582,83 +587,105 @@ def show_history(executor):
     except:
         pass
 
-    # Split into Transactions and Staking
-    tx_hist = []
-    staking_hist = []
+    swaps = []
+    transfers = []
+    staking = []
+
     for h in hist:
         if h.get("mode") in ["STAKE", "UNSTAKE"]:
-            staking_hist.append(h)
+            staking.append(h)
+        elif h.get("type") == "TRANSFER":
+            transfers.append(h)
         else:
-            tx_hist.append(h)
+            swaps.append(h)
 
-    # 1. TRANSACTIONS
-    if tx_hist:
-        print(f"\n{C.BOLD}{C.TEXT}  HISTORY{C.R}")
-        print(f"  {C.CHROME}{'─' * 56}{C.R}")
-
-        for h in tx_hist:
+    # 1. SWAP HISTORY
+    if swaps:
+        print(f"\n{C.BOLD}{C.TEXT}  SWAP HISTORY{C.R}")
+        print(f"  {C.CHROME}{'─' * 96}{C.R}")
+        print(f"  {C.MUTED}{'TIME':<16} {'SENT':<26} {'RECEIVED':<26} {'VALUE':<12} {'COST'}{C.R}")
+        print(f"  {C.CHROME}{'─' * 96}{C.R}")
+        
+        for h in swaps:
             status_icon = f"{C.OK}✓{C.R}" if h.get("success", False) else f"{C.ERR}✗{C.R}"
+            # Shorten timestamp: 2026-02-19 14:25:05 -> 02-19 14:25:05
+            full_ts = h.get('timestamp', '????-??-?? ??:??:??')
+            ts = full_ts[5:19]
+            
             route = h.get("route", {})
             ft = route.get("from", "?")
             tt = route.get("to", "?")
             amt_token = h.get("amount_token", 0)
             amt_usd = h.get("amount_usd", 0)
 
-            # Recalculate input amount if missing (legacy support)
+            # Legacy fix for missing amount_token
             if amt_usd == 0 and "results" in h and h["results"]:
-                raw_in = 0
-                if isinstance(h["results"], list) and len(h["results"]) > 0:
-                    if isinstance(h["results"][0], dict):
-                        raw_in = h["results"][0].get("amount_in_raw", 0)
-                
-                if raw_in > 0:
-                    decimals = 8
-                    price = 0
-                    token_id = None
-                    meta = tokens_map.get(ft)
-                    if meta:
-                        decimals = meta.get("decimals", 8)
-                        token_id = meta.get("id")
-                    elif ft.upper() in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:
-                        token_id = "0.0.1456986"
-
-                    if token_id:
-                        price = price_manager.get_price(token_id)
-                    elif ft.upper() == "HBAR":
-                        price = price_manager.get_hbar_price()
-
-                    if decimals > 0:
-                        amt_real = raw_in / (10**decimals)
-                        amt_token = amt_real
-                        if price > 0:
-                            amt_usd = amt_token * price
+                pass 
 
             to_amt = h.get('to_amount_token', 0.0)
-            ts = h.get('timestamp', '?')[:19]
+            
+            # Format numbers nicely
+            sent_str = f"{amt_token:,.4f} {ft}"
+            recv_str = f"{to_amt:,.4f} {tt}" if to_amt > 0 else "-"
+            
+            # Truncate if too long (rare but possible)
+            if len(sent_str) > 25: sent_str = sent_str[:24] + "…"
+            if len(recv_str) > 25: recv_str = recv_str[:24] + "…"
 
-            # PRESERVE OLD FORMULA but FIX ALIGNMENT (ft:10s, tt:10s)
-            if to_amt > 0:
-                print(f"  {status_icon} {C.MUTED}{ts}{C.R}  {C.TEXT}{amt_token:>12.6f}{C.R} {C.ACCENT}{ft:10s}{C.R} → {C.TEXT}{to_amt:>12.6f}{C.R} {C.ACCENT}{tt:10s}{C.R}  {C.OK}${amt_usd:>8.2f}{C.R}")
-            else:
-                # Pad for missing receiving amount to keep $ column aligned
-                print(f"  {status_icon} {C.MUTED}{ts}{C.R}  {C.TEXT}{amt_token:>12.6f}{C.R} {C.ACCENT}{ft:10s}{C.R} → {' '*13}{C.ACCENT}{tt:10s}{C.R}  {C.OK}${amt_usd:>8.2f}{C.R}")
+            # COST CALCULATION
+            gas_usd = h.get("gas_cost_usd", 0)
+            if gas_usd == 0:
+                results = h.get("results", [])
+                if results and isinstance(results, list):
+                    gas_usd = sum(r.get("gas_cost_usd", 0) for r in results if isinstance(r, dict))
 
-    # 2. STAKING RECORDS
-    if staking_hist:
-        print(f"\n{C.BOLD}{C.TEXT}  STAKING RECORDS{C.R}")
-        print(f"  {C.CHROME}{'─' * 56}{C.R}")
+            cost_str = f"${gas_usd:,.4f}" if gas_usd > 0 else "-"
+            
+            print(f"  {status_icon} {C.MUTED}{ts:<16}{C.R} {C.TEXT}{sent_str:<26}{C.R} {C.ACCENT}{recv_str:<26}{C.R} {C.OK}${amt_usd:<11.2f}{C.R} {C.MUTED}{cost_str}{C.R}")
+            
+    # 2. TRANSFER HISTORY
+    if transfers:
+        print(f"\n{C.BOLD}{C.TEXT}  TRANSFER HISTORY{C.R}")
+        print(f"  {C.CHROME}{'─' * 74}{C.R}")
+        print(f"  {C.MUTED}{'TIME':<16} {'AMOUNT':<26} {'RECIPIENT'}{C.R}")
+        print(f"  {C.CHROME}{'─' * 74}{C.R}")
 
-        for h in staking_hist:
+        for h in transfers:
             status_icon = f"{C.OK}✓{C.R}" if h.get("success", False) else f"{C.ERR}✗{C.R}"
-            ts = h.get('timestamp', '?')[:19]
+            full_ts = h.get('timestamp', '????-??-?? ??:??:??')
+            ts = full_ts[5:19]
+            
+            recipient = h.get("route", {}).get("to", "?")
+            symbol = h.get("symbol", "HBAR")
+            amount = h.get("amount_token", 0)
+            memo = h.get("memo")
+            
+            amt_str = f"{amount:,.4f} {symbol}"
+            
+            print(f"  {status_icon} {C.MUTED}{ts:<16}{C.R} {C.TEXT}{amt_str:<26}{C.R} {C.ACCENT}{recipient}{C.R}")
+            if memo:
+                print(f"    {C.CHROME}└─{C.R} {C.MUTED}Memo: {memo}{C.R}")
+
+    # 3. STAKING RECORDS
+    if staking:
+        print(f"\n{C.BOLD}{C.TEXT}  STAKING RECORDS{C.R}")
+        print(f"  {C.CHROME}{'─' * 60}{C.R}")
+        print(f"  {C.MUTED}{'TIME':<16} {'ACTION':<15} {'DETAIL'}{C.R}")
+        print(f"  {C.CHROME}{'─' * 60}{C.R}")
+
+        for h in staking:
+            status_icon = f"{C.OK}✓{C.R}" if h.get("success", False) else f"{C.ERR}✗{C.R}"
+            full_ts = h.get('timestamp', '????-??-?? ??:??:??')
+            ts = full_ts[5:19]
+
             mode = h.get("mode", "?")
             route = h.get("route", {})
-            node_name = route.get("to", "Unknown") # Expecting "Node 5" or "Unstaked"
+            node_name = route.get("to", "Unknown")
             
             action = "Stake" if mode == "STAKE" else "Unstake"
             detail = node_name if mode == "STAKE" else "Stopped Rewards"
             
-            print(f"  {status_icon} {C.MUTED}{ts}{C.R}  {C.ACCENT}{action:10s}{C.R}  {C.TEXT}{detail:30s}{C.R}")
+            print(f"  {status_icon} {C.MUTED}{ts:<16}{C.R} {C.ACCENT}{action:15s}{C.R} {C.TEXT}{detail}{C.R}")
 
     print()
 

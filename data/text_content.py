@@ -19,23 +19,41 @@ PACMAN_BANNER_TEMPLATE = """{ACCENT}
 {CHROME}    ╰──────────────────────────────────────────────────────╯{R}"""
 
 HELP_COMMANDS = [
-    ("swap <amt> <A> for <B>",   "Exact input swap"),
-    ("swap <A> for <amt> <B>",   "Exact output swap"),
-    ("swap-v1 <amt> <A> <B>",    "SaucerSwap V1 (Legacy) swap"),
+    # Wallet
+    ("--- WALLET & SETUP ---", ""),
     ("setup",                    "Secure wallet configuration"),
     ("account",                  "Wallet & network info"),
     ("balance",                  "All wallet balances"),
     ("balance <token>",          "Single token balance"),
+
+    # Swaps
+    ("--- SWAPPING ---", ""),
+    ("swap <amt> <A> for <B>",   "Exact input swap"),
+    ("swap <A> for <amt> <B>",   "Exact output swap"),
+    ("swap-v1 <amt> <A> <B>",    "SaucerSwap V1 (Legacy) swap"),
+
+    # Transfers
+    ("--- TRANSFERS ---", ""),
+    ("send <amt> <tk> to <rcp>", "Transfer crypto"),
+    ("receive <token>",          "Get addr & associate"),
+    ("whitelist [view|add|rm]",  "Manage trusted addresses"),
+
+    # Staking
+    ("--- STAKING ---", ""),
+    ("stake [node_id]",          "Stake HBAR to node"),
+    ("unstake",                  "Stop earning rewards"),
+
+    # Tools
+    ("--- MARKET DATA ---", ""),
     ("tokens",                   "Supported token list"),
     ("pools",                    "Manage pool registries"),
     ("price",                    "List all market prices"),
     ("price <token>",            "Check single price"),
     ("history",                  "Transaction history"),
-    ("send <amt> <tk> to <rcp>", "Transfer crypto"),
-    ("receive <token>",          "Get addr & associate"),
-    ("stake [node_id]",          "Stake HBAR to node"),
-    ("unstake",                  "Stop earning rewards"),
     ("sources",                  "Show all price sources"),
+
+    # System
+    ("--- SYSTEM ---", ""),
     ("verbose",                  "Toggle debug logging"),
     ("help",                     "This menu"),
     ("exit",                     "Quit Pacman"),
@@ -182,5 +200,19 @@ This command is strictly decoupled from the main engine.
   Certain community tokens (like DOSA) only have liquidity 
   in legacy V1 pools. This command gives you direct access 
   without affecting the stability of the V2 routing engine.""",
+
+    "whitelist": """{C.BOLD}WHITELIST MANAGEMENT{C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+Manage your trusted recipient list for enhanced security.
+Live transfers are BLOCKED unless the address is whitelisted.
+
+{C.ACCENT}Commands:{C.R}
+  {C.TEXT}view{C.R}               List all approved addresses.
+  {C.TEXT}add <0.0.xxx>{C.R}      Add a new trusted address.
+  {C.TEXT}remove <0.0.xxx>{C.R}   Remove an address.
+
+{C.ACCENT}Note:{C.R}
+  Direct EVM transfers (0x...) are currently blocked by default 
+  in live mode. Use Hedera IDs (0.0.xxx) for maximum safety.""",
 }
 
