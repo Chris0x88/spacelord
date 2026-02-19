@@ -60,6 +60,19 @@ Understanding the *history* of Pacman is crucial to understanding its *code*.
 - The router automatically adds `Wrap` or `Unwrap` steps if the most liquid pool requires a specific format.
 - To the user, it's transparent. They just swap "WBTC".
 
+## 2.4 The "Legacy" Bridge (Feb 2026)
+**The Need**: Hot meme coins (like DOSA) launched on SaucerSwap V1 and never migrated liquidity to V2.
+**The Challenge**: V1 uses a completley different math curve ($x*y=k$) and contract interface than V2.
+**The Solution**: The **Sidecar Adapter**.
+- We built `lib/v1_saucerswap.py` as a standalone client.
+- It is *strictly isolated* from the V2 engine to prevent regression.
+- Users access it via `swap-v1`. It's there when you need it, invisible when you don't.
+
+## 2.5 Banking & Security Arc (Feb 2026)
+**The Pivot**: Pacman evolved from a "swapper" to a "bank".
+- **Staking**: Implemented native HBAR staking (HIP-406) so users earn ~1% APY while holding.
+- **Whitelisting**: Implemented a strict `settings.json` whitelist. The tool now refuses to send funds to unknown addresses, protecting users from clipboard hijacking or typos.
+
 ---
 
 # 3. Directory Structure & File Manifest
@@ -244,7 +257,7 @@ User types `y`.
 
 # 8. Future Roadmap
 
-## 8.1 Limit Orders
+## 8.1 Limit Orders (The "Sentinel")
 SaucerSwap V2 supports limit orders. We want to implement:
 `swap HBAR for USDC at 0.15`
 - This requires a daemon mode to monitor prices.
@@ -253,6 +266,6 @@ SaucerSwap V2 supports limit orders. We want to implement:
 `pnl` command.
 - Needs to read history from a Mirror Node (dragonglass/hedera-mirror) to calculate cost basis.
 
-## 8.3 Multi-Hop Custom Routing
-`swap HBAR -> SAUCE -> CLXY -> USDC`
-- Allowing power users to define their own path.
+## 8.3 Advanced Routing
+- **Multi-Hop Custom**: `swap HBAR -> SAUCE -> CLXY -> USDC`
+- **Split Routing**: sending 50% to V1 and 50% to V2 (Future optimization).

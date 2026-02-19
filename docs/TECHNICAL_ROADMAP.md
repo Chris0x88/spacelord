@@ -16,23 +16,24 @@
 - **`pyproject.toml`**: Standardize package management for clean AI/human imports.
 
 ### 1.3 Multi-Account Management
-- Support for "Profiles". Switch between a `HotWallet` for testing and `MainAccount` for size.
-- Command: `pacman profile switch <name>`
+- **Partially Implemented**: `account` command shows current status.
+- **Next**: Implement `profile switch` for managing multiple `.env` configurations.
 
-### 1.4 Native Staking (HIP-406)
-- Integration of `CryptoUpdate` transactions to allow staking directly from the CLI.
-- Command: `pacman stake 0.0.800`
+### 1.4 Native Staking (HIP-406) (DONE)
+- **Implemented**: `lib/staking.py` handles `CryptoUpdate` transactions.
+- **Commands**: `stake [node_id]`, `unstake`.
+- **Status**: Live in v0.9.5.
 
 ---
 
-## Phase 1.5: The "V1 Bridge" 🌪️ (ISOLATED)
+## Phase 1.5: The "V1 Bridge" 🌪️ (DONE)
 *Goal: Access V1 liquidity without contaminating the V2 core.*
 
-### 1.5.1 The "Sidecar" Adapter
-- **`src/v1_adapter.py`**: A dedicated module for SaucerSwap V1 logic.
+### 1.5.1 The "Sidecar" Adapter (DONE)
+- **`lib/v1_saucerswap.py`**: A dedicated module for SaucerSwap V1 logic.
 - **Registry**: `data/v1_pools_approved.json`. Only pools approved by the user or the "Top 20" curated list are loaded.
 
-### 1.5.2 Pool Vetting Workflow
+### 1.5.2 Pool Vetting Workflow (DONE)
 - **Search**: `pacman pools search <query>` (Queries Mirror Node/API).
 - **Approve**: `pacman pools approve <id>` (Adds to local JSON).
 - **Cleanup**: Users can wipe the V1 registry at any time without affecting V2 routing.
@@ -73,9 +74,11 @@
 | Feature | Complexity | Status |
 | :--- | :--- | :--- |
 | **Headless Refactor** | Medium | [DONE] |
-| **V1 Integration** | Low (Isolated) | Planned |
-| **Staking** | Low | Planned |
+| **V1 Integration** | Low (Isolated) | [DONE] |
+| **Staking** | Low | [DONE] |
+| **Whitelisting** | Low | [DONE] |
+| **History Refactor** | Low | [DONE] |
+| **Limit Orders** | High | Planned |
 | **HCS Swaps** | Very High | Researching |
-| **AUDD Tooling** | Low | Planned |
 
 *This roadmap is a living document. Last updated: Feb 18, 2026.*
