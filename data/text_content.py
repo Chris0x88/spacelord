@@ -23,6 +23,7 @@ HELP_COMMANDS = [
     ("--- WALLET & SETUP ---", ""),
     ("setup",                    "Secure wallet configuration"),
     ("account",                  "Wallet & network info"),
+    ("accounts",                 "List all known sub-accounts"),
     ("balance",                  "All wallet balances"),
     ("balance <token>",          "Single token balance"),
 
@@ -178,8 +179,11 @@ connected network status.
 
 {C.ACCENT}Sub-account Management:{C.R}
   Pacman allows you to create multiple Account IDs (0.0.xxx) 
-  that share the same Private Key. This is a native Hedera 
-  feature for organizational and privacy purposes.""",
+  that share the same Private Key. These are automatically 
+  tracked in your local registry for easy oversight.
+
+{C.ACCENT}Command List:{C.R}
+  {C.TEXT}account{C.R} / {C.TEXT}accounts{C.R}   View info & list all sub-accounts.""",
 
     "setup": """{C.BOLD}SECURE WALLET CONFIGURATION{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}

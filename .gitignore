@@ -17,10 +17,9 @@ venv/
 .venv/
 env/
 
-# Data & Logs (Keep empty structure but ignore contents if needed, or keep tracked if static)
-# The user wants "execution_records" for AI, so we generally KEEP them or ignore them?
-# "I need you to record... for training". So we should probably GITIGNORE them so they don't bloat the repo,
-# but the app must generate them.
+# Data & Logs 
+data/accounts.json
+data/pacman_data_raw.json
 execution_records/
 logs/
 training_data/

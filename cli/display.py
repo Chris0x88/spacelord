@@ -166,7 +166,7 @@ def show_help(topic: str = None):
 # Account Info
 # ---------------------------------------------------------------------------
 
-def show_account(executor):
+def show_account(executor, known_accounts=None):
     """Display wallet and network information."""
     from lib.saucerswap import hedera_id_to_evm
 
@@ -187,6 +187,17 @@ def show_account(executor):
 
     sim_status = f"{C.WARN}SIMULATION{C.R}" if executor.is_sim else f"{C.OK}LIVE{C.R}"
     print(f"  {C.MUTED}Mode{C.R}           {sim_status}")
+
+    # Show Known Sub-Accounts
+    if known_accounts:
+        # Filter out current account from the sub-list if needed
+        others = [a for a in known_accounts if a.get("id") != executor.hedera_account_id]
+        if others:
+            print(f"\n  {C.BOLD}{C.TEXT}KNOWN SUB-ACCOUNTS{C.R}")
+            print(f"  {C.CHROME}{'─' * 56}{C.R}")
+            print(f"  {C.MUTED}{'ID':<15} {'CREATED':<20} {'TYPE'}{C.R}")
+            for a in others:
+                print(f"  {C.ACCENT}{a.get('id'):<15}{C.R} {C.MUTED}{a.get('created_at', 'N/A'):<20}{C.R} {C.TEXT}{a.get('type','imported')}{C.R}")
     print()
 
 

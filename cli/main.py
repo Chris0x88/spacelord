@@ -59,7 +59,8 @@ def cmd_help(app, args):
         "prices": "price",
         "natural": "nlp",
         "rules":   "nlp",
-        "grammar": "nlp"
+        "grammar": "nlp",
+        "accounts": "account"
     }
     
     if topic and topic.lower() in aliases:
@@ -82,7 +83,8 @@ def cmd_price(app, args):
         show_all_prices()
 
 def cmd_account(app, args):
-    show_account(app.executor)
+    known = app.account_manager.get_known_accounts()
+    show_account(app.executor, known_accounts=known)
     
     # Sub-account creation option
     print(f"\n  {C.TEXT}Sub-account management:{C.R}")
@@ -1041,6 +1043,7 @@ COMMANDS = {
     "stake": cmd_stake,
     "unstake": cmd_unstake,
     "sources": cmd_sources, "source": cmd_sources,
+    "accounts": cmd_account,
     "verbose": cmd_verbose,
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
 }

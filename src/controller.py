@@ -196,6 +196,11 @@ class PacmanController:
         """
         return self.account_manager.create_sub_account(initial_balance_hbar=initial_balance)
 
+    def get_known_accounts(self) -> list:
+        """Get the list of known account IDs from the local registry."""
+        return self.account_manager.get_known_accounts()
+
+
     def approve_pool(self, pool_data: dict, protocol: str = "v2"):
         """
         Add a pool to the local approved registry.
