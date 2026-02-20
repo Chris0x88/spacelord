@@ -242,14 +242,21 @@ def cmd_pool_deposit(app, args):
         _sqrt_p  = _math.sqrt(1.0001 ** _pool_tick)
         _sqrt_pa = _math.sqrt(1.0001 ** tick_lower)
         _sqrt_pb = _math.sqrt(1.0001 ** tick_upper)
+        
+        # Get decimals for scaling
+        dec0 = _ta.get("decimals", 8) if "_ta" in locals() else 8
+        dec1 = _tb.get("decimals", 8) if "_tb" in locals() else 8
+        
         # In-range estimate: derive amount1 from amount0
         if amount0 > 0 and amount1 == 0 and tick_lower <= _pool_tick < tick_upper:
-            _liq = amount0 / (1.0/_sqrt_p - 1.0/_sqrt_pb)
-            _est1 = _liq * (_sqrt_p - _sqrt_pa)
+            _liq = (amount0 * (10**dec0)) / (1.0/_sqrt_p - 1.0/_sqrt_pb)
+            _raw_est1 = _liq * (_sqrt_p - _sqrt_pa)
+            _est1 = _raw_est1 / (10**dec1)
             est_label = f"~{_est1:.4f} {token1} (auto-estimated)"
         elif amount1 > 0 and amount0 == 0 and tick_lower <= _pool_tick < tick_upper:
-            _liq = amount1 / (_sqrt_p - _sqrt_pa)
-            _est0 = _liq * (1.0/_sqrt_p - 1.0/_sqrt_pb)
+            _liq = (amount1 * (10**dec1)) / (_sqrt_p - _sqrt_pa)
+            _raw_est0 = _liq * (1.0/_sqrt_p - 1.0/_sqrt_pb)
+            _est0 = _raw_est0 / (10**dec0)
             est_label = f"~{_est0:.4f} {token0} (auto-estimated) + {amount1} {token1}"
         else:
             est_label = f"{amount0} {token0} + {amount1} {token1}"
@@ -479,15 +486,15 @@ def cmd_lp_positions(app, args):
         return f"0.0.{int(addr.lower(), 16)}"
 
     def get_sym(tid):
-        if tid == "0.0.1456986": return "HBAR"
+        if tid == "0.0.1456986": return "HBAR", 8
         for _, m in tokens_data.items():
             if m.get("id") == tid:
-                return m.get("symbol", tid)
-        return tid
+                return m.get("symbol", tid), m.get("decimals", 8)
+        return tid, 8
 
     for pos in positions:
-        t0_sym = get_sym(evm_to_id(pos['token0']))
-        t1_sym = get_sym(evm_to_id(pos['token1']))
+        t0_sym, dec0 = get_sym(evm_to_id(pos['token0']))
+        t1_sym, dec1 = get_sym(evm_to_id(pos['token1']))
         pair = f"{t0_sym}/{t1_sym}"
         fee_pct = pos['fee'] / 10000
         tick_lower  = pos.get('tick_lower', 0)
@@ -506,12 +513,16 @@ def cmd_lp_positions(app, args):
             sqpb = _math.sqrt(1.0001 ** tick_upper)
             if sqpa > sqpb: sqpa, sqpb = sqpb, sqpa
             if tick_current < tick_lower:
-                est_t0 = liq * (1.0/sqpa - 1.0/sqpb) / 1e8
+                _raw0 = liq * (1.0/sqpa - 1.0/sqpb)
+                est_t0 = _raw0 / (10**dec0)
             elif tick_current >= tick_upper:
-                est_t1 = liq * (sqpb - sqpa) / 1e8
+                _raw1 = liq * (sqpb - sqpa)
+                est_t1 = _raw1 / (10**dec1)
             else:
-                est_t0 = liq * (1.0/sqp - 1.0/sqpb) / 1e8
-                est_t1 = liq * (sqp - sqpa) / 1e8
+                _raw0 = liq * (1.0/sqp - 1.0/sqpb)
+                _raw1 = liq * (sqp - sqpa)
+                est_t0 = _raw0 / (10**dec0)
+                est_t1 = _raw1 / (10**dec1)
         except Exception:
             pass
 
