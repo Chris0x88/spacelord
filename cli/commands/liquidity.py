@@ -444,3 +444,85 @@ def cmd_lp_positions(app, args):
         show_balance(app.executor, lp_positions=positions)
     except Exception as e:
         print(f"  {C.ERR}✗{C.R} Error fetching LP positions: {e}")
+
+def cmd_lp_positions(app, args):
+    """
+    Dedicated command to view active V2 Liquidity positions (NFTs only).
+    Usage: lp  |  positions
+    """
+    import math as _math, json as _json
+
+    print(f"\n  {C.BOLD}{C.ACCENT}V2 LIQUIDITY POSITIONS{C.R}")
+    print(f"  {C.CHROME}{'─' * 72}{C.R}")
+    print(f"  {C.MUTED}Fetching active positions from chain...{C.R}")
+
+    try:
+        positions = app.get_liquidity_positions()
+    except Exception as e:
+        print(f"  {C.ERR}✗{C.R} Error: {e}")
+        return
+
+    if not positions:
+        print(f"  {C.WARN}⚠  No active V2 LP positions found.{C.R}")
+        print(f"  {C.MUTED}Run 'pool-deposit' to create a position.{C.R}\n")
+        return
+
+    # Load token names
+    tokens_data = {}
+    try:
+        with open("data/tokens.json") as f:
+            tokens_data = _json.load(f)
+    except Exception:
+        pass
+
+    def evm_to_id(addr):
+        return f"0.0.{int(addr.lower(), 16)}"
+
+    def get_sym(tid):
+        if tid == "0.0.1456986": return "HBAR"
+        for _, m in tokens_data.items():
+            if m.get("id") == tid:
+                return m.get("symbol", tid)
+        return tid
+
+    for pos in positions:
+        t0_sym = get_sym(evm_to_id(pos['token0']))
+        t1_sym = get_sym(evm_to_id(pos['token1']))
+        pair = f"{t0_sym}/{t1_sym}"
+        fee_pct = pos['fee'] / 10000
+        tick_lower  = pos.get('tick_lower', 0)
+        tick_upper  = pos.get('tick_upper', 0)
+        tick_current = pos.get('tick_current', tick_lower)
+        in_range = tick_lower <= tick_current < tick_upper
+        range_icon  = f"{C.OK}●{C.R}" if in_range else f"{C.WARN}○{C.R}"
+        range_label = "In Range" if in_range else "Out of Range"
+        liq = pos.get('liquidity', 0)
+
+        # V3 estimated underlying token amounts
+        est_t0, est_t1 = 0.0, 0.0
+        try:
+            sqp  = _math.sqrt(1.0001 ** tick_current)
+            sqpa = _math.sqrt(1.0001 ** tick_lower)
+            sqpb = _math.sqrt(1.0001 ** tick_upper)
+            if sqpa > sqpb: sqpa, sqpb = sqpb, sqpa
+            if tick_current < tick_lower:
+                est_t0 = liq * (1.0/sqpa - 1.0/sqpb) / 1e8
+            elif tick_current >= tick_upper:
+                est_t1 = liq * (sqpb - sqpa) / 1e8
+            else:
+                est_t0 = liq * (1.0/sqp - 1.0/sqpb) / 1e8
+                est_t1 = liq * (sqp - sqpa) / 1e8
+        except Exception:
+            pass
+
+        t0_str = f"~{est_t0:.4f} {t0_sym}" if est_t0 > 0 else ""
+        t1_str = f"~{est_t1:.4f} {t1_sym}" if est_t1 > 0 else ""
+        holdings = " + ".join(filter(None, [t0_str, t1_str])) or "—"
+
+        print(f"\n  {C.BOLD}{C.TEXT}NFT #{pos['id']}{C.R}  {C.ACCENT}{pair}{C.R}  Fee: {C.TEXT}{fee_pct:.2f}%{C.R}  {range_icon} {C.MUTED}{range_label}{C.R}")
+        print(f"  {C.CHROME}{'─' * 56}{C.R}")
+        print(f"  {C.MUTED}Tick Range:{C.R} {C.TEXT}[{tick_lower:,} → {tick_upper:,}]{C.R}  {C.MUTED}Current: {tick_current:,}{C.R}")
+        print(f"  {C.MUTED}Est. Holdings:{C.R} {C.TEXT}{holdings}{C.R}")
+        print(f"  {C.MUTED}Liquidity Units:{C.R} {C.TEXT}{liq:,}{C.R}")
+
+    print(f"\n  {C.MUTED}Run 'pool-withdraw' to remove liquidity from a position.{C.R}\n")
