@@ -50,6 +50,10 @@
 - `lib/transfers.py`: Hardened transfer logic with whitelist protection.
 - `lib/saucerswap.py`: V2 swap execution.
 
+### 2.3 Liquidity Operations (IN PROGRESS)
+- `lib/v2_liquidity.py`: Isolated logic for depositing and withdrawing from SaucerSwap V2 pools.
+- Contract integrations: `NonfungiblePositionManager` (Mint, DecreaseLiquidity, Collect).
+
 ---
 
 ## Phase 3: Networked Features (The "Voice")
@@ -79,6 +83,7 @@
 | **Whitelisting** | Low | [DONE] |
 | **Multi-Account** | Medium | [DONE] |
 | **Limit Orders** | High | In Progress |
+| **V2 Liquidity Pools** | High | In Progress |
 | **HCS Swaps** | Very High | Researching |
 
 *This roadmap is a living document. Last updated: Feb 19, 2026.*

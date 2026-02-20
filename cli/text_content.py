@@ -12,10 +12,8 @@ PACMAN_BANNER_TEMPLATE = """{ACCENT}
     ██████╔╝███████║██║     ██╔████╔██║███████║██╔██╗ ██║
     ██╔═══╝ ██╔══██║██║     ██║╚██╔╝██║██╔══██║██║╚██╗██║
     ██║     ██║  ██║╚██████╗██║ ╚═╝ ██║██║  ██║██║ ╚████║
-    ╚═╝     ╚═╝  ╚═╝ ╚═════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝{R}
-
 {CHROME}    ╭──────────────────────────────────────────────────────╮{R}
-{ACCENT}     ᗧ{R}{MUTED}· · ·{R}{OK} 👾{R}  {TEXT}SaucerSwap V2{R} {MUTED}on{R} {BRAND}Hedera{R} {MUTED}Hashgraph{R}
+{ACCENT}     ᗧ{R}{MUTED}· · ·{R}{OK} 👾{R}  {TEXT}SaucerSwap V2 Swaps & Liquidity{R} {MUTED}on{R} {BRAND}Hedera{R}
 {CHROME}    ╰──────────────────────────────────────────────────────╯{R}"""
 
 HELP_COMMANDS = [
@@ -48,6 +46,11 @@ HELP_COMMANDS = [
     ("stake [node_id]",          "Stake HBAR (default: Google node 5)"),
     ("unstake",                  "Stop staking & clear node preference"),
 
+    # Liquidity
+    ("--- LIQUIDITY ---", ""),
+    ("pool-deposit",             "Interactive V2 Liquidity deployment wizard"),
+    ("pool-withdraw <nft> <liq>","Withdraw V2 Liquidity by NFT ID"),
+
     # Market Data
     ("--- MARKET DATA ---", ""),
     ("tokens",                   "Supported token list with IDs & aliases"),
@@ -60,7 +63,7 @@ HELP_COMMANDS = [
     # System
     ("--- SYSTEM ---", ""),
     ("verbose [on/off]",         "Toggle debug logging"),
-    ("help <topic>",             "Deep dive: swap|send|nlp|stake|pools|whitelist|account|balance|price"),
+    ("help <topic>",             "Deep dive: swap|send|nlp|stake|pools|liquidity|whitelist|account|balance|price"),
     ("exit",                     "Quit Pacman"),
 ]
 
@@ -78,6 +81,7 @@ HELP_EXAMPLES = [
     ("account --new",                "Create a sub-account using your current key"),
     ("pools search HBAR",            "Find pools containing HBAR"),
     ("pools approve 0.0.123456",     "Add a pool to your routing registry"),
+    ("pool-deposit",                 "Start the interactive V2 Liquidity wizard"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -447,4 +451,32 @@ View your recent on-chain activity recorded locally.
   The history command provides an audit trail of executed operations.
   Use it to verify that a recent swap or transfer completed successfully.
   Success is indicated by {C.OK}✓{C.R} (true) vs {C.ERR}✗{C.R} (failed/simulated).""",
+
+    "liquidity": """{C.BOLD}V2 LIQUIDITY POOLS — COMPLETE REFERENCE{C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+Manage concentrated liquidity positions on SaucerSwap V2.
+
+{C.ACCENT}Commands:{C.R}
+  {C.TEXT}ᗧ pool-deposit{C.R} (interactive guided wizard)
+  {C.TEXT}ᗧ pool-deposit <t0> <t1> <amt0> <amt1> <fee> <lower> <upper>{C.R}
+  {C.TEXT}ᗧ pool-withdraw <nft_token_id> <liquidity_amount>{C.R}
+
+{C.ACCENT}Interactive Wizard:{C.R}
+  Running {C.TEXT}pool-deposit{C.R} without arguments launches a guided setup.
+  It helps you choose symbols, amounts, fee tiers, and price ranges.
+
+{C.ACCENT}Concentrated Liquidity:{C.R}
+  Unlike V1 where liquidity is spread from 0 to infinity, V2 allows 
+  you to pick custom price "buckets" (ticks).
+  - Narrow ranges = higher fee collection but higher risk of inactivity.
+  - Wide ranges = steady fees but lower efficiency.
+  - Full Range: use ticks -887220 to 887220.
+
+{C.ACCENT}Automatic HBAR Wrapping:{C.R}
+  SaucerSwap V2 uses WHBAR. Pacman automatically detects HBAR input, 
+  acquires WHBAR on your behalf, and mints the position in one flow.
+
+{C.ACCENT}Viewing Your Positions:{C.R}
+  Active V2 LP positions are NFTs. Run {C.TEXT}balance{C.R} to see a dedicated 
+  table of your positions, their fee tiers, and status.""",
 }

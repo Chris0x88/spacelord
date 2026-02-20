@@ -43,6 +43,18 @@ data/v1_pools_approved.json → Approved V1 pool registry
 
 ## Critical Hedera Rules (violating these burns gas or causes silent reverts)
 
+> [!CAUTION]
+> ### 🛑 STOP: HBAR vs. WHBAR (AI AGENTS ALWAYS FORGET THIS)
+> **WHBAR (`0.0.1456986`) IS A ROUTING TOOL, NOT AN ASSET.**
+> Any AI agent suggesting manual `WHBAR.deposit()` or `WHBAR.withdraw()` is **FAILING THE TASK**.
+>
+> 1. **MANDATORY**: Users deposit/swap native **HBAR**. 
+> 2. **NEVER** suggest `approve()` for HBAR.
+> 3. **CONTRACT WRAPPING**: The PositionManager and Router wrap HBAR internally. 
+> 4. **IMPLEMENTATION**: Use `multicall([main_call, refundETH_call])` and send native HBAR in the transaction `value` field (scaled x10¹⁰).
+> 5. **FAILURE TO FOLLOW THIS = REVERT & 100% GAS LOSS.**
+
+
 ### 1. ALWAYS use alias address (self.eoa) — NEVER long-zero
 ```python
 # WRONG — will revert on Hedera EVM

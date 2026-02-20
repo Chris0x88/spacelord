@@ -47,3 +47,21 @@ This document captures critical "small learnings" and Hedera-specific rules disc
 - **Finding**: Complex `multicall` operations (like Token → HBAR) can consume over 600k gas.
 - **Rule**: Set a safety limit of at least **2,500,000** for `multicall` to avoid "Out of Gas" reverts.
 - **Status**: ✅ Updated in `lib/saucerswap.py`.
+
+### 7. HBAR in LP Deposits — Multicall, NOT Pre-Wrap (CRITICAL)
+> [!CAUTION]
+> A common mistake is to manually call `WHBAR.deposit()` before minting an LP position when HBAR is one of the pool tokens. **This is WRONG and will waste gas on a revert.**
+
+- **Correct Pattern**: The `NonfungiblePositionManager` handles HBAR wrapping internally, exactly like the V2 Router does for swaps.
+  1. Build `mint(params)` calldata normally, using the WHBAR address for the HBAR token slot.
+  2. Build `refundETH()` calldata to return unused HBAR to the sender.
+  3. Send both via `multicall([mint_calldata, refundETH_calldata])` with the HBAR amount passed as the transaction `value` field (scaled by `10**10` per Rule 1).
+  4. **Never** send an ERC20 `approve` call for the HBAR side—HBAR is not an ERC20.
+- **Status**: ✅ Implemented in `lib/v2_liquidity.py` → `add_liquidity(hbar_value_raw=...)` + multicall path.
+
+### 8. LP Deposit Deadline — Milliseconds (Same as Swaps)
+> [!WARNING]
+> LP mint/decrease operations also check `deadline`. Using Unix seconds (the Uniswap V3 Ethereum default) causes immediate reverts on Hedera.
+
+- **Rule**: `deadline = int(time.time() * 1000) + 600_000` (10 minutes in ms).
+- **Status**: ✅ Implemented in `lib/v2_liquidity.py`.

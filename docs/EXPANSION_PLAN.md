@@ -8,19 +8,19 @@ This document captures the full planning session from Feb 14, 2026, regarding th
 The user proposed 13 specific ideas to expand Pacman's capabilities while maintaining its "super easy code" remit for both humans and AI agents.
 
 ### The "13 Ideas":
-1.  **Staking**: Include critical transaction types like HBAR Native Staking.
-2.  **Wallet Management**: Guided setup to upload keys to `.env`.
-3.  **Multi-Account**: Support for switching between different wallets/agents.
-4.  **Liquidity Pools**: Deposit and withdraw from SaucerSwap V2 pools.
-5.  **Monitoring**: Super basic live dashboard for top pairs/liquidity.
-6.  **Smart Routing**: AI-driven or price-based routing (handling rate limits).
-7.  **Payment QR**: Generator for receiving funds.
-8.  **Payment Requests**: Send requests for funds.
-9.  **HCS Broadcasting**: Offer small rebalancing trades via HCS.
-10. **HCS Scanning**: Passive scanning for atomic swap matches (HCS bids/offers).
-11. **Network Status**: AI interpretation of Hedera roadmap and HIIP status.
-12. **AUDD Integration**: Native AUDD support for cheap DEFI.
-13. **SSV2 Snapshots**: Snapshot data for top volume pools.
+1.  **Staking**: [DONE] Include critical transaction types like HBAR Native Staking.
+2.  **Wallet Management**: [DONE] Guided setup to upload keys to `.env`.
+3.  **Multi-Account**: [DONE] Support for switching between different wallets/agents.
+4.  **Liquidity Pools**: [IN PROGRESS] Deposit and withdraw from SaucerSwap V2 pools.
+5.  **Monitoring**: [PENDING] Super basic live dashboard for top pairs/liquidity.
+6.  **Smart Routing**: [DONE] AI-driven or price-based routing (handling rate limits).
+7.  **Payment QR**: [PENDING] Generator for receiving funds.
+8.  **Payment Requests**: [PENDING] Send requests for funds.
+9.  **HCS Broadcasting**: [RESEARCHING] Offer small rebalancing trades via HCS.
+10. **HCS Scanning**: [RESEARCHING] Passive scanning for atomic swap matches (HCS bids/offers).
+11. **Network Status**: [PENDING] AI interpretation of Hedera roadmap and HIIP status.
+12. **AUDD Integration**: [PENDING] Native AUDD support for cheap DEFI.
+13. **SSV2 Snapshots**: [PENDING] Snapshot data for top volume pools.
 
 ---
 

@@ -163,7 +163,7 @@ def show_help(topic: str = None):
 
     print(f"\n  {C.MUTED}For in-depth help, type: {C.R}{C.TEXT}help <topic>{C.R}")
     print(f"  {C.MUTED}Topics: swap  send  balance  price  pools  account  whitelist{C.R}")
-    print(f"  {C.MUTED}        stake  history  setup  swap-v1  nlp{C.R}\n")
+    print(f"  {C.MUTED}        liquidity  stake  history  setup  swap-v1  nlp{C.R}\n")
 
 
 # ---------------------------------------------------------------------------
@@ -345,7 +345,7 @@ def show_sources():
 # Balance (All & Single)
 # ---------------------------------------------------------------------------
 
-def show_balance(executor, single_token: str = None):
+def show_balance(executor, single_token: str = None, lp_positions: list = None):
     """Display wallet balances. If single_token is given, show only that one."""
     from lib.prices import price_manager
     price_manager.reload()
@@ -354,7 +354,7 @@ def show_balance(executor, single_token: str = None):
         _show_single_balance(executor, single_token, price_manager)
         return
 
-    _show_all_balances(executor, price_manager)
+    _show_all_balances(executor, price_manager, lp_positions)
 
 
 def _show_single_balance(executor, token_name: str, price_manager):
@@ -416,7 +416,7 @@ def _show_single_balance(executor, token_name: str, price_manager):
         print(f"  {C.ERR}✗{C.R} Error fetching balance: {e}")
 
 
-def _show_all_balances(executor, price_manager):
+def _show_all_balances(executor, price_manager, lp_positions: list = None):
     """Display all wallet balances in a formatted table."""
     from src.router import PacmanVariantRouter
 
@@ -516,6 +516,37 @@ def _show_all_balances(executor, price_manager):
         print(f"  {C.CHROME}{'─' * 56}{C.R}")
         print(f"  {C.BOLD}{'TOTAL':10s}{C.R} {' ':>14s}  {C.BOLD}{C.OK}${total_usd:>10.2f}{C.R}")
         print()
+
+        # V2 Liquidity Positions
+        if lp_positions:
+            print(f"  {C.BOLD}{C.ACCENT}V2 LIQUIDITY POSITIONS{C.R}")
+            print(f"  {C.CHROME}{'─' * 56}{C.R}")
+            print(f"  {C.MUTED}{'NFT ID':<10} {'PAIR':<20} {'FEE':<8} {'STATUS'}{C.R}")
+            print(f"  {C.CHROME}{'─' * 56}{C.R}")
+            
+            def evm_to_hedera_id(evm_address: str) -> str:
+                num = int(evm_address.lower(), 16)
+                return f"0.0.{num}"
+                
+            for pos in lp_positions:
+                t0_id = evm_to_hedera_id(pos['token0'])
+                t1_id = evm_to_hedera_id(pos['token1'])
+                
+                def get_sym(tid):
+                    if tid == "0.0.1456986": return "WHBAR" # V2 internal 
+                    for sym, meta in tokens_data.items():
+                        if meta.get("id") == tid:
+                            return meta.get("symbol", sym)
+                    return tid
+                    
+                t0_sym = get_sym(t0_id)
+                t1_sym = get_sym(t1_id)
+                pair = f"{t0_sym}/{t1_sym}"
+                fee_pct = pos['fee'] / 10000
+                status = f"{C.OK}Active{C.R}" if pos['liquidity'] > 0 else f"{C.MUTED}Closed{C.R}"
+                
+                print(f"  {C.TEXT}{pos['id']:<10}{C.R} {C.ACCENT}{pair:<20}{C.R} {fee_pct:.2f}%   {status}")
+            print()
 
     except Exception as e:
         print(f"  {C.ERR}✗{C.R} Failed to fetch balances: {e}")

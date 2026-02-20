@@ -29,7 +29,10 @@ def cmd_help(app, args):
         "natural": "nlp",
         "rules":   "nlp",
         "grammar": "nlp",
-        "accounts": "account"
+        "accounts": "account",
+        "pool-deposit": "liquidity",
+        "pool-withdraw": "liquidity",
+        "lp": "liquidity"
     }
     
     if topic and topic.lower() in aliases:

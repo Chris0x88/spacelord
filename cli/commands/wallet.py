@@ -211,7 +211,14 @@ def cmd_account(app, args):
 
 def cmd_balance(app, args):
     token = args[0] if args else None
-    show_balance(app.executor, single_token=token)
+    
+    lp_positions = []
+    try:
+        lp_positions = app.get_liquidity_positions()
+    except Exception as e:
+        logger.debug(f"Failed to fetch LPs: {e}")
+        
+    show_balance(app.executor, single_token=token, lp_positions=lp_positions)
 
 
 def cmd_send(app, args):
