@@ -518,14 +518,30 @@ class PacmanExecutor:
         return price_manager.get_hbar_price()
 
     
-    def _get_token_decimals(self, token_symbol: str) -> int:
-        sym = token_symbol.upper()
-        # Handle variants explicitly
+    def _get_token_decimals(self, token_id_or_sym: str) -> int:
+        """Look up token decimals by Hedera ID first, then by symbol keyword."""
+        import json as _json
+        # Try to look up by Hedera token ID from tokens.json
+        if token_id_or_sym.startswith("0.0."):
+            try:
+                with open("data/tokens.json") as f:
+                    tdata = _json.load(f)
+                for _, m in tdata.items():
+                    if m.get("id") == token_id_or_sym:
+                        return m.get("decimals", 8)
+            except Exception:
+                pass
+
+        # Fallback: keyword match on symbol
+        sym = token_id_or_sym.upper()
         if "USDC" in sym or "USDT" in sym: return 6
         if "SAUCE" in sym or "XSAUCE" in sym: return 6
         if "WBTC" in sym: return 8
         if "WETH" in sym: return 8
-        return 8 # Default for HBAR 
+        return 8  # Default for HBAR
+
+
+
 
     def check_token_association(self, token_id: str) -> bool:
         """Check if the account is associated with the token."""

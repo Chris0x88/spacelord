@@ -23,6 +23,7 @@ DEADLINE RULE:
 
 import time
 import json
+from src.logger import logger
 from pathlib import Path
 from lib.saucerswap import hedera_id_to_evm
 
@@ -104,7 +105,7 @@ class V2LiquidityManager:
             return  # Already approved
 
         print(f"   🔓 Approving {token_id} for PositionManager...")
-        approve_tx = token.functions.approve(spender_evm, 2**256 - 1).build_transaction({
+        approve_tx = token.functions.approve(spender_evm, amount).build_transaction({
             "from": self.eoa,
             "gas": 2_000_000,
             "gasPrice": self.w3.eth.gas_price,
@@ -155,7 +156,8 @@ class V2LiquidityManager:
             amount0_min, amount1_min = amount1_min, amount0_min
 
         # CRITICAL: millisecond deadline for Hedera
-        deadline = int(time.time() * 1000) + 600_000  # 10 minutes
+        # 60 minute window for safety during simulation/debugging
+        deadline = int(time.time() * 1000) + 3_600_000 
 
         params = (
             token0_evm,
@@ -193,7 +195,7 @@ class V2LiquidityManager:
 
             tx = self.contract.functions.multicall(encoded_calls).build_transaction({
                 "from": self.eoa,
-                "gas": 3_500_000,
+                "gas": 1_000_000,
                 "gasPrice": self.w3.eth.gas_price,
                 "nonce": self.w3.eth.get_transaction_count(self.eoa),
                 "chainId": self.chain_id,
@@ -209,7 +211,7 @@ class V2LiquidityManager:
 
             tx = self.contract.functions.mint(params).build_transaction({
                 "from": self.eoa,
-                "gas": 3_500_000,
+                "gas": 1_000_000,
                 "gasPrice": self.w3.eth.gas_price,
                 "nonce": self.w3.eth.get_transaction_count(self.eoa),
                 "chainId": self.chain_id,
@@ -217,6 +219,16 @@ class V2LiquidityManager:
 
         signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        
+        # Await receipt to guarantee success
+        logger.info(f"Waiting for mint receipt: {tx_hash.hex()}...")
+        try:
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+            if receipt.status != 1:
+                raise RuntimeError(f"Mint transaction {tx_hash.hex()} reverted on-chain (status 0).")
+        except Exception as e:
+            raise RuntimeError(f"Mint receipt error: {e}")
+            
         return tx_hash.hex()
 
     def remove_liquidity(

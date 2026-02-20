@@ -183,3 +183,49 @@ def cmd_slippage(app, args):
         print(f"  {C.OK}✓{C.R} Slippage set to {C.TEXT}{new_val:.1f}%{C.R} (saved)")
     except Exception as e:
         print(f"  {C.WARN}⚠{C.R} Applied to session but failed to save: {e}")
+
+def cmd_lp_padding(app, args):
+    """View or set EVM math padding for V2 LP deposits."""
+    import json
+    from pathlib import Path
+
+    settings_path = Path("data/settings.json")
+
+    if not args:
+        # Show current padding
+        pct = app.config.lp_padding_percent
+        print(f"\n  {C.BOLD}LP Deposit Padding:{C.R} {C.TEXT}{pct:.1f}%{C.R}")
+        print(f"  {C.MUTED}Usage: lp-padding <percent>  (e.g. lp-padding 3.0){C.R}")
+        print(f"  {C.MUTED}Range: 0.1% – 10.0%  •  Saved to data/settings.json{C.R}")
+        return
+
+    try:
+        new_val = float(args[0])
+    except ValueError:
+        print(f"  {C.ERR}✗{C.R} Invalid number: {args[0]}")
+        return
+
+    if new_val < 0.1 or new_val > 10.0:
+        print(f"  {C.ERR}✗{C.R} Out of range. Must be between 0.1% and 10.0%")
+        return
+
+    # Update live config
+    app.config.lp_padding_percent = new_val
+
+    # Persist to settings.json
+    try:
+        settings = {}
+        if settings_path.exists():
+            with open(settings_path) as f:
+                settings = json.load(f)
+
+        if "swap_settings" not in settings:
+            settings["swap_settings"] = {}
+        settings["swap_settings"]["lp_padding_percent"] = round(new_val, 1)
+
+        with open(settings_path, "w") as f:
+            json.dump(settings, f, indent=4)
+
+        print(f"  {C.OK}✓{C.R} LP Padding set to {C.TEXT}{new_val:.1f}%{C.R} (saved)")
+    except Exception as e:
+        print(f"  {C.WARN}⚠{C.R} Applied to session but failed to save: {e}")

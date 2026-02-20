@@ -317,30 +317,42 @@ class PacmanController:
         raw0 = int(float(amount0) * 10 ** t0_decimals)
         raw1 = int(float(amount1) * 10 ** t1_decimals)
 
-        # Lookup current tick to optimize the amounts
+        # Lookup LIVE current tick for the pool to derive optimal amounts.
+        # CRITICAL: Native HBAR (0.0.0) is stored as WHBAR in pool data and contract.
+        WHBAR_ID = self.liquidity_manager.whbar_id
+        _lookup_id0 = WHBAR_ID if t0_id == "0.0.0" else t0_id
+        _lookup_id1 = WHBAR_ID if t1_id == "0.0.0" else t1_id
         pool_tick = 0
         try:
-            import json
-            from pathlib import Path
-            raw_path = Path("data/pacman_data_raw.json")
-            if raw_path.exists():
-                with open(raw_path) as f:
-                    pools = json.load(f)
-                for p in pools:
-                    if (p.get("tokenA", {}).get("id") == t0_id and p.get("tokenB", {}).get("id") == t1_id) or \
-                       (p.get("tokenA", {}).get("id") == t1_id and p.get("tokenB", {}).get("id") == t0_id):
-                        if p.get("fee") == fee:
+            from lib.saucerswap import get_pool_address, POOL_ABI
+            pool_addr = get_pool_address(self.executor.w3, _lookup_id0, _lookup_id1, fee, self.network)
+            pool_contract = self.executor.w3.eth.contract(address=pool_addr, abi=POOL_ABI)
+            pool_tick = pool_contract.functions.slot0().call()[1]
+            logger.info(f"Live pool tick from chain: {pool_tick}")
+        except Exception as e:
+            logger.warning(f"Chain slot0 fallback: {e}")
+            try:
+                import json
+                from pathlib import Path
+                raw_path = Path("data/pacman_data_raw.json")
+                if raw_path.exists():
+                    pools = json.load(open(raw_path))
+                    for p in pools:
+                        pool_ids = {p.get("tokenA", {}).get("id"), p.get("tokenB", {}).get("id")}
+                        if pool_ids == {_lookup_id0, _lookup_id1} and p.get("fee") == fee:
                             pool_tick = p.get("tickCurrent", 0)
                             break
-        except Exception:
-            pass
-            
-        # Calculate optimal amounts based on the provided tick ranges
+            except Exception:
+                pass
+
+
         opt_raw0, opt_raw1 = self._calculate_v2_amounts(pool_tick, tick_lower, tick_upper, raw0, raw1)
         
-        # Apply 1% slippage buffer for min amounts
-        amount0_min = int(opt_raw0 * 0.99)
-        amount1_min = int(opt_raw1 * 0.99)
+        # IMPORTANT: For new V3 positions, always use 0 for amountMin.
+        # Any non-zero amountMin against a live pool will fail with 'Price slippage check'
+        # if the pool tick has moved even slightly between quote and execution.
+        amount0_min = 0
+        amount1_min = 0
 
         is_native0 = (t0_id == "0.0.0")
         is_native1 = (t1_id == "0.0.0")
@@ -352,24 +364,42 @@ class PacmanController:
         if is_native1:
             t1_id = WHBAR_ID
 
-        # The HBAR raw amount to pass as tx value (the liquidity manager
-        # handles multicall + refundETH internally — no pre-wrap needed).
-        hbar_value_raw = 0
-        if is_native0:
-            hbar_value_raw = raw0
-        elif is_native1:
-            hbar_value_raw = raw1
+        # Add configurable padding to the auto-derived amounts to act as a buffer for EVM 256-bit fixed point truncation differences.
+        # This prevents 'MF' (EVM math needs fractions more than python float provided).
+        # We MUST NOT pad the anchor side, otherwise the EVM will try to pull more tokens than the user intended/holds.
+        # Plan: Use 2% buffer as per documentation recommendation for one-sided deposits.
+        padding_multiplier = 1.02 
+        if raw0 == 0 and raw1 > 0:
+            opt_raw0 = max(1, int(opt_raw0 * padding_multiplier))
+        elif raw1 == 0 and raw0 > 0:
+            opt_raw1 = max(1, int(opt_raw1 * padding_multiplier))
 
+        # MINT FEE: ~0.5 HBAR (50,000,000 tinybar). Required by SaucerSwap V2 Factory.
+        MINT_FEE = 50_000_000 
+        hbar_value_raw = MINT_FEE
+        if is_native0:
+            hbar_value_raw += opt_raw0
+        elif is_native1:
+            hbar_value_raw += opt_raw1
+            
         # Only approve the non-HBAR side (HBAR goes as tx value, not ERC20)
         # NB: _ensure_lp_approval is self-contained in v2_liquidity.py — does NOT touch swap engine
+        # Approval must happen BEFORE the simulation (dry_run) too so the allowance is set
         logger.info(f"Approving tokens for PositionManager...")
-        if not dry_run:
-            if not is_native0:
-                self.liquidity_manager._ensure_lp_approval(t0_id, opt_raw0)
-            if not is_native1:
-                self.liquidity_manager._ensure_lp_approval(t1_id, opt_raw1)
+        if not is_native0:
+            self.liquidity_manager._ensure_lp_approval(t0_id, opt_raw0)
+        if not is_native1:
+            self.liquidity_manager._ensure_lp_approval(t1_id, opt_raw1)
 
-        logger.info(f"Minting position for {t0_id}/{t1_id} (hbar_value_raw={hbar_value_raw})...")
+        # Ensure NFT Association before Minting
+        # EVM V3 Minting reverts with TB:FT if the recipient hasn't associated the LP NFT token ID
+        nft_token_id = "0.0.4054027" if self.network == "mainnet" else "0.0.4054027"
+        if not self.executor.check_token_association(nft_token_id):
+            logger.info(f"   ⚠️  LP NFT {nft_token_id} not associated. Attempting auto-association...")
+            if not self.executor.associate_token(nft_token_id):
+                raise RuntimeError(f"Failed to auto-associate LP NFT {nft_token_id}. Minting will fail.")
+
+        logger.info(f"Minting position for {t0_id}/{t1_id}...")
         return self.liquidity_manager.add_liquidity(
             token0_id=t0_id, token1_id=t1_id, fee=fee,
             tick_lower=tick_lower, tick_upper=tick_upper,
@@ -668,59 +698,78 @@ class PacmanController:
             logger.error(f"Failed to update whitelist: {e}")
             return False
     def get_liquidity_positions(self) -> list:
-        """Fetch NFT IDs of LP tokens for this account with full position details."""
+        """Fetch NFT IDs of LP tokens for this account with full position details via Mirror Node."""
         if not self.account_id: return []
         network_prefix = "mainnet-public" if self.network == "mainnet" else "testnet"
-        nft_token_id = "0.0.4054027" if self.network == "mainnet" else "0.0.4054027"
+        nft_token_id = "0.0.4054027"
         url = f"https://{network_prefix}.mirrornode.hedera.com/api/v1/accounts/{self.account_id}/nfts?token.id={nft_token_id}"
+        
         positions = []
         try:
             import requests
             from web3 import Web3
+            from eth_abi import decode as abi_decode
+            from lib.saucerswap import hedera_id_to_evm
+
             res = requests.get(url, timeout=10)
             if res.status_code == 200:
                 data = res.json().get("nfts", [])
                 for nft in data:
-                    serial = nft.get("serial_number")
-                    pos_data = self.liquidity_manager.contract.functions.positions(serial).call()
-                    liquidity = pos_data[7]
-                    if liquidity > 0:
-                        tick_lower = pos_data[5]
-                        tick_upper = pos_data[6]
-                        t0_addr = Web3.to_checksum_address(pos_data[2])
-                        t1_addr = Web3.to_checksum_address(pos_data[3])
-                        fee = pos_data[4]
+                    serial = int(nft.get("serial_number"))
+                    
+                    # Manual decode to handle specific SaucerSwap V2 return length (320 bytes = 10 fields)
+                    
+                    # Correct selector for positions(uint256) -> 0x99fbab88
+                    selector = "0x99fbab88"
+                    call_data = selector + hex(serial)[2:].zfill(64)
+                    
+                    raw_res = self.executor.w3.eth.call({
+                        "to": self.liquidity_manager.contract.address,
+                        "data": call_data
+                    })
+                    
+                    # SaucerSwap V2 NFPM returns 320 bytes (10 fields of 32 bytes)
+                    if len(raw_res) >= 320:
+                        clean_res = raw_res[:320]
+                        # Struct Layout: [t0, t1, fee, tickL, tickU, liq, feeG0, feeG1, owed0, owed1]
+                        pos_types = ['address', 'address', 'uint24', 'int24', 'int24', 'uint128', 'uint256', 'uint256', 'uint128', 'uint128']
+                        pos_data = abi_decode(pos_types, clean_res)
 
-                        # Try to fetch current tick from the pool for in/out-of-range
-                        tick_current = tick_lower  # fallback
-                        try:
-                            from lib.saucerswap import hedera_id_to_evm, get_pool_address
-                            from lib.saucerswap import POOL_ABI
-                            # Derive Hedera IDs from EVM addresses
-                            t0_num = int(t0_addr.lower(), 16)
-                            t1_num = int(t1_addr.lower(), 16)
-                            t0_id = f"0.0.{t0_num}"
-                            t1_id = f"0.0.{t1_num}"
-                            pool_addr = get_pool_address(self.executor.w3, t0_id, t1_id, fee, self.network)
-                            pool_contract = self.executor.w3.eth.contract(address=pool_addr, abi=POOL_ABI)
-                            slot0 = pool_contract.functions.slot0().call()
-                            tick_current = slot0[1]
-                        except Exception:
-                            pass
+                        liquidity = pos_data[5]
+                        if liquidity > 0:
+                            t0_addr = Web3.to_checksum_address(pos_data[0])
+                            t1_addr = Web3.to_checksum_address(pos_data[1])
+                            fee = pos_data[2]
+                            tick_lower = pos_data[3]
+                            tick_upper = pos_data[4]
 
-                        positions.append({
-                            "id": serial,
-                            "token0": t0_addr,
-                            "token1": t1_addr,
-                            "fee": fee,
-                            "liquidity": liquidity,
-                            "tick_lower": tick_lower,
-                            "tick_upper": tick_upper,
-                            "tick_current": tick_current,
-                        })
+                            # Try to fetch current tick from the pool
+                            tick_current = tick_lower
+                            try:
+                                from lib.saucerswap import get_pool_address, POOL_ABI
+                                t0_num = int(t0_addr.lower(), 16)
+                                t1_num = int(t1_addr.lower(), 16)
+                                t0_id = f"0.0.{t0_num}"
+                                t1_id = f"0.0.{t1_num}"
+                                pool_addr = get_pool_address(self.executor.w3, t0_id, t1_id, fee, self.network)
+                                pool_contract = self.executor.w3.eth.contract(address=pool_addr, abi=POOL_ABI)
+                                slot0 = pool_contract.functions.slot0().call()
+                                tick_current = slot0[1]
+                            except Exception:
+                                pass
+
+                            positions.append({
+                                "id": serial,
+                                "token0": t0_addr,
+                                "token1": t1_addr,
+                                "fee": fee,
+                                "liquidity": liquidity,
+                                "tick_lower": tick_lower,
+                                "tick_upper": tick_upper,
+                                "tick_current": tick_current,
+                            })
             else:
                 logger.warning(f"Mirror node NFT query failed with {res.status_code}: {res.text}")
         except Exception as e:
-            logger.error(f"Failed to fetch LP positions from mirror node: {e}")
-            print(f"  [Error fetching LP positions: {e}]")
+            logger.error(f"Failed to fetch LP positions: {e}")
         return positions

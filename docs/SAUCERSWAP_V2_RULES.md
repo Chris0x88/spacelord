@@ -65,3 +65,11 @@ This document captures critical "small learnings" and Hedera-specific rules disc
 
 - **Rule**: `deadline = int(time.time() * 1000) + 600_000` (10 minutes in ms).
 - **Status**: ✅ Implemented in `lib/v2_liquidity.py`.
+
+### 9. LP Deposit `amountDesired` Padding — EVM Math Tolerance
+> [!WARNING]
+> Passing EXACTLY the mathematical minimum target tokens for V3 LP Deposits via Python into `amountDesired` causes unexpected Edge-case reverts (`MF` or `TB:FT`) due to difference in Python 64-bit float math versus EVM 256-bit fixed point truncation up/down. 
+
+- **Details**: `PositionManager.mint(...)` checks `require(amountOwed <= amountDesired, 'MF')`. When python exactly matches `amountDesired`, EVM internal recalculation often demands slightly more `amountOwed` than allowed, instantly reverting. Similarly, if `amountOwed` > `approve()` allowance, the transaction breaks on `safeTransfer` yielding `TB:FT`.
+- **Rule**: You MUST apply a tiny tolerance buffer (+1%) to ALL calculated Python outputs before feeding them to the EVM as parameters!
+- **Status**: ✅ Implemented `opt_raw = max(1, int(raw * 1.01))` in `src/controller.py`.

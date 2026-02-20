@@ -61,6 +61,7 @@ class PacmanConfig:
     max_swap_amount_usd: float = 1.00  # $1.00 maximum per swap
     max_daily_volume_usd: float = 10.00  # $10.00 daily limit
     max_slippage_percent: float = 2.0  # 2% default slippage
+    lp_padding_percent: float = 2.0  # +2% buffer for EVM math rounding on LP deposits
     
     # Execution Settings
     simulate_mode: bool = True  # Start in simulation
@@ -133,8 +134,6 @@ class PacmanConfig:
         if env_slippage:
             max_slippage = cls._safe_float(env_slippage, 2.0)
         else:
-            # Try to load from persistent settings.json
-            max_slippage = 2.0
             try:
                 settings_path = Path(__file__).parent.parent / "data" / "settings.json"
                 if settings_path.exists():
@@ -144,6 +143,10 @@ class PacmanConfig:
                     saved = settings.get("swap_settings", {}).get("slippage_percent")
                     if saved is not None:
                         max_slippage = cls._safe_float(str(saved), 2.0)
+                        
+                    saved_pad = settings.get("swap_settings", {}).get("lp_padding_percent")
+                    if saved_pad is not None:
+                        config.lp_padding_percent = min(cls._safe_float(str(saved_pad), 2.0), 10.0) # hard cap at 10%
             except Exception:
                 pass
         config.max_slippage_percent = min(max_slippage, 5.0)  # Hard cap at 5%
