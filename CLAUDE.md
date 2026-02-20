@@ -12,30 +12,40 @@ No browser. No indexer. Direct RPC → smart contracts.
 ## Architecture Map (read this before touching anything)
 
 ```
-cli/main.py          → Entry point. Command dispatch. Calls PacmanController.
-cli/display.py       → Pure rendering. No logic. Only printing.
+cli/main.py              → Entry point. Thin dispatcher. Imports from cli/commands/*.
+cli/display.py           → Pure rendering. No logic. Only printing.
+cli/text_content.py      → Static text: banner, help menus, explainers.
+cli/pacman_filter.py     → UI token filtering, sorting, blacklisting.
+cli/commands/
+  ├── wallet.py          → setup, account, balance, send, receive, whitelist
+  ├── trading.py         → NLP swap, _do_swap, swap-v1
+  ├── staking.py         → stake, unstake (HIP-406)
+  └── info.py            → help, tokens, sources, price, pools, history, verbose
 
-src/controller.py    → SDK / facade. The only thing CLI talks to.
-src/executor.py      → Web3 transaction engine. execute_swap() is the main entry.
-src/router.py        → Pathfinding. Builds swap routes from the pool graph.
-src/translator.py    → NLP. String → {intent, token, amount} dict.
-src/config.py        → SecureString + PacmanConfig (from .env). Hard safety caps.
-src/errors.py        → Exception hierarchy. Use these, never raw Exception.
-src/logger.py        → Centralized logger. setup_mirror() tees stdout to file.
-src/types.py         → SwapIntent, SwapStrategy. Rarely used directly.
+src/controller.py        → SDK / facade. The only thing CLI talks to.
+src/executor.py          → Web3 transaction engine. Delegates to extracted modules below.
+src/balances.py          → Multicall balance fetching (extracted from executor).
+src/associations.py      → Token association + staking info (extracted from executor).
+src/history.py           → Execution recording + history retrieval (extracted from executor).
+src/router.py            → Pathfinding. Builds swap routes from the pool graph.
+src/translator.py        → NLP. String → {intent, token, amount} dict.
+src/config.py            → SecureString + PacmanConfig (from .env). Hard safety caps.
+src/errors.py            → Exception hierarchy. Use these, never raw Exception.
+src/logger.py            → Centralized logger. setup_mirror() tees stdout to file.
+src/types.py             → SwapIntent, SwapStrategy. Rarely used directly.
 
-lib/saucerswap.py    → SaucerSwapV2 client. Web3 contract calls.
-lib/v1_saucerswap.py → SaucerSwap V1 (legacy, isolated).
-lib/prices.py        → PriceManager singleton. Caches token USD prices.
-lib/transfers.py     → HBAR / HTS transfer logic.
-lib/staking.py       → HIP-406 native staking via hiero-sdk-python.
-lib/multicall.py     → Batch balanceOf calls via Multicall3.
+lib/saucerswap.py        → SaucerSwapV2 client. Web3 contract calls.
+lib/v1_saucerswap.py     → SaucerSwap V1 (legacy, isolated).
+lib/prices.py            → PriceManager singleton. Caches token USD prices.
+lib/transfers.py         → HBAR / HTS transfer logic.
+lib/staking.py           → HIP-406 native staking via hiero-sdk-python.
+lib/multicall.py         → Batch balanceOf calls via Multicall3.
 
-data/tokens.json     → Token registry: {symbol → {id, decimals, name}}
-data/pools.json      → Approved V2 pool registry: [{contractId, tokenA, tokenB, fee}]
-data/variants.json   → Token variant metadata: HTS vs ERC20 variants + wrap/unwrap info
-data/aliases.json    → NLP nicknames: {"btc": "WBTC_HTS", ...}
-data/settings.json   → User config: transfer_whitelist
+data/tokens.json         → Token registry: {symbol → {id, decimals, name}}
+data/pools.json          → Approved V2 pool registry: [{contractId, tokenA, tokenB, fee}]
+data/variants.json       → Token variant metadata: HTS vs ERC20 variants + wrap/unwrap info
+data/aliases.json        → NLP nicknames: {"btc": "WBTC_HTS", ...}
+data/settings.json       → User config: transfer_whitelist
 data/v1_pools_approved.json → Approved V1 pool registry
 ```
 
@@ -119,9 +129,9 @@ cli/display.py → print_receipt()
 1. Create `lib/<feature>.py` OR `src/plugins/<feature>.py` (isolated module)
 2. Add config toggle to `PacmanConfig` in `src/config.py`
 3. Implement mandatory `eth_call` simulation before any broadcast
-4. Add command handler `cmd_<name>()` in `cli/main.py`
-5. Register in `COMMANDS` dict at the bottom of `cli/main.py`
-6. Add help entry to `HELP_COMMANDS` + `HELP_EXPLAINERS` in `data/text_content.py`
+4. Add command handler `cmd_<name>()` in the appropriate `cli/commands/<module>.py`
+5. Import and register in `COMMANDS` dict in `cli/main.py`
+6. Add help entry to `HELP_COMMANDS` + `HELP_EXPLAINERS` in `cli/text_content.py`
 7. Test in `PACMAN_SIMULATE=true` mode first
 
 ---

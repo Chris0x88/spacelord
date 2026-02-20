@@ -8,7 +8,7 @@ Pure rendering module — takes data, prints formatted output.
 ARCHITECTURAL NOTE:
 -------------------
 This module is "Dumb". It contains NO business logic.
-- Sorting, Filtering, and Data Preparation are delegated to `data.pacman_filter`.
+- Sorting, Filtering, and Data Preparation are delegated to `cli.pacman_filter`.
 - Execution is delegated to `pacman_executor`.
 - Configuration is loaded via the filter or app controller.
 
@@ -24,14 +24,14 @@ from typing import Optional, List, Dict
 
 # Central Logic Layer
 try:
-    from data.pacman_filter import ui_filter
+    from cli.pacman_filter import ui_filter
 except ImportError:
     # Fallback for when running from scripts/ or root without package
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from data.pacman_filter import ui_filter
+    from cli.pacman_filter import ui_filter
 
 try:
-    from data.text_content import (
+    from cli.text_content import (
         HELP_COMMANDS, HELP_EXAMPLES, 
         PACMAN_BANNER_TEMPLATE, HELP_EXPLAINERS
     )

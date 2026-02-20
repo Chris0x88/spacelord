@@ -35,9 +35,9 @@ from cli.commands.info import (
     cmd_pools, cmd_history, cmd_verbose
 )
 
-# Load banner from data.text_content
+# Load banner from cli.text_content
 try:
-    from data.text_content import PACMAN_BANNER_TEMPLATE
+    from cli.text_content import PACMAN_BANNER_TEMPLATE
     import socket
     hostname = socket.gethostname()
     PACMAN_BANNER = PACMAN_BANNER_TEMPLATE.format(
