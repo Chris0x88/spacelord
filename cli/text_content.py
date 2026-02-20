@@ -69,7 +69,7 @@ HELP_EXAMPLES = [
     ("swap 100 USDC for HBAR",       "Spend 100 USDC, receive HBAR"),
     ("swap 0.001 WBTC for HBAR",     "Swap wrapped Bitcoin HTS token for HBAR"),
     ("send 100 USDC to 0.0.1234",    "Transfer USDC to another Hedera account"),
-    ("send 5 HBAR to 0.0.9876 memo Invoice #42", "Transfer with a memo"),
+    ("send 5 HBAR to 0.0.9876 memo Rent",   "Transfer HBAR with an on-chain memo"),
     ("balance SAUCE",                "Check SAUCE token balance"),
     ("price WBTC",                   "Get WBTC price from SaucerSwap"),
     ("stake 5",                      "Stake to consensus node 5 (Google)"),

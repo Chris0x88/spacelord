@@ -141,22 +141,25 @@ def show_help(topic: str = None):
         else:
             print(f"  {C.WARN}⚠  No detailed help for '{topic}'.{C.R}")
 
+    # Auto-calculate column width from actual content (prevents future overflow)
+    cmd_col = max(30, max((len(c) for c, _ in HELP_COMMANDS if not c.startswith("---")), default=30)) + 2
+    ex_col  = max(30, max((len(e) for e, _ in HELP_EXAMPLES), default=30)) + 2
+    col     = max(cmd_col, ex_col)  # single consistent width for both sections
+
     print(f"\n{C.BOLD}{C.TEXT}  COMMANDS{C.R}")
-    print(f"  {C.CHROME}{'─' * 60}{C.R}")
+    print(f"  {C.CHROME}{'─' * (col + 2)}{C.R}")
 
     for cmd, desc in HELP_COMMANDS:
         if cmd.startswith("---"):
-            # Section Header
             print(f"\n  {C.BOLD}{C.MUTED}{cmd.strip('- ')}{C.R}")
             continue
-
-        print(f"  {C.ACCENT}{cmd:<36s}{C.R} {C.MUTED}{desc}{C.R}")
+        print(f"  {C.ACCENT}{cmd:<{col}s}{C.R} {C.MUTED}{desc}{C.R}")
 
     print(f"\n{C.BOLD}  EXAMPLES{C.R}")
-    print(f"  {C.CHROME}{'─' * 60}{C.R}")
+    print(f"  {C.CHROME}{'─' * (col + 2)}{C.R}")
 
     for ex_cmd, ex_desc in HELP_EXAMPLES:
-        print(f"  {C.ACCENT}{ex_cmd:<36s}{C.R} {C.MUTED}{ex_desc}{C.R}")
+        print(f"  {C.ACCENT}{ex_cmd:<{col}s}{C.R} {C.MUTED}{ex_desc}{C.R}")
 
     print(f"\n  {C.MUTED}For in-depth help, type: {C.R}{C.TEXT}help <topic>{C.R}")
     print(f"  {C.MUTED}Topics: swap  send  balance  price  pools  account  whitelist{C.R}")
