@@ -3,35 +3,26 @@
 Pacman Executor - Live Transaction Execution
 ============================================
 
-Handles swap execution, wrap/unwrap operations, and full execution recording.
+The "Engine Room". Takes a VariantRoute (from PacmanVariantRouter) and
+executes it on-chain.
 
-ARCHITECTURE NOTE:
------------------
-This module is the "Engine Room". It has ONE job: take a VariantRoute
-(produced by PacmanVariantRouter) and execute it on-chain.
+Delegates to extracted modules:
+- src.balances    → get_balances()
+- src.associations → check_token_association(), associate_token(), get_staking_info()
+- src.history     → record_execution(), get_execution_history()
 
 Key design decisions:
 - `execute_swap()` is the single public entry point for ALL swap types.
-- `_process_step()` dispatches to the correct handler (_execute_swap_step,
-  _execute_wrap_step, _execute_unwrap_step) based on step.step_type.
-- `config.simulate_mode` is the master safety switch. When True, no
-  transactions are broadcast; we return synthetic SIMULATED results.
+- `_process_step()` dispatches to the correct handler based on step.step_type.
+- `config.simulate_mode` is the master safety switch.
 - All private key material is revealed momentarily and deleted immediately.
-  Never store the revealed key in an instance variable.
 
 HEDERA-SPECIFIC TRAPS:
 ---------------------
-1. ALWAYS use `self.eoa` (the ECDSA alias address) for signing and as
-   the `from` field. Long-zero addresses (0x0000...0001234) cause gas
-   reverts because Hedera's EVM treats them as precompile addresses.
-2. HTS tokens need `grantTokenApproval()` via the HTS Precompile
-   (0x0000000000000000000000000000000000000167), NOT standard ERC20
-   `approve()`. For now, `approve_token()` uses the EVM redirect shim
-   which works for the SaucerSwap router spender pattern.
-3. WHBAR (0.0.1456986) is strictly internal routing only. Never expose
-   it to users. Use HBAR (0.0.0) for the user-facing side.
-4. Always do an `eth_call` simulation before broadcast on wrap/unwrap.
-   The SaucerSwap router handles its own simulation internally.
+1. ALWAYS use `self.eoa` (the ECDSA alias address) for signing.
+2. HTS tokens need the HTS Precompile for approvals.
+3. WHBAR (0.0.1456986) is strictly internal routing only.
+4. Always eth_call simulate before broadcast on wrap/unwrap.
 """
 
 import os
@@ -45,12 +36,24 @@ from src.logger import logger
 from src.config import PacmanConfig, SecureString
 from src.errors import ConfigurationError, ExecutionError, InsufficientFundsError
 
+# Extracted modules (delegation)
+from src.balances import get_balances as _get_balances_impl
+from src.associations import (
+    check_token_association as _check_association_impl,
+    associate_token as _associate_token_impl,
+    get_staking_info as _get_staking_info_impl,
+)
+from src.history import (
+    record_execution as _record_execution_impl,
+    record_v1_execution as _record_v1_execution_impl,
+    record_staking_transaction as _record_staking_impl,
+    record_transfer_execution as _record_transfer_impl,
+    get_execution_history as _get_history_impl,
+)
+
 # ERC20 Wrapper contract (0.0.9675688) — handles HTS <-> ERC20 bridging (wrap/unwrap)
 ERC20_WRAPPER_ID = "0.0.9675688"
 ERC20_WRAPPER_ABI = json.loads((Path(__file__).parent.parent / "abi" / "erc20_wrapper.json").read_text())
-
-# Path for the AI training data JSONL log — one record per execution
-TRAINING_FILE = Path(__file__).parent.parent / "training_data" / "live_executions.jsonl"
 
 @dataclass
 class ExecutionResult:
@@ -269,101 +272,9 @@ class PacmanExecutor:
             return ExecutionResult(success=False, error=str(e))
 
     def get_balances(self) -> Dict[str, float]:
-        """
-        Fetch all non-zero token balances using Multicall.
-        This reduces 30+ RPC calls to 1-2 chunks.
-        """
-        from lib.multicall import Multicall
-        from lib.saucerswap import hedera_id_to_evm
-        
-        balances = {}
-        
-        # 1. HBAR Balance (Native)
-        hbar_bal = self.w3.eth.get_balance(self.eoa)
-        hbar_readable = hbar_bal / (10**18)
-        if hbar_readable > 0:
-            balances["HBAR"] = hbar_readable
-            
-        # 2. Load Token List
-        try:
-            root = Path(__file__).parent.parent
-            tokens_path = root / "data" / "tokens.json"
-            if not tokens_path.exists():
-                 tokens_path = Path("data/tokens.json")
+        """Fetch all non-zero token balances using Multicall."""
+        return _get_balances_impl(self.w3, self.eoa, self.client)
 
-            with open(tokens_path) as f:
-                tokens_data = json.load(f)
-        except Exception as e:
-            logger.error(f"Error: Could not load tokens.json for balance check: {e}")
-            return balances
-
-        # 3. Prepare Batch Calls
-        calls = []
-        token_meta_map = {} # call_index -> (symbol, decimals)
-        
-        # Load ABI for balanceOf
-        # Ideally this is globally loaded, but we can grab it from client
-        ERC20_ABI = self.client.w3.eth.contract(abi=self.client._erc20_abi).abi
-        
-        # Helper to encode calldata
-        temp_contract = self.w3.eth.contract(abi=ERC20_ABI)
-        calldata = temp_contract.encode_abi("balanceOf", args=[self.eoa])
-        
-        idx = 0
-        for sym, meta in tokens_data.items():
-            token_id = meta.get("id")
-            if not token_id: continue
-            
-            # Skip if native HBAR (already got it)
-            if token_id in ["0.0.0", "HBAR"]: continue
-            
-            try:
-                target = hedera_id_to_evm(token_id)
-                # (target, allowFailure, callData)
-                calls.append((target, True, calldata))
-                token_meta_map[idx] = (sym, meta.get("decimals", 8))
-                idx += 1
-            except: continue
-            
-        # 4. Execute Multicall (Chunked if needed, but 50 fits easily)
-        if not calls:
-            return balances
-            
-        logger.debug(f"   ⚡ Batch fetching {len(calls)} token balances via Multicall...")
-        
-        try:
-            mc = Multicall(self.w3)
-            results = mc.aggregate(calls)
-            
-            # 5. Decode Results
-            for i, (success, return_data) in enumerate(results):
-                if success and len(return_data) >= 32:
-                    # Decode uint256
-                    val = int.from_bytes(return_data, byteorder='big')
-                    if val > 0:
-                        sym, decimals = token_meta_map[i]
-                        balances[sym] = val / (10**decimals)
-        except Exception as e:
-            logger.warning(f"   ⚠️ Multicall failed ({e}), falling back to sequential...")
-            # Fallback to sequential if multicall fails
-            return self._get_balances_sequential(tokens_data)
-
-        logger.debug(f"Fetched {len(balances)} non-zero balances.")
-        return balances
-
-    def _get_balances_sequential(self, tokens_data) -> Dict[str, float]:
-        """Fallback method for sequential fetching."""
-        balances = {}
-        for sym, meta in tokens_data.items():
-            token_id = meta.get("id")
-            if not token_id: continue
-            try:
-                raw_bal = self.client.get_token_balance(token_id)
-                if raw_bal > 0:
-                    decimals = meta.get("decimals", 8)
-                    balances[sym] = raw_bal / (10**decimals)
-            except: continue
-        return balances
 
     def _get_token_id(self, symbol: str) -> Optional[str]:
         """Convert symbol to token ID using tokens.json."""
@@ -611,119 +522,19 @@ class PacmanExecutor:
         return 8 # Default for HBAR 
 
     def check_token_association(self, token_id: str) -> bool:
-        """
-        Check if the account is associated with the token.
-
-        Strategy:
-        1. Optimistic Check: If balance > 0, we are definitely associated.
-        2. Robust Check: If balance == 0, we MUST check Mirror Node to confirm association.
-           (balanceOf returns 0 for unassociated accounts on Hedera EVM).
-        """
-        if token_id.upper() in ["HBAR", "0.0.0"]: return True
-
-        # 1. Optimistic Check (Fast)
-        try:
-            balance = self.client.get_token_balance(token_id)
-            if balance > 0:
-                return True
-        except Exception as e:
-            logger.warning(f"   ⚠️  Balance check failed during association verify: {e}")
-            # Fall through to Mirror Node check
-
-        # 2. Robust Check (Mirror Node)
-        return self._check_association_via_mirror(token_id)
-
-    def _check_association_via_mirror(self, token_id: str) -> bool:
-        """Verify association using Hedera Mirror Node API."""
-        try:
-            # Determine Account ID to check
-            account_id = self.hedera_account_id
-            if not account_id or account_id == "Unknown":
-                account_id = self.eoa # Mirror Node supports EVM address lookup
-
-            base_url = "https://mainnet.mirrornode.hedera.com"
-            if self.network == "testnet":
-                base_url = "https://testnet.mirrornode.hedera.com"
-
-            url = f"{base_url}/api/v1/accounts/{account_id}/tokens"
-            params = {"token.id": token_id, "limit": 1}
-
-            logger.debug(f"   🔍 Checking association via Mirror Node: {url} {params}")
-            response = requests.get(url, params=params, timeout=5)
-
-            if response.status_code == 200:
-                data = response.json()
-                if "tokens" in data and len(data["tokens"]) > 0:
-                    return True # Found association record
-                else:
-                    return False # No record found = Not associated
-            elif response.status_code == 404:
-                # Account not found?
-                return False
-            else:
-                logger.warning(f"   ⚠️  Mirror Node returned {response.status_code}")
-                return False # Assume false to trigger safety association attempt
-
-        except Exception as e:
-            logger.error(f"   ❌ Mirror Node check failed: {e}")
-            return False # Fail safe: Assume not associated
+        """Check if the account is associated with the token."""
+        return _check_association_impl(
+            self.client, token_id, self.hedera_account_id, self.eoa, self.network
+        )
 
     def get_staking_info(self) -> Dict:
-        """
-        Fetch staking info from Mirror Node.
-        Returns: {
-            "is_staked": bool,
-            "node_id": int or None,
-            "period_start": str or None,
-            "pending_reward": int (tinybar)
-        }
-        """
-        try:
-            account_id = self.hedera_account_id
-            if not account_id or account_id == "Unknown":
-                # Try to resolve via EOA if ID unknown
-                account_id = self.eoa
-            
-            base_url = "https://mainnet-public.mirrornode.hedera.com"
-            if self.network == "testnet":
-                base_url = "https://testnet.mirrornode.hedera.com"
-            
-            url = f"{base_url}/api/v1/accounts/{account_id}"
-            resp = requests.get(url, timeout=5)
-            
-            if resp.status_code == 200:
-                data = resp.json()
-                staked_node_id = data.get("staked_node_id")
-                
-                return {
-                    "is_staked": staked_node_id is not None,
-                    "node_id": staked_node_id,
-                    "pending_reward": data.get("pending_reward", 0),
-                    "decline_reward": data.get("decline_reward", False)
-                }
-        except Exception as e:
-            logger.warning(f"   ⚠️ Failed to fetch staking info: {e}")
-        
-        return {"is_staked": False, "node_id": None, "pending_reward": 0}
+        """Fetch staking info from Mirror Node."""
+        return _get_staking_info_impl(self.hedera_account_id, self.eoa, self.network)
 
     def associate_token(self, token_id: str) -> bool:
-        """Associate HTS token using Native Precompiles (Python-only)."""
-        if token_id.upper() in ["HBAR", "0.0.0"]: return True
-        
-        logger.info(f"   🛡️  Associating token {token_id} via HTS Precompile...")
-        
-        try:
-            # Use native python client instead of external node script
-            success = self.client.associate_token_native(token_id)
-            if success:
-                logger.info(f"   ✅ Association Confirmed.")
-                return True
-            else:
-                logger.error(f"   ❌ Association failed on-chain.")
-                return False
-        except Exception as e:
-            logger.error(f"   ❌ Association error: {e}")
-            return False
+        """Associate HTS token using Native Precompiles."""
+        return _associate_token_impl(self.client, token_id)
+
 
     def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in") -> ExecutionResult:
         """Execute a single swap step using one of the three engines."""
@@ -1000,238 +811,30 @@ class PacmanExecutor:
     
     def _record_execution(self, route, token_amount: float, results: list, simulate: bool):
         """Record execution details for AI training."""
-        # Use centralized PriceManager (Phase 32)
-        from lib.prices import price_manager
-        
-        # Determine Price
-        if route.from_variant in ["HBAR", "0.0.0"]:
-            usd_price = price_manager.get_hbar_price()
-            decimals = 8
-        else:
-            # We need to resolve the ID from the variant to get the price
-            # route.from_variant is likely a symbol (e.g. USDC[hts]) or ID?
-            # Router typically ensures route object has details. 
-            # But here `route` is a VariantRoute object
-            
-            # Helper to find ID from Symbol if needed, similar to CLI
-            # But let's check if the route object has the ID.
-            # PacmanVariantRouter._get_token_meta() returns dict with ID.
-            # But we don't have that here easily without reloading or hacking.
-            
-            # Let's rely on the Executor's _get_token_decimals for decimals
-            decimals = self._get_token_decimals(route.from_variant)
-            
-            # For price, we try to lookup by Symbol if ID fails, but PriceManager expects ID.
-            # We previously loaded tokens.json to bridge this.
-            # Let's load tokens.json ONLY for Symbol->ID mapping.
-            token_id = route.from_variant # Attempt to use as ID if it is one
-            
-            try:
-                with open("data/tokens.json") as f:
-                    tdata = json.load(f)
-                    meta = tdata.get(route.from_variant)
-                    if meta:
-                        token_id = meta.get("id", token_id)
-            except: pass
-            
-            usd_price = price_manager.get_price(token_id)
-            
-        # Phase 33: Record both amounts for history
-        actual_amount_token = token_amount
-        if results and decimals > 0:
-            raw_in = results[0].amount_in_raw
-            if raw_in > 0:
-                actual_amount_token = raw_in / (10 ** decimals)
-
-        actual_to_amount_token = 0.0
-        if results:
-            to_decimals = self._get_token_decimals(route.to_variant)
-            raw_out = results[-1].amount_out_raw
-            if raw_out > 0 and to_decimals > 0:
-                actual_to_amount_token = raw_out / (10 ** to_decimals)
-
-        actual_usd = actual_amount_token * usd_price if usd_price > 0 else 0
-        total_gas = sum(r.gas_used for r in results)
-        total_gas_hbar = sum(r.gas_cost_hbar for r in results)
-
-        record = {
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "mode": "SIMULATION" if simulate else "LIVE",
-            "route": {
-                "from": route.from_variant,
-                "to": route.to_variant,
-                "steps": len(route.steps),
-                "total_cost_hbar": route.total_cost_hbar,
-                "hashpack_visible": route.hashpack_visible
-            },
-            "amount_token": actual_amount_token,
-            "to_amount_token": actual_to_amount_token,
-            "amount_usd": round(actual_usd, 2),
-            "gas_used": total_gas,
-            "gas_cost_hbar": total_gas_hbar,
-            "results": [r.to_dict() for r in results],
-            "success": all(r.success for r in results),
-            "account": self.eoa,
-            "network": self.network
-        }
-        
-        filename = f"exec_{time.strftime('%Y%m%d_%H%M%S')}_{route.from_variant}_to_{route.to_variant}.json"
-        filepath = self.recordings_dir / filename
-        with open(filepath, 'w') as f:
-            json.dump(record, f, indent=2)
-        
-        logger.info(f"\n📝 Execution recorded: {filepath}")
-        
-        # Also append to JSONL training log (used for AI model fine-tuning)
-        try:
-            TRAINING_FILE.parent.mkdir(parents=True, exist_ok=True)
-            with open(TRAINING_FILE, 'a') as f:
-                f.write(json.dumps(record) + "\n")
-        except Exception as e:
-            logger.debug(f"Training log write failed (non-fatal): {e}")
+        _record_execution_impl(
+            route, token_amount, results, simulate,
+            self.eoa, self.network, self.recordings_dir,
+            self._get_token_decimals, self._get_hbar_price_usd
+        )
 
     def _record_v1_execution(self, from_sym: str, to_sym: str, amount_hbar: float, res: ExecutionResult, simulate: bool = True):
-        """Record V1 execution to history (mirrors V2 format)."""
-        import time
-        import json
-        
-        # Convert to_amount_token from raw if it's HexBytes (should be int now, but safety first)
-        raw_to = res.amount_out_raw
-        if hasattr(raw_to, "hex"):
-            try:
-                raw_to = int(raw_to.hex(), 16)
-            except: raw_to = 0
-            
-        # Get correct decimals for to_token
-        to_decimals = 8
-        try:
-            with open("data/tokens.json") as f:
-                tdata = json.load(f)
-                # Try to find decimals by symbol or ID
-                meta = tdata.get(to_sym)
-                if meta:
-                     to_decimals = meta.get("decimals", 8)
-                else:
-                    # Search by ID
-                    for m in tdata.values():
-                        if m.get("id") == to_sym:
-                            to_decimals = m.get("decimals", 8)
-                            break
-        except: pass
-
-        record = {
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "mode": "SIMULATION" if simulate else "LIVE",
-            "protocol": "V1",
-            "route": {
-                "from": from_sym,
-                "to": to_sym,
-                "protocol": "V1",
-                "steps": 1,
-                "total_cost_hbar": amount_hbar,
-                "hashpack_visible": False
-            },
-            "amount_token": amount_hbar,
-            "to_amount_token": raw_to / 10**to_decimals if isinstance(raw_to, (int, float)) and raw_to > 0 else 0,
-            "amount_usd": round(amount_hbar * res.hbar_usd_price, 2) if res.hbar_usd_price > 0 else 0,
-            "gas_used": res.gas_used,
-            "gas_cost_hbar": res.gas_cost_hbar,
-            "results": [res.to_dict()],
-            "success": res.success,
-            "account": self.eoa,
-            "network": self.network
-        }
-        
-        filename = f"exec_{time.strftime('%Y%m%d_%H%M%S')}_{from_sym}_to_{to_sym}_V1.json"
-        filepath = self.recordings_dir / filename
-        with open(filepath, 'w') as f:
-            json.dump(record, f, indent=2)
-        
-        logger.info(f"   📝 V1 Execution recorded: {filepath}")
+        """Record V1 execution to history."""
+        _record_v1_execution_impl(
+            from_sym, to_sym, amount_hbar, res, simulate,
+            self.eoa, self.network, self.recordings_dir
+        )
 
     def _record_staking_transaction(self, mode: str, node_id: int, tx_id: str, success: bool, error: str = None):
         """Record staking/unstaking operation to history."""
-        import time
-        import json
-        
-        # Consistent with execution record format where possible
-        record = {
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "mode": mode,  # "STAKE" or "UNSTAKE"
-            "route": {
-                "from": "HBAR", 
-                "to": f"Node {node_id}" if node_id != -1 else "Unstaked",
-                "steps": []
-            },
-            "amount_token": 0,  # Staking involves full balance, no transfer amount
-            "to_amount_token": 0,
-            "amount_usd": 0,
-            "gas_used": 0, # Could fetch from receipt but 0 is fine for history summary
-            "gas_cost_hbar": 0,
-            "success": success,
-            "tx_id": tx_id,
-            "error": error,
-            "account": self.eoa,
-            "network": self.network
-        }
-        
-        filename = f"exec_{time.strftime('%Y%m%d_%H%M%S')}_{mode.lower()}.json"
-        
-        # Ensure dir exists
-        self.recordings_dir.mkdir(parents=True, exist_ok=True)
-        filepath = self.recordings_dir / filename
-        
-        with open(filepath, 'w') as f:
-            json.dump(record, f, indent=2)
-    
+        _record_staking_impl(
+            mode, node_id, tx_id, success,
+            self.eoa, self.network, self.recordings_dir, error
+        )
+
     def _record_transfer_execution(self, res: dict):
         """Record HBAR/HTS transfer to local history."""
-        import time
-        import json
-        from pathlib import Path
-
-        # Format matches swap history but specialized for TRANSFER
-        record = {
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "mode": "SIMULATION" if res.get("tx_hash", "").startswith("SIMULATED") else "LIVE",
-            "type": "TRANSFER",
-            "protocol": "NATIVE",
-            "route": {
-                "from": self.eoa,
-                "to": res.get("recipient", "Unknown"),
-                "protocol": "NATIVE",
-                "steps": 1,
-                "total_cost_hbar": res.get("amount", 0) if res.get("symbol") == "HBAR" else 0
-            },
-            "amount_token": res.get("amount", 0),
-            "symbol": res.get("symbol"),
-            "to_amount_token": res.get("amount", 0), # Same for transfers
-            "to_symbol": res.get("symbol"),
-            "amount_usd": 0, # Could enrich but let's keep it simple for now
-            "gas_used": res.get("gas_used", 0),
-            "success": res.get("success", False),
-            "memo": res.get("memo"),
-            "tx_hash": res.get("tx_hash"),
-            "account": self.eoa,
-            "network": self.network
-        }
-
-        try:
-            filename = f"exec_{time.strftime('%Y%m%d_%H%M%S')}_{res.get('symbol')}_transfer.json"
-            record_path = self.recordings_dir / filename
-            with open(record_path, "w") as f:
-                json.dump(record, f, indent=4)
-        except Exception as e:
-            from src.logger import logger
-            logger.debug(f"Transfer recording failed: {e}")
+        _record_transfer_impl(res, self.eoa, self.network, self.recordings_dir)
 
     def get_execution_history(self, limit: int = 10) -> list:
-        if not self.recordings_dir.exists(): return []
-        files = sorted(self.recordings_dir.glob("exec_*.json"), reverse=True)
-        history = []
-        for f in files[:limit]:
-            try:
-                with open(f) as file:
-                    history.append(json.load(file))
-            except: continue
-        return history
+        """Retrieve recent execution records."""
+        return _get_history_impl(self.recordings_dir, limit)

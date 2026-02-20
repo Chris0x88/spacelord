@@ -244,7 +244,7 @@ User types `y`.
 ## 8.1 Limit Orders (The "Sentinel")
 SaucerSwap V2 supports limit orders. We want to implement:
 `swap HBAR for USDC at 0.15`
-- This requires a daemon mode to monitor prices.
+- This requires a daemon mode to monitor prices. Or can we use HIP1215 the new HSS? Hedera Schedule Service? I think we need hooks to go live before we can do this... 
 
 ## 8.2 Portfolio Analytics
 `pnl` command.
@@ -253,3 +253,8 @@ SaucerSwap V2 supports limit orders. We want to implement:
 ## 8.3 Advanced Routing
 - **Multi-Hop Custom**: `swap HBAR -> SAUCE -> CLXY -> USDC`
 - **Split Routing**: sending 50% to V1 and 50% to V2 (Future optimization).
+## 8.4 Automatic Portfolio Rebalancing
+## the BlackRock Killer 
+- Need an option for a sub account to allow user to predefine an allocation strategy and allow for timed routine rebalancing. Maybe the contract they create could be posted on chain so that when the timer goes off on Hedera they auto rebalance fully on-chain without being logged in. 
+Example initial allocation... 60% Bitcoin 20% Hedera 20% USDC 
+They need to be able to make it like an index fund, and be able to add as many as they like... 
