@@ -150,7 +150,7 @@ class SaucerSwapV2:
             raise ValueError("Private key required")
 
         recipient = recipient or self.eoa
-        deadline = int(time.time() * 1000) + 600000 # 10 mins
+        deadline = int(time.time() * 1000) + 180000  # 3 mins (Hedera blocks ~2s)
 
         path = encode_path([token_out, token_in], [fee])
         params = (path, recipient, deadline, amount_out, max_amount_in)
@@ -183,7 +183,7 @@ class SaucerSwapV2:
             raise ValueError("Private key required")
 
         recipient = recipient or self.eoa
-        deadline = int(time.time() * 1000) + 600000 # 10 mins
+        deadline = int(time.time() * 1000) + 180000  # 3 mins (Hedera blocks ~2s)
 
         path = encode_path([token_in, token_out], [fee])
         params = (path, recipient, deadline, amount_in, min_amount_out)
@@ -217,7 +217,7 @@ class SaucerSwapV2:
             raise ValueError("Private key required")
 
         recipient = self.eoa if not recipient else recipient
-        deadline = int(time.time() * 1000) + 600000 # 10 mins
+        deadline = int(time.time() * 1000) + 180000  # 3 mins (Hedera blocks ~2s)
 
         path = encode_path([token_in, token_out], [fee])
         encoded_calls = []
@@ -266,7 +266,7 @@ class SaucerSwapV2:
         if not self.private_key and not dry_run:
             raise ValueError("Private key required")
 
-        deadline = int(time.time() * 1000) + 600000 
+        deadline = int(time.time() * 1000) + 180000  # 3 mins (Hedera blocks ~2s)
         path = encode_path([token_out, token_in], [fee])
         encoded_calls = []
         value_to_send = 0

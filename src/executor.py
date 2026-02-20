@@ -200,7 +200,8 @@ class PacmanExecutor:
             # 1. Quote
             logger.info("   🔍 Fetching V1 Quote...")
             amount_out_expected = v1_client.get_quote_single(from_id, to_id, amount_raw)
-            min_out = int(amount_out_expected * 0.99)
+            slippage_factor = 1.0 - (self.config.max_slippage_percent / 100.0)
+            min_out = int(amount_out_expected * slippage_factor)
             
             if simulate:
                 logger.info(f"   [SIM] V1 Swap Simulation OK. Expected: {amount_out_expected / 10**8:.6f} {to_id}")
@@ -607,8 +608,11 @@ class PacmanExecutor:
             
             logger.debug(f"      - Current Balance: {current_balance}, Needed: {amount_in_expected}")
             needed_balance = amount_in_expected
+            slippage_pct = self.config.max_slippage_percent
+            slippage_factor_in = 1.0 + (slippage_pct / 100.0)
+            slippage_factor_out = 1.0 - (slippage_pct / 100.0)
             if mode == "exact_out":
-                 needed_balance = int(amount_in_expected * 1.01)
+                 needed_balance = int(amount_in_expected * slippage_factor_in)
             
             if current_balance < needed_balance:
                 # RAISE EXCEPTION instead of returning fail
@@ -625,7 +629,8 @@ class PacmanExecutor:
                     time.sleep(3) # Wait slightly for HTS approval state to sync
 
             if mode == "exact_in":
-                min_out = int(amount_out_expected * 0.99)
+                min_out = int(amount_out_expected * slippage_factor_out)
+                logger.debug(f"      - Slippage tolerance: {slippage_pct}% → min_out={min_out}")
                 if simulate:
                     tx_hash = "SIMULATED_SWAP_COMPLETE"
                     logger.info("   [SIM] Skipping on-chain broadcast")
@@ -638,7 +643,8 @@ class PacmanExecutor:
                 else:
                     tx_hash = self.client.swap_exact_input(from_token_id, to_token_id, amount_raw, min_out, fee_bps)
             else:
-                max_in = int(amount_in_expected * 1.01)
+                max_in = int(amount_in_expected * slippage_factor_in)
+                logger.debug(f"      - Slippage tolerance: {slippage_pct}% → max_in={max_in}")
                 if simulate:
                     tx_hash = "SIMULATED_SWAP_COMPLETE"
                     logger.info("   [SIM] Skipping on-chain broadcast")

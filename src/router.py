@@ -77,15 +77,23 @@ class PacmanVariantRouter:
     BLACKLISTED_TOKENS = ["0.0.1456986"]
     
     def __init__(self, price_manager=None):
-        self.pool_graph = {}  # (token_in, token_out) -> (pool_id, fee_bps, in_id, out_id)
+        self.pool_graph = {}  # (token_in, token_out) -> (pool_id, fee_bps, in_id, out_id, liquidity_usd)
         self.pools_data = []  # Store raw pool data for metadata lookup
         
         # Load Static Metadata
         self.variants = self._load_json(VARIANTS_FILE, {})
         self.pool_registry = self._load_json(POOLS_REGISTRY_FILE, [])
         
-        # Build Reverse ID Map (used throughout the routing logic)
+        # Build Reverse ID Map (for variants.json — 8 canonical tokens)
         self.variant_by_id = {v["id"]: k for k, v in self.variants.items()}
+        
+        # Build extended token map from tokens.json (for ALL approved tokens)
+        # This is the fix for why approved tokens couldn't be found in _id_to_sym
+        self._tokens_data = self._load_json(DATA_DIR / "tokens.json", {})
+        self.token_by_id = {}  # id -> {id, symbol, decimals, ...}
+        for sym_key, meta in self._tokens_data.items():
+            if isinstance(meta, dict) and "id" in meta:
+                self.token_by_id[meta["id"]] = meta
 
         # Phase 32: Live Pricing
         from lib.prices import price_manager as pm
@@ -126,36 +134,52 @@ class PacmanVariantRouter:
             
             if ta_sym and tb_sym:
                 if not self._is_blacklisted(ta_sym, tb_sym):
-                    self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id)
-                    self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id)
+                    # Static registry has no liquidity data; use 0 as sentinel
+                    self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id, 0.0)
+                    self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id, 0.0)
                 else:
                     logger.warning(f"Skipping blacklisted pool {ta_sym}<->{tb_sym}")
 
-        # 2. Layer in Live Pool Data (for discovery and validation)
+        # 2. Layer in Live Pool Data (for discovery, validation, AND liquidity)
         try:
             with open(pools_file) as f:
                 raw_data = json.load(f)
-                self.pools_data = raw_data # Keep reference for metadata lookup
+                self.pools_data = raw_data  # Keep reference for metadata lookup
                 for pool in raw_data:
                     cid = pool.get("contractId")
-                    ta_id = pool.get("tokenA", {}).get("id")
-                    tb_id = pool.get("tokenB", {}).get("id")
+                    ta = pool.get("tokenA", {})
+                    tb = pool.get("tokenB", {})
+                    ta_id = ta.get("id")
+                    tb_id = tb.get("id")
                     
-                    # Skip if already in graph from registry
-                    # This protects our "hand-verified" registry from being overwritten
-                    check_key = (self._id_to_sym(ta_id), self._id_to_sym(tb_id))
-                    if check_key in self.pool_graph:
-                        continue
-                        
-                    # Otherwise, auto-discover if they are known tokens
                     ta_sym = self._id_to_sym(ta_id)
                     tb_sym = self._id_to_sym(tb_id)
                     
-                    if ta_sym and tb_sym:
-                        if not self._is_blacklisted(ta_sym, tb_sym):
-                            fee = pool.get("fee", 3000)
-                            self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id)
-                            self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id)
+                    if not (ta_sym and tb_sym):
+                        continue
+                    if self._is_blacklisted(ta_sym, tb_sym):
+                        continue
+                    
+                    fee = pool.get("fee", 3000)
+                    
+                    # Calculate pool liquidity in USD from pool-level amounts
+                    # Pool data has amountA/amountB at top level, prices inside token dicts
+                    liq_usd = self._estimate_pool_liquidity_usd(
+                        ta, tb,
+                        pool_amount_a=pool.get("amountA", 0),
+                        pool_amount_b=pool.get("amountB", 0)
+                    )
+                    
+                    # Update existing entries WITH liquidity data, or add new ones
+                    existing = self.pool_graph.get((ta_sym, tb_sym))
+                    if existing and existing[4] > 0:
+                        # Keep the deeper pool if we already have one
+                        if liq_usd > existing[4]:
+                            self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id, liq_usd)
+                            self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id, liq_usd)
+                    else:
+                        self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id, liq_usd)
+                        self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id, liq_usd)
         except Exception as e:
             logger.warning(f"Live data {pools_file} not found or malformed. Using static registry only.")
 
@@ -172,23 +196,45 @@ class PacmanVariantRouter:
 
     def _id_to_sym(self, token_id: str) -> Optional[str]:
         """Resolve a token ID to its internal routing symbol."""
-        # Fallback to HBAR
+        # Native HBAR and its wrapped form both map to "HBAR"
         if token_id == "0.0.0" or token_id == "0.0.1456986":
             return "HBAR"
 
-        # Check variants first (our internal canonical names)
+        # 1. Check variants.json (canonical names for known variant tokens)
         if token_id in self.variant_by_id:
             variant_key = self.variant_by_id[token_id]
-            # Use actual symbol to distinguish variants
             return self.variants[variant_key]["symbol"].upper()
+        
+        # 2. Fallback: check tokens.json (all approved tokens via `pools approve`)
+        if token_id in self.token_by_id:
+            return self.token_by_id[token_id]["symbol"].upper()
             
         return None
     
+    def _estimate_pool_liquidity_usd(self, token_a: dict, token_b: dict,
+                                       pool_amount_a: int = 0, pool_amount_b: int = 0) -> float:
+        """Estimate total pool liquidity in USD from pool amounts and token prices."""
+        try:
+            price_a = float(token_a.get("priceUsd", 0))
+            price_b = float(token_b.get("priceUsd", 0))
+            decimals_a = int(token_a.get("decimals", 8))
+            decimals_b = int(token_b.get("decimals", 8))
+            
+            # Use pool-level amounts (amountA/amountB from pool dict)
+            amount_a = int(pool_amount_a) if pool_amount_a else 0
+            amount_b = int(pool_amount_b) if pool_amount_b else 0
+            
+            usd_a = (amount_a / (10 ** decimals_a)) * price_a if price_a > 0 and amount_a > 0 else 0
+            usd_b = (amount_b / (10 ** decimals_b)) * price_b if price_b > 0 and amount_b > 0 else 0
+            return usd_a + usd_b
+        except (ValueError, TypeError):
+            return 0.0
+
     def find_swap_step(self, from_symbol: str, to_symbol: str) -> Optional[RouteStep]:
         """Find a direct swap between two token symbols (Case-insensitive)."""
         idx = (from_symbol.upper(), to_symbol.upper())
         if idx in self.pool_graph:
-            pool_id, fee_bps, id_in, id_out = self.pool_graph[idx]
+            pool_id, fee_bps, id_in, id_out, liquidity_usd = self.pool_graph[idx]
             # Fee is 3000 (0.3%). We want 0.003 for human readable reporting.
             fee_pct = fee_bps / 1_000_000 
             
@@ -199,7 +245,11 @@ class PacmanVariantRouter:
                 contract="0.0.3949434",  # SaucerSwap Router
                 fee_percent=fee_pct,
                 gas_estimate_hbar=0.02,
-                details={"pool_id": pool_id, "fee_bps": fee_bps, "token_in_id": id_in, "token_out_id": id_out}
+                details={
+                    "pool_id": pool_id, "fee_bps": fee_bps,
+                    "token_in_id": id_in, "token_out_id": id_out,
+                    "liquidity_usd": liquidity_usd
+                }
             )
         return None
     
@@ -213,22 +263,42 @@ class PacmanVariantRouter:
         return None
     
     def _get_token_meta(self, variant: str) -> Optional[dict]:
-        """Get best metadata for a variant, with fallback to symbols."""
+        """Get best metadata for a variant, with fallback to tokens.json and pool data."""
+        # 1. Check variants.json first (canonical)
         if variant in self.variants:
             return self.variants[variant]
         
-        # Fallback: Check if it matches a symbol in pools (Case-insensitive)
+        # 2. Check tokens.json (all approved tokens — key is uppercase symbol)
         variant_upper = variant.upper()
+        for sym_key, meta in self._tokens_data.items():
+            if sym_key.upper() == variant_upper or (isinstance(meta, dict) and meta.get("symbol", "").upper() == variant_upper):
+                if isinstance(meta, dict):
+                    return {
+                        "id": meta.get("id"),
+                        "symbol": meta.get("symbol", sym_key),
+                        "type": "HTS_NATIVE",
+                        "visible_in_hashpack": True,
+                        "decimals": meta.get("decimals", 8)
+                    }
+        
+        # 3. Fallback: pool live data symbols
         for pool in self.pools_data:
-            if pool["tokenA"]["symbol"].upper() == variant_upper:
-                return {"id": pool["tokenA"]["id"], "symbol": pool["tokenA"]["symbol"], "type": "HTS_NATIVE", "visible_in_hashpack": True}
-            if pool["tokenB"]["symbol"].upper() == variant_upper:
-                return {"id": pool["tokenB"]["id"], "symbol": pool["tokenB"]["symbol"], "type": "HTS_NATIVE", "visible_in_hashpack": True}
+            if pool.get("tokenA", {}).get("symbol", "").upper() == variant_upper:
+                ta = pool["tokenA"]
+                return {"id": ta["id"], "symbol": ta["symbol"], "type": "HTS_NATIVE", "visible_in_hashpack": True}
+            if pool.get("tokenB", {}).get("symbol", "").upper() == variant_upper:
+                tb = pool["tokenB"]
+                return {"id": tb["id"], "symbol": tb["symbol"], "type": "HTS_NATIVE", "visible_in_hashpack": True}
         return None
 
     def calculate_erc20_route(self, from_variant: str, to_variant: str, volume_usd: float = 100) -> Optional[VariantRoute]:
         """
-        Calculate cheapest route using specific hub strategy (User Preferred).
+        Calculate best route using cost-aware hub strategy.
+        
+        Route scoring considers the FULL cost:
+        - LP fees (fee_percent per hop)
+        - Price impact estimate (trade_size / pool_liquidity)
+        - Gas cost (HBAR per step, converted to fee-equivalent)
         """
         meta_in = self._get_token_meta(from_variant)
         meta_out = self._get_token_meta(to_variant)
@@ -250,14 +320,17 @@ class PacmanVariantRouter:
             total_fee = direct.fee_percent
             total_gas = direct.gas_estimate_hbar
         else:
-            # Try via multiple hubs (Simplified Strategy from User's "Perfect" version)
+            # Try via multiple hubs — score by FULL effective cost
             potential_hubs = ["USDC", "USDC[hts]", "HBAR", "SAUCE"]
             best_hub_route = None
+            best_score = float('inf')
             
             for hub in potential_hubs:
                 hub_route = self.find_hub_route(from_symbol, to_symbol, hub)
                 if hub_route:
-                    if best_hub_route is None or sum(s.fee_percent for s in hub_route) < sum(s.fee_percent for s in best_hub_route):
+                    score = self._score_route(hub_route, volume_usd)
+                    if score < best_score:
+                        best_score = score
                         best_hub_route = hub_route
                         
             if best_hub_route:
@@ -283,6 +356,40 @@ class PacmanVariantRouter:
             hashpack_visible=meta_out.get("visible_in_hashpack", True),
             confidence=0.95 if len(steps) == 1 else 0.85
         )
+    
+    def _score_route(self, steps: List[RouteStep], volume_usd: float) -> float:
+        """
+        Score a route by total effective cost.
+        
+        Components:
+        1. LP fees (sum of fee_percent across hops)
+        2. Price impact estimate (volume / pool_liquidity per hop)
+        3. Gas cost as fee-equivalent (gas_hbar * hbar_price / volume_usd)
+        
+        Lower score = better route.
+        """
+        total_fee_pct = sum(s.fee_percent for s in steps)
+        
+        # Estimate price impact from liquidity depth
+        total_impact = 0.0
+        for step in steps:
+            liq = step.details.get("liquidity_usd", 0)
+            if liq > 0:
+                # Simple constant-product price impact: trade_size / (2 * pool_liquidity)
+                # Using 2x because AMM impact on one side affects both sides
+                total_impact += volume_usd / (2.0 * liq)
+            else:
+                # Unknown liquidity — add a penalty to prefer known pools
+                total_impact += 0.01  # 1% penalty for unknown depth
+        
+        # Gas cost as a percentage of trade value
+        total_gas_hbar = sum(s.gas_estimate_hbar for s in steps)
+        gas_cost_pct = 0.0
+        if volume_usd > 0 and self.htbar_price > 0:
+            gas_cost_usd = total_gas_hbar * self.htbar_price
+            gas_cost_pct = gas_cost_usd / volume_usd
+        
+        return total_fee_pct + total_impact + gas_cost_pct
     
     def calculate_hts_route(self, from_variant: str, to_variant: str, volume_usd: float = 100) -> Optional[VariantRoute]:
         """

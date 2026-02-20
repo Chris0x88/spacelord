@@ -136,3 +136,50 @@ def cmd_swap_v1(app, args):
             print(f"  {C.ERR}✗{C.R} V1 FAILED: {res.error}")
     else:
         print(f"  {C.MUTED}Cancelled.{C.R}")
+
+
+def cmd_slippage(app, args):
+    """View or set slippage tolerance for swaps."""
+    import json
+    from pathlib import Path
+
+    settings_path = Path("data/settings.json")
+
+    if not args:
+        # Show current slippage
+        pct = app.config.max_slippage_percent
+        print(f"\n  {C.BOLD}Slippage Tolerance:{C.R} {C.TEXT}{pct:.1f}%{C.R}")
+        print(f"  {C.MUTED}Usage: slippage <percent>  (e.g. slippage 2.5){C.R}")
+        print(f"  {C.MUTED}Range: 0.1% – 5.0%  •  Saved to data/settings.json{C.R}")
+        return
+
+    try:
+        new_val = float(args[0])
+    except ValueError:
+        print(f"  {C.ERR}✗{C.R} Invalid number: {args[0]}")
+        return
+
+    if new_val < 0.1 or new_val > 5.0:
+        print(f"  {C.ERR}✗{C.R} Out of range. Must be between 0.1% and 5.0%")
+        return
+
+    # Update live config
+    app.config.max_slippage_percent = new_val
+
+    # Persist to settings.json
+    try:
+        settings = {}
+        if settings_path.exists():
+            with open(settings_path) as f:
+                settings = json.load(f)
+
+        if "swap_settings" not in settings:
+            settings["swap_settings"] = {}
+        settings["swap_settings"]["slippage_percent"] = round(new_val, 1)
+
+        with open(settings_path, "w") as f:
+            json.dump(settings, f, indent=4)
+
+        print(f"  {C.OK}✓{C.R} Slippage set to {C.TEXT}{new_val:.1f}%{C.R} (saved)")
+    except Exception as e:
+        print(f"  {C.WARN}⚠{C.R} Applied to session but failed to save: {e}")

@@ -33,6 +33,7 @@ HELP_COMMANDS = [
     ("swap <amt> <A> for <B>",   "Exact input swap (you spend exact amount)"),
     ("swap <A> for <amt> <B>",   "Exact output swap (you receive exact amount)"),
     ("swap-v1 <amt> <A> <B>",    "SaucerSwap V1 (Legacy) swap"),
+    ("slippage [percent]",       "View or set swap slippage (default: 2%)"),
 
     # Transfers
     ("--- TRANSFERS ---", ""),
@@ -142,9 +143,14 @@ the most efficient path between any two supported tokens.
 {C.ACCENT}Pre-Execution Safety:{C.R}
   1. {C.BOLD}Simulation{C.R}: Every swap runs eth_call simulation first.
      If it would revert, the transaction is NEVER broadcast.
-  2. {C.BOLD}Slippage{C.R}: Default 1% tolerance. Multi-hop routes add ~0.5% per hop.
+  2. {C.BOLD}Slippage{C.R}: Default 2% tolerance. Adjust with {C.TEXT}slippage <percent>{C.R}.
   3. {C.BOLD}Association{C.R}: Pacman auto-associates HTS tokens if needed.
   4. {C.BOLD}Approval{C.R}: ERC20 allowances are checked and approved before swap.
+
+{C.ACCENT}Slippage Setting:{C.R}
+  {C.TEXT}ᗧ slippage{C.R}                View current slippage tolerance
+  {C.TEXT}ᗧ slippage 2.5{C.R}            Set to 2.5% (persists across sessions)
+  Range: 0.1% – 5.0%. Saved to data/settings.json.
 
 {C.ACCENT}Routing Engine:{C.R}
   - Builds a weighted graph from approved pool registries (data/pools.json)
@@ -384,7 +390,7 @@ Execute swaps specifically on SaucerSwap V1 (Uniswap V2 architecture).
 {C.ACCENT}Technical Notes:{C.R}
   - Uses Uniswap V2 router interface (swapExactTokensForTokens)
   - HBAR is automatically wrapped to WHBAR before routing
-  - Slippage tolerance: 1%
+  - Slippage tolerance: uses your setting (see slippage command)
   - Isolated from V2 execution engine (separate code path)""",
 
     "stake": """{C.BOLD}HEDERA NATIVE STAKING (HIP-406) — COMPLETE REFERENCE{C.R}

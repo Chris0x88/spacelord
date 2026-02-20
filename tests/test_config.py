@@ -19,7 +19,7 @@ class TestPacmanConfig:
         assert config.rpc_url == "https://mainnet.hashio.io/api"
         assert config.max_swap_amount_usd == 1.00
         assert config.max_daily_volume_usd == 10.00
-        assert config.max_slippage_percent == 1.0
+        assert config.max_slippage_percent == 2.0
         assert config.simulate_mode is True
         assert config.require_confirmation is True
         assert config.verbose_mode is False

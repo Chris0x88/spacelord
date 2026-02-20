@@ -60,7 +60,7 @@ class PacmanConfig:
     # Safety Limits (HARD CODED MAXIMUMS)
     max_swap_amount_usd: float = 1.00  # $1.00 maximum per swap
     max_daily_volume_usd: float = 10.00  # $10.00 daily limit
-    max_slippage_percent: float = 1.0  # 1% max slippage
+    max_slippage_percent: float = 2.0  # 2% default slippage
     
     # Execution Settings
     simulate_mode: bool = True  # Start in simulation
@@ -128,7 +128,24 @@ class PacmanConfig:
         max_daily = cls._safe_float(os.getenv("PACMAN_MAX_DAILY"), 10.00)
         config.max_daily_volume_usd = min(max_daily, 10.00)  # Hard cap at $10
         
-        max_slippage = cls._safe_float(os.getenv("PACMAN_MAX_SLIPPAGE"), 1.0)
+        # Slippage priority: ENV var > settings.json > default (2.0%)
+        env_slippage = os.getenv("PACMAN_MAX_SLIPPAGE")
+        if env_slippage:
+            max_slippage = cls._safe_float(env_slippage, 2.0)
+        else:
+            # Try to load from persistent settings.json
+            max_slippage = 2.0
+            try:
+                settings_path = Path(__file__).parent.parent / "data" / "settings.json"
+                if settings_path.exists():
+                    import json
+                    with open(settings_path) as sf:
+                        settings = json.load(sf)
+                    saved = settings.get("swap_settings", {}).get("slippage_percent")
+                    if saved is not None:
+                        max_slippage = cls._safe_float(str(saved), 2.0)
+            except Exception:
+                pass
         config.max_slippage_percent = min(max_slippage, 5.0)  # Hard cap at 5%
         
         # Execution mode
@@ -214,7 +231,7 @@ PACMAN_NETWORK={_default_config.network}
 # Safety limits (max ${_default_config.max_swap_amount_usd:.2f} per swap, ${_default_config.max_daily_volume_usd:.2f} daily)
 PACMAN_MAX_SWAP={_default_config.max_swap_amount_usd:.2f}
 PACMAN_MAX_DAILY={_default_config.max_daily_volume_usd:.2f}
-PACMAN_MAX_SLIPPAGE={_default_config.max_slippage_percent:.1f}
+PACMAN_MAX_SLIPPAGE={_default_config.max_slippage_percent:.1f}  # Or set in data/settings.json
 
 # Execution mode
 PACMAN_SIMULATE={'true' if _default_config.simulate_mode else 'false'}

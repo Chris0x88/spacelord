@@ -28,7 +28,7 @@ from cli.commands.wallet import (
     cmd_setup, cmd_account, cmd_balance, cmd_send, cmd_receive,
     cmd_whitelist, check_wallet_setup, check_saucerswap_api_key
 )
-from cli.commands.trading import handle_natural_language, cmd_swap_v1
+from cli.commands.trading import handle_natural_language, cmd_swap_v1, cmd_slippage
 from cli.commands.staking import cmd_stake, cmd_unstake
 from cli.commands.info import (
     cmd_help, cmd_tokens, cmd_sources, cmd_price,
@@ -69,6 +69,7 @@ COMMANDS = {
     "sources": cmd_sources, "source": cmd_sources,
     "accounts": cmd_account,
     "verbose": cmd_verbose,
+    "slippage": cmd_slippage,
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
 }
 

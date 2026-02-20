@@ -54,5 +54,12 @@
         "tokenB": "0.0.1456986",
         "fee": 1500,
         "label": "HTS-WBTC/WHBAR"
+    },
+    {
+        "contractId": "0.0.9774462",
+        "tokenA": "0.0.1456986",
+        "tokenB": "0.0.7893707",
+        "fee": 10000,
+        "label": "HBAR/gib"
     }
 ]

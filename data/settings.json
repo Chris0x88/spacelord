@@ -1,4 +1,7 @@
 {
+    "swap_settings": {
+        "slippage_percent": 2.0
+    },
     "display_rules": {
         "priority_symbols": [
             "HBAR",
