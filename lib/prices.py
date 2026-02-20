@@ -122,42 +122,54 @@ class PacmanPriceManager:
         return price, source
 
     def get_hbar_price(self) -> float:
-        """Get the current live price of native HBAR."""
-        # Try fetching live from CoinGecko
+        """Get the current price of native HBAR.
+
+        Priority:
+        1. SaucerSwap V2 pool data (already loaded in self.hbar_price from _load_data)
+        2. CoinGecko (only if SaucerSwap price is 0 or data is stale)
+        3. Binance (final fallback)
+        """
+        import time
+
+        # 1. Use SaucerSwap price if it's fresh (loaded within the last 10 min)
+        if self.hbar_price > 0:
+            # Check if the source already says SaucerSwap — if so, use it directly
+            current_source = self.sources.get("0.0.0", "")
+            if "SaucerSwap" in current_source:
+                return self.hbar_price
+
+        # 2. Fallback: CoinGecko
         try:
             import requests
             url = "https://api.coingecko.com/api/v3/simple/price?ids=hedera-hashgraph&vs_currencies=usd"
-            r = requests.get(url, timeout=1.5)
+            r = requests.get(url, timeout=3)
             if r.status_code == 200:
-                data = r.json()
-                price = data.get("hedera-hashgraph", {}).get("usd", 0)
+                price = r.json().get("hedera-hashgraph", {}).get("usd", 0)
                 if price > 0:
                     self.hbar_price = price
-                    import time
                     ts = time.strftime("%H:%M")
                     self.sources["0.0.0"] = f"CoinGecko (Live {ts})"
                     return price
-        except:
+        except Exception:
             pass
 
-        # Try Binance
+        # 3. Fallback: Binance
         try:
             import requests
             url = "https://api.binance.com/api/v3/ticker/price?symbol=HBARUSDT"
-            r = requests.get(url, timeout=1.5)
+            r = requests.get(url, timeout=3)
             if r.status_code == 200:
-                data = r.json()
-                price = float(data.get("price", 0))
+                price = float(r.json().get("price", 0))
                 if price > 0:
                     self.hbar_price = price
-                    import time
                     ts = time.strftime("%H:%M")
                     self.sources["0.0.0"] = f"Binance (Live {ts})"
                     return price
-        except:
+        except Exception:
             pass
-            
+
         return self.hbar_price
+
 
     def _get_live_price(self, token_id: str) -> tuple[float, str]:
         """

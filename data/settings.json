@@ -31,6 +31,9 @@
         ]
     },
     "transfer_whitelist": [
-        "0.0.7949179"
+        {
+            "address": "0.0.7949179",
+            "nickname": ""
+        }
     ]
 }

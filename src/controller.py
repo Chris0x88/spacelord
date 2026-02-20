@@ -383,48 +383,60 @@ class PacmanController:
     # ---------------------------------------------------------------------------
 
     def get_whitelist(self) -> list:
-        """Get the list of whitelisted transfer recipients."""
+        """Get the list of whitelisted transfer recipients as [{address, nickname}]."""
         import json
-        from pathlib import Path
-        
         try:
             with open("data/settings.json") as f:
                 settings = json.load(f)
-                return settings.get("transfer_whitelist", [])
+            raw = settings.get("transfer_whitelist", [])
+            # Migrate bare strings to dicts transparently
+            result = []
+            for entry in raw:
+                if isinstance(entry, str):
+                    result.append({"address": entry, "nickname": ""})
+                elif isinstance(entry, dict):
+                    result.append(entry)
+            return result
         except Exception:
             return []
 
-    def add_to_whitelist(self, address: str) -> bool:
-        """Add an address to the transfer whitelist."""
+    def add_to_whitelist(self, address: str, nickname: str = "") -> bool:
+        """Add an address (with optional nickname) to the transfer whitelist."""
         import json
-        from pathlib import Path
         import re
-        
-        # Validate format (0.0.xxx)
+        from pathlib import Path
+
         if not re.match(r"^0\.0\.\d+$", address):
             logger.error(f"Invalid Hedera ID format: {address}")
             return False
-            
+
         settings_path = Path("data/settings.json")
         if not settings_path.exists():
             return False
-            
+
         try:
             with open(settings_path) as f:
                 settings = json.load(f)
-                
-            whitelist = settings.get("transfer_whitelist", [])
-            if address in whitelist:
+
+            raw = settings.get("transfer_whitelist", [])
+            # Migrate bare strings
+            whitelist = [
+                e if isinstance(e, dict) else {"address": e, "nickname": ""}
+                for e in raw
+            ]
+
+            # Duplicate check
+            if any(e["address"] == address for e in whitelist):
                 logger.info(f"Address {address} already in whitelist.")
                 return True
-                
-            whitelist.append(address)
+
+            whitelist.append({"address": address, "nickname": nickname.strip()})
             settings["transfer_whitelist"] = whitelist
-            
+
             with open(settings_path, "w") as f:
                 json.dump(settings, f, indent=4)
-                
-            logger.info(f"Added {address} to whitelist.")
+
+            logger.info(f"Added {address} ('{nickname}') to whitelist.")
             return True
         except Exception as e:
             logger.error(f"Failed to update whitelist: {e}")
@@ -434,26 +446,31 @@ class PacmanController:
         """Remove an address from the transfer whitelist."""
         import json
         from pathlib import Path
-        
+
         settings_path = Path("data/settings.json")
         if not settings_path.exists():
             return False
-            
+
         try:
             with open(settings_path) as f:
                 settings = json.load(f)
-                
-            whitelist = settings.get("transfer_whitelist", [])
-            if address not in whitelist:
+
+            raw = settings.get("transfer_whitelist", [])
+            # Migrate bare strings then filter
+            whitelist = [
+                e if isinstance(e, dict) else {"address": e, "nickname": ""}
+                for e in raw
+            ]
+            new_whitelist = [e for e in whitelist if e["address"] != address]
+
+            if len(new_whitelist) == len(whitelist):
                 logger.info(f"Address {address} not in whitelist.")
                 return False
-                
-            whitelist.remove(address)
-            settings["transfer_whitelist"] = whitelist
-            
+
+            settings["transfer_whitelist"] = new_whitelist
             with open(settings_path, "w") as f:
                 json.dump(settings, f, indent=4)
-                
+
             logger.info(f"Removed {address} from whitelist.")
             return True
         except Exception as e:

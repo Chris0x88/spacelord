@@ -148,33 +148,35 @@ def cmd_setup(app, args):
 def cmd_account(app, args):
     known = app.account_manager.get_known_accounts()
     show_account(app.executor, known_accounts=known)
-    
-    # Sub-account creation option
-    print(f"\n  {C.TEXT}Sub-account management:{C.R}")
-    print(f"  {C.ACCENT}[S]{C.R} Create new Sub-account (same key)")
-    
-    while True:
-        choice = input(f"\n  Choice {C.MUTED}(s or enter to exit){C.R}: ").strip().lower()
-        if not choice:
-            break
-        if choice == 's':
-            print(f"\n  {C.MUTED}Creating sub-account on {app.network}...{C.R}")
-            new_id = app.create_sub_account(initial_balance=1.0)
-            if not new_id:
-                print(f"  {C.ERR}✗{C.R} Creation failed.")
-                return
-                
-            print(f"  {C.OK}✅ Created Sub-account: {C.BOLD}{new_id}{C.R}")
-            print(f"  {C.MUTED}This account uses your existing Private Key.{C.R}")
-            
-            confirm = input(f"\n  Switch .env to this new ID? {C.MUTED}(y/n){C.R} ").strip().lower()
-            if confirm in ["y", "yes"]:
-                _update_env("HEDERA_ACCOUNT_ID", new_id, force=True)
-                app.config.hedera_account_id = new_id
-                print(f"  {C.OK}✅ Account ID updated to {new_id}.{C.R}")
-            break
-        else:
-            print(f"  {C.MUTED}Invalid choice. Type 's' or press enter.{C.R}")
+
+    # Sub-account creation only on explicit --new flag
+    if "--new" not in args and "-n" not in args:
+        print(f"  {C.MUTED}To create a sub-account (same key), run: {C.ACCENT}account --new{C.R}")
+        print()
+        return
+
+    print(f"\n  {C.TEXT}Sub-account creation:{C.R}")
+    print(f"  {C.WARN}⚠  This creates a new Hedera ID funded from your current account.{C.R}")
+    confirm = input(f"  Continue? {C.MUTED}(y/n){C.R} ").strip().lower()
+    if confirm not in ["y", "yes"]:
+        print(f"  {C.MUTED}Cancelled.{C.R}")
+        return
+
+    print(f"\n  {C.MUTED}Creating sub-account on {app.network}...{C.R}")
+    new_id = app.create_sub_account(initial_balance=1.0)
+    if not new_id:
+        print(f"  {C.ERR}✗{C.R} Creation failed.")
+        return
+
+    print(f"  {C.OK}✅ Created Sub-account: {C.BOLD}{new_id}{C.R}")
+    print(f"  {C.MUTED}This account uses your existing Private Key.{C.R}")
+
+    confirm = input(f"\n  Switch .env to this new ID? {C.MUTED}(y/n){C.R} ").strip().lower()
+    if confirm in ["y", "yes"]:
+        _update_env("HEDERA_ACCOUNT_ID", new_id, force=True)
+        app.config.hedera_account_id = new_id
+        print(f"  {C.OK}✅ Account ID updated to {new_id}.{C.R}")
+    print()
 
 
 def cmd_balance(app, args):
@@ -288,44 +290,57 @@ def cmd_receive(app, args):
 def cmd_whitelist(app, args):
     """
     Manage trusted transfer recipients.
-    Usage: whitelist [view|add|remove] [address]
+    Usage:
+      whitelist                          → view list
+      whitelist add <0.0.xxx> [nickname] → add address with optional label
+      whitelist remove <0.0.xxx>         → remove address
     """
-    if not args:
-        action = "view"
-    else:
-        action = args[0].lower()
-        
+    action = args[0].lower() if args else "view"
+
     if action in ["view", "list", "ls"]:
         whitelist = app.get_whitelist()
-        print(f"\n{C.BOLD}{C.TEXT}  Whitelisted Send Addresses{C.R}")
-        print(f"  {C.CHROME}{'─' * 56}{C.R}")
-        
+        print(f"\n{C.BOLD}{C.TEXT}  WHITELISTED ADDRESSES{C.R}")
+        print(f"  {C.CHROME}{'─' * 60}{C.R}")
+        print(f"  {C.MUTED}{'ADDRESS':<16} {'NICKNAME'}{C.R}")
+        print(f"  {C.CHROME}{'─' * 60}{C.R}")
+
         if not whitelist:
             print(f"  {C.MUTED}No addresses whitelisted.{C.R}")
             print(f"  {C.WARN}⚠ All live transfers will be blocked.{C.R}")
         else:
-            for addr in whitelist:
-                print(f"  {C.ACCENT}▪{C.R} {C.TEXT}{addr}{C.R}")
+            for entry in whitelist:
+                addr = entry.get("address", entry) if isinstance(entry, dict) else entry
+                nick = entry.get("nickname", "") if isinstance(entry, dict) else ""
+                nick_display = f"{C.ACCENT}{nick}{C.R}" if nick else f"{C.MUTED}—{C.R}"
+                print(f"  {C.TEXT}{addr:<16}{C.R} {nick_display}")
         print()
         return
 
     if action == "add":
         if len(args) < 2:
-            print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}whitelist add <0.0.xxx>{C.R}")
+            print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}whitelist add <0.0.xxx> [nickname]{C.R}")
             return
-        
+
         address = args[1]
-        success = app.add_to_whitelist(address)
+        nickname = " ".join(args[2:]) if len(args) > 2 else ""
+        if not nickname:
+            try:
+                nickname = input(f"  Nickname for {address} {C.MUTED}(optional, press enter to skip){C.R}: ").strip()
+            except (KeyboardInterrupt, EOFError):
+                nickname = ""
+
+        success = app.add_to_whitelist(address, nickname=nickname)
         if success:
-            print(f"  {C.OK}✅ Added {address} to whitelist.{C.R}")
+            label = f" as '{C.ACCENT}{nickname}{C.R}'" if nickname else ""
+            print(f"  {C.OK}✅ Added {address}{label} to whitelist.{C.R}")
         else:
-            print(f"  {C.ERR}✗{C.R} Failed to add address. Check format (0.0.xxx).")
-            
+            print(f"  {C.ERR}✗{C.R} Failed to add. Check format (0.0.xxx).")
+
     elif action in ["remove", "delete", "rm"]:
         if len(args) < 2:
             print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}whitelist remove <0.0.xxx>{C.R}")
             return
-            
+
         address = args[1]
         success = app.remove_from_whitelist(address)
         if success:
@@ -333,7 +348,7 @@ def cmd_whitelist(app, args):
         else:
             print(f"  {C.WARN}⚠ Address not found in whitelist.{C.R}")
     else:
-        print(f"  {C.ERR}✗{C.R} Unknown action: {action}")
+        print(f"  {C.ERR}✗{C.R} Unknown action '{action}'. Try: view, add, remove")
 
 
 # ---------------------------------------------------------------------------
