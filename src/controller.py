@@ -389,7 +389,7 @@ class PacmanController:
         )
 
     def get_liquidity_positions(self) -> list:
-        """Fetch NFT IDs of LP tokens for this account."""
+        """Fetch NFT IDs of LP tokens for this account with full position details."""
         if not self.account_id: return []
         network_prefix = "mainnet-public" if self.network == "mainnet" else "testnet"
         nft_token_id = "0.0.4054027" if self.network == "mainnet" else "0.0.4054027"
@@ -404,17 +404,45 @@ class PacmanController:
                 for nft in data:
                     serial = nft.get("serial_number")
                     pos_data = self.liquidity_manager.contract.functions.positions(serial).call()
-                    if pos_data[7] > 0: # Check if liquidity > 0
+                    liquidity = pos_data[7]
+                    if liquidity > 0:
+                        tick_lower = pos_data[5]
+                        tick_upper = pos_data[6]
+                        t0_addr = Web3.to_checksum_address(pos_data[2])
+                        t1_addr = Web3.to_checksum_address(pos_data[3])
+                        fee = pos_data[4]
+
+                        # Try to fetch current tick from the pool for in/out-of-range
+                        tick_current = tick_lower  # fallback
+                        try:
+                            from lib.saucerswap import hedera_id_to_evm, get_pool_address
+                            from lib.saucerswap import POOL_ABI
+                            # Derive Hedera IDs from EVM addresses
+                            t0_num = int(t0_addr.lower(), 16)
+                            t1_num = int(t1_addr.lower(), 16)
+                            t0_id = f"0.0.{t0_num}"
+                            t1_id = f"0.0.{t1_num}"
+                            pool_addr = get_pool_address(self.executor.w3, t0_id, t1_id, fee, self.network)
+                            pool_contract = self.executor.w3.eth.contract(address=pool_addr, abi=POOL_ABI)
+                            slot0 = pool_contract.functions.slot0().call()
+                            tick_current = slot0[1]
+                        except Exception:
+                            pass
+
                         positions.append({
                             "id": serial,
-                            "token0": Web3.to_checksum_address(pos_data[2]),
-                            "token1": Web3.to_checksum_address(pos_data[3]),
-                            "fee": pos_data[4],
-                            "liquidity": pos_data[7]
+                            "token0": t0_addr,
+                            "token1": t1_addr,
+                            "fee": fee,
+                            "liquidity": liquidity,
+                            "tick_lower": tick_lower,
+                            "tick_upper": tick_upper,
+                            "tick_current": tick_current,
                         })
         except Exception as e:
             logger.error(f"Failed to fetch LP positions: {e}")
         return positions
+
 
 
     def approve_pool(self, pool_data: dict, protocol: str = "v2"):

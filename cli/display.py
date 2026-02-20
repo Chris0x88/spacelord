@@ -431,12 +431,30 @@ def _show_all_balances(executor, price_manager, lp_positions: list = None):
             stake_info = executor.get_staking_info()
             if stake_info.get("is_staked"):
                 node_id = stake_info.get("node_id")
-                reward = stake_info.get("pending_reward", 0) / 100_000_000.0
+                pending = stake_info.get("pending_reward", 0) / 100_000_000.0
                 node_name = "Google" if node_id == 5 else f"Node {node_id}"
-                
-                print(f"  {C.ACCENT}⟳ Staked to {node_name}{C.R} • {C.OK}+{reward:.6f} HBAR Pending{C.R}")
-                if reward == 0:
-                    print(f"  {C.MUTED}(Rewards accrue daily. First payment takes ~24h){C.R}")
+
+                # Fetch total lifetime staking rewards earned from Mirror Node
+                total_earned = 0.0
+                try:
+                    import requests as _req
+                    _base = "https://mainnet-public.mirrornode.hedera.com" if executor.network != "testnet" else "https://testnet.mirrornode.hedera.com"
+                    _url = f"{_base}/api/v1/accounts/{executor.hedera_account_id}/rewards"
+                    _r = _req.get(_url, timeout=5)
+                    if _r.status_code == 200:
+                        for item in _r.json().get("rewards", [])[:50]:
+                            total_earned += item.get("amount", 0)
+                        total_earned /= 100_000_000.0
+                except Exception:
+                    pass
+
+                print(f"  {C.ACCENT}⟳ Staked to {node_name}{C.R}")
+                if pending > 0:
+                    print(f"    {C.MUTED}Pending:{C.R} {C.OK}+{pending:.6f} HBAR{C.R} {C.MUTED}(paid next cycle){C.R}")
+                else:
+                    print(f"    {C.MUTED}Pending: Paid out. Accruing...{C.R}")
+                if total_earned > 0:
+                    print(f"    {C.MUTED}Earned Total:{C.R} {C.OK}+{total_earned:.6f} HBAR{C.R}")
             else:
                 print(f"  {C.MUTED}Not Staked • Run 'stake' to earn rewards{C.R}")
         except: pass
@@ -519,34 +537,70 @@ def _show_all_balances(executor, price_manager, lp_positions: list = None):
 
         # V2 Liquidity Positions
         if lp_positions:
+            import math as _math
             print(f"  {C.BOLD}{C.ACCENT}V2 LIQUIDITY POSITIONS{C.R}")
-            print(f"  {C.CHROME}{'─' * 56}{C.R}")
-            print(f"  {C.MUTED}{'NFT ID':<10} {'PAIR':<20} {'FEE':<8} {'STATUS'}{C.R}")
-            print(f"  {C.CHROME}{'─' * 56}{C.R}")
-            
+            print(f"  {C.CHROME}{'─' * 72}{C.R}")
+
             def evm_to_hedera_id(evm_address: str) -> str:
                 num = int(evm_address.lower(), 16)
                 return f"0.0.{num}"
-                
+
+            def get_sym(tid):
+                if tid == "0.0.1456986": return "HBAR"
+                for sym, meta in tokens_data.items():
+                    if meta.get("id") == tid:
+                        return meta.get("symbol", sym)
+                return tid
+
             for pos in lp_positions:
                 t0_id = evm_to_hedera_id(pos['token0'])
                 t1_id = evm_to_hedera_id(pos['token1'])
-                
-                def get_sym(tid):
-                    if tid == "0.0.1456986": return "WHBAR" # V2 internal 
-                    for sym, meta in tokens_data.items():
-                        if meta.get("id") == tid:
-                            return meta.get("symbol", sym)
-                    return tid
-                    
                 t0_sym = get_sym(t0_id)
                 t1_sym = get_sym(t1_id)
                 pair = f"{t0_sym}/{t1_sym}"
                 fee_pct = pos['fee'] / 10000
-                status = f"{C.OK}Active{C.R}" if pos['liquidity'] > 0 else f"{C.MUTED}Closed{C.R}"
-                
-                print(f"  {C.TEXT}{pos['id']:<10}{C.R} {C.ACCENT}{pair:<20}{C.R} {fee_pct:.2f}%   {status}")
-            print()
+
+                tick_lower = pos.get('tick_lower', 0)
+                tick_upper = pos.get('tick_upper', 0)
+                tick_current = pos.get('tick_current', 0)
+
+                # Determine if position is in range
+                in_range = tick_lower <= tick_current < tick_upper
+                range_icon = f"{C.OK}●{C.R}" if in_range else f"{C.WARN}○{C.R}"
+                range_label = "In Range" if in_range else "Out of Range"
+
+                # Estimate underlying token amounts from liquidity using V3 math
+                liquidity = pos.get('liquidity', 0)
+                est_t0, est_t1 = 0.0, 0.0
+                try:
+                    sqrt_p  = _math.sqrt(1.0001 ** tick_current)
+                    sqrt_pa = _math.sqrt(1.0001 ** tick_lower)
+                    sqrt_pb = _math.sqrt(1.0001 ** tick_upper)
+                    if sqrt_pa > sqrt_pb:
+                        sqrt_pa, sqrt_pb = sqrt_pb, sqrt_pa
+                    if tick_current < tick_lower:
+                        est_t0 = liquidity * (1.0/sqrt_pa - 1.0/sqrt_pb)
+                    elif tick_current >= tick_upper:
+                        est_t1 = liquidity * (sqrt_pb - sqrt_pa)
+                    else:
+                        est_t0 = liquidity * (1.0/sqrt_p - 1.0/sqrt_pb)
+                        est_t1 = liquidity * (sqrt_p - sqrt_pa)
+                    # Normalize to human readable (divide by 10^8 for most Hedera tokens)
+                    est_t0 /= 1e8
+                    est_t1 /= 1e8
+                except Exception:
+                    pass
+
+                print(f"  {C.BOLD}{C.TEXT}NFT #{pos['id']}{C.R}  {C.ACCENT}{pair}{C.R} @ {C.TEXT}{fee_pct:.2f}%{C.R}  {range_icon} {C.MUTED}{range_label}{C.R}")
+                print(f"    {C.MUTED}Range: [{tick_lower:,} → {tick_upper:,}]{C.R}  {C.MUTED}(current tick: {tick_current:,}){C.R}")
+                if est_t0 > 0 or est_t1 > 0:
+                    t0_str = f"{est_t0:.4f} {t0_sym}" if est_t0 > 0 else ""
+                    t1_str = f"{est_t1:.4f} {t1_sym}" if est_t1 > 0 else ""
+                    holdings = " + ".join(filter(None, [t0_str, t1_str]))
+                    print(f"    {C.MUTED}Est. Holdings:{C.R} {C.TEXT}~{holdings}{C.R}")
+                print(f"    {C.MUTED}Liquidity: {liquidity:,}{C.R}")
+                print()
+
 
     except Exception as e:
         print(f"  {C.ERR}✗{C.R} Failed to fetch balances: {e}")
@@ -694,32 +748,43 @@ def show_history(executor):
     # 2. TRANSFER HISTORY
     if transfers:
         print(f"\n{C.BOLD}{C.TEXT}  TRANSFER HISTORY{C.R}")
-        print(f"  {C.CHROME}{'─' * 74}{C.R}")
-        print(f"  {C.MUTED}{'TIME':<16} {'AMOUNT':<26} {'RECIPIENT'}{C.R}")
-        print(f"  {C.CHROME}{'─' * 74}{C.R}")
+        print(f"  {C.CHROME}{'─' * 78}{C.R}")
+        print(f"  {C.MUTED}{'TIME':<16} {'AMOUNT':<22} {'VALUE':>9}  {'RECIPIENT'}{C.R}")
+        print(f"  {C.CHROME}{'─' * 78}{C.R}")
 
         for h in transfers:
             status_icon = f"{C.OK}✓{C.R}" if h.get("success", False) else f"{C.ERR}✗{C.R}"
             full_ts = h.get('timestamp', '????-??-?? ??:??:??')
             ts = full_ts[5:19]
-            
+
             recipient = h.get("route", {}).get("to", "?")
             symbol = h.get("symbol", "HBAR")
             amount = h.get("amount_token", 0)
             memo = h.get("memo")
-            
+
+            # Get USD value
+            amt_usd = h.get("amount_usd", 0)
+            if amt_usd == 0:
+                try:
+                    token_id = tokens_map.get(symbol, {}).get("id", "")
+                    usd_price = price_manager.get_price(token_id) if token_id else price_manager.get_hbar_price() if symbol == "HBAR" else 0
+                    amt_usd = amount * usd_price
+                except Exception:
+                    pass
+
             amt_str = f"{amount:,.4f} {symbol}"
-            
-            print(f"  {status_icon} {C.MUTED}{ts:<16}{C.R} {C.TEXT}{amt_str:<26}{C.R} {C.ACCENT}{recipient}{C.R}")
+            usd_str = f"${amt_usd:.2f}" if amt_usd > 0 else ""
+
+            print(f"  {status_icon} {C.MUTED}{ts:<16}{C.R} {C.TEXT}{amt_str:<22}{C.R} {C.OK}{usd_str:>9}{C.R}  {C.ACCENT}{recipient}{C.R}")
             if memo:
                 print(f"    {C.CHROME}└─{C.R} {C.MUTED}Memo: {memo}{C.R}")
 
     # 3. STAKING RECORDS
     if staking:
         print(f"\n{C.BOLD}{C.TEXT}  STAKING RECORDS{C.R}")
-        print(f"  {C.CHROME}{'─' * 60}{C.R}")
-        print(f"  {C.MUTED}{'TIME':<16} {'ACTION':<15} {'DETAIL'}{C.R}")
-        print(f"  {C.CHROME}{'─' * 60}{C.R}")
+        print(f"  {C.CHROME}{'─' * 78}{C.R}")
+        print(f"  {C.MUTED}{'TIME':<16} {'ACTION':<12} {'NODE':<14} {'REWARD RECEIVED'}{C.R}")
+        print(f"  {C.CHROME}{'─' * 78}{C.R}")
 
         for h in staking:
             status_icon = f"{C.OK}✓{C.R}" if h.get("success", False) else f"{C.ERR}✗{C.R}"
@@ -729,11 +794,13 @@ def show_history(executor):
             mode = h.get("mode", "?")
             route = h.get("route", {})
             node_name = route.get("to", "Unknown")
-            
+
             action = "Stake" if mode == "STAKE" else "Unstake"
-            detail = node_name if mode == "STAKE" else "Stopped Rewards"
-            
-            print(f"  {status_icon} {C.MUTED}{ts:<16}{C.R} {C.ACCENT}{action:15s}{C.R} {C.TEXT}{detail}{C.R}")
+            # Show reward amount if recorded (staking payout at time of stake change)
+            reward_hbar = h.get("reward_hbar", 0)
+            reward_str = f"{C.OK}+{reward_hbar:.6f} HBAR{C.R}" if reward_hbar > 0 else f"{C.MUTED}—{C.R}"
+
+            print(f"  {status_icon} {C.MUTED}{ts:<16}{C.R} {C.ACCENT}{action:<12}{C.R} {C.TEXT}{node_name:<14}{C.R} {reward_str}")
 
     print()
 

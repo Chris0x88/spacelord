@@ -277,26 +277,141 @@ def cmd_pool_deposit(app, args):
     except Exception as e:
         print(f"\n  {C.ERR}✗{C.R} FAILED: {str(e)}")
 
+
 def cmd_pool_withdraw(app, args):
     """
     Withdraw liquidity from a V2 pool.
-    Usage: pool-withdraw <nft_token_id> <liquidity_amount> [--dry-run]
+    Usage (Interactive): pool-withdraw
+    Usage (Direct):      pool-withdraw <nft_id> <liquidity_amount> [--dry-run]
     """
-    if len(args) < 2:
-        print(f"  {C.ERR}✗{C.R} Usage: {C.BOLD}pool-withdraw <nft_token_id> <liquidity_amount> [--dry-run]{C.R}")
-        return
-
-    try:
-        token_id = int(args[0])
-        liquidity = int(args[1])
-    except ValueError:
-        print(f"  {C.ERR}✗{C.R} Invalid numeric arguments.")
-        return
+    import math as _math, json as _json
 
     dry_run = "--dry-run" in args
+    clean_args = [a for a in args if a != "--dry-run"]
 
-    print(f"\n  {C.ACCENT}🌊{C.R} V2 Pool Withdraw: NFT {token_id} | Liquidity {liquidity}")
-    
+    nft_id = None
+    liquidity = None
+
+    if len(clean_args) >= 2:
+        # Direct mode — args provided on command line
+        try:
+            nft_id = int(clean_args[0])
+            liquidity = int(clean_args[1])
+        except ValueError:
+            print(f"  {C.ERR}✗{C.R} Invalid numeric arguments.")
+            return
+    else:
+        # Interactive wizard — fetch live positions from chain
+        print(f"\n  {C.ACCENT}🌊{C.R} V2 Pool Withdraw (Position Selector)")
+        print(f"  {C.CHROME}{'─' * 72}{C.R}")
+        print(f"  {C.MUTED}Fetching your active liquidity positions...{C.R}")
+
+        try:
+            positions = app.get_liquidity_positions()
+        except Exception as e:
+            print(f"  {C.ERR}✗{C.R} Failed to fetch positions: {e}")
+            return
+
+        if not positions:
+            print(f"  {C.WARN}⚠  No active V2 liquidity positions found.{C.R}")
+            return
+
+        # Load token names
+        tokens_data = {}
+        try:
+            with open("data/tokens.json") as f:
+                tokens_data = _json.load(f)
+        except Exception:
+            pass
+
+        def evm_to_id(addr):
+            return f"0.0.{int(addr.lower(), 16)}"
+
+        def get_sym(tid):
+            if tid == "0.0.1456986": return "HBAR"
+            for _, m in tokens_data.items():
+                if m.get("id") == tid:
+                    return m.get("symbol", tid)
+            return tid
+
+        print(f"\n  {C.BOLD}Your Active Positions:{C.R}")
+        print(f"  {C.CHROME}{'─' * 72}{C.R}")
+
+        for i, pos in enumerate(positions):
+            t0_sym = get_sym(evm_to_id(pos['token0']))
+            t1_sym = get_sym(evm_to_id(pos['token1']))
+            pair = f"{t0_sym}/{t1_sym}"
+            fee_pct = pos['fee'] / 10000
+            tick_lower  = pos.get('tick_lower', 0)
+            tick_upper  = pos.get('tick_upper', 0)
+            tick_current = pos.get('tick_current', tick_lower)
+            in_range = tick_lower <= tick_current < tick_upper
+            range_icon = f"{C.OK}●{C.R}" if in_range else f"{C.WARN}○{C.R}"
+            liq = pos.get('liquidity', 0)
+
+            # V3 estimated holdings
+            est_t0, est_t1 = 0.0, 0.0
+            try:
+                sqp  = _math.sqrt(1.0001 ** tick_current)
+                sqpa = _math.sqrt(1.0001 ** tick_lower)
+                sqpb = _math.sqrt(1.0001 ** tick_upper)
+                if sqpa > sqpb: sqpa, sqpb = sqpb, sqpa
+                if tick_current < tick_lower:
+                    est_t0 = liq * (1.0/sqpa - 1.0/sqpb) / 1e8
+                elif tick_current >= tick_upper:
+                    est_t1 = liq * (sqpb - sqpa) / 1e8
+                else:
+                    est_t0 = liq * (1.0/sqp - 1.0/sqpb) / 1e8
+                    est_t1 = liq * (sqp - sqpa) / 1e8
+            except Exception:
+                pass
+
+            t0_str = f"~{est_t0:.4f} {t0_sym}" if est_t0 > 0 else ""
+            t1_str = f"~{est_t1:.4f} {t1_sym}" if est_t1 > 0 else ""
+            holdings = " + ".join(filter(None, [t0_str, t1_str])) or "—"
+
+            print(f"  [{i+1}] NFT #{pos['id']}  {C.ACCENT}{pair}{C.R} @ {fee_pct:.2f}%  {range_icon}")
+            print(f"      Ticks: [{tick_lower:,} → {tick_upper:,}]  (current: {tick_current:,})")
+            print(f"      Est. Holdings: {C.TEXT}{holdings}{C.R}   Liquidity: {liq:,}")
+            print()
+
+        choice = input(f"  Select Position (1-{len(positions)}) or 'q' to quit: ").strip()
+        if choice.lower() == 'q' or not choice.isdigit():
+            return
+
+        idx = int(choice) - 1
+        if idx < 0 or idx >= len(positions):
+            print(f"  {C.ERR}✗{C.R} Invalid choice.")
+            return
+
+        pos = positions[idx]
+        nft_id = pos['id']
+        total_liq = pos['liquidity']
+
+        print(f"\n  {C.BOLD}How much liquidity to remove?{C.R}")
+        print(f"  {C.MUTED}Total available: {total_liq:,}{C.R}")
+        print(f"  [1] 100%  (full withdrawal)")
+        print(f"  [2]  50%")
+        print(f"  [3] Custom amount")
+        pct = input("  Choice (1-3): ").strip()
+
+        if pct == "1":
+            liquidity = total_liq
+        elif pct == "2":
+            liquidity = total_liq // 2
+        elif pct == "3":
+            try:
+                liquidity = int(input(f"  Amount (max {total_liq:,}): ").strip())
+            except ValueError:
+                print(f"  {C.ERR}✗{C.R} Invalid amount.")
+                return
+        else:
+            print(f"  {C.ERR}✗{C.R} Invalid choice.")
+            return
+
+    pct_of_total = f" ({liquidity / pos['liquidity'] * 100:.0f}%)" if nft_id and 'liquidity' in locals().get('pos', {}) else ""
+    print(f"\n  {C.ACCENT}🌊{C.R} V2 Pool Withdraw: NFT #{nft_id} | Removing {liquidity:,} liquidity units{pct_of_total}")
+
     if dry_run:
         print(f"  {C.WARN}⚠  SIMULATION MODE{C.R}")
 
@@ -307,11 +422,11 @@ def cmd_pool_withdraw(app, args):
             return
 
     try:
-        tx_hashes = app.remove_liquidity(token_id, liquidity, dry_run=dry_run)
+        tx_hashes = app.remove_liquidity(nft_id, liquidity, dry_run=dry_run)
         print(f"\n  {C.OK}✅ Success!{C.R}")
         if not dry_run:
-            print(f"  {C.MUTED}DecreaseLiquidity TxHash: {C.TEXT}{tx_hashes[0]}{C.R}")
-            print(f"  {C.MUTED}Collect TxHash: {C.TEXT}{tx_hashes[1]}{C.R}")
+            print(f"  {C.MUTED}DecreaseLiquidity: {C.TEXT}{tx_hashes[0]}{C.R}")
+            print(f"  {C.MUTED}Collect:           {C.TEXT}{tx_hashes[1]}{C.R}")
+            print(f"  {C.MUTED}Explorer: {C.TEXT}https://hashscan.io/{app.network}/transaction/{tx_hashes[0]}{C.R}")
     except Exception as e:
         print(f"\n  {C.ERR}✗{C.R} FAILED: {str(e)}")
-
