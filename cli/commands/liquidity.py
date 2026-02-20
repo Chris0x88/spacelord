@@ -430,3 +430,17 @@ def cmd_pool_withdraw(app, args):
             print(f"  {C.MUTED}Explorer: {C.TEXT}https://hashscan.io/{app.network}/transaction/{tx_hashes[0]}{C.R}")
     except Exception as e:
         print(f"\n  {C.ERR}✗{C.R} FAILED: {str(e)}")
+
+def cmd_lp_positions(app, args):
+    """
+    Dedicated command to view active V2 Liquidity positions.
+    Usage: lp
+    """
+    from cli.display import show_balance
+    print(f"\n  {C.ACCENT}🌊{C.R} Querying live LP positions...")
+    try:
+        positions = app.get_liquidity_positions()
+        # show_balance has the logic to render positions if passed
+        show_balance(app.executor, lp_positions=positions)
+    except Exception as e:
+        print(f"  {C.ERR}✗{C.R} Error fetching LP positions: {e}")

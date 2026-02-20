@@ -786,6 +786,33 @@ def show_history(executor):
         print(f"  {C.MUTED}{'TIME':<16} {'ACTION':<12} {'NODE':<14} {'REWARD RECEIVED'}{C.R}")
         print(f"  {C.CHROME}{'─' * 78}{C.R}")
 
+        # Fetch all historical rewards from Mirror Node to backfill missing reward data
+        reward_events = []
+        try:
+            import requests as _req
+            _base = "https://mainnet-public.mirrornode.hedera.com" if executor.network != "testnet" else "https://testnet.mirrornode.hedera.com"
+            _url = f"{_base}/api/v1/accounts/{executor.hedera_account_id}/rewards?limit=100"
+            _r = _req.get(_url, timeout=5)
+            if _r.status_code == 200:
+                reward_events = _r.json().get("rewards", [])
+        except: pass
+
+        def find_reward_at(ts_str):
+            # Hedera timestamps in API are "seconds.nanos"
+            # History timestamps are "YYYY-MM-DD HH:MM:SS"
+            # We'll just look for a reward within a 60s window of the history event
+            try:
+                from datetime import datetime
+                event_dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+                for r in reward_events:
+                    r_ts = float(r.get("timestamp", 0))
+                    r_dt = datetime.fromtimestamp(r_ts)
+                    diff = abs((event_dt - r_dt).total_seconds())
+                    if diff < 120: # 2 minute window for safety
+                        return r.get("amount", 0) / 100_000_000.0
+            except: pass
+            return 0
+
         for h in staking:
             status_icon = f"{C.OK}✓{C.R}" if h.get("success", False) else f"{C.ERR}✗{C.R}"
             full_ts = h.get('timestamp', '????-??-?? ??:??:??')
@@ -796,8 +823,12 @@ def show_history(executor):
             node_name = route.get("to", "Unknown")
 
             action = "Stake" if mode == "STAKE" else "Unstake"
-            # Show reward amount if recorded (staking payout at time of stake change)
+            
+            # Try to get reward: 1. from history metadata, 2. from mirror node backfill
             reward_hbar = h.get("reward_hbar", 0)
+            if reward_hbar == 0:
+                reward_hbar = find_reward_at(full_ts)
+
             reward_str = f"{C.OK}+{reward_hbar:.6f} HBAR{C.R}" if reward_hbar > 0 else f"{C.MUTED}—{C.R}"
 
             print(f"  {status_icon} {C.MUTED}{ts:<16}{C.R} {C.ACCENT}{action:<12}{C.R} {C.TEXT}{node_name:<14}{C.R} {reward_str}")

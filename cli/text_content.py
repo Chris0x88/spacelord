@@ -48,8 +48,10 @@ HELP_COMMANDS = [
 
     # Liquidity
     ("--- LIQUIDITY ---", ""),
+    ("lp",                       "View your active V2 LP positions (NFTs)"),
     ("pool-deposit",             "Interactive V2 Liquidity deployment wizard"),
-    ("pool-withdraw <nft> <liq>","Withdraw V2 Liquidity by NFT ID"),
+    ("pool-withdraw",            "Interactive withdrawal wizard (select NFT)"),
+    ("pool-withdraw <nft> <liq>","Withdraw V2 Liquidity by NFT ID (direct)"),
 
     # Market Data
     ("--- MARKET DATA ---", ""),
@@ -477,6 +479,8 @@ Manage concentrated liquidity positions on SaucerSwap V2.
   acquires WHBAR on your behalf, and mints the position in one flow.
 
 {C.ACCENT}Viewing Your Positions:{C.R}
-  Active V2 LP positions are NFTs. Run {C.TEXT}balance{C.R} to see a dedicated 
-  table of your positions, their fee tiers, and status.""",
+  Active V2 LP positions are NFTs.
+  - Run {C.TEXT}lp{C.R} or {C.TEXT}positions{C.R} to see the dedicated LP table.
+  - Positions also appear at the bottom of {C.TEXT}balance{C.R}.
+  - Output shows tick ranges, in-range status, and estimated holdings.""",
 }

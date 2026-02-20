@@ -30,7 +30,7 @@ from cli.commands.wallet import (
 )
 from cli.commands.trading import handle_natural_language, cmd_swap_v1, cmd_slippage
 from cli.commands.staking import cmd_stake, cmd_unstake
-from cli.commands.liquidity import cmd_pool_deposit, cmd_pool_withdraw
+from cli.commands.liquidity import cmd_pool_deposit, cmd_pool_withdraw, cmd_lp_positions
 from cli.commands.info import (
     cmd_help, cmd_tokens, cmd_sources, cmd_price,
     cmd_pools, cmd_history, cmd_verbose
@@ -60,6 +60,8 @@ COMMANDS = {
     "pools": cmd_pools, "pool": cmd_pools,
     "pool-deposit": cmd_pool_deposit,
     "pool-withdraw": cmd_pool_withdraw,
+    "lp": cmd_lp_positions,
+    "positions": cmd_lp_positions,
     "price": cmd_price,
     "history": cmd_history,
     "send": cmd_send,
