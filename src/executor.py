@@ -491,6 +491,7 @@ class PacmanExecutor:
         if not results:
             return ExecutionResult(success=False, error="No steps executed")
 
+        # The final result should represent the journey from first step input to last step output
         final = results[-1]
         final.total_steps = len(route.steps)
         final.steps_completed = sum(1 for r in results if r.success)
@@ -498,6 +499,10 @@ class PacmanExecutor:
         final.gas_cost_hbar = sum(r.gas_cost_hbar for r in results)
         final.gas_offered = sum(r.gas_offered for r in results)
         final.account_id = self.hedera_account_id
+        
+        # CRITICAL FIX: The first step has the user's actual input amount (in correct decimals/units)
+        # The last step has the final units received. 
+        final.amount_in_raw = results[0].amount_in_raw
         
         final.hbar_usd_price = self._get_hbar_price_usd()
         final.gas_cost_usd = final.gas_cost_hbar * final.hbar_usd_price
