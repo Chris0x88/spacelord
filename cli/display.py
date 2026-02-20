@@ -142,24 +142,25 @@ def show_help(topic: str = None):
             print(f"  {C.WARN}⚠  No detailed help for '{topic}'.{C.R}")
 
     print(f"\n{C.BOLD}{C.TEXT}  COMMANDS{C.R}")
-    print(f"  {C.CHROME}{'─' * 56}{C.R}")
+    print(f"  {C.CHROME}{'─' * 60}{C.R}")
 
     for cmd, desc in HELP_COMMANDS:
         if cmd.startswith("---"):
             # Section Header
             print(f"\n  {C.BOLD}{C.MUTED}{cmd.strip('- ')}{C.R}")
             continue
-            
-        print(f"  {C.ACCENT}{cmd:30s}{C.R} {C.MUTED}{desc}{C.R}")
+
+        print(f"  {C.ACCENT}{cmd:<36s}{C.R} {C.MUTED}{desc}{C.R}")
 
     print(f"\n{C.BOLD}  EXAMPLES{C.R}")
-    print(f"  {C.CHROME}{'─' * 56}{C.R}")
-    
+    print(f"  {C.CHROME}{'─' * 60}{C.R}")
+
     for ex_cmd, ex_desc in HELP_EXAMPLES:
-         print(f"  {C.ACCENT}{ex_cmd:30s}{C.R} {C.MUTED}{ex_desc}{C.R}")
-    
-    print(f"\n  {C.MUTED}For in-depth help, type: {C.R}{C.TEXT}help <command>{C.R}")
-    print(f"  {C.MUTED}Topics: swap, send, balance, price, pools, setup, nlp, whitelist{C.R}\n")
+        print(f"  {C.ACCENT}{ex_cmd:<36s}{C.R} {C.MUTED}{ex_desc}{C.R}")
+
+    print(f"\n  {C.MUTED}For in-depth help, type: {C.R}{C.TEXT}help <topic>{C.R}")
+    print(f"  {C.MUTED}Topics: swap  send  balance  price  pools  account  whitelist{C.R}")
+    print(f"  {C.MUTED}        stake  history  setup  swap-v1  nlp{C.R}\n")
 
 
 # ---------------------------------------------------------------------------
@@ -190,14 +191,16 @@ def show_account(executor, known_accounts=None):
 
     # Show Known Sub-Accounts
     if known_accounts:
-        # Filter out current account from the sub-list if needed
         others = [a for a in known_accounts if a.get("id") != executor.hedera_account_id]
         if others:
             print(f"\n  {C.BOLD}{C.TEXT}KNOWN SUB-ACCOUNTS{C.R}")
-            print(f"  {C.CHROME}{'─' * 56}{C.R}")
-            print(f"  {C.MUTED}{'ID':<15} {'CREATED':<20} {'TYPE'}{C.R}")
+            print(f"  {C.CHROME}{'─' * 70}{C.R}")
+            print(f"  {C.MUTED}{'ID':<15} {'NAME':<20} {'CREATED':<20} {'TYPE'}{C.R}")
+            print(f"  {C.CHROME}{'─' * 70}{C.R}")
             for a in others:
-                print(f"  {C.ACCENT}{a.get('id'):<15}{C.R} {C.MUTED}{a.get('created_at', 'N/A'):<20}{C.R} {C.TEXT}{a.get('type','imported')}{C.R}")
+                nick = a.get("nickname", "") or "—"
+                nick_display = f"{C.ACCENT}{nick}{C.R}" if a.get("nickname") else f"{C.MUTED}{nick}{C.R}"
+                print(f"  {C.TEXT}{a.get('id', '?'):<15}{C.R} {nick_display:<20} {C.MUTED}{a.get('created_at', 'N/A'):<20}{C.R} {C.TEXT}{a.get('type','imported')}{C.R}")
     print()
 
 

@@ -24,6 +24,7 @@ HELP_COMMANDS = [
     ("setup",                    "Secure wallet configuration wizard"),
     ("account",                  "View wallet info & network status"),
     ("account --new",            "Create a new sub-account (same key)"),
+    ("account rename <id> <n>",  "Set a nickname for any known account"),
     ("balance",                  "All wallet balances + USD value"),
     ("balance <token>",          "Single token balance"),
 
@@ -277,8 +278,9 @@ Manage which SaucerSwap liquidity pools Pacman uses for routing.
 View wallet details and manage Hedera account IDs.
 
 {C.ACCENT}Commands:{C.R}
-  {C.TEXT}account{C.R}         View current account info (ID, EVM address, network, mode)
-  {C.TEXT}account --new{C.R}   Create a new sub-account sharing your current private key
+  {C.TEXT}account{C.R}                          View current account info
+  {C.TEXT}account --new{C.R}                    Create sub-account (same private key)
+  {C.TEXT}account rename <0.0.xxx> <name>{C.R}  Label any known account
 
 {C.ACCENT}What is Shown:{C.R}
   - Hedera Account ID (0.0.xxxxx format)
@@ -286,23 +288,28 @@ View wallet details and manage Hedera account IDs.
   - Long-Zero address (0x0000...xxxxx — for reference only, never use for transactions)
   - Network (mainnet / testnet)
   - Mode (LIVE or SIMULATION)
-  - Known sub-accounts from your local registry
+  - Known sub-accounts with nicknames from your local registry
 
-{C.ACCENT}Sub-Account Creation:{C.R}
-  Use {C.TEXT}account --new{C.R} to create a new Hedera ID that shares your
-  current private key. Pacman:
-  1. Calls CryptoCreate via Hiero SDK
-  2. Saves the new account ID to data/accounts.json
-  3. Optionally updates .env to switch the active ID
+{C.ACCENT}Sub-Account Creation ({C.TEXT}account --new{C.ACCENT}):{C.R}
+  Creates a new Hedera ID sharing your current private key. Pacman:
+  1. Prompts for an optional nickname to label the account
+  2. Calls CryptoCreate via Hiero SDK
+  3. Saves ID + nickname to data/accounts.json
+  4. Optionally updates .env to switch the active ID
+
+{C.ACCENT}Renaming Accounts ({C.TEXT}account rename{C.ACCENT}):{C.R}
+  {C.TEXT}account rename 0.0.10289160 Trading Account{C.R}
+  Updates the nickname in data/accounts.json in-place.
+  Does NOT change the active account or .env.
 
 {C.ACCENT}Important:{C.R}
   Always use your EVM Alias address (starts 0x3...) for EVM transactions.
   NEVER use the Long-Zero address (0x0000...) — it causes gas reverts on Hedera.
 
 {C.ACCENT}For AI Agents:{C.R}
-  Use the {C.TEXT}account{C.R} command at startup to verify the active account.
-  The Hedera ID is used for SDK operations (transfers, staking).
-  The EVM alias is used for all Web3/contract interactions.""",
+  Use {C.TEXT}account{C.R} at startup to verify the active account ID and mode.
+  Hedera ID is used for SDK operations (transfers, staking).
+  EVM alias is used for all Web3/contract interactions.""",
 
     "whitelist": """{C.BOLD}WHITELIST MANAGEMENT — COMPLETE REFERENCE{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}

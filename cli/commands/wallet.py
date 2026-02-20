@@ -146,12 +146,34 @@ def cmd_setup(app, args):
 
 
 def cmd_account(app, args):
+    """
+    View account info or manage sub-accounts.
+    Usage:
+      account                        → view current wallet info
+      account --new                  → create a new sub-account (same key)
+      account rename <0.0.xxx> <name> → rename a known account
+    """
+    # Handle 'rename' sub-command: account rename 0.0.xxx My Label
+    if args and args[0].lower() == "rename":
+        if len(args) < 3:
+            print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}account rename <0.0.xxx> <nickname>{C.R}")
+            return
+        target_id = args[1]
+        new_name = " ".join(args[2:])
+        success = app.rename_account(target_id, new_name)
+        if success:
+            print(f"  {C.OK}✅ Renamed {target_id} → '{C.ACCENT}{new_name}{C.R}'")
+        else:
+            print(f"  {C.ERR}✗{C.R} Account {target_id} not found in local registry.")
+        return
+
     known = app.account_manager.get_known_accounts()
     show_account(app.executor, known_accounts=known)
 
     # Sub-account creation only on explicit --new flag
     if "--new" not in args and "-n" not in args:
         print(f"  {C.MUTED}To create a sub-account (same key), run: {C.ACCENT}account --new{C.R}")
+        print(f"  {C.MUTED}To rename an account: {C.ACCENT}account rename <0.0.xxx> <label>{C.R}")
         print()
         return
 
@@ -162,21 +184,29 @@ def cmd_account(app, args):
         print(f"  {C.MUTED}Cancelled.{C.R}")
         return
 
+    # Prompt for nickname
+    try:
+        nickname = input(f"  Nickname for this account {C.MUTED}(optional, press enter to skip){C.R}: ").strip()
+    except (KeyboardInterrupt, EOFError):
+        nickname = ""
+
     print(f"\n  {C.MUTED}Creating sub-account on {app.network}...{C.R}")
-    new_id = app.create_sub_account(initial_balance=1.0)
+    new_id = app.create_sub_account(initial_balance=1.0, nickname=nickname)
     if not new_id:
         print(f"  {C.ERR}✗{C.R} Creation failed.")
         return
 
-    print(f"  {C.OK}✅ Created Sub-account: {C.BOLD}{new_id}{C.R}")
+    label = f" '{C.ACCENT}{nickname}{C.R}'" if nickname else ""
+    print(f"  {C.OK}✅ Created Sub-account{label}: {C.BOLD}{new_id}{C.R}")
     print(f"  {C.MUTED}This account uses your existing Private Key.{C.R}")
 
     confirm = input(f"\n  Switch .env to this new ID? {C.MUTED}(y/n){C.R} ").strip().lower()
     if confirm in ["y", "yes"]:
         _update_env("HEDERA_ACCOUNT_ID", new_id, force=True)
         app.config.hedera_account_id = new_id
-        print(f"  {C.OK}✅ Account ID updated to {new_id}.{C.R}")
+        print(f"  {C.OK}✅ Active account switched to {new_id}.{C.R}")
     print()
+
 
 
 def cmd_balance(app, args):

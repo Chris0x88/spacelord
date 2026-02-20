@@ -70,32 +70,40 @@ class AccountManager:
         except Exception:
             return []
 
-    def _save_account(self, account_id: str, type: str = "imported"):
+    def _save_account(self, account_id: str, type: str = "imported", nickname: str = ""):
         """Save an account ID to the local registry."""
         import json
         from pathlib import Path
         import time
         from src.logger import logger
-        
+
         accounts_path = Path("data/accounts.json")
         accounts = self.get_known_accounts()
-        
-        # Check if already exists
-        if any(a.get("id") == account_id for a in accounts):
-            return
-            
+
+        # Check if already exists — update nickname if provided
+        for a in accounts:
+            if a.get("id") == account_id:
+                if nickname:
+                    a["nickname"] = nickname
+                    try:
+                        with open(accounts_path, "w") as f:
+                            json.dump(accounts, f, indent=4)
+                    except Exception as e:
+                        logger.error(f"Failed to update nickname: {e}")
+                return
+
         accounts.append({
             "id": account_id,
             "type": type,
+            "nickname": nickname,
             "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
         })
-        
+
         try:
-            # Create data dir if missing
             accounts_path.parent.mkdir(parents=True, exist_ok=True)
             with open(accounts_path, "w") as f:
                 json.dump(accounts, f, indent=4)
-            logger.info(f"Saved account {account_id} to registry.")
+            logger.info(f"Saved account {account_id} ('{nickname}') to registry.")
         except Exception as e:
             logger.error(f"Failed to save account to registry: {e}")
 
@@ -152,21 +160,51 @@ class AccountManager:
             print(f"   ❌ Account creation failed: {err_msg}")
             return None, None
 
-    def create_sub_account(self, initial_balance_hbar: float = 1.0) -> Optional[str]:
+    def create_sub_account(self, initial_balance_hbar: float = 1.0, nickname: str = "") -> Optional[str]:
         """
         Create a new Account ID using the current operator's Private Key.
-        Automatically saves to the local registry.
+        Automatically saves to the local registry with an optional nickname.
         """
-        # Use cached raw key for clarity and to avoid object __str__ issues
         if not hasattr(self, "_operator_raw_key") or not self._operator_raw_key:
-             raise RuntimeError("Operator key not set. Call set_operator() first.")
-        
+            raise RuntimeError("Operator key not set. Call set_operator() first.")
+
         new_id, _ = self.create_account(
             initial_balance_hbar=initial_balance_hbar,
             alias_key=self._operator_raw_key
         )
-        
+
         if new_id:
-            self._save_account(new_id, type="derived")
-            
+            self._save_account(new_id, type="derived", nickname=nickname)
+
         return new_id
+
+    def rename_account(self, account_id: str, nickname: str) -> bool:
+        """
+        Update the nickname for an existing account in the local registry.
+        Returns True if found and updated, False if not found.
+        """
+        import json
+        from pathlib import Path
+        from src.logger import logger
+
+        accounts_path = Path("data/accounts.json")
+        accounts = self.get_known_accounts()
+
+        updated = False
+        for a in accounts:
+            if a.get("id") == account_id:
+                a["nickname"] = nickname
+                updated = True
+                break
+
+        if not updated:
+            return False
+
+        try:
+            with open(accounts_path, "w") as f:
+                json.dump(accounts, f, indent=4)
+            logger.info(f"Updated nickname for {account_id} to '{nickname}'.")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to rename account: {e}")
+            return False

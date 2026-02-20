@@ -190,11 +190,15 @@ class PacmanController:
         """
         return self.account_manager.create_account(initial_balance_hbar=initial_balance)
 
-    def create_sub_account(self, initial_balance: float = 1.0) -> Optional[str]:
+    def create_sub_account(self, initial_balance: float = 1.0, nickname: str = "") -> Optional[str]:
         """
         Create a new Account ID that uses the SAME private key as the current account.
         """
-        return self.account_manager.create_sub_account(initial_balance_hbar=initial_balance)
+        return self.account_manager.create_sub_account(initial_balance_hbar=initial_balance, nickname=nickname)
+
+    def rename_account(self, account_id: str, nickname: str) -> bool:
+        """Update the nickname for a known account in the local registry."""
+        return self.account_manager.rename_account(account_id, nickname)
 
     def get_known_accounts(self) -> list:
         """Get the list of known account IDs from the local registry."""
