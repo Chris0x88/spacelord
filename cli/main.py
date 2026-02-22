@@ -134,6 +134,10 @@ def main():
         check_wallet_setup(app)
         check_saucerswap_api_key(app)
         
+        # Auto-start Limit Order Daemon if enabled in settings
+        if app.limit_engine._daemon_enabled:
+            app.limit_engine.start_monitor(app)
+        
         print(f"\n  {C.BOLD}{C.ACCENT}System Online{C.R}")
     except ConfigurationError as e:
         print(f"  {C.ERR}✗{C.R} Config Error: {e}")

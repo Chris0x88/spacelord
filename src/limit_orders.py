@@ -214,6 +214,7 @@ class LimitOrderEngine:
         self._stop_event = threading.Event()
         self._controller = None
         self._poll_interval = self._load_interval()
+        self._daemon_enabled = self._load_daemon_enabled()
         self._load()
 
     # --- Interval Configuration -----------------------------------------------
@@ -249,16 +250,35 @@ class LimitOrderEngine:
 
     def _save_interval(self, seconds: int):
         """Persist poll interval to settings.json."""
+        self._update_settings("limit_order_poll_seconds", seconds)
+
+    def _load_daemon_enabled(self) -> bool:
+        """Load daemon state from settings.json."""
+        try:
+            if SETTINGS_FILE.exists():
+                with open(SETTINGS_FILE) as f:
+                    settings = json.load(f)
+                return settings.get("limit_order_daemon_enabled", False)
+        except Exception:
+            pass
+        return False
+
+    def _save_daemon_enabled(self, enabled: bool):
+        """Persist daemon state to settings.json."""
+        self._update_settings("limit_order_daemon_enabled", enabled)
+
+    def _update_settings(self, key: str, value):
+        """Helper to update a specific key in settings.json."""
         try:
             settings = {}
             if SETTINGS_FILE.exists():
                 with open(SETTINGS_FILE) as f:
                     settings = json.load(f)
-            settings["limit_order_poll_seconds"] = seconds
+            settings[key] = value
             with open(SETTINGS_FILE, "w") as f:
                 json.dump(settings, f, indent=4)
         except Exception as e:
-            logger.error(f"[LimitOrder] Failed to save interval: {e}")
+            logger.error(f"[LimitOrder] Failed to update settings '{key}': {e}")
 
     # --- Order Management ---------------------------------------------------
 
@@ -342,6 +362,8 @@ class LimitOrderEngine:
             daemon=True,
         )
         self._monitor_thread.start()
+        self._daemon_enabled = True
+        self._save_daemon_enabled(True)
         logger.info(
             f"[LimitOrder] Monitor started — polling every {format_interval(self._poll_interval)}, "
             f"{self.get_active_count()} active orders."
@@ -354,6 +376,8 @@ class LimitOrderEngine:
             self._stop_event.set()
             self._monitor_thread.join(timeout=5)
             self._monitor_thread = None
+            self._daemon_enabled = False
+            self._save_daemon_enabled(False)
             logger.info("[LimitOrder] Monitor stopped.")
 
     def _monitor_loop(self):
