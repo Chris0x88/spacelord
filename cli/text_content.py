@@ -64,8 +64,14 @@ HELP_COMMANDS = [
 
     # System
     ("--- SYSTEM ---", ""),
+    ("order buy <tk> at <$> size N", "Limit buy (triggers when price drops to target)"),
+    ("order sell <tk> at <$> size N","Limit sell (triggers when price rises to target)"),
+    ("order list",                "Open orders (order book)"),
+    ("order cancel <id>",         "Cancel an order by ID"),
+    ("order interval <time>",     "Set the daemon polling interval (e.g. 5m, 1h)"),
+    ("order on / off",            "Start or stop the monitoring daemon"),
     ("verbose [on/off]",         "Toggle debug logging"),
-    ("help <topic>",             "Deep dive: swap|send|nlp|stake|pools|liquidity|whitelist|account|balance|price"),
+    ("help <topic>",             "Deep dive: swap|send|nlp|stake|pools|liquidity|whitelist|account|balance|price|order"),
     ("exit",                     "Quit Pacman"),
 ]
 
@@ -84,6 +90,8 @@ HELP_EXAMPLES = [
     ("pools search HBAR",            "Find pools containing HBAR"),
     ("pools approve 0.0.123456",     "Add a pool to your routing registry"),
     ("pool-deposit",                 "Start the interactive V2 Liquidity wizard"),
+    ("order buy HBAR at 0.08 size 100",  "Buy HBAR with 100 USDC when price dips to $0.08"),
+    ("order sell HBAR at 0.12 size 50",  "Sell 50 HBAR for USDC when price hits $0.12"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -483,4 +491,50 @@ Manage concentrated liquidity positions on SaucerSwap V2.
   - Run {C.TEXT}lp{C.R} or {C.TEXT}positions{C.R} to see the dedicated LP table.
   - Positions also appear at the bottom of {C.TEXT}balance{C.R}.
   - Output shows tick ranges, in-range status, and estimated holdings.""",
+
+    "order": """{C.BOLD}LIMIT ORDERS — COMPLETE REFERENCE{C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+Place limit buy and sell orders that execute automatically
+when a token's price reaches your target. Designed for
+autonomous operation — no confirmation prompts.
+
+{C.ACCENT}Place Orders:{C.R}
+  {C.TEXT}order buy  <token> at <price> size <amount>{C.R}
+  {C.TEXT}order sell <token> at <price> size <amount>{C.R}
+
+{C.ACCENT}Manage Orders:{C.R}
+  {C.TEXT}order list{C.R}         Open orders (order book)
+  {C.TEXT}order cancel <id>{C.R}  Cancel (prefix match supported)
+  {C.TEXT}order fills{C.R}        Filled / cancelled history
+  {C.TEXT}order interval{C.R}     Set daemon poll interval (e.g. 5m, 1h)
+  {C.TEXT}order on{C.R}           Start the monitoring daemon
+  {C.TEXT}order off{C.R}          Stop the monitoring daemon
+  {C.TEXT}order status{C.R}       Check daemon status
+
+{C.ACCENT}Examples:{C.R}
+  {C.OK}BUY{C.R}  {C.TEXT}ᗧ order buy HBAR at 0.08 size 100{C.R}
+       → When HBAR drops to $0.08, buy HBAR with 100 USDC
+  {C.WARN}SELL{C.R} {C.TEXT}ᗧ order sell HBAR at 0.12 size 50{C.R}
+       → When HBAR rises to $0.12, sell 50 HBAR for USDC
+
+{C.ACCENT}How It Works:{C.R}
+  Limit Buy:  Triggers when price ≤ target (buy the dip)
+  Limit Sell: Triggers when price ≥ target (take profit)
+
+  All orders settle against USDC via SaucerSwap V2.
+  Prices are checked every 10 minutes.
+
+{C.ACCENT}Daemon:{C.R}
+  The monitor daemon runs as a background thread.
+  It dies when the CLI exits. Orders persist in data/orders.json.
+  Run {C.TEXT}order interval 5m{C.R} to change how often it checks prices.
+  Use {C.TEXT}order on{C.R} / {C.TEXT}order off{C.R} to toggle.
+
+{C.ACCENT}Order Book Columns:{C.R}
+  ID       — short order ID (use for cancel)
+  SIDE     — {C.OK}BUY{C.R} (green) or {C.WARN}SELL{C.R} (yellow)
+  PAIR     — trading pair (e.g. HBAR/USDC)
+  TRIGGER  — your limit price in USD
+  MARK     — current market price
+  SIZE     — order size""",
 }

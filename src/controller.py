@@ -38,6 +38,7 @@ class PacmanController:
             self.account_id = self.config.hedera_account_id
             self.network = self.config.network
             self._account_manager = None
+            self._limit_engine = None
             
         except ConfigurationError as e:
             logger.error(f"Configuration error: {e}")
@@ -182,6 +183,14 @@ class PacmanController:
                         logger.warning(f"Could not set operator with ID '{self.account_id}': {e}")
                 del pk
         return self._account_manager
+
+    @property
+    def limit_engine(self):
+        """Lazy initialization of the LimitOrderEngine."""
+        if self._limit_engine is None:
+            from src.limit_orders import LimitOrderEngine
+            self._limit_engine = LimitOrderEngine()
+        return self._limit_engine
 
     def create_new_account(self, initial_balance: float = 1.0) -> Tuple[Optional[str], Optional[str]]:
         """

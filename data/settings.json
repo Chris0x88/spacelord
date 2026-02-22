@@ -38,5 +38,6 @@
             "address": "0.0.7949179",
             "nickname": ""
         }
-    ]
+    ],
+    "limit_order_poll_seconds": 3600
 }
