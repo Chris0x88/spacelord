@@ -6,9 +6,14 @@
     ██████╔╝███████║██║     ██╔████╔██║███████║██╔██╗ ██║
     ██╔═══╝ ██╔══██║██║     ██║╚██╔╝██║██╔══██║██║╚██╗██║
     ██║     ██║  ██║╚██████╗██║ ╚═╝ ██║██║  ██║██║ ╚████║
-    ╚═╝     ╚═╝  ╚═╝ ╚═════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
+    ╚═╝     ╚═╝  ╚═╝ ╚═════╝╚╚╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
 ```
 ### ᗧ· · · 👾 SaucerSwap V2 & PACTUI on Hedera
+
+An open-source wallet and trading system for Hedera, the most reliable and cost-effective L1. Deeply integrated with SaucerSwap V2 pools, Pacman allows you to swap, manage liquidity, and place limit orders—or delegate these tasks to your AI agents.
+
+> ⚠️ **WARNING**: Security implications of agentic control are experimental and **EXTREMELY HIGH RISK**. This software is in development. Use on Testnet and treat as an experimental window into the future of self-custody.
+
 
 [![Network: Hedera](https://img.shields.io/badge/Network-Hedera-blue.svg)](https://hedera.com)
 [![DEX: SaucerSwap](https://img.shields.io/badge/DEX-SaucerSwap-purple.svg)](https://saucerswap.finance)
@@ -21,11 +26,12 @@
 ## 🌪️ Features
 
 - **Natural Language Execution**: Swap and send using intuitive commands: `swap 10 HBAR for USDC`.
-- **PACTUI (Giant Dashboard)**: A stunning, high-density Terminal UI for overseeing your entire portfolio and active orders in real-time.
+- **PACTUI (Dashboard)**: A stunning, high-density Terminal UI for overseeing your entire portfolio and active orders in real-time.
 - **Autonomous Limit Orders**: Set passive Buy/Sell targets that execute in the background via the "Sentinel" daemon.
 - **Intelligent Variant Routing**: Automatically discovers the optimal path through HTS and ERC20-wrapped variants.
 - **Proactive Association**: Pacman detects missing token associations and initializes them on-chain automatically.
 - **Multi-Tier Price Discovery**: Aggregates live data from SaucerSwap V2, CoinGecko, and Binance.
+- **AI-Agent Ready**: Built as a primitive for agentic infrastructures (OpenClaw, AutoGPT, etc.) with detailed logging and low-latency startup.
 - **Security First**: Mandatory transaction simulations and local private key management.
 
 ---
@@ -42,7 +48,7 @@ pip install -e .
 
 ### 2. Launching
 - **CLI**: Run `pacman` to start the interactive shell.
-- **TUI**: Run `pactui` for the consolidated Giant Dashboard.
+- **TUI**: Run `pactui` for the dashboard (for users).
 
 ### 2. Configuration (Onboarding)
 Once the CLI starts, Pacman will guide you through the setup:
