@@ -69,6 +69,11 @@ class GiantDashboard(VerticalScroll):
                     yield Label("ACTIVE LIMIT ORDERS", classes="panel-header")
                     yield DataTable(id="dashboard-orders-table")
 
+            # --- Bottom Tier: Liquidity Positions ---
+            with Vertical(classes="data-panel", id="panel-liquidity"):
+                yield Label("V2 LIQUIDITY POSITIONS (NFTS)", classes="panel-header")
+                yield DataTable(id="dashboard-liquidity-table")
+
             with Horizontal(id="action-bar"):
                 yield Button("↻ Refresh All Data", id="btn-refresh", variant="primary")
                 yield Label("Auto-refreshing every 60s", id="refresh-hint")
@@ -83,6 +88,10 @@ class GiantDashboard(VerticalScroll):
         orders_table = self.query_one("#dashboard-orders-table", DataTable)
         orders_table.add_columns("ID", "Type", "Asset", "Trigger", "Mark Price", "Size", "Status")
         orders_table.cursor_type = "row"
+
+        lp_table = self.query_one("#dashboard-liquidity-table", DataTable)
+        lp_table.add_columns("ID", "Pair", "Fee", "Range", "Status", "Holdings")
+        lp_table.cursor_type = "row"
 
         try:
             self.pacman = PacmanController()
@@ -115,7 +124,8 @@ class GiantDashboard(VerticalScroll):
             "daemon": "---",
             "daemon_active": False,
             "wallet_rows": [],
-            "order_rows": []
+            "order_rows": [],
+            "lp_rows": []
         }
 
         # 1. Base network info
@@ -210,6 +220,67 @@ class GiantDashboard(VerticalScroll):
         except Exception as e:
             self.app.call_from_thread(self.app.notify, f"Orders Fetch Error: {e}", severity="error")
 
+        # 5. Liquidity Positions
+        try:
+            import math
+            positions = self.pacman.get_liquidity_positions()
+            tokens_data = ui_filter.get_token_metadata()
+
+            def evm_to_id(addr):
+                return f"0.0.{int(addr.lower(), 16)}"
+
+            def get_sym(tid):
+                if tid == "0.0.1456986": return "HBAR", 8
+                meta = next((m for m in tokens_data.values() if m.get("id") == tid), None)
+                if meta:
+                    return meta.get("symbol", tid), meta.get("decimals", 8)
+                return tid, 8
+
+            for pos in positions:
+                t0_sym, dec0 = get_sym(evm_to_id(pos['token0']))
+                t1_sym, dec1 = get_sym(evm_to_id(pos['token1']))
+                pair = f"{t0_sym}/{t1_sym}"
+                fee_pct = f"{pos['fee'] / 10000:.2f}%"
+                
+                tick_lower = pos.get('tick_lower', 0)
+                tick_upper = pos.get('tick_upper', 0)
+                tick_current = pos.get('tick_current', tick_lower)
+                in_range = tick_lower <= tick_current < tick_upper
+                status = Text("IN RANGE", style="bold green") if in_range else Text("OUT OF RANGE", style="bold yellow")
+                
+                # Estimated Holdings Logic (V3)
+                liq = pos.get('liquidity', 0)
+                est_t0, est_t1 = 0.0, 0.0
+                try:
+                    sqp = math.sqrt(1.0001 ** tick_current)
+                    sqpa = math.sqrt(1.0001 ** tick_lower)
+                    sqpb = math.sqrt(1.0001 ** tick_upper)
+                    if sqpa > sqpb: sqpa, sqpb = sqpb, sqpa
+                    if tick_current < tick_lower:
+                        est_t0 = liq * (1.0/sqpa - 1.0/sqpb) / (10**dec0)
+                    elif tick_current >= tick_upper:
+                        est_t1 = liq * (sqpb - sqpa) / (10**dec1)
+                    else:
+                        est_t0 = liq * (1.0/sqp - 1.0/sqpb) / (10**dec0)
+                        est_t1 = liq * (sqp - sqpa) / (10**dec1)
+                except: pass
+                
+                h_parts = []
+                if est_t0 > 0: h_parts.append(f"{est_t0:.4f} {t0_sym}")
+                if est_t1 > 0: h_parts.append(f"{est_t1:.4f} {t1_sym}")
+                holdings = " + ".join(h_parts) or "0.00"
+
+                data["lp_rows"].append((
+                    str(pos['id']),
+                    pair,
+                    fee_pct,
+                    f"{tick_lower} : {tick_upper}",
+                    status,
+                    holdings
+                ))
+        except Exception as e:
+            self.app.call_from_thread(self.app.notify, f"LP Fetch Error: {e}", severity="error")
+
         # Final Update
         self.app.call_from_thread(self._update_ui, data)
 
@@ -230,6 +301,11 @@ class GiantDashboard(VerticalScroll):
         o_table = self.query_one("#dashboard-orders-table", DataTable)
         o_table.clear()
         o_table.add_rows(data["order_rows"])
+
+        # Liquidity Table
+        lp_table = self.query_one("#dashboard-liquidity-table", DataTable)
+        lp_table.clear()
+        lp_table.add_rows(data["lp_rows"])
 
         # Finish up
         btn = self.query("#btn-refresh")

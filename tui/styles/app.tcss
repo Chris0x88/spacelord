@@ -78,10 +78,15 @@ StatBox {
 
 /* Middle Layout: Two Columns */
 #data-layers {
-    height: 35;
+    height: auto;
     margin: 1 2;
     grid-size: 2 1;
     grid-gutter: 2;
+}
+
+#panel-liquidity {
+    margin: 1 2;
+    height: 25;
 }
 
 .data-panel {

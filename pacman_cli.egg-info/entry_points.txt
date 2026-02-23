@@ -1,0 +1,3 @@
+[console_scripts]
+pacman = cli.main:main
+pactui = tui.main:main
