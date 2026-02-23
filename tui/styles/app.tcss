@@ -80,19 +80,22 @@ StatBox {
 #data-layers {
     height: auto;
     margin: 1 2;
+    /* Use grid-size 2 1 for the horizontal split */
     grid-size: 2 1;
     grid-gutter: 2;
 }
 
 #panel-liquidity {
     margin: 1 2;
-    height: 25;
+    height: 20;
 }
 
 .data-panel {
     background: $panel-color;
     border: heavy $secondary-color;
     padding: 1;
+    height: 30; /* Force visibility */
+    min-height: 20;
 }
 
 .panel-header {

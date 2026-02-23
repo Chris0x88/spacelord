@@ -278,6 +278,10 @@ class GiantDashboard(VerticalScroll):
                     status,
                     holdings
                 ))
+            if not positions:
+                self.app.call_from_thread(self.app.notify, "No Liquidity Positions found for this account.", severity="warning")
+            else:
+                self.app.call_from_thread(self.app.notify, f"Fetched {len(positions)} LP positions.", severity="information")
         except Exception as e:
             self.app.call_from_thread(self.app.notify, f"LP Fetch Error: {e}", severity="error")
 
