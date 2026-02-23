@@ -22,7 +22,8 @@ dependencies = [
 
 [project.scripts]
 pacman = "cli.main:main"
+pactui = "tui.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*", "cli*", "lib*", "data*"]
+include = ["src*", "cli*", "lib*", "data*", "tui*"]

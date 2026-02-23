@@ -17,6 +17,8 @@ class C:
     WARN = "\033[93m"
     OK = "\033[92m"
 
+from src.logger import logger
+
 # Determine the project root (one level up from scripts/)
 ROOT_DIR = Path(__file__).parent.parent
 DATA_DIR = ROOT_DIR / "data/"
@@ -57,7 +59,7 @@ def refresh(force=False):
     # ABSOLUTELY CRITICAL FALLBACK: Use Demo Key if no private key provided
     if not api_key:
         api_key = PUBLIC_DEMO_KEY
-        print(f"  {C.R}ℹ️  Using Public Fallback (Demo Key){C.R}")
+        logger.info("[Refresh] Using Public Fallback (Demo Key)")
     # Rate Limit Check (60 seconds)
     if not force and RAW_DATA_FILE.exists():
         age = time.time() - RAW_DATA_FILE.stat().st_mtime

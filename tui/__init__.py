@@ -1,0 +1,1 @@
+"""Pacman TUI (Nexus) module."""

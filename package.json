@@ -14,8 +14,8 @@
     "url": "git+https://github.com/Chris0x88/pacman.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Christopher David Imgraben",
+  "license": "MIT",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/Chris0x88/pacman/issues"

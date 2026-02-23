@@ -29,14 +29,19 @@ class PacmanPriceManager:
     refresh_data.py -> data/pacman_data_raw.json -> PacmanPriceManager
     """
 
-    def __init__(self, data_file: str = "data/pacman_data_raw.json"):
+    def __init__(self, data_file: str = None):
         """
         Initialize the price manager.
         
         Args:
             data_file: Path to the raw pool data file.
         """
-        self.data_file = data_file
+        if data_file is None:
+            from pathlib import Path
+            self.data_file = str(Path(__file__).parent.parent / "data" / "pacman_data_raw.json")
+        else:
+            self.data_file = data_file
+            
         self.prices: Dict[str, float] = {}
         self.sources: Dict[str, str] = {}
         self.hbar_price: float = 0.0
@@ -48,14 +53,18 @@ class PacmanPriceManager:
         
         This method processes `pacman_data_raw.json` as the source of truth.
         """
+        from src.logger import logger
         try:
             self.prices = {}
             self.sources = {}
             if not os.path.exists(self.data_file):
+                logger.warning(f"[PriceManager] Data file not found: {self.data_file}")
                 return
 
             with open(self.data_file, 'r') as f:
                 pools = json.load(f)
+            
+            logger.info(f"[PriceManager] Loading from {self.data_file} ({len(pools)} pools)...")
             
             for pool in pools:
                 pool_id = pool.get("contractId", "Unknown Pool")
@@ -114,11 +123,9 @@ class PacmanPriceManager:
         if tid in ["0.0.731861", "0.0.456858"]: # SAUCE, USDC
              return self._get_live_price(tid)
             
-        # if tid == "0.0.1456986":
-        #    return self.get_price_with_source("0.0.1456986") # recursive but handled in get call
-
-        price = self.prices.get(token_id, 0.0)
-        source = self.sources.get(token_id, "Unknown")
+        # Case-insensitive cache lookup
+        price = self.prices.get(tid, 0.0)
+        source = self.sources.get(tid, "Unknown")
         return price, source
 
     def get_hbar_price(self) -> float:
@@ -227,6 +234,8 @@ class PacmanPriceManager:
 
     def reload(self) -> None:
         """Force a reload of data from the disk."""
+        from src.logger import logger
+        logger.info(f"[PriceManager] Reloading prices from {self.data_file}...")
         self._load_data()
 
 # Singleton
