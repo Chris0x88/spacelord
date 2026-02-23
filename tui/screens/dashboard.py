@@ -1,10 +1,8 @@
-import asyncio
 from textual.app import ComposeResult
 from textual.containers import Grid, Vertical, Horizontal, VerticalScroll, Container
-from textual.widgets import Label, Button, LoadingIndicator, DataTable
-from textual.widget import Widget
+from textual.widgets import Label, Button, LoadingIndicator, DataTable, RichLog, Input
 from textual.reactive import reactive
-from textual import work
+from textual import work, on
 from rich.text import Text
 
 from src.controller import PacmanController
@@ -52,31 +50,54 @@ class GiantDashboard(VerticalScroll):
         with Vertical(id="dashboard-container"):
             yield Label("P A C T U I   G I A N T   D A S H B O A R D", id="dashboard-title")
             
-            # --- Top Tier: Global Stats ---
-            with Grid(id="stats-grid"):
-                yield StatBox("Portfolio Value", id="stat-portfolio")
-                yield StatBox("Active Orders", id="stat-orders")
-                yield StatBox("Network Status", id="stat-network")
-                yield StatBox("Daemon Engine", id="stat-daemon")
+            with Horizontal(id="main-split"):
+                # --- Left Side: Stats & Data ---
+                with Vertical(id="left-side"):
+                    # --- Global Stats ---
+                    with Grid(id="stats-grid"):
+                        yield StatBox("Portfolio Value", id="stat-portfolio")
+                        yield StatBox("Active Orders", id="stat-orders")
+                        yield StatBox("Network Status", id="stat-network")
+                        yield StatBox("Daemon Engine", id="stat-daemon")
 
-            # --- Middle Tier: Portfolio & Orders Split ---
-            with Horizontal(id="data-layers"):
-                with Vertical(classes="data-panel", id="panel-wallet"):
-                    yield Label("PORTFOLIO ASSETS", classes="panel-header")
-                    yield DataTable(id="dashboard-wallet-table")
-                
-                with Vertical(classes="data-panel", id="panel-orders"):
-                    yield Label("ACTIVE LIMIT ORDERS", classes="panel-header")
-                    yield DataTable(id="dashboard-orders-table")
+                    # --- Data Layers ---
+                    with Horizontal(id="data-layers"):
+                        with Vertical(classes="data-panel", id="panel-wallet"):
+                            yield Label("PORTFOLIO ASSETS", classes="panel-header")
+                            yield DataTable(id="dashboard-wallet-table")
+                        
+                        with Vertical(classes="data-panel", id="panel-orders"):
+                            yield Label("ACTIVE LIMIT ORDERS", classes="panel-header")
+                            yield DataTable(id="dashboard-orders-table")
 
-            # --- Bottom Tier: Liquidity Positions ---
-            with Vertical(classes="data-panel", id="panel-liquidity"):
-                yield Label("V2 LIQUIDITY POSITIONS (NFTS)", classes="panel-header")
-                yield DataTable(id="dashboard-liquidity-table")
+                    # --- Liquidity Section ---
+                    with Vertical(classes="data-panel", id="panel-liquidity"):
+                        yield Label("V2 LIQUIDITY POSITIONS (NFTS)", classes="panel-header")
+                        yield DataTable(id="dashboard-liquidity-table")
 
-            with Horizontal(id="action-bar"):
-                yield Button("↻ Refresh All Data", id="btn-refresh", variant="primary")
-                yield Label("Auto-refreshing every 60s", id="refresh-hint")
+                    with Horizontal(id="action-bar"):
+                        yield Button("↻ Refresh All Data", id="btn-refresh", variant="primary")
+                        yield Label("Auto-refreshing every 60s", id="refresh-hint")
+
+                # --- Right Side: Console ---
+                with Vertical(id="right-console"):
+                    yield Label("OPERATIONAL CONSOLE", classes="panel-header")
+                    
+                    with Container(id="console-wrapper"):
+                        yield RichLog(id="console-log", highlight=True, markup=True, wrap=True)
+                        
+                        # Command Help Overlay (Hidden by default)
+                        with Vertical(id="console-help-overlay", classes="hidden"):
+                            yield Label("COMMAND CHEAT SHEET", id="help-title")
+                            yield Label("• [cyan]price <tk>[/] - Get market price", classes="help-item")
+                            yield Label("• [cyan]swap <amt> <A> for <B>[/] - Trade tokens", classes="help-item")
+                            yield Label("• [cyan]lp[/] - View liquidity positions", classes="help-item")
+                            yield Label("• [cyan]balance[/] - Check your wallet", classes="help-item")
+                            yield Label("• [cyan]order list[/] - View limit orders", classes="help-item")
+                            yield Label("• [cyan]help[/] - Full command list", classes="help-item")
+                    
+                    yield Label("Ready for input. Type 'help' for commands.", id="console-status")
+                    yield Input(placeholder="Type command...", id="console-input")
 
     def on_mount(self) -> None:
         """Initialize tables and start data flow."""
@@ -315,4 +336,63 @@ class GiantDashboard(VerticalScroll):
         btn = self.query("#btn-refresh")
         if btn: btn.first().disabled = False
         self.app.notify("Dashboard refresh complete.", severity="information", timeout=2)
+
+    @on(Input.Submitted, "#console-input")
+    def handle_command_input(self, event: Input.Submitted) -> None:
+        """Handle command entry from the console input."""
+        cmd_text = event.value.strip()
+        if not cmd_text:
+            return
+
+        self.query_one("#console-input", Input).value = ""
+        log = self.query_one("#console-log", RichLog)
+        status = self.query_one("#console-status", Label)
+        
+        log.write(f"\n[bold cyan]ᗧ[/] {cmd_text}")
+        status.update(f"[bold yellow]Executing:[/] {cmd_text}...")
+        
+        self._run_terminal_command(cmd_text)
+
+    @on(Input.Changed, "#console-input")
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Show/hide help overlay based on input."""
+        help_overlay = self.query_one("#console-help-overlay")
+        if event.value.startswith("?") or event.value.lower() == "help":
+            help_overlay.remove_class("hidden")
+        else:
+            help_overlay.add_class("hidden")
+
+    @work(thread=True)
+    def _run_terminal_command(self, text: str) -> None:
+        """Execute a CLI command in a background thread and capture output."""
+        import io
+        import contextlib
+        from cli.main import process_input, COMMANDS
+        
+        # Capture stdout
+        f = io.StringIO()
+        with contextlib.redirect_stdout(f):
+            try:
+                # Use the processing logic from cli.main
+                process_input(self.pacman, text)
+            except Exception as e:
+                print(f"Error: {e}")
+        
+        output = f.getvalue()
+        self.app.call_from_thread(self._append_to_log, output)
+
+    def _append_to_log(self, text: str) -> None:
+        """Helper to safely append text to the console log from the UI thread."""
+        log = self.query_one("#console-log", RichLog)
+        status = self.query_one("#console-status", Label)
+        
+        if text:
+            # Basic cleanup of CLI escape codes if any (though Rich handles many)
+            log.write(text)
+        
+        status.update("Ready for input. Type 'help' for commands.")
+        
+        # PROACTIVE REFRESH: Immediately trigger a data refresh after any command
+        # This ensures the UI updates if the user just did a trade or withdrawal
+        self.refresh_all()
 

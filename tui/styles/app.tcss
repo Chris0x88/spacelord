@@ -31,10 +31,89 @@ Footer {
 
 /* Giant Dashboard Shell */
 #dashboard-container {
-    height: auto;
+    height: 100%;
     width: 100%;
     align: center top;
+    padding: 0;
+}
+
+#main-split {
+    height: 100%;
+    width: 100%;
+}
+
+#left-side {
+    width: 65%;
+    height: 100%;
     padding: 1 2;
+}
+
+#right-console {
+    width: 35%;
+    height: 100%;
+    background: $bg-color;
+    border-left: heavy $secondary-color;
+    padding: 1;
+}
+
+#console-wrapper {
+    height: 1fr;
+    width: 100%;
+    position: relative;
+    border: inner $secondary-color;
+    margin-bottom: 0;
+}
+
+#console-log {
+    background: #000;
+    color: #0f0; /* Classic Terminal Green */
+    height: 100%;
+    font-size: 10;
+}
+
+#console-help-overlay {
+    background: rgba(31, 40, 51, 0.95);
+    border: tall $accent-color;
+    width: 90%;
+    height: auto;
+    dock: top;
+    margin: 1 5%;
+    padding: 1;
+    z-index: 100;
+}
+
+.hidden {
+    display: none;
+}
+
+#help-title {
+    color: $primary-color;
+    text-style: bold underline;
+    margin-bottom: 1;
+    content-align: center middle;
+}
+
+.help-item {
+    font-size: 10;
+    margin-bottom: 0;
+}
+
+#console-status {
+    color: $text-main;
+    font-size: 9;
+    padding: 0 1;
+    background: $bg-color;
+    height: 1;
+    margin-bottom: 1;
+    text-style: italic;
+}
+
+#console-input {
+    background: $panel-color;
+    border: tall $primary-color;
+    color: $text-bright;
+    height: 3;
+    content-align: left middle;
 }
 
 #dashboard-title {
@@ -49,9 +128,9 @@ Footer {
 /* Global Stats Hierachy */
 #stats-grid {
     grid-size: 4 1;
-    grid-gutter: 2;
-    margin: 1 2;
-    height: 9;
+    grid-gutter: 1;
+    margin-bottom: 1;
+    height: 8;
 }
 
 StatBox {
@@ -78,16 +157,15 @@ StatBox {
 
 /* Middle Layout: Two Columns */
 #data-layers {
-    height: auto;
-    margin: 1 2;
-    /* Use grid-size 2 1 for the horizontal split */
+    height: 30;
     grid-size: 2 1;
     grid-gutter: 2;
+    margin-bottom: 1;
 }
 
 #panel-liquidity {
-    margin: 1 2;
     height: 20;
+    margin-bottom: 1;
 }
 
 .data-panel {
@@ -132,7 +210,6 @@ LoadingIndicator {
 #action-bar {
     height: 3;
     align: center middle;
-    margin: 1 2;
 }
 
 #refresh-hint {
