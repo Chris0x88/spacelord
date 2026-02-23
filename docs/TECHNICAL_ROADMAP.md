@@ -42,27 +42,33 @@
 
 ## Phase 2: autonomous Features (The "Limbs")
 
-### 2.1 The "Sentinel" Daemon (Limit Orders) (IN PROGRESS)
+### 2.1 The "Sentinel" Daemon (Limit Orders) (DONE)
 - Background process polling prices every block.
 - Logic: `if price < target: controller.swap(...)`
+- **TUI Integration**: Live monitoring and management via PACTUI.
 
 ### 2.2 Connector Framework (Farming & Lending)
 - `lib/transfers.py`: Hardened transfer logic with whitelist protection.
 - `lib/saucerswap.py`: V2 swap execution.
 
-### 2.3 Liquidity Operations (IN PROGRESS)
+### 2.3 Liquidity Operations (DONE)
 - `lib/v2_liquidity.py`: Isolated logic for depositing and withdrawing from SaucerSwap V2 pools.
 - Contract integrations: `NonfungiblePositionManager` (Mint, DecreaseLiquidity, Collect).
+- **Interactive Wizard**: `pool-deposit` command for guided setup.
 
 ---
 
 ## Phase 3: Networked Features (The "Voice")
 
-### 3.1 HCS Messaging (The "Bulletin Board")
+### 3.1 PACTUI (The "Giant Dashboard") (DONE)
+- Consolidated market, wallet, and order management into a single high-performance TUI.
+- Real-time auto-refresh and precision matching CLI standards.
+
+### 3.2 HCS Messaging (The "Bulletin Board") (RESEARCHING)
 - Using Hedera Consensus Service for P2P coordination.
 - **HCS Swaps**: Propose swaps to a public topic; the daemon auto-matches and notifies.
 
-### 3.2 QR & Payments
+### 3.3 QR & Payments
 - ASCII QR generator for easy mobile-to-terminal transfers.
 
 ---
@@ -82,8 +88,10 @@
 | **Staking** | Low | [DONE] |
 | **Whitelisting** | Low | [DONE] |
 | **Multi-Account** | Medium | [DONE] |
-| **Limit Orders** | High | In Progress |
-| **V2 Liquidity Pools** | High | In Progress |
+| **Limit Orders** | High | [DONE] |
+| **V2 Liquidity Pools** | High | [DONE] |
+| **PACTUI Dashboard** | High | [DONE] |
 | **HCS Swaps** | Very High | Researching |
+| **AUDD Integration** | Medium | Planned |
 
-*This roadmap is a living document. Last updated: Feb 19, 2026.*
+*This roadmap is a living document. Last updated: Feb 23, 2026.*

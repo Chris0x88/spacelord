@@ -11,16 +11,16 @@ The user proposed 13 specific ideas to expand Pacman's capabilities while mainta
 1.  **Staking**: [DONE] Include critical transaction types like HBAR Native Staking.
 2.  **Wallet Management**: [DONE] Guided setup to upload keys to `.env`.
 3.  **Multi-Account**: [DONE] Support for switching between different wallets/agents.
-4.  **Liquidity Pools**: [IN PROGRESS] Deposit and withdraw from SaucerSwap V2 pools.
-5.  **Monitoring**: [PENDING] Super basic live dashboard for top pairs/liquidity.
+4.  **Liquidity Pools**: [DONE] Deposit and withdraw from SaucerSwap V2 pools.
+5.  **Monitoring**: [DONE] High-density live dashboard (PACTUI) for portfolio and orders.
 6.  **Smart Routing**: [DONE] AI-driven or price-based routing (handling rate limits).
 7.  **Payment QR**: [PENDING] Generator for receiving funds.
 8.  **Payment Requests**: [PENDING] Send requests for funds.
 9.  **HCS Broadcasting**: [RESEARCHING] Offer small rebalancing trades via HCS.
 10. **HCS Scanning**: [RESEARCHING] Passive scanning for atomic swap matches (HCS bids/offers).
 11. **Network Status**: [PENDING] AI interpretation of Hedera roadmap and HIIP status.
-12. **AUDD Integration**: [PENDING] Native AUDD support for cheap DEFI.
-13. **SSV2 Snapshots**: [PENDING] Snapshot data for top volume pools.
+12. **AUDD Integration**: [PLANNED] Native AUDD support for cheap DEFI.
+13. **SSV2 Snapshots**: [DONE] Live market data refresh in TUI.
 
 ---
 
@@ -39,15 +39,15 @@ Comparing Pacman to industry standards:
 *   **Multi-Account**: Agent profile switching.
 *   **Staking**: Command-line HBAR staking support.
 
-### Phase 2: Live Data & Monitoring 📊
-*   **Live Dashboard**: Real-time TUI for market monitoring.
-*   **Pool Stats**: Granular SSV2 liquidity data.
+### Phase 2: Live Data & Monitoring 📊 (DONE)
+*   **Live Dashboard**: Real-time TUI (PACTUI) for market monitoring and order management.
+*   **Pool Stats**: Granular SSV2 liquidity and pricing data integration.
 
 ### Phase 3: Agentic Intelligence 🤖
 *   **HCS Atomic Swaps**: Broadcasting and scanning for P2P rebalancing trades.
 
-### Phase 4: Advanced DeFi 🌪️
-*   **LP Ops**: Full deposit/withdraw logic for SSV2.
+### Phase 4: Advanced DeFi 🌪️ (DONE)
+*   **LP Ops**: Full deposit/withdraw logic for SSV2 (Position Manager integration).
 
 ---
 

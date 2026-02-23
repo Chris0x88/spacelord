@@ -8,7 +8,7 @@
     ██║     ██║  ██║╚██████╗██║ ╚═╝ ██║██║  ██║██║ ╚████║
     ╚═╝     ╚═╝  ╚═╝ ╚═════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
 ```
-### ᗧ· · · 👾 SaucerSwap V2 on Hedera Hashgraph
+### ᗧ· · · 👾 SaucerSwap V2 & PACTUI on Hedera
 
 [![Network: Hedera](https://img.shields.io/badge/Network-Hedera-blue.svg)](https://hedera.com)
 [![DEX: SaucerSwap](https://img.shields.io/badge/DEX-SaucerSwap-purple.svg)](https://saucerswap.finance)
@@ -21,10 +21,11 @@
 ## 🌪️ Features
 
 - **Natural Language Execution**: Swap and send using intuitive commands: `swap 10 HBAR for USDC`.
+- **PACTUI (Giant Dashboard)**: A stunning, high-density Terminal UI for overseeing your entire portfolio and active orders in real-time.
+- **Autonomous Limit Orders**: Set passive Buy/Sell targets that execute in the background via the "Sentinel" daemon.
 - **Intelligent Variant Routing**: Automatically discovers the optimal path through HTS and ERC20-wrapped variants.
 - **Proactive Association**: Pacman detects missing token associations and initializes them on-chain automatically.
 - **Multi-Tier Price Discovery**: Aggregates live data from SaucerSwap V2, CoinGecko, and Binance.
-- **AI-Agent Ready**: Built as a primitive for agentic infrastructures (OpenClaw, AutoGPT, etc.) with detailed logging and low-latency startup.
 - **Security First**: Mandatory transaction simulations and local private key management.
 
 ---
@@ -32,12 +33,16 @@
 ## 🚀 Quick Start
 
 ### 1. Installation
-Clone the repository and run the auto-installer:
+Clone the repository and install the package:
 ```bash
 git clone https://github.com/chris0x88/pacman.git
 cd pacman
-./pacman  # This will auto-initialize the venv and dependencies
+pip install -e .
 ```
+
+### 2. Launching
+- **CLI**: Run `pacman` to start the interactive shell.
+- **TUI**: Run `pactui` for the consolidated Giant Dashboard.
 
 ### 2. Configuration (Onboarding)
 Once the CLI starts, Pacman will guide you through the setup:
@@ -58,7 +63,9 @@ Simply run `./pacman` to enter the interactive trading shell:
 | :--- | :--- |
 | **Swap (Exact In)** | `swap 100 HBAR for USDC` |
 | **Swap (Exact Out)** | `swap HBAR for 20 USDC` |
+| **Limit Order** | `order buy HBAR at 0.08 size 100` |
 | **Transfer** | `send 50 USDC to 0.0.1234` |
+| **Liquidity** | `pool-deposit` (Wizard) |
 | **Wallet Balance** | `balance` |
 | **Market Prices** | `price` |
 
@@ -82,7 +89,7 @@ Pacman is designed to be "Consumed" by AI agents. Every command generates struct
 ---
 
 ```markdown
-**Release Status**: `v0.2` (Experimental / Testing Only)
+**Release Status**: `v0.9.3` (Stable Beta)
 ```
 ```markdown
 **Legal**: Use at your own risk. This is experimental software released for criticism and feedback, input and growth. We suggest using testnet accounts while testing.
