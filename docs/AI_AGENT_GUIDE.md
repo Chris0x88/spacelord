@@ -25,9 +25,15 @@ Swaps use liquidity pools to exchange one token for another.
 - **Exact Output**: `swap [tokenA] for [amount] [tokenB]` (e.g., `swap USDC for 0.001 WBTC`)
 
 ### 2. Conversions (Native Wrap/Unwrap)
-Conversions are for native-to-bridged variants (e.g., HBAR to WHBAR, or WBTC LZ to WBTC HTS).
-- **Format**: `convert [amount] [tokenA] to [tokenB]` (e.g., `convert 10 HBAR to WHBAR`)
-- **Distinction**: Use `convert` when you are moving between the *same asset* in different technical wrappers. Use `swap` when changing asset types.
+**⚠️ CURRENT STATUS: THIS FEATURE IS TEMPORARILY BROKEN**
+
+Pacman supports converting between native-to-bridged variants (e.g., WBTC LZ ↔ WBTC HTS), but these operations currently fail due to an approval bug with the wrapper contract.
+
+- **Format**: Use `swap` for all conversions. Example: `swap WBTC_LZ for WBTC_HTS`
+  - The router automatically detects that these tokens are wrapper-related and will add a wrap/unwrap step to the route.
+- **Deprecated**: The standalone `convert` command was removed (Feb 2026) because automatic routing simplifies the UI.
+- **Known Failure**: Wrap/unwrap steps require approval of HTS tokens to the wrapper contract (`0.0.9675688`). The current `approve_token()` implementation uses standard EVM `approve()`, which fails for HTS tokens. The wrapper requires the Hedera HTS precompile `grantTokenApproval()` instead. This issue is tracked in `docs/HTS_APPROVAL_BUG.md`.
+- **Workaround**: None yet. Direct swaps between different assets (e.g., `USDC → WBTC_HTS`) via the SaucerSwap Router are unaffected and work normally.
 
 ### 3. Information Intents
 - **Balance**: `balance` (Shows wallet holdings and HTS readiness/associations).

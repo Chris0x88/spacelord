@@ -27,10 +27,13 @@ Trade as much token A as needed to receive a specific amount of token B.
 - **Syntax**: `swap [tokenA] for [amt] [tokenB]`
 - **Example**: `swap HBAR for 5 USDC`
 
-### 3. Variant Conversion (Wrap/Unwrap/Bridge)
-Convert between HTS variants (e.g., LayerZero bridged vs Native).
-- **Syntax**: `convert [amt] [tokenA] to [tokenB]`
-- **Example**: `convert 0.01 WBTC_LZ to WBTC_HTS`
+### 3. Variant Conversion (Wrap/Unwrap)
+Convert between HTS variants (e.g., LayerZero bridged vs Native) using `swap`.
+- **Syntax**: `swap [tokenA] for [tokenB]` (e.g., `swap WBTC_LZ for WBTC_HTS`)
+- The router automatically adds an unwrap step when the token pair is a defined variant conversion in `variants.json`.
+- **⚠️ Known Issue**: These conversions currently fail due to an approval bug with the wrapper contract (`0.0.9675688`). The wrapper requires Hedera's HTS precompile `grantTokenApproval()` for HTS tokens, but the code uses standard EVM `approve()`. Tracked in `docs/HTS_APPROVAL_BUG.md`.
+- **Deprecated**: The standalone `convert` command was removed in Feb 2026; use `swap` for all conversions.
+
 
 ### 4. Meta-Actions
 - **Balance**: `balance` (Returns all token holdings + USD values).
