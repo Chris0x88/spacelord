@@ -258,3 +258,10 @@ SaucerSwap V2 supports limit orders. We want to implement:
 - Need an option for a sub account to allow user to predefine an allocation strategy and allow for timed routine rebalancing. Maybe the contract they create could be posted on chain so that when the timer goes off on Hedera they auto rebalance fully on-chain without being logged in. 
 Example initial allocation... 60% Bitcoin 20% Hedera 20% USDC 
 They need to be able to make it like an index fund, and be able to add as many as they like... 
+
+## 8.5 Database Integration (The "Solid State")
+**Concept**: Migrating from flat JSON storage to a local **SQLite** database.
+- **Robustness**: Replace fragile JSON writes with ACID-compliant transactions (no more corruption if power is lost mid-write).
+- **Audit Log**: Every console command and its execution receipt saved for legal/tax history.
+- **Analytics**: High-frequency price logging for local candlestick generation and volatility tracking.
+- **Status**: Potential Phase 4 Architectural Shift.

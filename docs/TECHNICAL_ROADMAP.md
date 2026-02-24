@@ -73,6 +73,17 @@
 
 ---
 
+## Phase 4: Architectural "Solid State" (POTENTIAL)
+*Goal: Move from volatile JSON files to a robust, indexed database.*
+
+### 4.1 SQLite Migration (IDEA)
+- **Why**: Prevent file corruption during crashes, enable millisecond lookups for 10k+ pools.
+- **Audit Logging**: Maintain a permanent, immutable record of all console commands and transaction results.
+- **Price History**: Store block-by-block price data to enable local charting and volatility analysis.
+- **Persistence**: All daemon settings and limit orders become ACID-compliant.
+
+---
+
 ## Implementation Strategy: How we build without breaking
 
 1.  **Strict Isolation**: New protocols (V1, Bonzo, Farms) get their own `src/` or `lib/` files. No mixing of logic.
@@ -93,5 +104,6 @@
 | **PACTUI Dashboard** | High | [DONE] |
 | **HCS Swaps** | Very High | Researching |
 | **AUDD Integration** | Medium | Planned |
+| **SQLite Migration** | High | Idea (Phase 4) |
 
-*This roadmap is a living document. Last updated: Feb 23, 2026.*
+*This roadmap is a living document. Last updated: Feb 24, 2026.*
