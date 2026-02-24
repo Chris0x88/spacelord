@@ -43,16 +43,16 @@ class StatBox(Vertical):
             self.mount(lbl)
 
 
-class GiantDashboard(VerticalScroll):
-    """A single-page consolidated dashboard view."""
+class GiantDashboard(Vertical):
+    """A single-page consolidated dashboard view with a fixed side console."""
     
     def compose(self) -> ComposeResult:
         with Vertical(id="dashboard-container"):
             yield Label("P A C T U I   G I A N T   D A S H B O A R D", id="dashboard-title")
             
             with Horizontal(id="main-split"):
-                # --- Left Side: Stats & Data ---
-                with Vertical(id="left-side"):
+                # --- Left Side: Stats & Data (Scrollable) ---
+                with VerticalScroll(id="left-side"):
                     # --- Global Stats ---
                     with Grid(id="stats-grid"):
                         yield StatBox("Portfolio Value", id="stat-portfolio")
@@ -119,6 +119,9 @@ class GiantDashboard(VerticalScroll):
             self.refresh_all()
             # Start auto-refresh timer
             self.set_interval(60, self.refresh_all)
+            
+            # Auto-focus the console
+            self.query_one("#console-input").focus()
         except Exception as e:
             self.app.notify(f"Dashboard Init Error: {e}", severity="error")
 
@@ -204,6 +207,14 @@ class GiantDashboard(VerticalScroll):
                 except: continue
         except Exception as e:
             self.app.call_from_thread(self.app.notify, f"Price/Wallet Error: {e}", severity="error")
+
+        # Add Total Row for easy reading
+        data["wallet_rows"].append((
+            Text("TOTAL", style="bold yellow"),
+            "",
+            Text(f"${data['portfolio_usd']:,.2f}", style="bold yellow"),
+            ""
+        ))
 
         # 4. Orders
         try:
@@ -387,8 +398,9 @@ class GiantDashboard(VerticalScroll):
         status = self.query_one("#console-status", Label)
         
         if text:
-            # Basic cleanup of CLI escape codes if any (though Rich handles many)
-            log.write(text)
+            # Use Text.from_ansi to render the CLI's existing beautiful formatting
+            rich_text = Text.from_ansi(text)
+            log.write(rich_text)
         
         status.update("Ready for input. Type 'help' for commands.")
         

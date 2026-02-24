@@ -38,19 +38,19 @@ Footer {
 }
 
 #main-split {
-    height: 100%;
+    height: 1fr;
     width: 100%;
 }
 
 #left-side {
     width: 65%;
-    height: 100%;
+    height: 1fr;
     padding: 1 2;
 }
 
 #right-console {
     width: 35%;
-    height: 100%;
+    height: 1fr;
     background: $bg-color;
     border-left: heavy $secondary-color;
     padding: 1;
@@ -68,7 +68,6 @@ Footer {
     background: #000;
     color: #0f0; /* Classic Terminal Green */
     height: 100%;
-    font-size: 10;
 }
 
 #console-help-overlay {
@@ -77,9 +76,8 @@ Footer {
     width: 90%;
     height: auto;
     dock: top;
-    margin: 1 5%;
+    margin: 1 2;
     padding: 1;
-    z-index: 100;
 }
 
 .hidden {
@@ -94,13 +92,11 @@ Footer {
 }
 
 .help-item {
-    font-size: 10;
     margin-bottom: 0;
 }
 
 #console-status {
     color: $text-main;
-    font-size: 9;
     padding: 0 1;
     background: $bg-color;
     height: 1;
