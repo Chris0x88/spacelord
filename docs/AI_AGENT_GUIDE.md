@@ -64,6 +64,71 @@ The CLI outputs professional transaction records. When reporting back to a user:
 ---
 *Note: This CLI handles proactive HTS token association and approval hardening automatically. You do not need to manually associate tokens before suggesting a swap.*
 
+---
+
+## 8. Agent Error Recovery Best Practices
+
+As an AI agent, you will encounter transient failures. Handle them gracefully.
+
+### 8.1 RPC Failures & Rate Limiting
+- **Symptom**: `HTTP 502`, `429 Too Many Requests`, or long timeouts.
+- **Agent Action**:
+  1. Retry up to 3 times with exponential backoff (2s, 4s, 8s).
+  2. If still failing, suggest user run `echo $RPC_URL` and verify endpoint is reachable.
+  3. Offer fallback: `pacman --rpc https://mainnet.hashio.io/api swap ...`
+
+### 8.2 Simulation Revert Diagnosis
+- **Symptom**: Transaction simulation fails (gas revert).
+- **Agent Response**: Do NOT proceed to broadcast. Instead:
+  1. Identify the revert reason from `eth_call` error (e.g., `INSUFFICIENT_BALANCE`, `TOKEN_NOT_ASSOCIATED`).
+  2. Provide one-line remediation:
+     - `INSUFFICIENT_BALANCE` → "You don't have enough HBAR for gas + swap amount."
+     - `TOKEN_NOT_ASSOCIATED` → "You need to associate USDC. Run: `associate USDC` first."
+     - `SLIPPAGE_EXCEEDED` → "Current price moved. Increase slippage with `--slippage 2`."
+  3. Never suggest retrying the exact same transaction without changes.
+
+### 8.3 Nonce Stale Detection
+- **Symptom**: `nonce too low` or `replacement transaction underpriced`.
+- **Agent Action**:
+  - Query current nonce from chain: `hedera account info --id $HEDERA_ACCOUNT_ID`
+  - Re-run the command with updated nonce (Pacman does this automatically if you use the CLI — trust the CLI).
+  - If agent is generating raw transactions, always `getTransactionCount` right before signing.
+
+### 8.4 Partial Failure in Multicall
+- **Symptom**: Swap fails but association succeeded.
+- **Agent Response**:
+  - Explain: "Your funds are safe. The association transaction succeeded but the swap reverted."
+  - Suggest: "Retry the swap with a slightly higher gas limit or lower amount."
+  - Do not panic — this is expected behavior.
+
+### 8.5 Graceful Degradation
+If Pacman cannot reach any RPC:
+- Stop suggesting new trades.
+- Show cached price data if available (read `~/.pacman/cache/latest_prices.json`).
+- Instruct: "Network issues. Try again in 30 seconds or switch RPC."
+
+---
+
+## 9. Tax Automation via AI
+
+Pacman users incur taxable events. The agent can assist in record-keeping.
+
+### 9.1 Suggest Trade Export
+When a user asks "What trades did I do this month?":
+- Recommend: `pacman export --start 2026-02-01 --end 2026-02-28 --format csv > trades_feb.csv`
+- Explain the file is suitable for Koinly/CoinTracking import.
+
+### 9.2 Cost Basis Calculation
+- Do NOT attempt real-time capital gains calculations (AI hallucination risk).
+- Instead: `pacman tax-report --year 2025 --method fifo` generates a PDF summary.
+- Offer to run it if user requests tax summary.
+
+### 9.3 Privacy Reminder
+- All tax data stays local. No external API calls.
+- Suggest redacting wallet address before sharing with accountant.
+
+---
+
 ## ⚠️ HBAR vs. WHBAR — Critical Distinction
 
 WHBAR (Wrapped HBAR, `0.0.1456986`) is an **internal routing mechanism**, not a user-facing asset.

@@ -265,3 +265,74 @@ They need to be able to make it like an index fund, and be able to add as many a
 - **Audit Log**: Every console command and its execution receipt saved for legal/tax history.
 - **Analytics**: High-frequency price logging for local candlestick generation and volatility tracking.
 - **Status**: Potential Phase 4 Architectural Shift.
+
+---
+
+## 8.6 Error Recovery & Resilience
+
+Pacman should gracefully handle transient failures without requiring user intervention.
+
+### 8.6.1 Automatic Retry with Circuit Breaker
+- **Problem**: RPC timeouts, rate limits, or temporary network blips cause commands to fail.
+- **Solution**:
+  - Implement exponential backoff retry (max 3 attempts) for idempotent operations (`get_quote`, `get_reserves`).
+  - Circuit breaker pattern: If `N` consecutive failures, switch to backup RPC endpoint (user-configurable) and alert user.
+  - State persistence: Save in-flight transaction state to `~/.pacman/temp/` so if Pacman crashes mid-swap, it can resume or cleanly abort on restart.
+
+### 8.6.2 Pre-Flight Simulation Hardening
+- Already we simulate before send. Enhance:
+  - Cache simulation results for 2 blocks to avoid re-simulating identical swaps.
+  - If simulation fails due to nonce mismatch, auto-refresh nonce from chain and retry simulation (no manual `nonce` command needed).
+  - Clear error codes: Distinguish between "insufficient balance", "token not associated", "slippage exceeded", "inoperable pool" — each with a one-line remediation suggestion.
+
+### 8.6.3 Association Recovery
+- **Problem**: Token association transactions can fail if the user already has an association (duplicate) or if they hit the daily association limit.
+- **Solution**:
+  - Before associating, query existing associations (`/api/v1/accounts/0.0.x/tokens`) to skip unnecessary association calls.
+  - If association fails with code `TOKEN_ALREADY_ASSOCIATED`, treat as success (warning only).
+  - Maintain a local `associations.json` cache to avoid repeated queries.
+
+### 8.6.4 Graceful Degradation
+- If RPC is down:
+  - Use last known prices from cache for read-only commands (`price`, `pnl`).
+  - For swaps, fail fast with clear "RPC unavailable — try again in 30s" message.
+  - Optionally switch to fallback RPC automatically (config `fallback_rpc_urls`).
+
+**Implementation Priority**: High — improves reliability for active traders.
+
+---
+
+## 8.7 Tax Integration & Compliance
+
+Pacman users need to report crypto trades for tax purposes. Pacman can automate data export.
+
+### 8.7.1 Trade Export (CSV/JSON)
+- **Command**: `pacman export --format csv --start 2026-01-01 --end 2026-01-31 --output trades_jan.csv`
+- **Fields**: timestamp, tx_hash, from_token, to_token, from_amount, to_amount, fee_hbar, usd_price_at_time, wallet_account_id
+- **Format**: Compliant with:
+  - **Australia** (ATO crypto guidelines)
+  - **USA** (IRS Form 8949)
+  - **Generic** (Koinly, CoinTracking import)
+- **Auto-append**: When a swap completes, append record to `~/.pacman/history/trades.jsonl` (never overwrite).
+
+### 8.7.2 Cost Basis & FIFO/LIFO Selection
+- **Command**: `pacman tax-report --year 2026 --method fifo --output tax_2026.pdf`
+- Reads `trades.jsonl`, applies chosen accounting method (FIFO default, LIFO optional).
+- Calculates capital gains/losses per disposal.
+- Generates summary: total proceeds, total cost basis, net gain/loss.
+
+### 8.7.3 Privacy-Preserving Aggregation
+- Locally compute USD values using historical price cache (already stored for display).
+- No external API calls; all data stays on user's machine.
+- Option to redact wallet addresses in exported reports for sharing with accountants.
+
+### 8.7.4 Integration with Accounting Software
+- Export format matches:
+  - **Koinly** CSV template
+  - **CoinTracking** CSV template
+  - **Excel** friendly (UTF-8, quoted fields)
+- One-click: `pacman export --koinly > koinly.csv`
+
+**Implementation Priority**: Medium — high value for power users, low complexity (adds logging + formatting).
+
+---
