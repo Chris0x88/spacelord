@@ -64,6 +64,28 @@ class PacmanController:
                 logger.info(f"Initializing {target_name} from template...")
                 shutil.copy2(template_path, target_path)
 
+    def reload_wallet(self):
+        """
+        Hot-reload wallet credentials from .env without restarting the process.
+        Call this immediately after writing a new PRIVATE_KEY / HEDERA_ACCOUNT_ID.
+        """
+        import importlib, os
+        # Force Python to re-read the .env file into os.environ
+        from dotenv import load_dotenv
+        from pathlib import Path
+        env_path = Path(__file__).resolve().parent.parent / ".env"
+        load_dotenv(dotenv_path=env_path, override=True)
+
+        # Rebuild config and executor with fresh env
+        self.config = PacmanConfig.from_env()
+        self.executor = PacmanExecutor(self.config)
+        self.account_id = self.config.hedera_account_id
+        self.network = self.config.network
+        # Also update the account manager reference so it picks up the new client
+        self._account_manager = None
+
+        logger.info(f"[Reload] Wallet reloaded → {self.account_id}")
+
     def get_balances(self) -> Dict[str, float]:
         """Fetch all non-zero token balances for the account."""
         return self.executor.get_balances()

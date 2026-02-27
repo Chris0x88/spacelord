@@ -93,9 +93,11 @@ def cmd_setup(app, args):
                 new_id, _ = app.create_new_account(initial_balance=0.1, alias_key=raw_key)
                 if new_id:
                      print(f"  {C.OK}✅ ACTIVATED! Account ID: {C.BOLD}{new_id}{C.R}")
-                     _update_env("PRIVATE_KEY", raw_key) # _update_env handles archiving internally
+                     _update_env("PRIVATE_KEY", raw_key)
                      _update_env("HEDERA_ACCOUNT_ID", new_id)
-                     print(f"\n  {C.OK}✅ Wallet setup complete!{C.R}")
+                     app.reload_wallet()
+                     print(f"\n  {C.OK}✅ Wallet setup complete! Active wallet: {C.BOLD}{new_id}{C.R}")
+                     print(f"  {C.MUTED}Run 'balance' to see your new account.{C.R}")
                      return
                 else:
                      print(f"  {C.ERR}✗{C.R} Sponsorship failed. Reverting to manual activation.")
@@ -164,14 +166,10 @@ def cmd_setup(app, args):
 
     _update_env("PRIVATE_KEY", clean_key, force=True)
     _update_env("HEDERA_ACCOUNT_ID", hedera_id, force=True)
-    
-    # Immediate config update
-    from src.config import SecureString
-    app.config.private_key = SecureString(clean_key)
-    app.config.hedera_account_id = hedera_id
-    
-    print(f"\n  {C.OK}✅ Wallet setup complete!{C.R}")
-    print(f"  {C.MUTED}You can now use 'pools search' or check your 'balance'.{C.R}\n")
+    app.reload_wallet()
+
+    print(f"\n  {C.OK}✅ Wallet setup complete! Active wallet: {C.BOLD}{hedera_id}{C.R}")
+    print(f"  {C.MUTED}Run 'balance' to see your account — no restart needed.{C.R}\n")
 
 
 def cmd_account(app, args):
@@ -239,8 +237,8 @@ def cmd_account(app, args):
     confirm = input(f"\n  Switch .env to this new ID? {C.MUTED}(y/n){C.R} ").strip().lower()
     if confirm in ["y", "yes"]:
         _update_env("HEDERA_ACCOUNT_ID", new_id, force=True)
-        app.config.hedera_account_id = new_id
-        print(f"  {C.OK}✅ Active account switched to {new_id}.{C.R}")
+        app.reload_wallet()
+        print(f"  {C.OK}✅ Active account switched to {new_id} — no restart needed.{C.R}")
     print()
 
 
@@ -569,6 +567,17 @@ def _update_env(key, value, force=False):
                     existing_lines[-1] += "\n"
                 existing_lines.append(f"{backup_key}={current_pk}\n")
                 print(f"  {C.OK}📦 Archived existing key as {C.BOLD}{backup_key}{C.R}")
+    # Archive previous Hedera Account ID if updating
+    if key == "HEDERA_ACCOUNT_ID":
+        current_id = os.getenv("HEDERA_ACCOUNT_ID")
+        if current_id and current_id != value:
+            ts = time.strftime("%Y%m%d_%H%M%S")
+            backup_id_key = f"HEDERA_ACCOUNT_ID_BACKUP_{ts}"
+            if not any(line.startswith(f"{backup_id_key}=") for line in existing_lines):
+                if existing_lines and not existing_lines[-1].endswith("\n"):
+                    existing_lines[-1] += "\n"
+                existing_lines.append(f"{backup_id_key}={current_id}\n")
+                print(f"  {C.OK}📦 Archived account ID as {C.BOLD}{backup_id_key}{C.R}")
 
     # 2. Update/Append logic
     for line in existing_lines:
