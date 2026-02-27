@@ -60,6 +60,7 @@ class LimitOrder:
     status: str = "active"      # "active", "triggered", "cancelled", "failed"
     triggered_at: Optional[str] = None
     error: Optional[str] = None
+    account_id: str = ""        # Hedera ID of the account that owns this order
 
     def matches(self, current_price: float) -> bool:
         """Check if the current price satisfies the trigger condition."""
@@ -291,9 +292,10 @@ class LimitOrderEngine:
         action_type: str,
         action_string: str,
         description: str = "",
+        account_id: str = "",
     ) -> str:
         """
-        Create a new limit order.
+        Create a new limit order, optionally scoped to an account.
         Returns the order ID (8-char UUID).
         """
         if condition not in ("above", "below"):
@@ -312,31 +314,37 @@ class LimitOrderEngine:
             action_string=action_string,
             description=description or f"{action_type} when {token_symbol} is {condition} ${target_price:.4f}",
             created_at=time.strftime("%Y-%m-%d %H:%M:%S"),
+            account_id=account_id,
         )
         self.orders.append(order)
         self._save()
-        logger.info(f"[LimitOrder] Created order {order_id}: {order.description}")
+        logger.info(f"[LimitOrder] Created order {order_id} for {account_id or 'any'}: {order.description}")
         return order_id
 
-    def cancel_order(self, order_id: str) -> bool:
-        """Cancel an active order by ID (prefix match)."""
+    def cancel_order(self, order_id: str, account_id: str = None) -> bool:
+        """Cancel an active order by ID (prefix match). If account_id is provided, must match."""
         for order in self.orders:
             if order.id.startswith(order_id) and order.status == "active":
+                if account_id and order.account_id and order.account_id != account_id:
+                    continue
                 order.status = "cancelled"
                 self._save()
                 logger.info(f"[LimitOrder] Cancelled order {order.id}")
                 return True
         return False
 
-    def list_orders(self, status: str = None) -> List[LimitOrder]:
-        """List orders, optionally filtered by status."""
+    def list_orders(self, status: str = None, account_id: str = None) -> List[LimitOrder]:
+        """List orders, optionally filtered by status and account."""
+        results = self.orders
         if status:
-            return [o for o in self.orders if o.status == status]
-        return list(self.orders)
+            results = [o for o in results if o.status == status]
+        if account_id:
+            results = [o for o in results if not o.account_id or o.account_id == account_id]
+        return results
 
-    def get_active_count(self) -> int:
-        """Number of active orders."""
-        return sum(1 for o in self.orders if o.status == "active")
+    def get_active_count(self, account_id: str = None) -> int:
+        """Number of active orders for the specified account."""
+        return len(self.list_orders(status="active", account_id=account_id))
 
     # --- Monitor Daemon -----------------------------------------------------
 
@@ -364,9 +372,10 @@ class LimitOrderEngine:
         self._monitor_thread.start()
         self._daemon_enabled = True
         self._save_daemon_enabled(True)
+        active_count = self.get_active_count(account_id=self._controller.account_id if self._controller else None)
         logger.info(
             f"[LimitOrder] Monitor started — polling every {format_interval(self._poll_interval)}, "
-            f"{self.get_active_count()} active orders."
+            f"{active_count} active orders for this account."
         )
         return True
 
@@ -402,9 +411,15 @@ class LimitOrderEngine:
         Single pass: reload only needed prices, evaluate active orders.
         
         Efficiency: Instead of reloading ALL price data, we only query
-        the specific tokens that have active orders.
+        the specific tokens that have active orders for the CURRENT account.
+        Orders belonging to other sub-accounts are ignored until the user switches to them.
         """
-        active = [o for o in self.orders if o.status == "active"]
+        if not self._controller:
+            return
+            
+        current_account = getattr(self._controller, "account_id", "")
+        
+        active = [o for o in self.orders if o.status == "active" and (not o.account_id or o.account_id == current_account)]
         if not active:
             return
 

@@ -64,7 +64,7 @@ class PacmanController:
                 logger.info(f"Initializing {target_name} from template...")
                 shutil.copy2(template_path, target_path)
 
-    def reload_wallet(self):
+    def reload_wallet(self, hard_reset: bool = False):
         """
         Full account context switch — hot-reload credentials and reset all
         account-specific state without restarting the process.
@@ -103,23 +103,23 @@ class PacmanController:
         self._account_manager = None
         self._limit_engine = None
 
-        # 5. Clear the sub-account registry (accounts.json is per-account)
-        accounts_path = Path(__file__).resolve().parent.parent / "data" / "accounts.json"
-        try:
-            with open(accounts_path, "w") as f:
-                json.dump([], f, indent=2)
-            logger.info("[Reload] Cleared accounts.json for new account")
-        except Exception as e:
-            logger.warning(f"[Reload] Could not clear accounts.json: {e}")
+        # 5. Clear historical state if this is a hard reset (completely new private key)
+        if hard_reset:
+            accounts_path = Path(__file__).resolve().parent.parent / "data" / "accounts.json"
+            try:
+                with open(accounts_path, "w") as f:
+                    json.dump([], f, indent=2)
+                logger.info("[Reload] Cleared accounts.json for new key")
+            except Exception as e:
+                logger.warning(f"[Reload] Could not clear accounts.json: {e}")
 
-        # 6. Clear limit orders (orders.json is bound to the old account's balances/approvals)
-        orders_path = Path(__file__).resolve().parent.parent / "data" / "orders.json"
-        try:
-            with open(orders_path, "w") as f:
-                json.dump([], f, indent=2)
-            logger.info("[Reload] Cleared orders.json for new account")
-        except Exception as e:
-            logger.warning(f"[Reload] Could not clear orders.json: {e}")
+            orders_path = Path(__file__).resolve().parent.parent / "data" / "orders.json"
+            try:
+                with open(orders_path, "w") as f:
+                    json.dump([], f, indent=2)
+                logger.info("[Reload] Cleared orders.json for new key")
+            except Exception as e:
+                logger.warning(f"[Reload] Could not clear orders.json: {e}")
 
         logger.info(f"[Reload] Wallet reloaded → {self.account_id}")
 

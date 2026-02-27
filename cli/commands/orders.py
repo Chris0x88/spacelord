@@ -248,6 +248,7 @@ def _create_order(app, token, token_id, condition, target_price, action_type,
             action_type=action_type,
             action_string=action_string,
             description=description,
+            account_id=app.account_id,
         )
 
         side_col = C.OK if side_label == "BUY" else C.WARN
@@ -279,7 +280,7 @@ def _create_order(app, token, token_id, condition, target_price, action_type,
 def _cmd_list(app):
     """Show active orders in exchange-style order book format."""
     engine = app.limit_engine
-    orders = engine.list_orders(status="active")
+    orders = engine.list_orders(status="active", account_id=app.account_id)
 
     if not orders:
         print(f"\n  {C.MUTED}No open orders.{C.R}")
@@ -352,7 +353,7 @@ def _cmd_cancel(app, args):
     order_id = args[0]
     engine = app.limit_engine
 
-    if engine.cancel_order(order_id):
+    if engine.cancel_order(order_id, account_id=app.account_id):
         print(f"  {C.OK}✓{C.R} Order {C.TEXT}{order_id}{C.R} cancelled.")
     else:
         print(f"  {C.ERR}✗{C.R} No active order matching '{order_id}'")
@@ -365,7 +366,7 @@ def _cmd_cancel(app, args):
 def _cmd_history(app):
     """Show order fills and cancellations."""
     engine = app.limit_engine
-    history = [o for o in engine.list_orders() if o.status != "active"]
+    history = [o for o in engine.list_orders(account_id=app.account_id) if o.status != "active"]
 
     if not history:
         print(f"\n  {C.MUTED}No order history.{C.R}")
@@ -415,7 +416,7 @@ def _cmd_daemon_on(app):
     """Start the limit order monitor daemon."""
     engine = app.limit_engine
     if engine.start_monitor(app):
-        count = engine.get_active_count()
+        count = engine.get_active_count(account_id=app.account_id)
         from src.limit_orders import format_interval
         interval_str = format_interval(engine.poll_interval)
         print(f"  {C.OK}✓{C.R} Daemon {C.OK}ON{C.R} — monitoring {count} order(s) every {interval_str}")
@@ -436,7 +437,7 @@ def _cmd_daemon_off(app):
 def _cmd_daemon_status(app):
     """Show daemon status."""
     engine = app.limit_engine
-    active = engine.get_active_count()
+    active = engine.get_active_count(account_id=app.account_id)
     from src.limit_orders import format_interval
     interval_str = format_interval(engine.poll_interval)
 

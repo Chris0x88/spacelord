@@ -95,7 +95,7 @@ def cmd_setup(app, args):
                      print(f"  {C.OK}✅ ACTIVATED! Account ID: {C.BOLD}{new_id}{C.R}")
                      _update_env("PRIVATE_KEY", raw_key)
                      _update_env("HEDERA_ACCOUNT_ID", new_id)
-                     app.reload_wallet()
+                     app.reload_wallet(hard_reset=True)
                      print(f"\n  {C.OK}✅ Wallet setup complete! Active wallet: {C.BOLD}{new_id}{C.R}")
                      print(f"  {C.MUTED}Run 'balance' to see your new account.{C.R}")
                      _auto_associate_after_setup(app)
@@ -167,7 +167,7 @@ def cmd_setup(app, args):
 
     _update_env("PRIVATE_KEY", clean_key, force=True)
     _update_env("HEDERA_ACCOUNT_ID", hedera_id, force=True)
-    app.reload_wallet()
+    app.reload_wallet(hard_reset=True)
     _auto_associate_after_setup(app)
 
     print(f"\n  {C.OK}✅ Wallet setup complete! Active wallet: {C.BOLD}{hedera_id}{C.R}")
