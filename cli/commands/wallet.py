@@ -98,6 +98,7 @@ def cmd_setup(app, args):
                      app.reload_wallet()
                      print(f"\n  {C.OK}✅ Wallet setup complete! Active wallet: {C.BOLD}{new_id}{C.R}")
                      print(f"  {C.MUTED}Run 'balance' to see your new account.{C.R}")
+                     _auto_associate_after_setup(app)
                      return
                 else:
                      print(f"  {C.ERR}✗{C.R} Sponsorship failed. Reverting to manual activation.")
@@ -167,6 +168,7 @@ def cmd_setup(app, args):
     _update_env("PRIVATE_KEY", clean_key, force=True)
     _update_env("HEDERA_ACCOUNT_ID", hedera_id, force=True)
     app.reload_wallet()
+    _auto_associate_after_setup(app)
 
     print(f"\n  {C.OK}✅ Wallet setup complete! Active wallet: {C.BOLD}{hedera_id}{C.R}")
     print(f"  {C.MUTED}Run 'balance' to see your account — no restart needed.{C.R}\n")
@@ -536,7 +538,38 @@ def check_saucerswap_api_key(app):
 # .env Helpers
 # ---------------------------------------------------------------------------
 
+def _auto_associate_after_setup(app):
+    """
+    Batch-associate the base token set after a new wallet is activated.
+    Runs silently, prints a clean summary.
+    """
+    print(f"\n  {C.BOLD}Auto-Associating Base Tokens...{C.R}")
+    print(f"  {C.MUTED}(Linking top V2 pool tokens so you can receive them){C.R}")
+    try:
+        summary = app.account_manager.auto_associate_base_tokens()
+        associated  = summary.get("associated", [])
+        already     = summary.get("already_associated", [])
+        failed      = summary.get("failed", [])
+
+        if associated:
+            print(f"  {C.OK}✅ Associated:{C.R} {', '.join(s for s, _ in associated)}")
+        if already:
+            print(f"  {C.MUTED}⬡  Already linked:{C.R} {', '.join(s for s, _ in already)}")
+        if failed:
+            print(f"  {C.WARN}⚠  Skipped (retry with 'associate'):{C.R} {', '.join(s for s, _, __ in failed)}")
+        if not associated and not already and not failed:
+            print(f"  {C.MUTED}No base tokens to associate.{C.R}")
+    except Exception as e:
+        print(f"  {C.WARN}⚠  Auto-association skipped (non-fatal): {e}{C.R}")
+    print()
+
+
+# ---------------------------------------------------------------------------
+# .env Helpers
+# ---------------------------------------------------------------------------
+
 def _update_env(key, value, force=False):
+
     """Update or add a key-value pair in the .env file with archival safety."""
     from pathlib import Path
     import time

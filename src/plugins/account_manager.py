@@ -13,7 +13,7 @@ from typing import Optional, Tuple
 from hiero_sdk_python.client.client import Client
 from hiero_sdk_python.account.account_create_transaction import AccountCreateTransaction
 from hiero_sdk_python.account.account_id import AccountId
-from hiero_sdk_python.token.token_associate_transaction import TokenAssociateTransaction
+from hiero_sdk_python.tokens.token_associate_transaction import TokenAssociateTransaction
 from hiero_sdk_python.crypto.private_key import PrivateKey
 from hiero_sdk_python.hbar import Hbar
 
@@ -221,7 +221,7 @@ class AccountManager:
         Associate a token with the current operator account.
         """
         try:
-            from hiero_sdk_python.token.token_id import TokenId
+            from hiero_sdk_python.tokens.token_id import TokenId
             
             tx = TokenAssociateTransaction() \
                 .set_account_id(AccountId.from_string(self.operator_id)) \
@@ -240,3 +240,68 @@ class AccountManager:
             from src.logger import logger
             logger.error(f"Token association failed for {token_id}: {e}")
             return False
+
+    def auto_associate_base_tokens(self) -> dict:
+        """
+        Batch-associate the base token set defined in data/base_tokens.json.
+        Skips already-associated tokens. Returns a summary dict.
+        """
+        import json, time
+        from pathlib import Path
+        from src.logger import logger
+
+        result = {"associated": [], "already_associated": [], "failed": []}
+
+        base_path = Path(__file__).resolve().parent.parent.parent / "data" / "base_tokens.json"
+        template_path = base_path.parent / "base_tokens.template.json"
+
+        # Auto-copy template if the .json doesn't exist yet
+        if not base_path.exists() and template_path.exists():
+            import shutil
+            shutil.copy2(template_path, base_path)
+            logger.info("[AutoAssoc] Copied base_tokens.template.json → base_tokens.json")
+
+        if not base_path.exists():
+            logger.error("[AutoAssoc] data/base_tokens.json not found — skipping")
+            return result
+
+        try:
+            with open(base_path) as f:
+                data = json.load(f)
+            tokens = data.get("tokens", [])
+        except Exception as e:
+            logger.error(f"[AutoAssoc] Failed to read base_tokens.json: {e}")
+            return result
+
+        for entry in tokens:
+            token_id = entry.get("id")
+            symbol = entry.get("symbol", token_id)
+
+            if not token_id:
+                continue
+
+            # HBAR and WHBAR are native — never need association
+            if token_id in ("0.0.0", "0.0.1456986"):
+                continue
+
+            # Check if already associated to avoid wasting HBAR on gas
+            already = False
+            try:
+                from src.associations import check_token_association as _check
+                already = _check(self.w3, self.eoa, token_id, self.hedera_account_id)
+            except Exception:
+                pass
+
+            if already:
+                result["already_associated"].append((symbol, token_id))
+                continue
+
+            logger.info(f"[AutoAssoc] Associating {symbol} ({token_id})...")
+            ok = self.associate_token(token_id)
+            if ok:
+                result["associated"].append((symbol, token_id))
+                time.sleep(0.5)  # Brief delay to avoid rate-limiting
+            else:
+                result["failed"].append((symbol, token_id, "association failed"))
+
+        return result
