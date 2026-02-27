@@ -102,11 +102,11 @@ def cmd_setup(app, args):
 
         # 3. Fallback: EVM Alias Activation (Manual)
         print(f"  {C.BOLD}Step 2: External Activation (EVM Alias){C.R}")
-        print(f"  {C.TEXT}Your new EVM address is:{C.R}")
+        print(f"  {C.TEXT}To make your account 100% compatible with HashPack and MetaMask,")
+        print(f"  you should activate it by sending HBAR to this EVM Address:{C.R}")
         print(f"  {C.BOLD}{eoa}{C.R}")
-        print(f"\n  {C.TEXT}Hedera accounts are activated by sending HBAR to their EVM address.{C.R}")
-        print(f"  {C.TEXT}This works in apps like HashPack (select 'EVM Address' as recipient).{C.R}")
         print(f"\n  {C.OK}ACTION:{C.R} Send at least {C.BOLD}2.0 HBAR{C.R} to the address above.")
+        print(f"  {C.MUTED}This ensures your account has an 'Alias' which external wallets require.{C.R}")
 
         wait = input(f"\n  Wait for activation? {C.MUTED}(y/n){C.R} ").strip().lower()
         if wait in ['y', 'yes']:

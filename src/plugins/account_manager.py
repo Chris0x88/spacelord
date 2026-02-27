@@ -140,6 +140,11 @@ class AccountManager:
                 .set_max_automatic_token_associations(-1) \
                 .set_account_memo("Pacman Created Account")
 
+            # Set EVM Alias for ECDSA keys to ensure wallet compatibility (HashPack/Metamask)
+            if new_key.public_key().is_ecdsa():
+                evm_address = new_key.public_key().to_evm_address()
+                tx.set_alias(evm_address)
+
             # 3. Execute
             tx.freeze_with(self.client)
             response = tx.execute(self.client)
