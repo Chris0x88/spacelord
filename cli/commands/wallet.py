@@ -39,31 +39,101 @@ def cmd_setup(app, args):
     if choice in ["x", "cancel"]:
         print(f"  {C.MUTED}Setup cancelled.{C.R}\n")
         return
-        
+
+    # --- Choice C: CREATE Fresh Account ---
     if choice == 'c':
-        print(f"\n  {C.MUTED}Creating fresh ECDSA account on {app.network}...{C.R}")
-        new_id, new_key = app.create_new_account(initial_balance=1.0)
-        if not new_id:
-            print(f"  {C.ERR}✗{C.R} Creation failed. Check your network or funding account.")
-            return
+        # 1. Overwrite Safety Check
+        existing_key = os.getenv("PRIVATE_KEY")
+        if existing_key:
+            print(f"\n  {C.WARN}⚠  WARNING: YOU ARE LOGGED IN{C.R}")
+            print(f"  Creating a fresh account will overwrite your current .env session.")
+            print(f"  {C.ERR}Make sure you have backed up your current private key!{C.R}")
+            confirm = input(f"\n  Type {C.BOLD}CONFIRM{C.R} to proceed: ").strip()
+            if confirm != "CONFIRM":
+                print(f"  {C.MUTED}Aborted to protect your existing wallet.{C.R}\n")
+                return
+
+        print(f"\n  {C.BOLD}Step 1: Locally Generate Secure Key Pair{C.R}")
+        from hiero_sdk_python.crypto.private_key import PrivateKey
+        from web3 import Web3
         
-        print(f"  {C.OK}✅ Created Account: {C.BOLD}{new_id}{C.R}")
-        print(f"  {C.WARN}⚠  IMPORTANT: Write down your Private Key!{C.R}")
-        print(f"  {C.TEXT}{new_key}{C.R}")
+        # We generate it using the SDK for Hedera compatibility
+        new_key = PrivateKey.generate_ecdsa()
+        raw_key = new_key.to_string()
         
-        # Save to .env
-        _update_env("PRIVATE_KEY", new_key)
-        _update_env("HEDERA_ACCOUNT_ID", new_id)
+        # Derive EVM Address
+        temp_w3 = Web3()
+        acc = temp_w3.eth.account.from_key(raw_key)
+        eoa = acc.address
         
-        # Immediate config update
-        from src.config import SecureString
-        app.config.private_key = SecureString(new_key)
-        app.config.hedera_account_id = new_id
-        
-        print(f"\n  {C.OK}✅ Wallet setup complete!{C.R}")
+        print(f"\n  {C.OK}✅ Generated!{C.R}")
+        print(f"  {C.WARN}⚠  PRIVATE KEY (BACKUP THIS NOW):{C.R}")
+        print(f"  {C.ACCENT}{raw_key}{C.R}")
+        print(f"  {C.MUTED}{'─' * 56}{C.R}")
+
+        # 2. Check for Sponsorship Capability
+        sponsor_id = os.getenv("HEDERA_ACCOUNT_ID")
+        can_sponsor = False
+        if sponsor_id:
+            try:
+                cur_bal = app.executor.w3.eth.get_balance(app.executor.eoa) / 10**18
+                if cur_bal > 0.2:
+                    can_sponsor = True
+            except: pass
+
+        if can_sponsor:
+            print(f"  {C.BOLD}Step 2: Instant Activation (Sponsorship){C.R}")
+            print(f"  You have an existing account ({C.BOLD}{sponsor_id}{C.R}).")
+            print(f"  Pacman can sponsor the creation of your 0.0.xxx ID immediately.")
+            print(f"  {C.MUTED}Cost: ~0.05 HBAR (from current wallet){C.R}")
+            
+            do_sponsor = input(f"\n  Sponsor now? {C.MUTED}(y/n){C.R} ").strip().lower()
+            if do_sponsor in ['y', 'yes']:
+                print(f"  {C.MUTED}Submitting creation transaction...{C.R}")
+                new_id, _ = app.create_new_account(initial_balance=0.1, alias_key=raw_key)
+                if new_id:
+                     print(f"  {C.OK}✅ ACTIVATED! Account ID: {C.BOLD}{new_id}{C.R}")
+                     _update_env("PRIVATE_KEY", raw_key) # _update_env handles archiving internally
+                     _update_env("HEDERA_ACCOUNT_ID", new_id)
+                     print(f"\n  {C.OK}✅ Wallet setup complete!{C.R}")
+                     return
+                else:
+                     print(f"  {C.ERR}✗{C.R} Sponsorship failed. Reverting to manual activation.")
+
+        # 3. Fallback: EVM Alias Activation (Manual)
+        print(f"  {C.BOLD}Step 2: External Activation (EVM Alias){C.R}")
+        print(f"  {C.TEXT}Your new EVM address is:{C.R}")
+        print(f"  {C.BOLD}{eoa}{C.R}")
+        print(f"\n  {C.TEXT}Hedera accounts are activated by sending HBAR to their EVM address.{C.R}")
+        print(f"  {C.TEXT}This works in apps like HashPack (select 'EVM Address' as recipient).{C.R}")
+        print(f"\n  {C.OK}ACTION:{C.R} Send at least {C.BOLD}2.0 HBAR{C.R} to the address above.")
+
+        wait = input(f"\n  Wait for activation? {C.MUTED}(y/n){C.R} ").strip().lower()
+        if wait in ['y', 'yes']:
+            print(f"\n  {C.MUTED}Polling Mirror Node for activation (this may take 30s)...{C.R}")
+            import time
+            found_id = None
+            for _ in range(20): # 100 seconds max
+                found_id = app.resolve_account_id(eoa)
+                if found_id:
+                    break
+                print(f"  {C.MUTED}... waiting for HBAR to arrive ...{C.R}")
+                time.sleep(5)
+            
+            if found_id:
+                print(f"  {C.OK}✅ ACTIVATED! Account ID: {C.BOLD}{found_id}{C.R}")
+                _update_env("PRIVATE_KEY", raw_key, force=True)
+                _update_env("HEDERA_ACCOUNT_ID", found_id, force=True)
+                print(f"\n  {C.OK}✅ Wallet setup complete!{C.R}")
+                return
+            else:
+                print(f"\n  {C.WARN}⏰ Still waiting for activation.{C.R}")
+                print(f"  {C.TEXT}Keep the key safe! Once funds arrive, run {C.BOLD}setup{C.R} and choose {C.BOLD}[P]{C.R}.{C.R}")
+        else:
+            print(f"\n  {C.OK}Key generated.{C.R} Use {C.BOLD}setup [P]{C.R} once you've funded {eoa}.")
         return
 
-    # 1. Private Key Entry (Existing Flow)
+    # --- Choice P: PASTE Existing Key ---
     print(f"\n  {C.BOLD}Step 1: Enter your Private Key{C.R}")
     print(f"  {C.MUTED}(Masked input, will be saved to .env as PRIVATE_KEY){C.R}")
     
@@ -84,6 +154,7 @@ def cmd_setup(app, args):
     # 2. Account ID Discovery
     print(f"\n  {C.BOLD}Step 2: Account ID Discovery{C.R}")
     try:
+        from web3 import Web3
         temp_w3 = Web3()
         acc = temp_w3.eth.account.from_key(clean_key)
         eoa = acc.address
@@ -97,9 +168,9 @@ def cmd_setup(app, args):
     
     if not hedera_id:
         from src.utils import is_valid_account_id
-        print(f"\n  {C.WARN}⚠  Account Not Linked{C.R}")
-        print(f"  {C.TEXT}Your address {C.BOLD}{eoa}{C.R} is not yet indexed on Hedera.{C.R}")
-        print(f"  {C.MUTED}This usually means the account is brand new or has no HBAR.{C.R}")
+        print(f"\n  {C.WARN}⚠  Account Not Activated{C.R}")
+        print(f"  {C.TEXT}The EVM address {C.BOLD}{eoa}{C.R} has no Hedera ID yet.{C.R}")
+        print(f"  {C.MUTED}You must send ~1 HBAR to this address to activate it.{C.R}")
         
         choice = input(f"\n  Enter Account ID manually? (0.0.xxx) {C.MUTED}(y/n){C.R} ").strip().lower()
         if choice in ["y", "yes"]:
@@ -122,21 +193,10 @@ def cmd_setup(app, args):
     else:
         print(f"  {C.OK}✅ Found Account ID: {C.BOLD}{hedera_id}{C.R}")
 
-    # 3. Confirmation and Save
-    existing_id = __import__('os').getenv("HEDERA_ACCOUNT_ID")
-    if existing_id and existing_id != hedera_id:
-        print(f"\n  {C.WARN}⚠  WARNING: Overwriting Existing ID{C.R}")
-        print(f"  Existing: {C.BOLD}{existing_id}{C.R}")
-        print(f"  New:      {C.BOLD}{hedera_id}{C.R}")
-        confirm = input(f"  Are you sure? {C.MUTED}(y/n){C.R} ").strip().lower()
-        if confirm not in ["y", "yes"]:
-            print(f"  {C.MUTED}Setup aborted. Existing values kept.{C.R}")
-            return
-
     _update_env("PRIVATE_KEY", clean_key, force=True)
     _update_env("HEDERA_ACCOUNT_ID", hedera_id, force=True)
     
-    # Immediate config update for active session
+    # Immediate config update
     from src.config import SecureString
     app.config.private_key = SecureString(clean_key)
     app.config.hedera_account_id = hedera_id
@@ -190,8 +250,15 @@ def cmd_account(app, args):
     except (KeyboardInterrupt, EOFError):
         nickname = ""
 
-    print(f"\n  {C.MUTED}Creating sub-account on {app.network}...{C.R}")
-    new_id = app.create_sub_account(initial_balance=1.0, nickname=nickname)
+    # Determine safe initial balance
+    try:
+        cur_bal = app.executor.w3.eth.get_balance(app.executor.eoa) / 10**18
+        init_bal = 1.0 if cur_bal > 1.5 else 0.1
+    except:
+        init_bal = 1.0
+
+    print(f"\n  {C.MUTED}Creating sub-account on {app.network} (funding: {init_bal} HBAR)...{C.R}")
+    new_id = app.create_sub_account(initial_balance=init_bal, nickname=nickname)
     if not new_id:
         print(f"  {C.ERR}✗{C.R} Creation failed.")
         return
@@ -449,8 +516,10 @@ def check_saucerswap_api_key(app):
 # ---------------------------------------------------------------------------
 
 def _update_env(key, value, force=False):
-    """Update or add a key-value pair in the .env file."""
+    """Update or add a key-value pair in the .env file with archival safety."""
     from pathlib import Path
+    import time
+    import os
     env_path = Path(__file__).resolve().parent.parent.parent / ".env"
     
     # Create file if missing
@@ -460,29 +529,43 @@ def _update_env(key, value, force=False):
     
     lines = []
     found = False
-    current_value = None
     
     with open(env_path, "r") as f:
-        for line in f:
-            if line.strip().startswith(f"{key}="):
-                current_value = line.split("=", 1)[1].strip()
-                if not force and current_value and current_value != value:
-                    print(f"\n  {C.WARN}⚠  Warning: {key} already has a value.{C.R}")
-                    confirm = input(f"  Overwrite? {C.MUTED}(y/n){C.R} ").strip().lower()
-                    if confirm not in ["y", "yes"]:
-                        print(f"  {C.MUTED}Update skipped.{C.R}")
-                        return False
-                
-                lines.append(f"{key}={value}\n")
-                found = True
-            else:
-                lines.append(line)
+        existing_lines = f.readlines()
+
+    # 1. Archival Step: If we are updating PRIVATE_KEY, back up the old one first
+    if key == "PRIVATE_KEY":
+        current_pk = os.getenv("PRIVATE_KEY")
+        if current_pk and current_pk != value:
+            ts = time.strftime("%Y%m%d_%H%M%S")
+            backup_key = f"PRIVATE_KEY_BACKUP_{ts}"
+            # Check if this backup line already exists in the list to avoid duplicates
+            if not any(line.startswith(f"{backup_key}=") for line in existing_lines):
+                existing_lines.append(f"{backup_key}={current_pk}\n")
+                print(f"  {C.OK}📦 Archived existing key as {C.BOLD}{backup_key}{C.R}")
+
+    # 2. Update/Append logic
+    for line in existing_lines:
+        if line.strip().startswith(f"{key}="):
+            current_val = line.split("=", 1)[1].strip()
+            if not force and current_val and current_val != value:
+                # This prompt is usually handled by the caller, but keep it as a safety valve
+                print(f"\n  {C.WARN}⚠  Warning: {key} already has a value.{C.R}")
+                confirm = input(f"  Overwrite? {C.MUTED}(y/n){C.R} ").strip().lower()
+                if confirm not in ["y", "yes"]:
+                    print(f"  {C.MUTED}Update skipped.{C.R}")
+                    return False
+            
+            lines.append(f"{key}={value}\n")
+            found = True
+        else:
+            lines.append(line)
     
     if not found:
-        # Add newline if needed
         if lines and not lines[-1].endswith("\n"):
             lines.append("\n")
         lines.append(f"{key}={value}\n")
         
     with open(env_path, "w") as f:
         f.writelines(lines)
+    return True

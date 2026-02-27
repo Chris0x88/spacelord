@@ -228,12 +228,17 @@ class PacmanController:
                 
         return self._limit_engine
 
-    def create_new_account(self, initial_balance: float = 1.0) -> Tuple[Optional[str], Optional[str]]:
+    def create_new_account(self, initial_balance: float = 1.0, alias_key: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
         """
-        Create a completely new Hedera account with a fresh private key.
+        Create a completely new Hedera account.
+        If alias_key is provided (hex string), it creates an account using that key (EVM Alias).
+        Otherwise, it generates a fresh key pair.
         The creation is funded by the current operator account.
         """
-        return self.account_manager.create_account(initial_balance_hbar=initial_balance)
+        return self.account_manager.create_account(
+            initial_balance_hbar=initial_balance,
+            alias_key=alias_key
+        )
 
     def create_sub_account(self, initial_balance: float = 1.0, nickname: str = "") -> Optional[str]:
         """

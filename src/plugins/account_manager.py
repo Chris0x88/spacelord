@@ -150,7 +150,7 @@ class AccountManager:
                 receipt = response
             
             new_id = str(receipt.account_id)
-            return new_id, (None if is_sub_account else str(new_key))
+            return new_id, (None if is_sub_account else new_key.to_string())
 
         except Exception as e:
             # Strip potential key data from error messages for security
