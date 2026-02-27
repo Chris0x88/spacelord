@@ -32,7 +32,12 @@ def cmd_help(app, args):
         "accounts": "account",
         "pool-deposit": "liquidity",
         "pool-withdraw": "liquidity",
-        "lp": "liquidity"
+        "lp": "liquidity",
+        "assoc": "associate",
+        "association": "associate",
+        "token": "associate",
+        "orders": "order",
+        "wallet": "setup",
     }
     
     if topic and topic.lower() in aliases:
