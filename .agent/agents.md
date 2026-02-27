@@ -1,4 +1,4 @@
-# CLAUDE.md — Pacman AI Agent Guide
+# .agent/agents.md — Pacman AI Agent Guide
 *Single source of truth for any AI agent working in this repo.*
 
 ---
@@ -37,6 +37,29 @@ data/variants.json   → Token variant metadata: HTS vs ERC20 variants + wrap/un
 data/aliases.json    → NLP nicknames: {"btc": "WBTC_HTS", ...}
 data/settings.json   → User config: transfer_whitelist
 data/v1_pools_approved.json → Approved V1 pool registry
+
+---
+
+## 🏗️ UPDATE (Late Feb 2026): Current Architecture Additions
+
+The architecture above was the V1 state. We have rapidly expanded into a decentralized AI edge-computing agent. **Here are the new functional layers**:
+
+```
+cli/commands/        → The CLI has been refactored into modular sub-commands.
+  |- info.py         → `balance`, `history`, `tokens`
+  |- trading.py      → `swap`, `stake`
+  |- wallet.py       → `setup`, `account` (Sub-account management)
+  |- orders.py       → `orders buy/sell`, `orders daemon` (Limit engine)
+
+src/limit_orders.py  → Background daemon polling prices for passive swap targets.
+src/plugins/account_manager.py → Sub-account derivation from master `.env` key.
+
+data/accounts.json   → Local ledger mapping sub-account Hedera IDs to private keys.
+data/orders.json     → Local database of active and triggered limit orders.
+```
+
+### 🧠 Security Note for AI Agents
+Do **not** store private keys inside the `data/` json files long-term. Currently, the master key is isolated in `.env`, and derived child keys live in `accounts.json` only for the duration of a session. If a user runs `pacman setup` or `reload_wallet(hard_reset=True)`, these local caches are wiped dynamically for safety.
 ```
 
 ---
@@ -138,18 +161,25 @@ cli/display.py → print_receipt()
 
 ---
 
-## HCS Chat / P2P (future feature — Phase 3)
-The Hedera Consensus Service (HCS) allows publishing messages to a topic.
-To add P2P negotiation:
+## HCS Chat / P2P & x402 Payments (Future Vision)
+Our core goal is creating an autonomous edge-computing primitive.
+To add P2P negotiation (Atomic Swaps without DEX pools):
 - Create a topic ID via `hiero-sdk-python`
 - Subscribe via the Mirror Node gRPC streaming API
 - Messages are: JSON `{type: "offer", from: "0.0.xxx", token: "WBTC", qty: 0.5, price: 95000}`
 - Daemon polls topic, auto-matches, fires `controller.swap()`
-Implementation lives in `lib/hcs_chat.py` (not yet created).
+- Integrate L402/x402 agentic payments so agents can pay each other HBAR directly for API data.
+
+## Auto-Pilot & Hedera Schedule Service (Future Vision)
+- Currently, the limit order daemon requires the python script to be running.
+- Future goal: Wrap our intent-logic directly into the **Hedera Schedule Service** + smart contracts, allowing portfolios to automatically rebalance on-chain 24/7.
+
+## TUI (Terminal User Interface)
+- The raw `tui/` directory was removed from active git tracking (Feb 2026) as it requires a massive rewrite to support the new limit orders and sub-accounts. Do not suggest or attempt to repair the TUI unless explicitly tasked with a top-to-bottom rewrite.
 
 ---
 
 ## File Archiving Policy
-Active docs: `CLAUDE.md` (this file), `docs/PRODUCT_SPEC.md`, `docs/TECHNICAL_ROADMAP.md`
+Active docs: `.agent/agents.md` (this file), `docs/AI_AGENT_GUIDE.md`, `docs/SKILLS.md`.
 Everything else in `docs/` is historical context — don't delete, don't actively load.
-The only docs an AI agent needs to load on startup: `CLAUDE.md`.
+The only docs an AI agent absolutely needs to read to catch up: `.agent/agents.md`.

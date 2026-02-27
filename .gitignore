@@ -43,3 +43,4 @@ data/*.json
 
 # Private Documentation
 docs_private/
+tui/
