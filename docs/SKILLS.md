@@ -53,6 +53,7 @@ Pacman maps common symbols to HTS IDs. If a token has variants, use the suffix:
 - **HTS Association**: Pacman auto-associates tokens. No agent action needed.
 - **Approvals**: Pacman handles HTS `allowance` scaling. No agent action needed.
 - **Routing**: Always uses SaucerSwap V2 Optimized Pathing.
+- **Gas Reserve (HBAR)**: Agents **must not** run the HBAR balance down to zero. A minimum of **5 HBAR** should be maintained to ensure enough gas for future operations (swaps, transfers, associations). Running out of HBAR will "strand" other assets in the wallet.
 
 ---
 
