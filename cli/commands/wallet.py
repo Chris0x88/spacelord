@@ -100,37 +100,6 @@ def cmd_setup(app, args):
                 else:
                      print(f"  {C.ERR}✗{C.R} Sponsorship failed. Reverting to manual activation.")
 
-        # 3. Fallback: EVM Alias Activation (Manual)
-        print(f"  {C.BOLD}Step 2: External Activation (EVM Alias){C.R}")
-        print(f"  {C.TEXT}To make your account 100% compatible with HashPack and MetaMask,")
-        print(f"  you should activate it by sending HBAR to this EVM Address:{C.R}")
-        print(f"  {C.BOLD}{eoa}{C.R}")
-        print(f"\n  {C.OK}ACTION:{C.R} Send at least {C.BOLD}2.0 HBAR{C.R} to the address above.")
-        print(f"  {C.MUTED}This ensures your account has an 'Alias' which external wallets require.{C.R}")
-
-        wait = input(f"\n  Wait for activation? {C.MUTED}(y/n){C.R} ").strip().lower()
-        if wait in ['y', 'yes']:
-            print(f"\n  {C.MUTED}Polling Mirror Node for activation (this may take 30s)...{C.R}")
-            import time
-            found_id = None
-            for _ in range(20): # 100 seconds max
-                found_id = app.resolve_account_id(eoa)
-                if found_id:
-                    break
-                print(f"  {C.MUTED}... waiting for HBAR to arrive ...{C.R}")
-                time.sleep(5)
-            
-            if found_id:
-                print(f"  {C.OK}✅ ACTIVATED! Account ID: {C.BOLD}{found_id}{C.R}")
-                _update_env("PRIVATE_KEY", raw_key, force=True)
-                _update_env("HEDERA_ACCOUNT_ID", found_id, force=True)
-                print(f"\n  {C.OK}✅ Wallet setup complete!{C.R}")
-                return
-            else:
-                print(f"\n  {C.WARN}⏰ Still waiting for activation.{C.R}")
-                print(f"  {C.TEXT}Keep the key safe! Once funds arrive, run {C.BOLD}setup{C.R} and choose {C.BOLD}[P]{C.R}.{C.R}")
-        else:
-            print(f"\n  {C.OK}Key generated.{C.R} Use {C.BOLD}setup [P]{C.R} once you've funded {eoa}.")
         return
 
     # --- Choice P: PASTE Existing Key ---
@@ -276,6 +245,38 @@ def cmd_account(app, args):
 
 
 
+def cmd_associate(app, args):
+    """
+    Manually associate a token with your account.
+    Usage: associate <token_id|symbol>
+    """
+    if not args:
+        print(f"  {C.ERR}✗{C.R} Usage: {C.BOLD}associate <token_id>{C.R} (e.g. associate 0.0.456858)")
+        return
+
+    token_id = args[0]
+    
+    # Try to resolve symbol if not in 0.0.xxx format
+    if not token_id.startswith("0.0."):
+        # Check against common symbols
+        symbols = {
+            "USDC": "0.0.456858",
+            "SAUCE": "0.0.731861",
+        }
+        if token_id.upper() in symbols:
+            token_id = symbols[token_id.upper()]
+        else:
+             print(f"  {C.ERR}✗{C.R} Unknown token symbol. Please use Hedera ID (0.0.xxx)")
+             return
+
+    print(f"  {C.MUTED}Associating {C.ACCENT}{token_id}{C.MUTED} to your account...{C.R}")
+    success = app.associate_token(token_id)
+    if success:
+        print(f"  {C.OK}✅ Successfully associated {C.BOLD}{token_id}{C.R}")
+    else:
+        print(f"  {C.ERR}✗{C.R} Association failed. Check your balance or token ID.")
+
+
 def cmd_balance(app, args):
     token = args[0] if args else None
     
@@ -340,10 +341,25 @@ def cmd_receive(app, args):
         return
 
     # 1. Show Address
-    print(f"\n{C.BOLD}{C.TEXT}  RECEIVE FUNDS{C.R}")
+    account_id = app.executor.hedera_account_id
+    eoa = app.executor.eoa
+    print(f"\n  {C.BOLD}{C.TEXT}RECEIVE HBAR / TOKENS{C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
-    print(f"  {C.MUTED}Hedera ID:{C.R}    {C.TEXT}{app.executor.hedera_account_id}{C.R}")
-    print(f"  {C.MUTED}EVM Address:{C.R}  {C.TEXT}{app.executor.eoa}{C.R}")
+    print(f"  {C.TEXT}Hedera Native ID:{C.R} {C.BOLD}{C.OK}{account_id}{C.R}")
+    print(f"  {C.TEXT}EVM Address:    {C.R} {C.MUTED}{eoa}{C.R}")
+    print(f"  {C.MUTED}{'─' * 56}{C.R}")
+    
+    # Check max auto-associations
+    try:
+        url = f"https://mainnet-public.mirrornode.hedera.com/api/v1/accounts/{account_id}"
+        import requests
+        resp = requests.get(url, timeout=5).json()
+        max_assoc = resp.get("max_automatic_token_associations", 0)
+        if max_assoc == -1:
+            print(f"  {C.OK}✅ Unlimited Auto-Association Enabled{C.R}")
+        else:
+            print(f"  {C.WARN}⚠  Auto-Association Slots: {max_assoc}{C.R}")
+    except: pass
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
 
     # 2. Check Token Association (if requested)
@@ -462,18 +478,25 @@ def cmd_whitelist(app, args):
 def check_wallet_setup(app):
     """Check for wallet keys on startup and guide onboarding."""
     import os
+    import sys
     
     # Don't prompt if running a one-shot command unrelated to trading
     if len(sys.argv) > 1 and sys.argv[1] in ["help", "pools", "tokens", "price"]:
         return
 
-    key = os.getenv("PRIVATE_KEY")
-    acc_id = os.getenv("HEDERA_ACCOUNT_ID")
+    if not app.config.private_key.get_secret_value():
+        print(f"\n  {C.BOLD}{C.TEXT}Welcome to Pacman!{C.R}")
+        print(f"  {C.MUTED}To start trading, you'll need to configure your Hedera wallet.{C.R}")
+        print(f"  Run {C.BOLD}{C.ACCENT}setup{C.R} to get started.")
+        print()
+        return
 
-    if not key or not acc_id:
-        print(f"\n  {C.WARN}⚠  Wallet Not Configured{C.R}")
-        print(f"  {C.TEXT}To execute live swaps, you need to set your Secure Private Key.{C.R}")
-        print(f"  {C.MUTED}Note: Pacman will automatically resolve your Hedera ID.{C.R}")
+    # Check activation
+    if not app.executor.hedera_account_id or app.executor.hedera_account_id == "Unknown":
+        print(f"\n  {C.WARN}⚠  WALLET NOT ACTIVATED{C.R}")
+        print(f"  Your key is set, but your Hedera ID (0.0.xxx) is missing.")
+        print(f"  Run {C.BOLD}{C.ACCENT}setup{C.R} and choose {C.BOLD}[P]{C.R} to discover your ID.")
+        print()
         
         try:
             choice = input(f"  Configure now? {C.MUTED}(y/n){C.R} ").strip().lower()

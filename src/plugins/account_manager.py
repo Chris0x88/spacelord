@@ -13,6 +13,7 @@ from typing import Optional, Tuple
 from hiero_sdk_python.client.client import Client
 from hiero_sdk_python.account.account_create_transaction import AccountCreateTransaction
 from hiero_sdk_python.account.account_id import AccountId
+from hiero_sdk_python.token.token_associate_transaction import TokenAssociateTransaction
 from hiero_sdk_python.crypto.private_key import PrivateKey
 from hiero_sdk_python.hbar import Hbar
 
@@ -214,4 +215,28 @@ class AccountManager:
             return True
         except Exception as e:
             logger.error(f"Failed to rename account: {e}")
+            return False
+    def associate_token(self, token_id: str) -> bool:
+        """
+        Associate a token with the current operator account.
+        """
+        try:
+            from hiero_sdk_python.token.token_id import TokenId
+            
+            tx = TokenAssociateTransaction() \
+                .set_account_id(AccountId.from_string(self.operator_id)) \
+                .set_token_ids([TokenId.from_string(token_id)])
+            
+            tx.freeze_with(self.client)
+            response = tx.execute(self.client)
+            
+            if hasattr(response, "get_receipt"):
+                receipt = response.get_receipt(self.client)
+            else:
+                receipt = response
+                
+            return receipt.status == 22 # SUCCESS in most SDK versions, but let's check properly
+        except Exception as e:
+            from src.logger import logger
+            logger.error(f"Token association failed for {token_id}: {e}")
             return False

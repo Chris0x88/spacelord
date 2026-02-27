@@ -259,6 +259,10 @@ class PacmanController:
         """Get the list of known account IDs from the local registry."""
         return self.account_manager.get_known_accounts()
 
+    def associate_token(self, token_id: str) -> bool:
+        """Associate a token with the current operator account."""
+        return self.account_manager.associate_token(token_id)
+
     @property
     def liquidity_manager(self):
         """Lazy initialization of the V2LiquidityManager."""

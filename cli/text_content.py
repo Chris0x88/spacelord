@@ -37,6 +37,7 @@ HELP_COMMANDS = [
     ("--- TRANSFERS ---", ""),
     ("send <amt> <tk> to <rcp>", "Transfer crypto to a Hedera account"),
     ("receive [<token>]",        "Get your address & check token association"),
+    ("associate <token>",        "Manually link a token to your account on-chain"),
     ("whitelist",                "View trusted send addresses"),
     ("whitelist add <addr> [nick]","Whitelist an address with optional nickname"),
     ("whitelist remove <addr>",  "Remove an address from whitelist"),
@@ -537,4 +538,31 @@ autonomous operation — no confirmation prompts.
   TRIGGER  — your limit price in USD
   MARK     — current market price
   SIZE     — order size""",
+
+    "associate": """{C.BOLD}TOKEN ASSOCIATION — COMPLETE REFERENCE{C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+On Hedera, you MUST associate a token with your account before
+you can receive it. This prevents "airdrop spam" and protects
+your account storage.
+
+{C.ACCENT}Command Syntax:{C.R}
+  {C.TEXT}associate <token_id|symbol>{C.R}
+
+{C.ACCENT}Examples:{C.R}
+  {C.TEXT}ᗧ associate USDC{C.R}
+  {C.TEXT}ᗧ associate 0.0.456858{C.R}
+
+{C.ACCENT}How to Get USDC:{C.R}
+  1. Find your Hedera ID: {C.TEXT}account{C.R} or {C.TEXT}receive{C.R}
+  2. Associate the token: {C.TEXT}associate USDC{C.R}
+  3. Send USDC from HashPack/MetaMask to your Hedera ID.
+
+{C.ACCENT}Auto-Association:{C.R}
+  Pacman creates new accounts with {C.TEXT}max_automatic_token_associations: -1{C.R}
+  (unlimited). This means you usually don't need to manually
+  associate—the first time someone sends you a token, it will
+  auto-link for a small HBAR fee.
+
+  {C.WARN}Note:{C.R} If auto-association fails or your account is old, 
+  use the manual {C.TEXT}associate{C.R} command.""",
 }
