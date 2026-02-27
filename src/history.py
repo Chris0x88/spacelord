@@ -247,16 +247,27 @@ def record_transfer_execution(res: dict, eoa: str, network: str, recordings_dir:
         logger.debug(f"Transfer recording failed: {e}")
 
 
-def get_execution_history(recordings_dir: Path, limit: int = 10) -> list:
-    """Retrieve recent execution records."""
+def get_execution_history(recordings_dir: Path, limit: int = 20, account: str = None) -> list:
+    """
+    Retrieve recent execution records, optionally filtered by account (EVM address).
+    All records are preserved on disk — filtering is display-only.
+    """
     if not recordings_dir.exists():
         return []
     files = sorted(recordings_dir.glob("exec_*.json"), reverse=True)
     history = []
-    for f in files[:limit]:
+    for f in files:
+        if len(history) >= limit:
+            break
         try:
             with open(f) as file:
-                history.append(json.load(file))
+                rec = json.load(file)
+            # Account filter: skip records belonging to a different account.
+            # Records without an 'account' field (legacy) are always included.
+            rec_account = rec.get("account")
+            if account and rec_account and rec_account.lower() != account.lower():
+                continue
+            history.append(rec)
         except:
             continue
     return history

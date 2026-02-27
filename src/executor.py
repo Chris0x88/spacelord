@@ -902,6 +902,6 @@ class PacmanExecutor:
         """Record HBAR/HTS transfer to local history."""
         _record_transfer_impl(res, self.eoa, self.network, self.recordings_dir)
 
-    def get_execution_history(self, limit: int = 10) -> list:
-        """Retrieve recent execution records."""
-        return _get_history_impl(self.recordings_dir, limit)
+    def get_execution_history(self, limit: int = 20) -> list:
+        """Retrieve recent execution records for the active account only."""
+        return _get_history_impl(self.recordings_dir, limit, account=self.eoa)

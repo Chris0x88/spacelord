@@ -668,12 +668,19 @@ def show_tokens():
 # ---------------------------------------------------------------------------
 
 def show_history(executor):
-    """Display operations history with live-priced USD values."""
+    """Display operations history for the active account, with live-priced USD values."""
     from lib.prices import price_manager
 
     hist = executor.get_execution_history(limit=20)
+
+    # Display header — always show which account we're looking at
+    acct_label = executor.hedera_account_id or executor.eoa[:10] + "..."
+    print(f"\n{C.BOLD}{C.TEXT}  HISTORY{C.R}  {C.MUTED}(Account: {C.ACCENT}{acct_label}{C.R}{C.MUTED}){C.R}")
+    print(f"  {C.CHROME}{'─' * 96}{C.R}")
+
     if not hist:
-        print(f"\n  {C.MUTED}No transaction history found.{C.R}\n")
+        print(f"  {C.MUTED}No transaction history found for this account.{C.R}")
+        print(f"  {C.MUTED}Tip: run 'history --all' to see all accounts (coming soon).{C.R}\n")
         return
 
     price_manager.reload()
