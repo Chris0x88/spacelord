@@ -186,91 +186,75 @@ class PacmanExecutor:
         logger.debug(f"   EVM Long-Zero:  {self.eoa_long_zero}")
         logger.debug(f"   Network:        {self.network}")
 
-    def execute_v1_swap(self, from_id: str, to_id: str, amount_hbar: float, simulate: bool = True) -> ExecutionResult:
+    def execute_v1_swap(self, from_id: str, to_id: str, amount: float, simulate: bool = True) -> ExecutionResult:
         """
         Standalone V1 execution logic.
         Decoupled from V2 to allow independent deletion.
         """
         from lib.v1_saucerswap import SaucerSwapV1
         
-        logger.info(f"\n🚀 Executing V1 Swap: {amount_hbar} HBAR → {to_id}")
+        # 1. Resolve Symbols and Decimals
+        from_meta = self._get_token_data(from_id)
+        to_meta = self._get_token_data(to_id)
+        
+        from_sym = from_meta.get("symbol", from_id) if from_meta else from_id
+        to_sym = to_meta.get("symbol", to_id) if to_meta else to_id
+        from_dec = from_meta.get("decimals", 8) if from_meta else 8
+        to_dec = to_meta.get("decimals", 8) if to_meta else 8
+
+        logger.info(f"\n🚀 Executing V1 Swap: {amount} {from_sym} → {to_sym}")
         
         # Initialize client
         pk = self.config.private_key.reveal() if self.config.private_key else None
         v1_client = SaucerSwapV1(self.w3, network=self.network, private_key=pk)
         if pk: del pk
 
-        # Convert amount to tinybar
-        amount_raw = int(amount_hbar * 10**8) # HBAR decimals is 8
+        # Convert amount to raw units using token's decimals
+        amount_raw = int(amount * 10**from_dec)
 
         try:
-            # 1. Quote
+            # 2. Quote
             logger.info("   🔍 Fetching V1 Quote...")
-            amount_out_expected = v1_client.get_quote_single(from_id, to_id, amount_raw)
+            amount_out_raw = v1_client.get_quote_single(from_id, to_id, amount_raw)
             slippage_factor = 1.0 - (self.config.max_slippage_percent / 100.0)
-            min_out = int(amount_out_expected * slippage_factor)
+            min_out = int(amount_out_raw * slippage_factor)
             
             if simulate:
-                logger.info(f"   [SIM] V1 Swap Simulation OK. Expected: {amount_out_expected / 10**8:.6f} {to_id}")
-                final = ExecutionResult(success=True, tx_hash="SIMULATED_V1", amount_in_raw=amount_raw, amount_out_raw=amount_out_expected)
+                expected_human = amount_out_raw / (10**to_dec)
+                logger.info(f"   [SIM] V1 Swap Simulation OK. Expected: {expected_human:.6f} {to_sym}")
+                final = ExecutionResult(
+                    success=True, 
+                    tx_hash="SIMULATED_V1", 
+                    amount_in_raw=amount_raw, 
+                    amount_out_raw=amount_out_raw
+                )
                 
-                # Record to history
-                from_token = "HBAR" if from_id in ["0.0.0", "0.0.1456986"] else from_id
-                to_token = to_id
-                try:
-                    with open("data/tokens.json") as f:
-                        tdata = json.load(f)
-                        for sym, meta in tdata.items():
-                            if meta.get("id") == to_id:
-                                to_token = sym
-                                break
-                except: pass
-                
-                self._record_v1_execution(from_token, to_token, amount_hbar, final, simulate=True)
+                self._record_v1_execution(from_sym, to_sym, amount, final, simulate=True)
                 return final
 
-            # 2. Swap
+            # 3. Swap
             logger.info("   ⚡ Broadcasting V1 Swap...")
             tx_hash = v1_client.swap_exact_input(from_id, to_id, amount_raw, min_out)
             
-            # 3. Verify
+            # 4. Verify
             logger.info(f"   ⏳ Verifying V1 Tx: {tx_hash}...")
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
             
             if receipt.status == 1:
-                # Use expected amount for history as log parsing is complex
                 final = ExecutionResult(
                     success=True, 
                     tx_hash=tx_hash,
                     gas_used=receipt.gasUsed,
                     amount_in_raw=amount_raw,
-                    amount_out_raw=amount_out_expected
+                    amount_out_raw=amount_out_raw
                 )
-                
-                # Attempt to get better amount_out from logs if possible
-                # (V1 Uniswap V2 Pair Sweep)
                 
                 # Enrich for history
                 final.hbar_usd_price = self._get_hbar_price_usd()
                 final.gas_cost_hbar = (receipt.gasUsed * self.w3.eth.gas_price) / 10**18
                 final.gas_cost_usd = final.gas_cost_hbar * final.hbar_usd_price
                 
-                # Record to history
-                from lib.v1_saucerswap import V1_WHBAR_ID
-                from_token = "HBAR" if from_id in ["0.0.0", V1_WHBAR_ID] else from_id
-                to_token = to_id # We don't have a symbol here easily but ID is better than nothing
-                
-                # Try to resolve symbol for to_token if possible
-                try:
-                    with open("data/tokens.json") as f:
-                        tdata = json.load(f)
-                        for sym, meta in tdata.items():
-                            if meta.get("id") == to_id:
-                                to_token = sym
-                                break
-                except: pass
-
-                self._record_v1_execution(from_token, to_token, amount_hbar, final, simulate=False)
+                self._record_v1_execution(from_sym, to_sym, amount, final, simulate=False)
                 return final
             else:
                 return ExecutionResult(success=False, error="V1 Transaction Reverted")
@@ -319,6 +303,39 @@ class PacmanExecutor:
                 return meta.get("id")
         except Exception:
             pass
+        return None
+
+    def _get_token_data(self, token_id_or_symbol: str) -> Optional[dict]:
+        """Get full metadata for a token from tokens.json."""
+        try:
+            root = Path(__file__).parent.parent
+            tokens_path = root / "data" / "tokens.json"
+            if not tokens_path.exists():
+                 tokens_path = Path("data/tokens.json")
+
+            with open(tokens_path) as f:
+                tokens_data = json.load(f)
+            
+            search = token_id_or_symbol.upper()
+            
+            # 1. Check if it's already an ID
+            if token_id_or_symbol.startswith("0.0."):
+                for meta in tokens_data.values():
+                    if meta.get("id") == token_id_or_symbol:
+                        return meta
+                # Special cases for HBAR
+                if token_id_or_symbol == "0.0.0":
+                    return tokens_data.get("HBAR")
+            
+            # 2. Key/Symbol lookup
+            if search in tokens_data:
+                return tokens_data[search]
+            
+            for meta in tokens_data.values():
+                if meta.get("symbol", "").upper() == search:
+                    return meta
+                    
+        except: pass
         return None
 
     def execute_swap(self, route, raw_amount: float = 0.0, mode: str = "exact_in", **kwargs) -> ExecutionResult:
