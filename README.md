@@ -13,7 +13,7 @@
 [![DEX: SaucerSwap](https://img.shields.io/badge/DEX-SaucerSwap-purple.svg)](https://saucerswap.finance)
 [![License: MIT](https://img.shields.io/badge/License-MIT-ghostwhite.svg)](https://opensource.org/licenses/MIT)
 
-## ᗧ· · · 👾 Give your OpenClaw a Hedera toolkit that can grow with your ideas comsumes and adventures 
+## ᗧ· · · 👾 Give your OpenClaw a Hedera toolkit that can grow with your ideas and adventures 
 
 **Pacman** is an open-source, AI-native trading and operations primitive built on the Hedera Hashgraph for the Hedera Apex Hackathon 2026. It provides a lightweight, pure-terminal interface completely bypassing web frontends, indexers, and intermediary services so that your OpenClaw can control a wallet, conduct swaps, submit and withdraw liquidity, stake, send and receive tokens and much much more, giving you direct access to the Hashgraph. 
 
@@ -83,7 +83,7 @@ Run the interactive setup wizard:
 ```bash
 pacman setup
 ```
-Pacman will guide you through setting up your Hedera `Account ID` and masking your `Private Key`. It will automatically generate your local `.env` file safely without printing your secrets to the console, and will auto-associate a base set of top SaucerSwap V2 tokens (USDC, WBTC, WETH, etc.) so you're ready to trade.
+Pacman (or OpenClaw) will guide you through setting up your Hedera `Account ID` and masking your `Private Key`. It will automatically generate your local `.env` file safely without printing your secrets to the console, and will auto-associate a base set of top SaucerSwap V2 tokens (USDC, WBTC, WETH, etc.) so you're ready to trade.
 
 > [!TIP]
 > **Safety Guardrail**: We highly recommend keeping `PACMAN_SIMULATE=true` in your `.env` file while testing. In this mode, Pacman will perform exact route finding and `eth_call` simulations against the mainnet, but will **NOT** broadcast the final signed transaction, preventing gas waste and fund loss.
@@ -109,7 +109,7 @@ pools approve 0.0.1234xx
 Pacman is built to be an **agentic trading primitive**. Every command outputs deterministic, highly structured text designed for LLM parsing, removing the need for agents to blindly navigate varying web DOMs.
 
 ### How to Hook Your Agent Up:
-1. **Download the Skill**: Provide your agent (like OpenClaw) with `docs/SKILLS.md` and `docs/AGENT_INTEGRATION_PLAN.md`. These files act as system prompts defining exact syntax and Hedera-specific caveats.
+1. **Download the Skill**: Provide your agent (like OpenClaw) with `docs/SKILLS.md` and `docs/AI_AGENT_GUIDE.md`. These files act as system prompts defining exact syntax and Hedera-specific caveats.
 2. **Execute as a Subprocess**: Agents can call the CLI in "One-Shot" mode entirely from their background process without needing to enter the interactive shell:
    ```bash
    pacman swap 10 HBAR for USDC

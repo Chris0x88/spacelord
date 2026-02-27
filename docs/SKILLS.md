@@ -35,11 +35,20 @@ Convert between HTS variants (e.g., LayerZero bridged vs Native) using `swap`.
 - **Deprecated**: The standalone `convert` command was removed in Feb 2026; use `swap` for all conversions.
 
 
-### 4. Meta-Actions
-- **Balance**: `balance` (Returns all token holdings + USD values).
-- **History**: `history` (Returns transaction log with HashScan links).
+### 4. Background Limit Orders
+Agents can set passive targets that the background daemon executes when prices match.
+- **Syntax (Buy)**: `orders buy [amt] [token] below [price]` (e.g., `orders buy 10 USDC below 0.20 HBAR`)
+- **Syntax (Sell)**: `orders sell [amt] [token] above [price]`
+- **Management**: `orders list`, `orders cancel [id]`
+- **Daemon Control**: `orders daemon on` `orders daemon status`
 
----
+### 5. Sub-Account Operations
+Agents can derive disposable child keys to isolate funds and strategies.
+- **Syntax**: `account --new`, `account --list`, `account --switch [id]`
+
+### 6. Meta-Actions
+- **Balance**: `balance` (Returns all token holdings + USD values).
+- **History**: `history` (Returns transaction log scoped to the active account with HashScan links).
 
 ## 🧠 Strategic Internal Logic
 

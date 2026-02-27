@@ -57,16 +57,38 @@ The CLI outputs professional transaction records. When reporting back to a user:
 - Quote the **Net Effective Rate** (the real price paid).
 - Mention **HTS Readiness** if the tool associated a new token for them.
 
-## Operational Modes
-- **Interactive**: Just run `python3 cli/main.py` and type commands.
-- **One-Shot**: `python3 cli/main.py "swap 10 HBAR for USDC"` for direct pipeline execution.
-
 ---
 *Note: This CLI handles proactive HTS token association and approval hardening automatically. You do not need to manually associate tokens before suggesting a swap.*
 
 ---
 
-## 8. Agent Error Recovery Best Practices
+## 5. Sub-Account Management (Disposable Keys)
+
+Agents can operate multiple isolated identities under one master `.env` key.
+
+- **Create a New Sub-Account**: `account --new` (Derives a fresh Hedera ED25519 key, funds it with 1 HBAR if possible, and stores it in `data/accounts.json`).
+- **List Sub-Accounts**: `account --list`
+- **Switch Context**: `account --switch 0.0.xxxxx` 
+- **Context Isolation**: When you switch accounts, active limit orders and history views are automatically scoped to the *currently active* wallet. 
+
+### 🛡️ Agent Constraint:
+If you are running a risky experimental strategy, **always** spin up a new sub-account (`account --new`) and isolate your trades rather than risking the master wallet balance.
+
+## 6. Autonomous Limit Orders
+
+Agents can set passive background targets.
+
+- **Create Limit Buy**: `orders buy 100 USDC below 0.20 HBAR`
+- **Create Limit Sell**: `orders sell 500 HBAR above 0.30 USDC`
+- **Manage Orders**: `orders list`, `orders cancel <id>`, `orders history`
+- **Start Daemon**: `orders daemon on` (This starts a background polling thread that will watch prices and execute the swap when conditions are met).
+
+### 🤖 Agent Tactic:
+Instead of constantly polling prices yourself and wasting your token context limits, offload price-monitoring by spawning limit orders and turning the daemon on. The daemon will execute the trade for you while you sleep.
+
+---
+
+## 7. Operational Modes
 
 As an AI agent, you will encounter transient failures. Handle them gracefully.
 
