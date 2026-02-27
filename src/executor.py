@@ -619,7 +619,7 @@ class PacmanExecutor:
                 if simulate and self.eoa == "0x0000000000000000000000000000000000000000":
                      current_balance = 10**24 # Plentiful fake balance
                 else:
-                     current_balance = self.w3.eth.get_balance(self.eoa)
+                     current_balance = self.w3.eth.get_balance(self.eoa) // (10**10) # Scale EVM Wei down to Tinybars
             else:
                 logger.debug(f"      - Fetching {step.from_token} balance...")
                 if simulate and self.eoa == "0x0000000000000000000000000000000000000000":
@@ -635,11 +635,15 @@ class PacmanExecutor:
             if mode == "exact_out":
                  needed_balance = int(amount_in_expected * slippage_factor_in)
             
-            if current_balance < needed_balance:
-                # RAISE EXCEPTION instead of returning fail
-                raise InsufficientFundsError(f"Insufficient funds: Have {current_balance}, Need {needed_balance}")
+            # If we are simulating a multi-hop, the intermediate balance won't actually be in the wallet.
+            # We skip the strict balance check for intermediate steps in dry runs.
+            is_intermediate_sim = (simulate and i > 0)
 
-            if not is_native_hbar:
+            if current_balance < needed_balance and not is_intermediate_sim:
+                # RAISE EXCEPTION instead of returning fail
+                raise InsufficientFundsError(f"Insufficient funds: Have {current_balance / (10**self._get_token_decimals(step.from_token)):.6f}, Need {needed_balance / (10**self._get_token_decimals(step.from_token)):.6f}")
+
+            if not is_native_hbar and not is_intermediate_sim:
                 current_allowance = self.client.get_allowance(from_token_id, self.client.eoa, self.client.router_address)
                 if current_allowance < needed_balance:
                     logger.info(f"   🔓 Approving {step.from_token} (EVM/HTS Redirect)...")
