@@ -15,87 +15,66 @@ from src.logger import logger
 
 def get_balances(w3, eoa: str, client) -> Dict[str, float]:
     """
-    Fetch all non-zero token balances using Multicall.
-    This reduces 30+ RPC calls to 1-2 chunks.
+    Fetch all non-zero token balances from Hedera Mirror Node.
+    This automatically discovers tokens NOT in the local tokens.json registry.
     """
-    from lib.multicall import Multicall
-    from lib.saucerswap import hedera_id_to_evm
-
+    import requests
     balances = {}
 
-    # 1. HBAR Balance (Native)
-    hbar_bal = w3.eth.get_balance(eoa)
-    hbar_readable = hbar_bal / (10**18)
-    if hbar_readable > 0:
-        balances["HBAR"] = hbar_readable
-
-    # 2. Load Token List
+    # 1. HBAR Balance (Native) - Always check local RPC for real-time accuracy
     try:
-        root = Path(__file__).parent.parent
-        tokens_path = root / "data" / "tokens.json"
-        if not tokens_path.exists():
-            tokens_path = Path("data/tokens.json")
+        hbar_bal = w3.eth.get_balance(eoa)
+        hbar_readable = hbar_bal / (10**18)
+        if hbar_readable > 0:
+            balances["HBAR"] = hbar_readable
+    except Exception as e:
+        logger.warning(f"Failed to fetch HBAR balance from RPC: {e}")
 
-        with open(tokens_path) as f:
+    # 2. Token Balances from Mirror Node
+    # This is the 'Headless Discovery' fix: find everything the user actually owns.
+    try:
+        url = f"https://mainnet-public.mirrornode.hedera.com/api/v1/accounts/{eoa}/tokens"
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            # Fetch symbols from tokens.json to use nice names where possible
+            try:
+                with open("data/tokens.json") as f:
+                    t_registry = json.load(f)
+                id_to_sym = {meta['id']: sym for sym, meta in t_registry.items()}
+            except:
+                id_to_sym = {}
+
+            for t_record in data.get('tokens', []):
+                tid = t_record.get('token_id')
+                bal = int(t_record.get('balance', 0))
+                if bal <= 0: continue
+
+                # Try to get decimals from Mirror Node token details API
+                # or fallback to common symbols if possible
+                decimals = 8 # Safety fallback
+                try:
+                    t_url = f"https://mainnet-public.mirrornode.hedera.com/api/v1/tokens/{tid}"
+                    t_resp = requests.get(t_url, timeout=5)
+                    if t_resp.status_code == 200:
+                        decimals = int(t_resp.json().get('decimals', 8))
+                except: pass
+
+                sym = id_to_sym.get(tid)
+                if not sym:
+                    # Resolve symbol from mirror node if not in registry
+                    try: sym = t_resp.json().get('symbol', tid)
+                    except: sym = tid
+
+                balances[sym] = bal / (10**decimals)
+                
+    except Exception as e:
+        logger.error(f"Mirror Node balance discovery failed: {e}")
+        # Final fallback to existing sequential logic if mirror node is down
+        with open("data/tokens.json") as f:
             tokens_data = json.load(f)
-    except Exception as e:
-        logger.error(f"Error: Could not load tokens.json for balance check: {e}")
-        return balances
-
-    # 3. Prepare Batch Calls
-    calls = []
-    token_meta_map = {}  # call_index -> (symbol, decimals)
-
-    # Load ABI for balanceOf
-    ERC20_ABI = client.w3.eth.contract(abi=client._erc20_abi).abi
-
-    # Helper to encode calldata
-    temp_contract = w3.eth.contract(abi=ERC20_ABI)
-    calldata = temp_contract.encode_abi("balanceOf", args=[eoa])
-
-    idx = 0
-    for sym, meta in tokens_data.items():
-        token_id = meta.get("id")
-        if not token_id:
-            continue
-
-        # Skip if native HBAR (already got it)
-        if token_id in ["0.0.0", "HBAR"]:
-            continue
-
-        try:
-            target = hedera_id_to_evm(token_id)
-            # (target, allowFailure, callData)
-            calls.append((target, True, calldata))
-            token_meta_map[idx] = (sym, meta.get("decimals", 8))
-            idx += 1
-        except:
-            continue
-
-    # 4. Execute Multicall (Chunked if needed, but 50 fits easily)
-    if not calls:
-        return balances
-
-    logger.debug(f"   ⚡ Batch fetching {len(calls)} token balances via Multicall...")
-
-    try:
-        mc = Multicall(w3)
-        results = mc.aggregate(calls)
-
-        # 5. Decode Results
-        for i, (success, return_data) in enumerate(results):
-            if success and len(return_data) >= 32:
-                # Decode uint256
-                val = int.from_bytes(return_data, byteorder='big')
-                if val > 0:
-                    sym, decimals = token_meta_map[i]
-                    balances[sym] = val / (10**decimals)
-    except Exception as e:
-        logger.warning(f"   ⚠️ Multicall failed ({e}), falling back to sequential...")
-        # Fallback to sequential if multicall fails
         return _get_balances_sequential(client, tokens_data)
 
-    logger.debug(f"Fetched {len(balances)} non-zero balances.")
     return balances
 
 

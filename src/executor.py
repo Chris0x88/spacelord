@@ -538,7 +538,19 @@ class PacmanExecutor:
         if "SAUCE" in sym or "XSAUCE" in sym: return 6
         if "WBTC" in sym: return 8
         if "WETH" in sym: return 8
-        return 8  # Default for HBAR
+        if "BONZO" in sym: return 8
+        if "PACK" in sym: return 6
+        
+        # Last resort: Mirror Node lookup
+        if token_id_or_sym.startswith("0.0."):
+            try:
+                import requests
+                r = requests.get(f"https://mainnet-public.mirrornode.hedera.com/api/v1/tokens/{token_id_or_sym}", timeout=3)
+                if r.status_code == 200:
+                    return int(r.json().get('decimals', 8))
+            except: pass
+            
+        return 8  # Default for HBAR and unknowns
 
 
 
