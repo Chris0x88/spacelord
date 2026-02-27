@@ -32,4 +32,14 @@ package.json
 # IDEs
 .vscode/
 .idea/
+
+# Pacman CLI Setup
 pacman_env/
+pacman_cli.egg-info/
+
+# Local Data Storage
+data/*.json
+!data/*.template.json
+
+# Private Documentation
+docs_private/

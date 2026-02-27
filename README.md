@@ -8,89 +8,102 @@
     ██║     ██║  ██║╚██████╗██║ ╚═╝ ██║██║  ██║██║ ╚████║
     ╚═╝     ╚═╝  ╚═╝ ╚═════╝╚╚╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
 ```
-### ᗧ· · · 👾 SaucerSwap V2 & PACTUI on Hedera
+```markdown
+```markdown
+### ᗧ· · · 👾 Hedera Wallet and Saucerswap trading CLI for OpenClaw
+```
+```
 
-An open-source wallet and trading system for Hedera, the most reliable and cost-effective L1. Deeply integrated with SaucerSwap V2 pools, Pacman allows you to swap, manage liquidity, and place limit orders—or delegate these tasks to your AI agents.
+**Welcome Hedera Apex Hackathon Mentors and Builders!** 👋
 
-> ⚠️ **WARNING**: Security implications of agentic control are experimental and **EXTREMELY HIGH RISK**. This software is in development. Use on Testnet and treat as an experimental window into the future of self-custody.
+**Pacman** is an open-source, AI-native trading CLI primitive built directly on the Hedera Hashgraph. It provides a lightweight, pure-terminal interface for swapping, managing liquidity, and placing limit orders via SaucerSwap V2 pools, completely bypassing web frontends and indexers.
+
+Designed from the ground up for agentic infrastructure (OpenClaw, AutoGPT, MCP), Pacman serves as the foundational "action layer" for AI agents to interact with Hedera's DeFi ecosystem.
+
+> ⚠️ **WARNING**: Security implications of agentic control are experimental and **EXTREMELY HIGH RISK**. This software is in active development. Use on Testnet and treat as an experimental window into the future of self-custody.
 
 
 [![Network: Hedera](https://img.shields.io/badge/Network-Hedera-blue.svg)](https://hedera.com)
 [![DEX: SaucerSwap](https://img.shields.io/badge/DEX-SaucerSwap-purple.svg)](https://saucerswap.finance)
 [![License: MIT](https://img.shields.io/badge/License-MIT-ghostwhite.svg)](https://opensource.org/licenses/MIT)
 
-**Pacman** is a lightweight, AI-native trading CLI primitive for the Hedera network. It handles the "spectral" complexity of HTS token variants, proactive associations, and high-accuracy price discovery so that your agents—and you—can trade effortlessly.
-
 ---
 
 ## 🌪️ Features
 
-- **Natural Language Execution**: Swap and send using intuitive commands: `swap 10 HBAR for USDC`.
-- **PACTUI (Dashboard)**: A stunning, high-density Terminal UI for overseeing your entire portfolio and active orders in real-time.
+- **Natural Language Execution**: Swap and send using intuitive commands: `swap 10 HBAR for USDC`. Perfect for NLP-based AI interpretation.
 - **Autonomous Limit Orders**: Set passive Buy/Sell targets that execute in the background via the "Sentinel" daemon.
-- **Intelligent Variant Routing**: Automatically discovers the optimal path through HTS and ERC20-wrapped variants.
-- **Proactive Association**: Pacman detects missing token associations and initializes them on-chain automatically.
-- **Multi-Tier Price Discovery**: Aggregates live data from SaucerSwap V2, CoinGecko, and Binance.
-- **AI-Agent Ready**: Built as a primitive for agentic infrastructures (OpenClaw, AutoGPT, etc.) with detailed logging and low-latency startup.
-- **Security First**: Mandatory transaction simulations and local private key management.
+- **Proactive Association**: Pacman detects missing Hedera token associations and initializes them on-chain automatically.
+- **Multi-Tier Price Discovery**: Aggregates live data from SaucerSwap V2 bypassing API congestion directly via contract `eth_calls`.
+- **Security First**: Mandatory execution simulation before transaction broadcast and deterministic offline private key signing.
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Safe Setup)
 
 ### 1. Installation
-Clone the repository and install the package:
+Clone the repository and install the package globally. This allows you to run `pacman` from any directory on your machine.
 ```bash
 git clone https://github.com/chris0x88/pacman.git
 cd pacman
 pip install -e .
 ```
+*(Installing globally auto-bootstraps the `pacman_env` virtual environment and commands.)*
 
-### 2. Launching
-- **CLI**: Run `pacman` to start the interactive shell.
-- **TUI**: Run `pactui` for the dashboard (for users).
+### 2. Configuration (Onboarding Wizard)
+Before you can trade, you need to configure your environment. Run the interactive setup wizard:
+```bash
+pacman setup
+```
+Pacman will guide you through setting up your `Account ID`, masking your `Private Key`, and generating your local `.env` file safely without printing secrets to the console. 
 
-### 2. Configuration (Onboarding)
-Once the CLI starts, Pacman will guide you through the setup:
-1.  **Wallet Setup**: Run `setup` to securely enter your Account ID and Private Key (masked input).
-2.  **API Key**: Set your SaucerSwap API key when prompted for high-accuracy pricing.
-3.  **Bootstrap Liquidity**: Run `pools search USDC` and `pools approve <ID>` to whitelist your first trading pairs.
+> [!TIP]
+> **Safety Guardrail**: We highly recommend keeping `PACMAN_SIMULATE=true` in your `.env` file while testing. In this mode, Pacman will perform exact route finding and `eth_call` simulations against the mainnet, but will **NOT** broadcast the final signed transaction, preventing gas waste and fund loss.
+
+### 3. Launching & Testing
+Once configured, you can launch the interactive shell:
+```bash
+pacman
+```
+To bootstrap liquidity tracking for a specific asset, try approving a pool:
+```bash
+pools search USDC
+pools approve 0.0.1234xx
+```
 
 > [!IMPORTANT]
-> **Modular Discovery**: Pacman does not ship with a bloated pool list. You must "Approve" the pools you want to trade in to keep your routing engine fast and curated.
+> **Modular Discovery**: Pacman does not ship with a bloated pool list. You must "Approve" the pools you want to trade in. This keeps the local pathfinding graph highly optimized and lightning fast.
 
 ---
 
-## 👤 Interactive Console
+## 🤖 OpenClaw & AI Agent Integration
 
-Simply run `./pacman` to enter the interactive trading shell:
+Pacman is built to be an **agentic trading primitive**. Every command outputs deterministic, highly structured text designed for LLM parsing, removing the need for agents to blindly navigate varying web DOMs.
 
-| Action | Example Command |
-| :--- | :--- |
-| **Swap (Exact In)** | `swap 100 HBAR for USDC` |
-| **Swap (Exact Out)** | `swap HBAR for 20 USDC` |
-| **Limit Order** | `order buy HBAR at 0.08 size 100` |
-| **Transfer** | `send 50 USDC to 0.0.1234` |
-| **Liquidity** | `pool-deposit` (Wizard) |
-| **Wallet Balance** | `balance` |
-| **Market Prices** | `price` |
+### How to Hook Your Agent Up:
+1. **Download the Skill**: Provide your agent (like OpenClaw) with `docs/SKILLS.md` and `docs/AI_AGENT_GUIDE.md`. These files act as system prompts defining exact syntax and Hedera-specific caveats (like HBAR vs WHBAR wrapping).
+2. **Execute as a Subprocess**: Agents can call the CLI in "One-Shot" mode entirely from their background process without needing to enter the interactive shell:
+   ```bash
+   pacman swap 10 HBAR for USDC
+   ```
+3. **Parse and Learn**: Every execution saves a highly detailed JSON artifact to `execution_records/`. Agents can ingest these local records to maintain internal ledgers without needing to query a Mirror Node or indexer.
 
 ---
 
-## 🤖 For AI Developers
+## 🔮 The Future: Agentic & Security Vision
 
-Pacman is designed to be "Consumed" by AI agents. Every command generates structured terminal output that is easy for LLMs to parse, and detailed execution logs are stored in `logs/` for strategy auditing.
+While Pacman works out of the box today, for enterprise and autonomous consumer adoption, we must radically shift the security model.
 
-- [AI Agent Interaction Guide](docs/AI_AGENT_GUIDE.md)
-- [Router Evolution Documentation](deprecated/ROUTER_EVOLUTION.md)
+### 1. Phasing Out Local Private Keys (AWS KMS & Privy.io)
+Currently, Pacman holds the private key in local `.env` memory to sign transactions. If the agent's environment is compromised, the "Hot Account" is compromised. The future roadmap includes integrating **Multi-Party Computation (MPC)** via **Privy.io** or Hardware Security Modules via **AWS KMS**. 
 
----
+In the future, Pacman will build the transaction payloads and route them to an external secure enclave. The agent *requests* a signature; it never *owns* the key.
 
-## 🛡️ Security & Guardrails
+### 2. Seamless Agent Subroutines
+We plan to introduce deeper **Model Context Protocol (MCP)** support. We will wrap the underlying `src/controller.py` functions natively into MCP tool-schemas, enabling any Claude or GPT instance to preview routes, query balances, and validate token metadata *without* needing to pipe standard output via Bash.
 
-- **Simulation Mode**: Set `PACMAN_SIMULATE=true` in `.env` to test routes without broadcasting live transactions.
-- **Local Keys Only**: Your private keys never leave your machine.
-- **Slippage Protection**: Hard-capped slippage limits prevent execution during extreme volatility.
+### 3. PACTUI
+A high-density Terminal UI (TUI) Dashboard is currently in the initial concept stage (`pactui`), aiming to provide human operators a commanding overview of their AI agent's concurrent trading activities.
 
 ---
 
@@ -98,5 +111,5 @@ Pacman is designed to be "Consumed" by AI agents. Every command generates struct
 **Release Status**: `v0.9.3` (Stable Beta)
 ```
 ```markdown
-**Legal**: Use at your own risk. This is experimental software released for criticism and feedback, input and growth. We suggest using testnet accounts while testing.
+**Disclaimer**: Use at your own risk. This is experimental software released for criticism, feedback, and growth. Do not put life savings into a hot wallet managed by an experimental AI.
 ```

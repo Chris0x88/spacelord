@@ -137,13 +137,29 @@ def refresh(force=False):
                 print(f"  {C.WARN}⚠{C.R}  Unexpected {label} response format.")
         
         # 3. Filter relevant pools
-        # Keep pool if EITHER token is in our whitelist
+        # Only keep pools that are explicitly registered in pools.json
         relevant_pools = []
+        approved_pools = set()
+        
+        # Load approved pools list to strictly filter
+        pools_file = DATA_DIR / "pools.json"
+        if pools_file.exists():
+            with open(pools_file) as pf:
+                for p in json.load(pf):
+                    if "contractId" in p:
+                        approved_pools.add(p["contractId"])
+                        
+        # Load v1 approved pools list
+        v1_pools_file = DATA_DIR / "v1_pools_approved.json"
+        if v1_pools_file.exists():
+            with open(v1_pools_file) as pf:
+                for p in json.load(pf):
+                    if "contractId" in p:
+                        approved_pools.add(p["contractId"])
+
         for pool in all_pools:
-            ta = pool.get("tokenA", {}).get("id")
-            tb = pool.get("tokenB", {}).get("id")
-            
-            if ta in whitelist or tb in whitelist:
+            cid = pool.get("contractId")
+            if cid in approved_pools:
                 relevant_pools.append(pool)
         
         # 4. Save

@@ -28,6 +28,7 @@ class PacmanController:
 
     def __init__(self, config_path: str = "config.yaml"):
         """Initialize the application components."""
+        self._ensure_data_templates()
         try:
             self.config = PacmanConfig.from_env()
             self.executor = PacmanExecutor(self.config)
@@ -46,6 +47,22 @@ class PacmanController:
         except Exception as e:
             logger.error(f"Failed to initialize PacmanApp: {e}")
             raise
+
+    def _ensure_data_templates(self):
+        """Copy .template.json files to .json if they do not exist (first boot)."""
+        import shutil
+        from pathlib import Path
+        data_dir = Path(__file__).parent.parent / "data"
+        
+        if not data_dir.exists():
+            data_dir.mkdir(parents=True, exist_ok=True)
+            
+        for template_path in data_dir.glob("*.template.json"):
+            target_name = template_path.name.replace(".template.json", ".json")
+            target_path = data_dir / target_name
+            if not target_path.exists():
+                logger.info(f"Initializing {target_name} from template...")
+                shutil.copy2(template_path, target_path)
 
     def get_balances(self) -> Dict[str, float]:
         """Fetch all non-zero token balances for the account."""

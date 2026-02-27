@@ -6,10 +6,10 @@
 ---
 
 ## 🛠 Prerequisites
-- **CLI**: `python3 pacman_cli.py "[command]"`
+- **CLI**: `./pacman "[command]"` (e.g., `./pacman swap 10 HBAR for USDC`)
 - **Setup**:
     - Ensure `.env` has `PRIVATE_KEY` set.
-    - Run `python cli/main.py setup` to configure if needed.
+    - Run `./pacman setup` to configure if needed.
 - **Safety**: Set `PACMAN_SIMULATE=true` to preview routes without execution.
 
 ---

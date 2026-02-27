@@ -150,10 +150,29 @@ def main():
 
     # Interactive Mode
     cmd_help(app, [])
+    
+    import select
     while True:
         try:
-            user_input = input(f"\n  {C.ACCENT}ᗧ{C.R} ").strip()
-            if not user_input: continue
+            # Print prompt safely
+            sys.stdout.write(f"\n  {C.ACCENT}ᗧ{C.R} ")
+            sys.stdout.flush()
+            
+            # Wait for input with a timeout so background prints don't permanently lock the terminal
+            user_input = None
+            while True:
+                r, _, _ = select.select([sys.stdin], [], [], 0.5)
+                if r:
+                    user_input = sys.stdin.readline()
+                    break
+                    
+            if not user_input:
+                continue
+                
+            user_input = user_input.strip()
+            if not user_input: 
+                continue
+                
             if user_input.lower() in ["exit", "quit", "q"]:
                 print(f"  {C.MUTED}Shutting down.{C.R}")
                 break
@@ -162,6 +181,8 @@ def main():
 
         except KeyboardInterrupt:
             print(f"\n  {C.MUTED}Interrupted.{C.R}")
+            break
+        except EOFError:
             break
 
 if __name__ == "__main__":
