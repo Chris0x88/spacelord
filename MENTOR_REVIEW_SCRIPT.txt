@@ -1,0 +1,79 @@
+================================================
+PACMAN: AI AGENTIC TRADING PRIMITIVE
+Mentor Review Script & Walkthrough 
+================================================
+
+Welcome! If you are reviewing this project for the Hedera Apex Hackathon 2026, 
+this script provides a safe, curated path to test Pacman's core capabilities.
+
+Pacman is a pure-terminal interface completely bypassing web frontends. It 
+allows users, and more importantly, local AI Models (like OpenClaw/AutoGPT), to 
+navigate the SaucerSwap V2 infrastructure seamlessly using Natural Language.
+
+==============================
+PHASE 1: SAFE SETUP 
+==============================
+Before starting, we highly recommend you use a DISPOSABLE TEST WALLET with 
+roughly 5-10 HBAR. Do not use your primary HBAR holding wallet.
+
+1. Clone and install the tool globally:
+   git clone https://github.com/chris0x88/pacman.git
+   cd pacman
+   pip install -e .
+
+2. Run the interactive setup:
+   pacman setup
+
+3. Follow the prompts to input your Hedera Account ID and Private Key. 
+   When asked, keep Simulation Mode turned ON! (This prevents actual gas loss).
+
+==============================
+PHASE 2: CORE ACTIONS
+==============================
+Run these exact commands in your terminal to see Pacman parse language into 
+hardened Ethereum EVM transaction data structures without a browser.
+
+1. View your wallet state and tokens:
+   pacman balance
+
+2. Test the NLP Swap Engine (Exact Input):
+   pacman "swap 10 HBAR for USDC"
+
+3. Test Exact-Output Routing:
+   pacman "swap USDC to get 500 HBAR"
+
+4. Test Sub-Account Derivation (Disposable Keys):
+   pacman account --new
+   pacman "swap 5 HBAR for USDC"
+
+==============================
+PHASE 3: PASSIVE AUTONOMY
+==============================
+Pacman features a fully autonomous local daemon for executing Limit Orders while 
+the user sleeps or while an AI model does other background tasks.
+
+1. Create a passive limit order target:
+   pacman "orders buy 100 USDC below 0.15 HBAR"
+
+2. Start the autonomous daemon:
+   pacman orders daemon on
+
+3. Check the daemon log stream:
+   pacman orders daemon status
+
+4. Cancel the target:
+   pacman orders list
+   (Find your order ID)
+   pacman orders cancel <order_id>
+
+==============================
+PHASE 4: AGENT CONFIGURATION
+==============================
+The primary objective of this project is serving as the "Hand" for AI Models.
+
+Please review the following file in the repo to see exactly how an AI Agent 
+hooks into these tools to act entirely autonomously on the Hedera network:
+
+- .agent/agents.md (The system prompt instruction manual for AI agents)
+
+Thank you for reviewing Pacman!
