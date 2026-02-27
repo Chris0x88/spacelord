@@ -541,6 +541,9 @@ def _update_env(key, value, force=False):
             backup_key = f"PRIVATE_KEY_BACKUP_{ts}"
             # Check if this backup line already exists in the list to avoid duplicates
             if not any(line.startswith(f"{backup_key}=") for line in existing_lines):
+                # Ensure previous line has a newline
+                if existing_lines and not existing_lines[-1].endswith("\n"):
+                    existing_lines[-1] += "\n"
                 existing_lines.append(f"{backup_key}={current_pk}\n")
                 print(f"  {C.OK}📦 Archived existing key as {C.BOLD}{backup_key}{C.R}")
 
