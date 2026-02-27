@@ -66,25 +66,61 @@ class PacmanController:
 
     def reload_wallet(self):
         """
-        Hot-reload wallet credentials from .env without restarting the process.
-        Call this immediately after writing a new PRIVATE_KEY / HEDERA_ACCOUNT_ID.
+        Full account context switch — hot-reload credentials and reset all
+        account-specific state without restarting the process.
+
+        Steps:
+          1. Stop limit order daemon (old account's orders must not fire)
+          2. Re-read .env into os.environ
+          3. Rebuild config + executor with new credentials
+          4. Reset account manager and limit engine references
+          5. Clear accounts.json (sub-account registry is per-account)
+          6. Restart limit order daemon if it was enabled
         """
-        import importlib, os
-        # Force Python to re-read the .env file into os.environ
+        import json
         from dotenv import load_dotenv
         from pathlib import Path
+
+        # 1. Stop the limit order daemon before swapping credentials
+        if self._limit_engine is not None and self._limit_engine.is_running:
+            logger.info("[Reload] Stopping limit order daemon...")
+            self._limit_engine.stop_monitor()
+        was_daemon_enabled = False
+        if self._limit_engine is not None:
+            was_daemon_enabled = self._limit_engine._daemon_enabled
+
+        # 2. Re-read .env
         env_path = Path(__file__).resolve().parent.parent / ".env"
         load_dotenv(dotenv_path=env_path, override=True)
 
-        # Rebuild config and executor with fresh env
+        # 3. Rebuild core components
         self.config = PacmanConfig.from_env()
         self.executor = PacmanExecutor(self.config)
         self.account_id = self.config.hedera_account_id
         self.network = self.config.network
-        # Also update the account manager reference so it picks up the new client
+
+        # 4. Reset lazy-init references
         self._account_manager = None
+        self._limit_engine = None
+
+        # 5. Clear the sub-account registry (accounts.json is per-account)
+        accounts_path = Path(__file__).resolve().parent.parent / "data" / "accounts.json"
+        try:
+            with open(accounts_path, "w") as f:
+                json.dump([], f, indent=2)
+            logger.info("[Reload] Cleared accounts.json for new account")
+        except Exception as e:
+            logger.warning(f"[Reload] Could not clear accounts.json: {e}")
 
         logger.info(f"[Reload] Wallet reloaded → {self.account_id}")
+
+        # 6. Restart limit order daemon if it was running (now against new account)
+        if was_daemon_enabled:
+            try:
+                logger.info("[Reload] Re-starting limit order daemon for new account...")
+                self.limit_engine.start_monitor(self)
+            except Exception as e:
+                logger.warning(f"[Reload] Could not restart daemon: {e}")
 
     def get_balances(self) -> Dict[str, float]:
         """Fetch all non-zero token balances for the account."""
