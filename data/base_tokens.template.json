@@ -28,11 +28,6 @@
             "note": "Staked SAUCE (xSAUCE)"
         },
         {
-            "id": "0.0.834116",
-            "symbol": "HBARX",
-            "note": "Staked HBAR (Stader)"
-        },
-        {
             "id": "0.0.1055483",
             "symbol": "WBTC_LZ",
             "note": "Wrapped BTC (LayerZero ERC20)"
