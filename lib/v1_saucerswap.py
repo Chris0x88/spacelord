@@ -104,7 +104,7 @@ class SaucerSwapV1:
         # Build & Sign
         tx = tx_func.build_transaction({
             "from": self.eoa,
-            "gas": 1_000_000,
+            "gas": 2_000_000,
             "gasPrice": self.w3.eth.gas_price,
             "nonce": self.w3.eth.get_transaction_count(self.eoa),
             "chainId": self.chain_id,

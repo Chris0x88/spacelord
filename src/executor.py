@@ -137,7 +137,14 @@ class PacmanExecutor:
         
         # Initialize web3 and client
         logger.debug(f"   [RPC] Connecting to {self.rpc_url} (timeout=10s)...")
-        self.w3 = Web3(Web3.HTTPProvider(self.rpc_url, request_kwargs={'timeout': 10}))
+        # Hashio requires x-api-key header; include if present in env
+        import os
+        headers = {}
+        api_key = os.getenv("SAUCERSWAP_API_KEY_MAINNET") or os.getenv("PACMAN_API_KEY")
+        if api_key:
+            headers["x-api-key"] = api_key
+            logger.debug(f"   [RPC] Added x-api-key header")
+        self.w3 = Web3(Web3.HTTPProvider(self.rpc_url, request_kwargs={'timeout': 10, 'headers': headers}))
         
         # We skip is_connected() as it can hang on some providers
         # Connection will be tested on first actual RPC call
@@ -615,7 +622,7 @@ class PacmanExecutor:
                     amount_out_raw=amount_out_expected,
                     quoted_rate=quoted_rate,
                     effective_rate=quoted_rate,
-                    gas_offered=1_000_000,
+                    gas_offered=2_000_000,
                     gas_used=SIM_GAS_USED,
                     gas_price_hbar=0.00000085,
                     gas_cost_hbar=SIM_GAS_COST_HBAR,
@@ -716,7 +723,7 @@ class PacmanExecutor:
                 amount_out_raw=amount_out_expected,
                 quoted_rate=quoted_rate,
                 effective_rate=quoted_rate,
-                gas_offered=1_000_000,
+                gas_offered=2_000_000,
                 gas_used=gas_used,
                 gas_cost_hbar=gas_cost_hbar,
                 account_id=self.hedera_account_id,
