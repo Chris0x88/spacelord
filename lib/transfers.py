@@ -41,7 +41,8 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str,
                     with open("data/settings.json") as f:
                         settings = json.load(f)
                         whitelist = settings.get("transfer_whitelist", [])
-                        if recipient not in whitelist:
+                        whitelist_addresses = [entry.get("address") for entry in whitelist]
+                        if recipient not in whitelist_addresses:
                             return {"success": False, "error": f"SAFETY: Recipient {recipient} not in whitelist!"}
                 except Exception as e:
                     return {"success": False, "error": f"SAFETY: Whitelist check failed: {e}"}

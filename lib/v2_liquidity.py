@@ -195,7 +195,7 @@ class V2LiquidityManager:
 
             tx = self.contract.functions.multicall(encoded_calls).build_transaction({
                 "from": self.eoa,
-                "gas": 1_000_000,
+                "gas": 2_000_000,
                 "gasPrice": self.w3.eth.gas_price,
                 "nonce": self.w3.eth.get_transaction_count(self.eoa),
                 "chainId": self.chain_id,
@@ -211,7 +211,7 @@ class V2LiquidityManager:
 
             tx = self.contract.functions.mint(params).build_transaction({
                 "from": self.eoa,
-                "gas": 1_000_000,
+                "gas": 2_000_000,
                 "gasPrice": self.w3.eth.gas_price,
                 "nonce": self.w3.eth.get_transaction_count(self.eoa),
                 "chainId": self.chain_id,
@@ -276,7 +276,7 @@ class V2LiquidityManager:
 
         tx2 = self.contract.functions.collect(collect_params).build_transaction({
             "from": self.eoa,
-            "gas": 1_000_000,
+            "gas": 2_000_000,
             "gasPrice": self.w3.eth.gas_price,
             "nonce": self.w3.eth.get_transaction_count(self.eoa),
             "chainId": self.chain_id,

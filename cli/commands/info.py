@@ -90,6 +90,8 @@ def cmd_pools(app, args):
         print(f"  {C.TEXT}pools list{C.R}             List all approved pools")
         print(f"  {C.TEXT}pools search <q>{C.R}       Search on-chain pools (symbol/ID)")
         print(f"  {C.TEXT}pools approve <id>{C.R}    Add pool to approved list")
+        print(f"  {C.TEXT}pools deposit{C.R}         Liquidity deposit wizard")
+        print(f"  {C.TEXT}pools withdraw{C.R}        Liquidity withdrawal wizard")
         print(f"  {C.TEXT}pools delete <id>{C.R}     Remove pool from list")
         print(f"  {C.CHROME}{'─' * 56}{C.R}")
         print(f"  {C.MUTED}Flags: -1 (V1), -2 (V2). Default: V2{C.R}")
@@ -134,6 +136,12 @@ def cmd_pools(app, args):
             _pools_delete(app, sub_args[0], "both")
         else:
             _pools_delete(app, sub_args[0], protocol)
+    elif action == "withdraw":
+        from cli.commands.liquidity import cmd_pool_withdraw
+        return cmd_pool_withdraw(app, sub_args)
+    elif action == "deposit":
+        from cli.commands.liquidity import cmd_pool_deposit
+        return cmd_pool_deposit(app, sub_args)
     else:
         print(f"  {C.ERR}✗{C.R} Unknown action: {action}")
 
