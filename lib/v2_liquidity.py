@@ -258,31 +258,42 @@ class V2LiquidityManager:
             self.contract.functions.decreaseLiquidity(decrease_params).call({"from": self.eoa})
             return ["SIMULATED_DECREASE_OK", "SIMULATED_COLLECT_OK"]
 
-        tx = self.contract.functions.decreaseLiquidity(decrease_params).build_transaction({
-            "from": self.eoa,
-            "gas": 2_000_000,
-            "gasPrice": self.w3.eth.gas_price,
-            "nonce": self.w3.eth.get_transaction_count(self.eoa),
-            "chainId": self.chain_id,
-        })
+        try:
+            tx = self.contract.functions.decreaseLiquidity(decrease_params).build_transaction({
+                "from": self.eoa,
+                "gas": 2_000_000,
+                "gasPrice": self.w3.eth.gas_price,
+                "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                "chainId": self.chain_id,
+            })
 
-        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
-        tx_hash1 = self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        self.w3.eth.wait_for_transaction_receipt(tx_hash1, timeout=120)
+            signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            tx_hash1 = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            self.w3.eth.wait_for_transaction_receipt(tx_hash1, timeout=120)
 
-        # Step 2: collect
-        MAX_UINT128 = 2 ** 128 - 1
-        collect_params = (token_id, self.eoa, MAX_UINT128, MAX_UINT128)
+            # Step 2: collect
+            MAX_UINT128 = 2 ** 128 - 1
+            collect_params = (token_id, self.eoa, MAX_UINT128, MAX_UINT128)
 
-        tx2 = self.contract.functions.collect(collect_params).build_transaction({
-            "from": self.eoa,
-            "gas": 2_000_000,
-            "gasPrice": self.w3.eth.gas_price,
-            "nonce": self.w3.eth.get_transaction_count(self.eoa),
-            "chainId": self.chain_id,
-        })
+            tx2 = self.contract.functions.collect(collect_params).build_transaction({
+                "from": self.eoa,
+                "gas": 2_000_000,
+                "gasPrice": self.w3.eth.gas_price,
+                "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                "chainId": self.chain_id,
+            })
 
-        signed2 = self.w3.eth.account.sign_transaction(tx2, self.private_key)
-        tx_hash2 = self.w3.eth.send_raw_transaction(signed2.raw_transaction)
+            signed2 = self.w3.eth.account.sign_transaction(tx2, self.private_key)
+            tx_hash2 = self.w3.eth.send_raw_transaction(signed2.raw_transaction)
 
-        return [tx_hash1.hex(), tx_hash2.hex()]
+            return [tx_hash1.hex(), tx_hash2.hex()]
+        except Exception as e:
+            # Log detailed error for debugging
+            import traceback
+            logger.error(f"Remove liquidity failed: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    logger.error(f"RPC response body: {e.response.text}")
+                except Exception:
+                    pass
+            raise
