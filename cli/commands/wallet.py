@@ -484,7 +484,7 @@ def check_wallet_setup(app):
     if len(sys.argv) > 1 and sys.argv[1] in ["help", "pools", "tokens", "price"]:
         return
 
-    if not app.config.private_key.get_secret_value():
+    if not app.config.private_key:
         print(f"\n  {C.BOLD}{C.TEXT}Welcome to Pacman!{C.R}")
         print(f"  {C.MUTED}To start trading, you'll need to configure your Hedera wallet.{C.R}")
         print(f"  Run {C.BOLD}{C.ACCENT}setup{C.R} to get started.")
