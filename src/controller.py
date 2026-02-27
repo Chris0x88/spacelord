@@ -74,7 +74,7 @@ class PacmanController:
           2. Re-read .env into os.environ
           3. Rebuild config + executor with new credentials
           4. Reset account manager and limit engine references
-          5. Clear accounts.json (sub-account registry is per-account)
+          5. Clear accounts.json and orders.json (so old orders don't fire for new account)
           6. Restart limit order daemon if it was enabled
         """
         import json
@@ -111,6 +111,15 @@ class PacmanController:
             logger.info("[Reload] Cleared accounts.json for new account")
         except Exception as e:
             logger.warning(f"[Reload] Could not clear accounts.json: {e}")
+
+        # 6. Clear limit orders (orders.json is bound to the old account's balances/approvals)
+        orders_path = Path(__file__).resolve().parent.parent / "data" / "orders.json"
+        try:
+            with open(orders_path, "w") as f:
+                json.dump([], f, indent=2)
+            logger.info("[Reload] Cleared orders.json for new account")
+        except Exception as e:
+            logger.warning(f"[Reload] Could not clear orders.json: {e}")
 
         logger.info(f"[Reload] Wallet reloaded → {self.account_id}")
 
