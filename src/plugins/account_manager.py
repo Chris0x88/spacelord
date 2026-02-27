@@ -137,9 +137,11 @@ class AccountManager:
             tx = AccountCreateTransaction() \
                 .set_key(new_key.public_key()) \
                 .set_initial_balance(Hbar.from_hbars(initial_balance_hbar)) \
+                .set_max_automatic_token_associations(-1) \
                 .set_account_memo("Pacman Created Account")
 
             # 3. Execute
+            tx.freeze_with(self.client)
             response = tx.execute(self.client)
             
             # Handle potential difference in SDK return types (Proven pattern from staking.py)

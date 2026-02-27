@@ -184,21 +184,26 @@ class PacmanController:
 
     @property
     def account_manager(self):
-        """Lazy initialization of the AccountManager plugin."""
+        """Lazy initialization of the AccountManager plugin with dynamic operator sync."""
         if self._account_manager is None:
             from src.plugins.account_manager import AccountManager
             self._account_manager = AccountManager(network=self.network)
-            # If we have a key, set it as operator
-            if self.config.private_key:
-                pk = self.config.private_key.reveal()
-                # Basic validation: must be 64-char hex string (32 bytes)
-                clean_pk = pk.replace("0x", "")
-                if len(clean_pk) == 64 and self.account_id and "." in str(self.account_id):
-                    try:
+        
+        # Always sync operator if we have a key, preventing freezeWith desyncs
+        # after a user runs 'setup' and switches accounts in the same session.
+        if self.config.private_key:
+            pk = self.config.private_key.reveal()
+            clean_pk = pk.replace("0x", "")
+            if len(clean_pk) == 64 and self.account_id and "." in str(self.account_id):
+                try:
+                    # Only update if the operator actually changed
+                    if not hasattr(self._account_manager, 'operator_id') or self._account_manager.operator_id != self.account_id:
                         self._account_manager.set_operator(self.account_id, pk)
-                    except Exception as e:
-                        logger.warning(f"Could not set operator with ID '{self.account_id}': {e}")
-                del pk
+                except Exception as e:
+                    from src.logger import logger
+                    logger.warning(f"Could not sync operator with ID '{self.account_id}': {e}")
+            del pk
+            
         return self._account_manager
 
     @property

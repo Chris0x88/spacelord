@@ -105,6 +105,7 @@ class StakingManager:
                 tx.set_transaction_memo("Pacman Staking Update")
 
             # Execute
+            tx.freeze_with(self.client)
             response = tx.execute(self.client)
             
             # Handle potential difference in SDK return types
