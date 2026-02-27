@@ -100,11 +100,13 @@ def record_execution(route, token_amount: float, results: list, simulate: bool,
         logger.debug(f"Training log write failed (non-fatal): {e}")
 
 
-def record_v1_execution(from_sym: str, to_sym: str, amount_hbar: float,
+def record_v1_execution(from_sym: str, to_sym: str, amount_token: float,
                         res, simulate: bool, eoa: str, network: str,
                         recordings_dir: Path):
     """Record V1 execution to history (mirrors V2 format)."""
-    # Convert to_amount_token from raw if it's HexBytes (should be int now, but safety first)
+    from lib.prices import price_manager
+    
+    # 1. Resolve Output Decimals & Amount
     raw_to = res.amount_out_raw
     if hasattr(raw_to, "hex"):
         try:
@@ -112,23 +114,37 @@ def record_v1_execution(from_sym: str, to_sym: str, amount_hbar: float,
         except:
             raw_to = 0
 
-    # Get correct decimals for to_token
     to_decimals = 8
     try:
         with open("data/tokens.json") as f:
             tdata = json.load(f)
-            # Try to find decimals by symbol or ID
             meta = tdata.get(to_sym)
             if meta:
                 to_decimals = meta.get("decimals", 8)
             else:
-                # Search by ID
                 for m in tdata.values():
                     if m.get("id") == to_sym:
                         to_decimals = m.get("decimals", 8)
                         break
-    except:
-        pass
+    except: pass
+
+    actual_to_amount = raw_to / 10**to_decimals if isinstance(raw_to, (int, float)) and raw_to > 0 else 0
+
+    # 2. Determine USD Value for Input token
+    input_usd_price = 0.0
+    if from_sym.upper() == "HBAR":
+        input_usd_price = res.hbar_usd_price
+    else:
+        # Try to resolve ID for price lookup
+        from_id = from_sym
+        try:
+            with open("data/tokens.json") as f:
+                tdata = json.load(f)
+                meta = tdata.get(from_sym)
+                if meta:
+                    from_id = meta.get("id", from_id)
+        except: pass
+        input_usd_price = price_manager.get_price(from_id)
 
     record = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -139,12 +155,12 @@ def record_v1_execution(from_sym: str, to_sym: str, amount_hbar: float,
             "to": to_sym,
             "protocol": "V1",
             "steps": 1,
-            "total_cost_hbar": amount_hbar,
+            "total_cost_hbar": amount_token if from_sym.upper() == "HBAR" else 0, # Only HBAR counts toward HBAR cost
             "hashpack_visible": False
         },
-        "amount_token": amount_hbar,
-        "to_amount_token": raw_to / 10**to_decimals if isinstance(raw_to, (int, float)) and raw_to > 0 else 0,
-        "amount_usd": round(amount_hbar * res.hbar_usd_price, 2) if res.hbar_usd_price > 0 else 0,
+        "amount_token": amount_token,
+        "to_amount_token": actual_to_amount,
+        "amount_usd": round(amount_token * input_usd_price, 2) if input_usd_price > 0 else 0,
         "gas_used": res.gas_used,
         "gas_cost_hbar": res.gas_cost_hbar,
         "results": [res.to_dict()],

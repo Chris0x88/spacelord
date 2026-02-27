@@ -884,10 +884,10 @@ class PacmanExecutor:
             self._get_token_decimals, self._get_hbar_price_usd
         )
 
-    def _record_v1_execution(self, from_sym: str, to_sym: str, amount_hbar: float, res: ExecutionResult, simulate: bool = True):
+    def _record_v1_execution(self, from_sym: str, to_sym: str, amount: float, res: ExecutionResult, simulate: bool = True):
         """Record V1 execution to history."""
         _record_v1_execution_impl(
-            from_sym, to_sym, amount_hbar, res, simulate,
+            from_sym, to_sym, amount, res, simulate,
             self.eoa, self.network, self.recordings_dir
         )
 
