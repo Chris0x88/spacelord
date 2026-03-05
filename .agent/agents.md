@@ -9,6 +9,13 @@ No browser. No indexer. Direct RPC → smart contracts.
 
 ---
 
+## How to Start
+The standard entry point is the zero-dependency launcher:
+```bash
+./launch.sh
+```
+This handles `uv` installation, Python resolution, and all dependencies automatically.
+
 ## Architecture Map (read this before touching anything)
 
 ```
@@ -186,6 +193,7 @@ Everything else in `docs/` is historical context — don't delete, don't activel
 ### 🔴 CRITICAL: Git Hygiene for Contributors
 Because this repository is shared with other developers, follow these rules for every commit:
 1. **NO PERSONAL DOCS**: Never commit files starting with `TODO_`, `TEMP_`, or any personal planning notes to the main branch. 
-2. **USE .gitignore**: Ensure any local-only or experimental files match the patterns in `.gitignore`.
-3. **SIZE DISCIPLINE**: Keep the repo lean. Current size is ~173MB (mostly `pacman_env`). Do not commit large datasets or binaries.
-4. **ATOMICIITY**: Each commit should represent one functional change or fix.
+2. **TRIAL FIRST**: NEVER push directly to `main`. Push to `master` or a dedicated trial branch for user review. Once trialed and approved, changes can be merged to `main`.
+3. **USE .gitignore**: Ensure any local-only or experimental files match the patterns in `.gitignore`.
+4. **SIZE DISCIPLINE**: Keep the repo lean. Use `uv` for dependency management.
+5. **ATOMICIITY**: Each commit should represent one functional change or fix.
