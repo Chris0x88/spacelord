@@ -1,3 +1,4 @@
+LICENSE
 README.md
 pyproject.toml
 cli/__init__.py
@@ -39,6 +40,7 @@ src/history.py
 src/limit_orders.py
 src/logger.py
 src/router.py
+src/sync_data.py
 src/translator.py
 src/types.py
 src/utils.py
