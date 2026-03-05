@@ -189,7 +189,8 @@ class PacmanVariantRouter:
         """Check if a pair is blacklisted for direct routing."""
         # broken pools or low liquidity direct pairs that should be routed via hub
         BLACKLIST = [
-            {"HBAR", "WBTC[HTS]"}, # Direct pool is broken/reverting. Note: match _id_to_sym output.
+            {"HBAR", "WBTC[HTS]"}, # Old format, left for safety
+            {"HBAR", "HTS-WBTC"},  # Direct pool is broken/reverting. Match _id_to_sym output.
         ]
         pair = {sym_a.upper(), sym_b.upper()}
         return pair in BLACKLIST
