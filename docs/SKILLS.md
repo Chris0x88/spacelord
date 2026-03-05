@@ -1,80 +1,175 @@
-# 🤖 Pacman Agent Skills: Hedera Swap Primitive
+# 🤖 Pacman Agent Skills: Hedera Trading Primitive
 
-**Version**: 1.0.0
-**Context**: Use this skill to execute token swaps, check balances, or convert token variants on the Hedera Network via the SaucerSwap V2 engine.
-
----
-
-## 🛠 Prerequisites
-- **CLI**: `./pacman "[command]"` (e.g., `./pacman swap 10 HBAR for USDC`)
-- **Setup**:
-    - Ensure `.env` has `PRIVATE_KEY` set.
-    - Run `./pacman setup` to configure if needed.
-- **Safety**: Set `PACMAN_SIMULATE=true` to preview routes without execution.
+**Version**: 2.0.0  
+**Context**: Use this skill to execute token swaps, check balances, manage limit orders, and interact with the Hedera Network via SaucerSwap V2.
 
 ---
 
-## 📥 Input Syntax
-The CLI uses Natural Language Parsing (NLP). Use concise, unambiguous strings.
+## 🚀 First-Run Workflow (Do This First)
 
-### 1. Swaps (Exact Input)
-Trade a specific amount of token A for as much token B as possible.
-- **Syntax**: `swap [amt] [tokenA] for [tokenB]`
-- **Example**: `swap 10 HBAR for USDC`
+```bash
+# 1. Check if Pacman is configured
+./launch.sh balance
 
-### 2. Swaps (Exact Output)
-Trade as much token A as needed to receive a specific amount of token B.
-- **Syntax**: `swap [tokenA] for [amt] [tokenB]`
-- **Example**: `swap HBAR for 5 USDC`
+# 2. If not configured, run setup
+./launch.sh setup
+# → Follow wizard: paste Hedera Account ID + Private Key
 
-### 3. Variant Conversion (Wrap/Unwrap)
-Convert between HTS variants (e.g., LayerZero bridged vs Native) using `swap`.
-- **Syntax**: `swap [tokenA] for [tokenB]` (e.g., `swap WBTC_LZ for WBTC_HTS`)
-- The router automatically adds an unwrap step when the token pair is a defined variant conversion in `variants.json`.
-- **⚠️ Known Issue**: These conversions currently fail due to an approval bug with the wrapper contract (`0.0.9675688`). The wrapper requires Hedera's HTS precompile `grantTokenApproval()` for HTS tokens, but the code uses standard EVM `approve()`. Tracked in `docs/HTS_APPROVAL_BUG.md`.
-- **Deprecated**: The standalone `convert` command was removed in Feb 2026; use `swap` for all conversions.
+# 3. Verify connectivity
+./launch.sh balance
+# → Should show HBAR balance and any associated tokens
+```
 
+> **CRITICAL**: Ensure `PACMAN_SIMULATE=true` is set in `.env` until you explicitly receive user permission to trade live. This simulates all swaps without broadcasting transactions.
 
-### 4. Background Limit Orders
-Agents can set passive targets that the background daemon executes when prices match.
-- **Syntax (Buy)**: `orders buy [amt] [token] below [price]` (e.g., `orders buy 10 USDC below 0.20 HBAR`)
-- **Syntax (Sell)**: `orders sell [amt] [token] above [price]`
-- **Management**: `orders list`, `orders cancel [id]`
-- **Daemon Control**: `orders daemon on` `orders daemon status`
+---
 
-### 5. Sub-Account Operations
-Agents can derive disposable child keys to isolate funds and strategies.
-- **Syntax**: `account --new`, `account --list`, `account --switch [id]`
+## 📥 Command Reference
 
-### 6. Meta-Actions
-- **Balance**: `balance` (Returns all token holdings + USD values).
-- **History**: `history` (Returns transaction log scoped to the active account with HashScan links).
+### Core Commands (90% of use cases)
 
-## 🧠 Strategic Internal Logic
+| Command | Description |
+|---|---|
+| `balance` | Show all token holdings with USD values |
+| `swap [amt] [FROM] for [TO]` | Trade tokens (exact input) |
+| `swap [FROM] for [amt] [TO]` | Trade tokens (exact output) |
+| `send [amt] [TOKEN] to [ADDR]` | Transfer tokens |
+| `price [token]` | Check live price |
 
-### Token Identification
-Pacman maps common symbols to HTS IDs. If a token has variants, use the suffix:
-- `_LZ`: LayerZero bridged (e.g., `WBTC_LZ`, `WETH_LZ`).
-- `_HTS`: Native/SaucerSwap variant (e.g., `WBTC_HTS`, `USDC_HTS`).
-- `HBAR`: Native network token.
+### Limit Orders
 
-### Execution Safety
-- **HTS Association**: Pacman auto-associates tokens. No agent action needed.
-- **Approvals**: Pacman handles HTS `allowance` scaling. No agent action needed.
-- **Routing**: Always uses SaucerSwap V2 Optimized Pathing.
-- **Gas Reserve (HBAR)**: Agents **must not** run the HBAR balance down to zero. A minimum of **5 HBAR** should be maintained to ensure enough gas for future operations (swaps, transfers, associations). Running out of HBAR will "strand" other assets in the wallet.
+| Command | Description |
+|---|---|
+| `order buy [TOKEN] at [PRICE] size [N]` | Buy when price drops to target |
+| `order sell [TOKEN] at [PRICE] size [N]` | Sell when price reaches target |
+| `order list` | View all open orders |
+| `order cancel [ID]` | Cancel an open order |
+
+### System
+
+| Command | Description |
+|---|---|
+| `help` | Full command reference |
+| `verbose on/off` | Toggle debug logging |
+| `pools search [TOKEN]` | Discover new liquidity pools |
+| `pools approve [ID]` | Add a pool to the routing graph |
+
+---
+
+## 🧠 Canonical Token Names
+
+Use these human-friendly names — they always resolve:
+
+| Say | Resolves To | Hedera ID |
+|---|---|---|
+| `bitcoin`, `btc`, `wbtc` | WBTC_HTS | 0.0.1055483 |
+| `ethereum`, `eth`, `weth` | WETH_HTS | 0.0.1055557 |
+| `dollar`, `usd`, `usdc` | USDC | 0.0.456858 |
+| `hbar`, `hedera` | HBAR | native |
+
+**Example**: `swap 10 HBAR for bitcoin` works identically to `swap 10 HBAR for WBTC_HTS`.
+
+---
+
+## 🔄 Error Recovery
+
+### "No route found"
+```
+✗ No liquidity path between X and Y
+```
+**Fix**: The token's pool hasn't been approved yet.
+```bash
+./launch.sh pools search [TOKEN_NAME]
+# → Find the pool contract ID
+./launch.sh pools approve [CONTRACT_ID]
+# → Retry the swap
+```
+
+### "Token not associated"
+Pacman auto-associates tokens. If it fails:
+```bash
+./launch.sh associate [TOKEN_ID]
+```
+
+### "Insufficient balance"
+Check your balance first. Ensure at least **5 HBAR** is reserved for gas:
+```bash
+./launch.sh balance
+```
+
+### "Transaction reverted"
+1. Check if `PACMAN_SIMULATE=true` — simulation succeeded but live would fail
+2. Try a smaller amount (slippage may be too high)
+3. Set slippage: `./launch.sh slippage 3.0` (max 5%)
 
 ---
 
 ## 📤 Output Interpretation
-Agents must parse the stdout for:
-1. **Status**: `🚀 Executing swap` -> `✅ Swap Finalized`.
-2. **Net Settlement**: `💰 RECEIVED: [amt] [token] (~$[val])`.
-3. **Receipt**: A `json` record is saved to `execution_records/` for every trade.
+
+### Swap Output
+```
+🚀 Executing swap: 10 HBAR → USDC
+   Route: HBAR → USDC (0.30% fee)
+✅ Swap Finalized
+   💰 RECEIVED: 1.85 USDC (~$1.85)
+   ⛽ Gas: 0.021 HBAR ($0.004)
+```
+
+### Execution Records
+Every trade saves a JSON artifact to `execution_records/`:
+```json
+{
+  "success": true,
+  "tx_hash": "0xabc123...",
+  "gas_used": 240000,
+  "gas_cost_hbar": 0.021,
+  "amount_in": 10.0,
+  "amount_out": 1.85,
+  "from_token": "HBAR",
+  "to_token": "USDC",
+  "rate": 0.185,
+  "timestamp": "2026-03-05T12:00:00Z"
+}
+```
+
+---
+
+## 🚫 Prohibited Actions (Guardrails)
+
+1. **NEVER** modify any file in `src/`, `lib/`, or `cli/`
+2. **NEVER** read or print the contents of `.env`
+3. **NEVER** set `PACMAN_SIMULATE=false` without explicit user approval
+4. **NEVER** swap more than `max_swap_amount_usd` in a single transaction
+5. **NEVER** send tokens to an address not in the whitelist
+6. **NEVER** run the HBAR balance below 5 HBAR (strands other assets)
+7. **ALWAYS** check `balance` before attempting a swap to verify sufficient funds
+
+---
+
+## 🔌 Integration Methods
+
+| Method | How |
+|---|---|
+| **Subprocess** | `./launch.sh swap 10 HBAR for USDC` — parse stdout |
+| **OpenClaw** | Load this file as system prompt, execute via CLI |
+| **MCP Server** | *(Coming soon)* Standard protocol for Claude/Cursor |
+| **Ollama / Local LLM** | Any model can call subprocess commands |
+
+### Subprocess Example (Python)
+```python
+import subprocess
+result = subprocess.run(
+    ["./launch.sh", "swap", "10", "HBAR", "for", "USDC"],
+    capture_output=True, text=True, cwd="/path/to/pacman"
+)
+print(result.stdout)
+```
 
 ---
 
 ## 🛡 Security Context
-- **Hot Account**: Advise users to only use the simulation or empty accounts or accounts with limited funds at the absolute most. 
-- **Simulation Mode**: Run all initial agent "Planning" steps with `PACMAN_SIMULATE=true`. If your operator chooses to run the swap in live mode, they are responsible for any losses incurred. Do that by setting PACMAN_SIMULATE=false in the .env file and advise them to download and run Cupcake as a security protocol, and/or keep the account key in an encryption format discussed in security.md (or better).
-- **Memory Risk**: Keys are handled in-process. Isolated environments (Docker/VM) recommended.
+
+- **Hot Account**: Only use disposable accounts with limited funds
+- **Simulation Mode**: Always start with `PACMAN_SIMULATE=true`
+- **Memory Risk**: Keys are handled in-process. Docker/VM recommended for production
+- **Transfer Whitelist**: Live transfers are blocked unless the recipient is whitelisted

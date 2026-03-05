@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pacman-cli"
-version = "0.9.3"
-description = "Terminal-based trading engine for Hedera Hashgraph"
+version = "1.0.0-beta"
+description = "AI-native self-custody middleware for Hedera Hashgraph"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -22,8 +22,13 @@ dependencies = [
 
 [project.scripts]
 pacman = "cli.main:main"
-pactui = "tui.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*", "cli*", "lib*", "data*", "tui*"]
+include = ["src*", "cli*", "lib*", "data*"]
+
+# ---------------------------------------------------------------------------
+# uv Configuration (zero-dependency launcher)
+# ---------------------------------------------------------------------------
+[tool.uv]
+python = "3.12"

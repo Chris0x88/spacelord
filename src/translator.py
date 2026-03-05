@@ -23,13 +23,23 @@ VARIANTS_FILE = DATA_DIR / "variants.json"
 ALIASES: Dict[str, str] = {}
 
 def load_static_aliases():
-    """Load manually curated nicknames from aliases.json."""
+    """Load manually curated nicknames from aliases.json + built-in canonical defaults."""
     global ALIASES
+    
+    # Built-in canonical aliases — these MUST always resolve
+    CANONICAL = {
+        "BITCOIN": "WBTC_HTS", "BTC": "WBTC_HTS",
+        "ETHEREUM": "WETH_HTS", "ETH": "WETH_HTS",
+        "DOLLAR": "USDC", "USD": "USDC", "STABLECOIN": "USDC",
+        "HEDERA": "HBAR",
+    }
+    ALIASES.update(CANONICAL)
+    
     try:
         if ALIASES_FILE.exists():
             with open(ALIASES_FILE) as f:
                 data = json.load(f)
-                # Normalize keys to UPPERCASE for robust matching
+                # User aliases override built-in (normalize to UPPERCASE)
                 ALIASES.update({k.upper(): v for k, v in data.items()})
     except Exception:
         pass

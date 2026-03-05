@@ -76,6 +76,15 @@ class PacmanVariantRouter:
     # WHBAR is strictly blacklisted for UI, but used for internal routing
     BLACKLISTED_TOKENS = ["0.0.1456986"]
     
+    # Canonical token defaults — human-friendly names → internal variant keys
+    # These MUST always resolve. Users say "bitcoin", agents say "WBTC_HTS".
+    CANONICAL_DEFAULTS = {
+        "bitcoin": "WBTC_HTS", "btc": "WBTC_HTS", "wbtc": "WBTC_HTS",
+        "ethereum": "WETH_HTS", "eth": "WETH_HTS", "weth": "WETH_HTS",
+        "dollar": "USDC", "usd": "USDC", "usdc": "USDC", "stablecoin": "USDC",
+        "hbar": "HBAR", "hedera": "HBAR",
+    }
+    
     def __init__(self, price_manager=None):
         self.pool_graph = {}  # (token_in, token_out) -> (pool_id, fee_bps, in_id, out_id, liquidity_usd)
         self.pools_data = []  # Store raw pool data for metadata lookup
@@ -358,6 +367,14 @@ class PacmanVariantRouter:
             confidence=0.95 if len(steps) == 1 else 0.85
         )
     
+    def resolve_canonical(self, name: str) -> str:
+        """Resolve human-friendly names to internal variant keys.
+        
+        'bitcoin' → 'WBTC_HTS', 'dollar' → 'USDC', etc.
+        Returns the original name if no canonical mapping exists.
+        """
+        return self.CANONICAL_DEFAULTS.get(name.lower().strip(), name)
+
     def _score_route(self, steps: List[RouteStep], volume_usd: float) -> float:
         """
         Score a route by total effective cost.
@@ -369,6 +386,9 @@ class PacmanVariantRouter:
         
         Lower score = better route.
         """
+        # Guard: ensure volume is positive to avoid division by zero
+        safe_volume = max(volume_usd, 1.0)
+        
         total_fee_pct = sum(s.fee_percent for s in steps)
         
         # Estimate price impact from liquidity depth
@@ -376,19 +396,16 @@ class PacmanVariantRouter:
         for step in steps:
             liq = step.details.get("liquidity_usd", 0)
             if liq > 0:
-                # Simple constant-product price impact: trade_size / (2 * pool_liquidity)
-                # Using 2x because AMM impact on one side affects both sides
-                total_impact += volume_usd / (2.0 * liq)
+                total_impact += safe_volume / (2.0 * liq)
             else:
-                # Unknown liquidity — add a penalty to prefer known pools
                 total_impact += 0.01  # 1% penalty for unknown depth
         
         # Gas cost as a percentage of trade value
         total_gas_hbar = sum(s.gas_estimate_hbar for s in steps)
         gas_cost_pct = 0.0
-        if volume_usd > 0 and self.htbar_price > 0:
+        if self.htbar_price > 0:
             gas_cost_usd = total_gas_hbar * self.htbar_price
-            gas_cost_pct = gas_cost_usd / volume_usd
+            gas_cost_pct = gas_cost_usd / safe_volume
         
         return total_fee_pct + total_impact + gas_cost_pct
     
@@ -525,14 +542,20 @@ class PacmanVariantRouter:
 
     def recommend_route(self, from_variant: str, to_variant: str, 
                        user_preference: str = "auto",
-                       volume_usd: float = 100) -> Optional[VariantRoute]:
+                       volume_usd: float = 100) -> VariantRoute:
         """
-        Recommend best route for a SWAP.
+        Recommend best route for a SWAP. NEVER returns None.
         
         Logic:
+        0. Resolve canonical names (bitcoin → WBTC_HTS, etc.)
         1. Check if it's a direct Wrap/Unwrap (Efficiency Check).
         2. If not, perform full graph search for Swap routes.
+        3. If all fail, return an error route with explanation.
         """
+        # 0. Resolve canonical names
+        from_variant = self.resolve_canonical(from_variant)
+        to_variant = self.resolve_canonical(to_variant)
+        
         # 1. Efficiency Check: Is this just a wrap?
         direct_wrap = self.calculate_strict_wrap_route(from_variant, to_variant, volume_usd)
         if direct_wrap:
@@ -542,7 +565,30 @@ class PacmanVariantRouter:
         routes = self.get_all_routes(from_variant, to_variant, volume_usd)
         
         if not routes:
-            return None
+            # --- NEVER-FAIL: Return error route with explanation ---
+            reasons = []
+            meta_in = self._get_token_meta(from_variant)
+            meta_out = self._get_token_meta(to_variant)
+            if not meta_in:
+                reasons.append(f"Token '{from_variant}' not found. Run 'pools search {from_variant}' to discover pools.")
+            if not meta_out:
+                reasons.append(f"Token '{to_variant}' not found. Run 'pools search {to_variant}' to discover pools.")
+            if meta_in and meta_out:
+                reasons.append(f"No liquidity path between {from_variant} and {to_variant}. Try approving more pools with 'pools search'.")
+            
+            logger.warning(f"Router: No route {from_variant} → {to_variant}: {'; '.join(reasons)}")
+            return VariantRoute(
+                from_variant=from_variant,
+                to_variant=to_variant,
+                steps=[],
+                total_fee_percent=0.0,
+                total_gas_hbar=0.0,
+                total_cost_hbar=0.0,
+                estimated_time_seconds=0,
+                output_format="ERROR",
+                hashpack_visible=False,
+                confidence=0.0
+            )
             
         if user_preference == "cheapest":
             return routes[0]
@@ -551,7 +597,7 @@ class PacmanVariantRouter:
             for route in routes:
                 if route.hashpack_visible:
                     return route
-            return None
+            return routes[0]  # Fallback to cheapest if no visible route
         
         elif user_preference == "auto":
             cheapest = routes[0]
