@@ -184,13 +184,25 @@ class PacmanAdapter:
                 return {"success": False, "error": "No route found for rebalance"}
             
             result = self.controller.swap(from_token, to_token, amount)
+            
+            # The controller returns an ExecutionResult object, not a dict.
+            # Convert it to a dict first if it has a to_dict method, or access properties directly.
+            result_dict = result.to_dict() if hasattr(result, 'to_dict') else {
+                "success": getattr(result, "success", False),
+                "tx_hash": getattr(result, "tx_hash", None),
+                "amount_in": getattr(result, "amount_in", amount),
+                "amount_out": getattr(result, "amount_out", 0),
+                "error": getattr(result, "error", "Unknown error"),
+            }
+            
             return {
-                "success": result.get("success", False),
-                "tx_hash": result.get("tx_hash"),
-                "amount_in": result.get("amount_in"),
-                "amount_out": result.get("amount_out"),
+                "success": result_dict.get("success", False),
+                "tx_hash": result_dict.get("tx_hash"),
+                "amount_in": result_dict.get("amount_in"),
+                "amount_out": result_dict.get("amount_out"),
                 "direction": direction,
                 "amount_usd": amount_usd,
+                "error": result_dict.get("error", "")
             }
             
         except Exception as e:
