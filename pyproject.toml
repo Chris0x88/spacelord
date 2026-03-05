@@ -31,4 +31,4 @@ include = ["src*", "cli*", "lib*", "data*"]
 # uv Configuration (zero-dependency launcher)
 # ---------------------------------------------------------------------------
 [tool.uv]
-python = "3.12"
+managed = true

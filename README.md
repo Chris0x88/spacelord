@@ -48,6 +48,16 @@ That's it. The `launch.sh` script auto-installs `uv` (if needed), resolves Pytho
 ./launch.sh price bitcoin                   # Check prices (canonical names work)
 ```
 
+### 💻 Compatibility & Support
+
+Pacman is cross-platform and handles its own environment:
+
+- **macOS**: Built and optimized for Apple Silicon (M1/M2/M3/M4) and Intel Macs.
+- **Linux**: Works on any modern distribution (Ubuntu, Fedora, etc.).
+- **Windows**: Seamless support via **WSL2** (Windows Subsystem for Linux).
+
+The `launch.sh` script is the standard entry point. It ensures you have the correct Python version and dependencies without modifying your system.
+
 ### First-Time Setup
 
 ```bash
