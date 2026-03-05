@@ -101,20 +101,11 @@ class PacmanAdapter:
                 return None
             
             # Extract WBTC, USDC, and HBAR balances
-            wbtc_bal = 0.0
-            usdc_bal = 0.0
-            hbar_bal = 0.0
-            
-            for token_id, info in balances.items():
-                symbol = info.get("symbol", "").upper()
-                balance = float(info.get("balance", 0))
-                
-                if token_id == WBTC_TOKEN_ID or symbol in ("WBTC", "WBTC[HTS]"):
-                    wbtc_bal = balance
-                elif token_id == USDC_TOKEN_ID or symbol == "USDC":
-                    usdc_bal = balance
-                elif symbol == "HBAR":
-                    hbar_bal = balance
+            # get_balances returns Dict[str, float] mapping token IDs -> balance amounts
+            wbtc_bal = balances.get(WBTC_TOKEN_ID, 0.0)
+            usdc_bal = balances.get(USDC_TOKEN_ID, 0.0)
+            # Native HBAR is returned with ID "0.0.0" or "HBAR"
+            hbar_bal = balances.get("0.0.0", balances.get("HBAR", 0.0))
             
             # Get BTC price
             btc_price = self.get_btc_price()
