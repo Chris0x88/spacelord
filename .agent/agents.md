@@ -179,7 +179,13 @@ To add P2P negotiation (Atomic Swaps without DEX pools):
 
 ---
 
-## File Archiving Policy
+## File Archiving & Git Hygiene
 Active docs: `.agent/agents.md` (this file), `docs/AI_AGENT_GUIDE.md`, `docs/SKILLS.md`.
 Everything else in `docs/` is historical context — don't delete, don't actively load.
-The only docs an AI agent absolutely needs to read to catch up: `.agent/agents.md`.
+
+### 🔴 CRITICAL: Git Hygiene for Contributors
+Because this repository is shared with other developers, follow these rules for every commit:
+1. **NO PERSONAL DOCS**: Never commit files starting with `TODO_`, `TEMP_`, or any personal planning notes to the main branch. 
+2. **USE .gitignore**: Ensure any local-only or experimental files match the patterns in `.gitignore`.
+3. **SIZE DISCIPLINE**: Keep the repo lean. Current size is ~173MB (mostly `pacman_env`). Do not commit large datasets or binaries.
+4. **ATOMICIITY**: Each commit should represent one functional change or fix.

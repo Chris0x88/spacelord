@@ -44,3 +44,6 @@ data/*.json
 # Private Documentation
 docs_private/
 tui/
+TODO_*.md
+personal/
+planning/
