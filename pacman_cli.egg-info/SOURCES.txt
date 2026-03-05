@@ -10,6 +10,7 @@ cli/commands/__init__.py
 cli/commands/info.py
 cli/commands/liquidity.py
 cli/commands/orders.py
+cli/commands/robot.py
 cli/commands/staking.py
 cli/commands/trading.py
 cli/commands/wallet.py
@@ -46,6 +47,11 @@ src/types.py
 src/utils.py
 src/plugins/__init__.py
 src/plugins/account_manager.py
+src/plugins/power_law/__init__.py
+src/plugins/power_law/adapter.py
+src/plugins/power_law/bot.py
+src/plugins/power_law/config.py
+src/plugins/power_law/heartbeat_model.py
 tests/test_approve.py
 tests/test_bitcoin_converter_logic.py
 tests/test_config.py
