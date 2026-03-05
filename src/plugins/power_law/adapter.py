@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from src.logger import logger
+# Price manager is a module-level singleton from lib.prices
+from lib.prices import price_manager as _pm
 
 # Default token IDs for the rebalancer (highest-liquidity HTS pools)
 WBTC_TOKEN_ID = "0.0.10047837"
@@ -57,14 +59,26 @@ class PacmanAdapter:
     def get_btc_price(self) -> float:
         """Get current BTC price in USD from Pacman's price manager."""
         try:
-            price = self.controller.price_manager.get_token_price(WBTC_TOKEN_ID)
+            # Try the local pool price data first (fastest)
+            price = _pm.get_price(WBTC_TOKEN_ID)
+            if price and price > 0:
+                self._cached_price = price
+                return price
+            
+            # Fallback: try legacy WBTC token ID
+            price = _pm.get_price("0.0.1055483")
+            if price and price > 0:
+                self._cached_price = price
+                return price
+                
+            # Fallback: try get_price_with_source
+            price, source = _pm.get_price_with_source(WBTC_TOKEN_ID)
             if price and price > 0:
                 self._cached_price = price
                 return price
         except Exception as e:
             logger.warning(f"[PowerLaw] Price fetch failed: {e}")
         
-        # Fallback: try getting from router's pool data
         if self._cached_price > 0:
             return self._cached_price
         
@@ -74,7 +88,14 @@ class PacmanAdapter:
     def get_portfolio_state(self) -> Optional[PortfolioState]:
         """Get current portfolio balances and allocation percentages."""
         try:
+            # Get balances from controller — use the correct method name
             balances = self.controller.get_balances()
+            if not balances:
+                # Fallback: try alternate method name
+                try:
+                    balances = self.controller.get_all_balances()
+                except Exception:
+                    pass
             if not balances:
                 logger.error("[PowerLaw] Cannot fetch balances")
                 return None
