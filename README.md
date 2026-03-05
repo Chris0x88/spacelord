@@ -79,6 +79,8 @@ The `launch.sh` script is the standard entry point. It ensures you have the corr
 | `price bitcoin` | Check live prices (canonical names: bitcoin, ethereum, dollar) |
 | `order buy HBAR at 0.08 size 100` | Set a limit order (background daemon) |
 | `stake` | Stake HBAR to a consensus node |
+| `robot signal` | Show BTC heartbeat model allocation signal |
+| `robot start` | Start the Power Law rebalancer daemon |
 
 **Advanced** (pool management, liquidity, sub-accounts): Run `help` inside the shell.
 
@@ -124,6 +126,7 @@ Agents can use human-friendly names that always resolve:
 - ✅ Never-fail routing with canonical token defaults
 - ✅ Zero-dependency install via `uv`
 - ✅ AI agent skills file for OpenClaw
+- ✅ Power Law Heartbeat rebalancer robot
 
 ### Next
 - 🔄 MCP server for Claude/Cursor integration

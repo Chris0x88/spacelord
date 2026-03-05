@@ -45,6 +45,17 @@
 | `order list` | View all open orders |
 | `order cancel [ID]` | Cancel an open order |
 
+### Power Law Robot (Autonomous Rebalancer)
+
+| Command | Description |
+|---|---|
+| `robot signal` | Show today's heartbeat model signal (no trading) |
+| `robot start` | Start the rebalancer daemon (background) |
+| `robot stop` | Stop the daemon |
+| `robot status` | Show bot status, portfolio, and last signal |
+
+Configure via `.env`: `ROBOT_THRESHOLD_PERCENT=15.0`, `ROBOT_INTERVAL_SECONDS=3600`, `ROBOT_SIMULATE=true`
+
 ### System
 
 | Command | Description |
