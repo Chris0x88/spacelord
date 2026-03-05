@@ -73,6 +73,13 @@ HELP_COMMANDS = [
     ("order on / off",               "Start or stop the limit-order daemon"),
     ("order interval <time>",        "Set daemon polling frequency (e.g. 5m, 30m, 1h)"),
 
+    # Robot
+    ("--- POWER LAW ROBOT ---", ""),
+    ("robot signal",                "Show today's heartbeat model signal (no trading)"),
+    ("robot start",                 "Start the autonomous BTC rebalancing daemon"),
+    ("robot stop",                  "Stop the daemon"),
+    ("robot status",                "Show bot status, portfolio, and last signal"),
+
     # System
     ("--- SYSTEM ---", ""),
     ("verbose [on/off]",            "Toggle verbose / debug logging"),
@@ -100,6 +107,8 @@ HELP_EXAMPLES = [
     ("pool-deposit",                      "Start the interactive V2 liquidity wizard"),
     ("order buy HBAR at 0.08 size 100",   "Buy HBAR when price dips to $0.08"),
     ("order sell HBAR at 0.12 size 50",   "Sell HBAR when price reaches $0.12"),
+    ("robot start",                       "Start the autonomous BTC rebalancer"),
+    ("robot signal",                      "Check the model without trading"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -572,4 +581,30 @@ your account storage.
 
   {C.WARN}Note:{C.R} If auto-association fails or your account is old, 
   use the manual {C.TEXT}associate{C.R} command.""",
+
+    "robot": """{C.BOLD}POWER LAW ROBOT — COMPLETE REFERENCE{C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+Autonomous rebalancing based on the Bitcoin Heartbeat Model.
+The bot tracks your portfolio and buys/sells WBTC_HTS against USDC
+when your BTC allocation deviates too far from the model's target.
+
+{C.ACCENT}Commands:{C.R}
+  {C.TEXT}robot signal{C.R}      Show today's target allocation % and cycle metrics
+  {C.TEXT}robot status{C.R}      Show active portfolio balance and bot state
+  {C.TEXT}robot start{C.R}       Start the background daemon to rebalance automatically
+  {C.TEXT}robot stop{C.R}        Stop the daemon
+
+{C.ACCENT}Configuration (.env):{C.R}
+  {C.TEXT}ROBOT_SIMULATE=false{C.R}           (Set false to enable live trading!)
+  {C.TEXT}ROBOT_THRESHOLD_PERCENT=15.0{C.R}   (Rebalance when off target by > 15%)
+  {C.TEXT}ROBOT_INTERVAL_SECONDS=3600{C.R}    (Check portfolio every hour)
+
+{C.ACCENT}How It Works:{C.R}
+  1. Compares current WBTC % against Heartbeat Model target (0-100%).
+  2. If the deviation is > 15%, it buys/sells WBTC_HTS via SaucerSwap.
+  3. Gas costs drop out of your HBAR reserve natively.
+  4. Keeps a local log in data/robot_state.json.
+
+{C.WARN}Note:{C.R} Runs in SIMULATION mode by default to protect funds. Add
+ROBOT_SIMULATE=false to .env to execute real swaps.""",
 }
