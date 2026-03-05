@@ -62,8 +62,8 @@ Use these human-friendly names — they always resolve:
 
 | Say | Resolves To | Hedera ID |
 |---|---|---|
-| `bitcoin`, `btc`, `wbtc` | WBTC_HTS | 0.0.1055483 |
-| `ethereum`, `eth`, `weth` | WETH_HTS | 0.0.1055557 |
+| `bitcoin`, `btc`, `wbtc` | WBTC_HTS | 0.0.10047837 |
+| `ethereum`, `eth`, `weth` | WETH_HTS | 0.0.9470869 |
 | `dollar`, `usd`, `usdc` | USDC | 0.0.456858 |
 | `hbar`, `hedera` | HBAR | native |
 

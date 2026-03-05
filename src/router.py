@@ -78,6 +78,7 @@ class PacmanVariantRouter:
     
     # Canonical token defaults — human-friendly names → internal variant keys
     # These MUST always resolve. Users say "bitcoin", agents say "WBTC_HTS".
+    # Default pool token IDs: WBTC=0.0.10047837, WETH=0.0.9470869, USDC=0.0.456858
     CANONICAL_DEFAULTS = {
         "bitcoin": "WBTC_HTS", "btc": "WBTC_HTS", "wbtc": "WBTC_HTS",
         "ethereum": "WETH_HTS", "eth": "WETH_HTS", "weth": "WETH_HTS",

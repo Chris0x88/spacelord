@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""
+Power Law Adapter — Bridges Heartbeat Model to Pacman Controller
+================================================================
+
+This adapter wraps PacmanController so the rebalancer bot can:
+- Get BTC price (from Pacman's price manager)
+- Get portfolio state (WBTC + USDC balances)
+- Execute rebalance swaps (via Pacman's swap engine)
+
+This is the ONLY integration point between the Power Law bot and Pacman.
+The heartbeat model and bot logic remain standalone.
+"""
+
+import logging
+from datetime import datetime
+from dataclasses import dataclass
+from typing import Optional
+
+from src.logger import logger
+
+# Default token IDs for the rebalancer (highest-liquidity HTS pools)
+WBTC_TOKEN_ID = "0.0.10047837"
+WETH_TOKEN_ID = "0.0.9470869"
+USDC_TOKEN_ID = "0.0.456858"
+
+
+@dataclass
+class PortfolioState:
+    """Current portfolio snapshot for the rebalancer."""
+    wbtc_balance: float       # WBTC amount
+    usdc_balance: float       # USDC amount
+    hbar_balance: float       # HBAR amount (for gas)
+    wbtc_price_usd: float     # Current BTC price in USD
+    total_value_usd: float    # Total portfolio in USD
+    wbtc_percent: float       # Current BTC allocation %
+    usdc_percent: float       # Current USDC allocation %
+
+
+class PacmanAdapter:
+    """
+    Adapts PacmanController for the Power Law rebalancer bot.
+    
+    The bot calls adapter methods instead of talking to Web3 directly.
+    This keeps one source of truth for all swap/balance/price logic.
+    """
+    
+    def __init__(self, controller):
+        """
+        Args:
+            controller: An initialized PacmanController instance.
+        """
+        self.controller = controller
+        self._last_price_fetch = None
+        self._cached_price = 0.0
+    
+    def get_btc_price(self) -> float:
+        """Get current BTC price in USD from Pacman's price manager."""
+        try:
+            price = self.controller.price_manager.get_token_price(WBTC_TOKEN_ID)
+            if price and price > 0:
+                self._cached_price = price
+                return price
+        except Exception as e:
+            logger.warning(f"[PowerLaw] Price fetch failed: {e}")
+        
+        # Fallback: try getting from router's pool data
+        if self._cached_price > 0:
+            return self._cached_price
+        
+        logger.error("[PowerLaw] Cannot get BTC price — no data available")
+        return 0.0
+    
+    def get_portfolio_state(self) -> Optional[PortfolioState]:
+        """Get current portfolio balances and allocation percentages."""
+        try:
+            balances = self.controller.get_balances()
+            if not balances:
+                logger.error("[PowerLaw] Cannot fetch balances")
+                return None
+            
+            # Extract WBTC, USDC, and HBAR balances
+            wbtc_bal = 0.0
+            usdc_bal = 0.0
+            hbar_bal = 0.0
+            
+            for token_id, info in balances.items():
+                symbol = info.get("symbol", "").upper()
+                balance = float(info.get("balance", 0))
+                
+                if token_id == WBTC_TOKEN_ID or symbol in ("WBTC", "WBTC[HTS]"):
+                    wbtc_bal = balance
+                elif token_id == USDC_TOKEN_ID or symbol == "USDC":
+                    usdc_bal = balance
+                elif symbol == "HBAR":
+                    hbar_bal = balance
+            
+            # Get BTC price
+            btc_price = self.get_btc_price()
+            if btc_price <= 0:
+                logger.error("[PowerLaw] BTC price is zero, cannot compute allocation")
+                return None
+            
+            # Calculate totals
+            wbtc_value = wbtc_bal * btc_price
+            total_value = wbtc_value + usdc_bal
+            
+            if total_value <= 0:
+                return PortfolioState(
+                    wbtc_balance=wbtc_bal, usdc_balance=usdc_bal,
+                    hbar_balance=hbar_bal, wbtc_price_usd=btc_price,
+                    total_value_usd=0, wbtc_percent=0, usdc_percent=0
+                )
+            
+            return PortfolioState(
+                wbtc_balance=wbtc_bal,
+                usdc_balance=usdc_bal,
+                hbar_balance=hbar_bal,
+                wbtc_price_usd=btc_price,
+                total_value_usd=total_value,
+                wbtc_percent=(wbtc_value / total_value) * 100,
+                usdc_percent=(usdc_bal / total_value) * 100,
+            )
+        except Exception as e:
+            logger.error(f"[PowerLaw] Portfolio state error: {e}")
+            return None
+    
+    def execute_rebalance(self, direction: str, amount_usd: float, 
+                          simulate: bool = True) -> dict:
+        """
+        Execute a rebalance swap via Pacman's controller.
+        
+        Args:
+            direction: "buy_btc" (USDC → WBTC) or "sell_btc" (WBTC → USDC)
+            amount_usd: Trade size in USD
+            simulate: If True, only simulate (default safe mode)
+            
+        Returns:
+            Dict with success, tx_hash, amount_in, amount_out, error
+        """
+        try:
+            btc_price = self.get_btc_price()
+            
+            if direction == "buy_btc":
+                from_token = "USDC"
+                to_token = "WBTC_HTS"
+                amount = amount_usd  # USDC amount
+            elif direction == "sell_btc":
+                from_token = "WBTC_HTS"
+                to_token = "USDC"
+                amount = amount_usd / btc_price if btc_price > 0 else 0
+            else:
+                return {"success": False, "error": f"Unknown direction: {direction}"}
+            
+            logger.info(f"[PowerLaw] Rebalance: {direction} ${amount_usd:.2f} "
+                       f"({amount:.6f} {from_token} → {to_token})")
+            
+            if simulate:
+                logger.info("[PowerLaw] SIMULATION MODE — no transaction broadcast")
+                return {
+                    "success": True,
+                    "simulated": True,
+                    "direction": direction,
+                    "amount_usd": amount_usd,
+                    "from_token": from_token,
+                    "to_token": to_token,
+                    "amount": amount,
+                }
+            
+            # Live swap via controller
+            route = self.controller.get_route(from_token, to_token, amount)
+            if not route or route.confidence == 0.0:
+                return {"success": False, "error": "No route found for rebalance"}
+            
+            result = self.controller.swap(from_token, to_token, amount)
+            return {
+                "success": result.get("success", False),
+                "tx_hash": result.get("tx_hash"),
+                "amount_in": result.get("amount_in"),
+                "amount_out": result.get("amount_out"),
+                "direction": direction,
+                "amount_usd": amount_usd,
+            }
+            
+        except Exception as e:
+            logger.error(f"[PowerLaw] Rebalance execution error: {e}")
+            return {"success": False, "error": str(e)}

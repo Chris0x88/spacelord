@@ -36,6 +36,7 @@ from cli.commands.info import (
     cmd_pools, cmd_history, cmd_verbose
 )
 from cli.commands.orders import cmd_order
+from cli.commands.robot import cmd_robot
 
 # Load banner from cli.text_content
 try:
@@ -79,6 +80,7 @@ COMMANDS = {
     "slippage": cmd_slippage,
     "lp-padding": cmd_lp_padding,
     "order": cmd_order, "orders": cmd_order,
+    "robot": cmd_robot, "bot": cmd_robot,
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
 }
 
