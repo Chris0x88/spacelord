@@ -897,11 +897,24 @@ def print_receipt(res, route, from_token: str, to_token: str, amount_val: float,
     row(f"Effective", f"1 {from_token} = {actual_net_rate:.8f} {to_token}", C.OK)
 
     section("FEES")
+    # --- LP fee USD value ---
+    lp_fee_usd = 0.0
     if res.lp_fee_amount > 0:
-        row("LP Fee", f"{res.lp_fee_amount:.8f} {res.lp_fee_token}")
+        lp_token_id = _resolve_token_id(from_token)
+        if lp_token_id:
+            lp_price = executor.price_manager.get_price(lp_token_id)
+            if lp_price == 0 and from_token.upper() in ["HBAR", "0.0.0"]:
+                lp_price = res.hbar_usd_price
+            lp_fee_usd = res.lp_fee_amount * lp_price
+        elif from_token.upper() in ["HBAR", "0.0.0"]:
+            lp_fee_usd = res.lp_fee_amount * res.hbar_usd_price
+        row("LP Fee", f"{res.lp_fee_amount:.8f} {res.lp_fee_token}  (${lp_fee_usd:.4f})")
+    gas_usd = res.gas_cost_usd if res.gas_cost_usd else 0.0
     row("Gas", f"{res.gas_cost_hbar:.8f} HBAR")
-    row("Gas (USD)", f"${res.gas_cost_usd:.4f}")
+    row("Gas (USD)", f"${gas_usd:.4f}")
     row("HBAR Price", f"${res.hbar_usd_price:.4f}")
+    total_cost_usd = lp_fee_usd + gas_usd
+    row("─ TOTAL COST", f"${total_cost_usd:.4f}  ({total_cost_usd * 100:.2f}¢)", C.WARN)
 
     section("SETTLEMENT")
     if to_token.upper() in ["HBAR", "0.0.0", "WHBAR", "0.0.1456986"]:

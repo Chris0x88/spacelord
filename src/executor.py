@@ -682,12 +682,9 @@ class PacmanExecutor:
             if not is_native_hbar and not is_intermediate_sim:
                 current_allowance = self.client.get_allowance(from_token_id, self.client.eoa, self.client.router_address)
                 if current_allowance < needed_balance:
-                    logger.info(f"   🔓 Approving {step.from_token} (EVM/HTS Redirect)...")
-                    # Use EVM approve() for HTS tokens, which is more reliable for these contracts
-                    # as per proven working examples. Standard swaps use the SaucerSwap Router as spender.
+                    logger.info(f"   🔓 Approving {step.from_token} (dual EVM+HTS)...")
                     safe_approval = max(needed_balance * 100, current_balance)
-                    self.client.approve_token(from_token_id, int(safe_approval))
-                    time.sleep(3) # Wait slightly for HTS approval state to sync
+                    self.client.approve_token_dual(from_token_id, int(safe_approval))
 
             if mode == "exact_in":
                 min_out = int(amount_out_expected * slippage_factor_out)
@@ -777,14 +774,10 @@ class PacmanExecutor:
 
             from lib.saucerswap import hedera_id_to_evm
             
-            # EVM APPROVAL (HTS Redirect)
-            logger.info(f"   [UNWRAP] Approving {from_id} via EVM...")
-            # Match working snippet: 1,000,000 gas for approval
+            # Dual-approval (EVM + HTS precompile)
+            logger.info(f"   [UNWRAP] Approving {from_id} via dual EVM+HTS...")
             safe_approval = 2**256 - 1
-            self.client.approve_token(from_id, int(safe_approval), spender=WRAPPER_ID)
-            
-            logger.info(f"   [UNWRAP] Approval confirmed.")
-            time.sleep(3) # Wait for sync
+            self.client.approve_token_dual(from_id, int(safe_approval), spender=WRAPPER_ID)
 
             wrapper_addr = hedera_id_to_evm(WRAPPER_ID)
             wrapper_contract = self.w3.eth.contract(address=wrapper_addr, abi=ERC20_WRAPPER_ABI)
@@ -838,14 +831,10 @@ class PacmanExecutor:
             from lib.saucerswap import hedera_id_to_evm
             logger.info(f"   [WRAP] Executing Wrap: {amount_raw} units of {step.from_token} -> {WRAPPER_ID}")
             
-            # EVM APPROVAL (HTS Redirect)
-            logger.info(f"   [WRAP] Approving {from_id} via EVM...")
-            # Match working snippet: 1,000,000 gas for approval
+            # Dual-approval (EVM + HTS precompile)
+            logger.info(f"   [WRAP] Approving {from_id} via dual EVM+HTS...")
             safe_approval = 2**256 - 1
-            self.client.approve_token(from_id, int(safe_approval), spender=WRAPPER_ID)
-
-            logger.info(f"   [WRAP] Approval confirmed.")
-            time.sleep(3) # Wait for sync
+            self.client.approve_token_dual(from_id, int(safe_approval), spender=WRAPPER_ID)
 
             wrapper_addr = hedera_id_to_evm(WRAPPER_ID)
             wrapper_contract = self.w3.eth.contract(address=wrapper_addr, abi=ERC20_WRAPPER_ABI)

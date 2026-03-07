@@ -50,6 +50,17 @@ HTS_ABI = [
         "outputs": [{"internalType": "int64", "name": "responseCode", "type": "int64"}],
         "stateMutability": "nonpayable",
         "type": "function"
+    },
+    {
+        "inputs": [
+            {"internalType": "address", "name": "token", "type": "address"},
+            {"internalType": "address", "name": "spender", "type": "address"},
+            {"internalType": "uint256", "name": "amount", "type": "uint256"}
+        ],
+        "name": "approve",
+        "outputs": [{"internalType": "bool", "name": "success", "type": "bool"}],
+        "stateMutability": "nonpayable",
+        "type": "function"
     }
 ]
 
@@ -358,18 +369,23 @@ class SaucerSwapV2:
             return 0
 
     def ensure_approval(self, token_id: str, amount: int, spender: str | None = None) -> bool:
-        """Only call approve_token if current allowance is insufficient."""
+        """Only call approve_token_dual if current allowance is insufficient."""
         current = self.get_allowance(token_id, spender)
         if current >= amount:
             return False
             
-        self.approve_token(token_id, amount, spender)
+        self.approve_token_dual(token_id, amount, spender)
         return True
 
-    def approve_token(self, token_id: str, amount: int | None = None, spender: str | None = None) -> str:
+    def approve_token_dual(self, token_id: str, amount: int | None = None, spender: str | None = None) -> str:
         """
-        Approve router or custom spender to spend token_id for amount (or max uint256).
-        Uses standard EVM approve(), which works for HTS tokens too.
+        Dual-approval for HTS tokens:
+        1. Standard EVM approve() via the token's ERC20 interface (EVM state)
+        2. HTS precompile approve() via 0x167 (native Hedera state)
+
+        Both are required for tokens that haven't been previously interacted with.
+        Using only EVM approve() can succeed on-chain but leave HTS state unset,
+        causing CONTRACT_REVERT during the swap's transferFrom().
         """
         if not self.private_key:
             raise ValueError("Private key required")
@@ -377,33 +393,55 @@ class SaucerSwapV2:
         if amount is None:
             amount = 2**256 - 1
 
-        # Default spender is the router
         spender_val = spender or CONTRACTS[self.network]["router"]
         spender_evm = hedera_id_to_evm(spender_val)
         token_evm = hedera_id_to_evm(token_id)
 
         print(f"   🔓 Approving {token_id} for {spender_val}...")
 
+        # --- Step 1: EVM approve() via token's ERC20 interface ---
         token = self.w3.eth.contract(address=token_evm, abi=ERC20_ABI)
-
-        tx = token.functions.approve(spender_evm, amount).build_transaction({
+        tx1 = token.functions.approve(spender_evm, amount).build_transaction({
             "from": self.eoa,
-            "gas": 2_000_000,
+            "gas": 1_000_000,
             "gasPrice": self.w3.eth.gas_price,
             "nonce": self.w3.eth.get_transaction_count(self.eoa),
             "chainId": self.chain_id,
         })
+        signed1 = self.w3.eth.account.sign_transaction(tx1, self.private_key)
+        hash1 = self.w3.eth.send_raw_transaction(signed1.raw_transaction)
+        print(f"   ⏳ Waiting for EVM approval ({hash1.hex()[:16]}...)...")
+        receipt1 = self.w3.eth.wait_for_transaction_receipt(hash1, timeout=120)
+        if receipt1.status != 1:
+            raise RuntimeError(f"EVM approval failed: {hash1.hex()}")
+        print(f"   ✅ EVM approval confirmed.")
 
-        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
-        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        # --- Step 2: HTS precompile approve() via 0x167 ---
+        # This is required for native HTS state. Without it, new HTS tokens
+        # will revert at transferFrom() in the SaucerSwap router.
+        try:
+            hts = self.w3.eth.contract(address=HTS_ADDRESS, abi=HTS_ABI)
+            tx2 = hts.functions.approve(token_evm, spender_evm, amount).build_transaction({
+                "from": self.eoa,
+                "gas": 1_000_000,
+                "gasPrice": self.w3.eth.gas_price,
+                "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                "chainId": self.chain_id,
+            })
+            signed2 = self.w3.eth.account.sign_transaction(tx2, self.private_key)
+            hash2 = self.w3.eth.send_raw_transaction(signed2.raw_transaction)
+            print(f"   ⏳ Waiting for HTS precompile approval ({hash2.hex()[:16]}...)...")
+            receipt2 = self.w3.eth.wait_for_transaction_receipt(hash2, timeout=120)
+            if receipt2.status != 1:
+                print(f"   ⚠️  HTS precompile approval failed (non-fatal, EVM approval may suffice).")
+            else:
+                print(f"   ✅ HTS approval confirmed.")
+        except Exception as e:
+            # Non-fatal: some tokens don't need the HTS precompile path
+            # (e.g., ERC-20-only tokens that aren't native HTS)
+            print(f"   ⚠️  HTS precompile approval skipped ({e.__class__.__name__}: {e})")
 
-        # Wait for confirmation to ensure allowance is set before next transaction (matching btc_rebalancer2)
-        print(f"   ⏳ Waiting for approval confirmation ({tx_hash.hex()})...")
-        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-        if receipt.status != 1:
-            raise RuntimeError(f"Approval failed on-chain: {tx_hash.hex()}")
-
-        return tx_hash.hex()
+        return hash1.hex()
 
     def associate_token_native(self, token_id: str) -> bool:
         """
