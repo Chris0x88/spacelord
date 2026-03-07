@@ -17,10 +17,46 @@
 # Set ROBOT_SIMULATE=false and/or PACMAN_SIMULATE=false in .env
 ```
 
-**Non-interactive use (AI agents):** Pacman is primarily a TUI. For agent pipelines:
-- Use `--json` flag to get machine-readable output: `./launch.sh balance --json`
-- Use `--yes` / `-y` flag to skip swap confirmation: `./launch.sh swap 10 HBAR for USDC --yes`
-- EOFError on `input()` is now auto-handled: when stdin is not a TTY, confirmations auto-proceed
+**Non-interactive use (AI agents):** Pacman has three modes:
+- **One-shot** (`./launch.sh balance`): No banner, no prompts, runs command, exits immediately
+- **Daemon** (`./launch.sh daemon`): Starts robot + limit order daemons, stays alive headlessly
+- **Interactive** (`./launch.sh` with no args): Full TUI with banner — humans only
+
+Key agent flags:
+- `--json` for machine-readable output: `./launch.sh balance --json`
+- `--yes` / `-y` to skip swap confirmation: `./launch.sh swap 10 HBAR for USDC --yes`
+- Logger output goes to **stderr**, so `stdout` is always clean for `--json` parsing
+
+---
+
+## 🔄 Persistent Daemon Mode (Background Services)
+
+The robot and limit order daemons **only stay alive while the Pacman process runs.**
+In one-shot mode (`./launch.sh robot start`), the process exits immediately — the daemon dies.
+
+To keep daemons running persistently:
+
+```bash
+# Foreground (see output, Ctrl-C to stop)
+./launch.sh daemon
+
+# Background (persists after terminal closes)
+nohup ./launch.sh daemon &
+
+# With logging
+nohup ./launch.sh daemon > daemon.log 2>&1 &
+
+# Check if running
+ps aux | grep "launch.sh daemon"
+
+# Stop it
+kill <PID>    # PID is printed on startup
+```
+
+Daemon mode starts:
+- ✅ Power Law Robot (rebalancer)
+- ✅ Limit Order daemon (if enabled in settings)
+- No TUI, no banner, no prompts
 
 ---
 
