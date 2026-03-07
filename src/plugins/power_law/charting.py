@@ -20,8 +20,9 @@ def cycle_bounds(c: int) -> tuple[datetime, datetime]:
     return (get_halving_date(c - 1), get_halving_date(c))
 
 def download_binance_klines(start_time: int, end_time: int) -> pd.DataFrame:
-    import requests
-    url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime={start_time}&endTime={end_time}&limit=1000"
+    # If startTime is provided, it returns klines starting from that time (up to 1000).
+    # If we want the MOST RECENT data, we should let Binance decide by only providing limit or endTime+limit.
+    url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=1000"
     r = requests.get(url, timeout=5)
     data = r.json()
     if not isinstance(data, list) or len(data) == 0:
@@ -130,13 +131,17 @@ def generate_powerlaw_png() -> bytes:
     ax.set_yscale('linear')
     
     # Set limits based on the recent halving minus a bit to focus the chart
-    recent_start = pd.Timestamp("2023-01-01")  # Focus on the relevant recent period
+    recent_start = pd.Timestamp("2024-01-01")  # Focus more tightly on current cycle
     ax.set_xlim(recent_start, future_dates[-1])
     
-    # Set y limit smartly based on ceiling in the visible window
-    visible_df = future_df[future_df['date'] <= future_dates[-1]]
-    max_visible_ceiling = visible_df['ceiling'].max()
-    ax.set_ylim(bottom=0, top=max_visible_ceiling * 1.1)
+    # Set y limit smartly: ensure the current price and fair value are the focus.
+    # We cap at the ceiling, but don't let a distant 3M ceiling squash the 60k price.
+    visible_hist = df[df['date'] >= recent_start]
+    max_price_in_view = max(visible_hist['price'].max(), df['model_price'].max())
+    
+    # Ensure current price is roughly in the middle-top half
+    ax.set_ylim(bottom=min(visible_hist['price'].min(), 30000) * 0.9, 
+                top=max_price_in_view * 1.4)
 
     # Ticks
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
