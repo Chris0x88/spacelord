@@ -21,8 +21,8 @@ def cycle_bounds(c: int) -> tuple[datetime, datetime]:
     return (get_halving_date(c - 1), get_halving_date(c))
 
 def download_binance_klines(start_time_ms: int, end_time_ms: int) -> pd.DataFrame:
-    """Fetch weekly candles from Binance. Uses 1w for stable, long-term trend data."""
-    url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1w&startTime={start_time_ms}&limit=1000"
+    """Fetch 1d candles from Binance. Uses 1d for high-fidelity trend data."""
+    url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime={start_time_ms}&limit=1000"
     r = requests.get(url, timeout=5)
     data = r.json()
     if not isinstance(data, list) or len(data) == 0:
@@ -36,22 +36,70 @@ def download_binance_klines(start_time_ms: int, end_time_ms: int) -> pd.DataFram
     df['price'] = df['close'].astype(float)
     return df[['date', 'price']].copy()
 
+def get_incremental_btc_history() -> pd.DataFrame:
+    """
+    Maintains a local JSON cache of BTC price history.
+    Fetches only missing candles from Binance to reach 'Today'.
+    """
+    cache_path = Path("data/btc_history_1d.json")
+    df_cache = pd.DataFrame(columns=['date', 'price'])
+    
+    # 1. Load existing cache
+    if cache_path.exists():
+        try:
+            df_cache = pd.read_json(cache_path)
+            df_cache['date'] = pd.to_datetime(df_cache['date'])
+        except Exception as e:
+            logger.warning(f"Failed to load BTC history cache: {e}")
+
+    # 2. Determine where to start fetching
+    # Start from Binance inception if cache empty, else last cached date + 1 day
+    if not df_cache.empty:
+        last_date = df_cache['date'].max()
+        start_time_ms = int((last_date + timedelta(days=1)).timestamp() * 1000)
+    else:
+        # Binance BTCUSDT inception is roughly Aug 17, 2017
+        start_time_ms = int(pd.Timestamp("2017-08-17").timestamp() * 1000)
+
+    now_ms = int(datetime.utcnow().timestamp() * 1000)
+    
+    # 3. Paginated fetch loop
+    new_data = []
+    current_start = start_time_ms
+    
+    while current_start < now_ms:
+        logger.info(f"   📡 Fetching BTC history from {pd.to_datetime(current_start, unit='ms')}...")
+        batch_df = download_binance_klines(current_start, now_ms)
+        if batch_df.empty:
+            break
+            
+        new_data.append(batch_df)
+        last_ms = int(batch_df['date'].iloc[-1].timestamp() * 1000)
+        
+        # If we got less than 1000, we're done; otherwise move start to last candle + 1 day
+        if len(batch_df) < 1000:
+            break
+        current_start = last_ms + (24 * 60 * 60 * 1000)
+
+    # 4. Merge and save
+    if new_data:
+        df_new = pd.concat(new_data).drop_duplicates('date')
+        df_combined = pd.concat([df_cache, df_new]).drop_duplicates('date').sort_values('date').reset_index(drop=True)
+        
+        # Ensure data directory exists
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        df_combined.to_json(cache_path, date_format='iso', indent=2)
+        return df_combined
+        
+    return df_cache
+
 def generate_powerlaw_png() -> bytes:
     """
-    Fetch history from Binance, generate a high-definition static PNG of the Power Law Heartbeat Model.
-    Returns bytes of the PNG image.
+    Fetch history from cache/Binance, generate a high-definition static PNG.
     """
-    # Fetch history from start of 2021 to ensure plenty of cycle 4 context
-    recent_start = pd.Timestamp("2021-01-01")
-    start_time_ms = int(recent_start.timestamp() * 1000)
-    end_time_ms = int(datetime.utcnow().timestamp() * 1000)
-    
-    try:
-        df = download_binance_klines(start_time_ms, end_time_ms)
-        if df.empty:
-            raise ValueError("No data returned from Binance")
-    except Exception as e:
-        logger.error(f"[Charting] Failed to fetch binance history: {e}")
+    df = get_incremental_btc_history()
+    if df.empty:
+        logger.error("[Charting] No BTC history available.")
         return b''
     
     # 1. Setup dark theme aesthetics

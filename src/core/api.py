@@ -234,7 +234,11 @@ def get_powerlaw_chart():
             return jsonify({"error": "Failed to generate chart"}), 500
         from flask import send_file
         import io
-        return send_file(io.BytesIO(png_bytes), mimetype='image/png')
+        response = send_file(io.BytesIO(png_bytes), mimetype='image/png')
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     except Exception as e:
         logger.error(f"[API] Error generating chart: {e}")
         return jsonify({"error": str(e)}), 500
