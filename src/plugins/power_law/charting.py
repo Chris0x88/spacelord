@@ -21,8 +21,8 @@ def cycle_bounds(c: int) -> tuple[datetime, datetime]:
     return (get_halving_date(c - 1), get_halving_date(c))
 
 def download_binance_klines(start_time_ms: int, end_time_ms: int) -> pd.DataFrame:
-    """Fetch daily candles from Binance. Uses startTime to ensure hard data range."""
-    url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime={start_time_ms}&limit=1000"
+    """Fetch weekly candles from Binance. Uses 1w for stable, long-term trend data."""
+    url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1w&startTime={start_time_ms}&limit=1000"
     r = requests.get(url, timeout=5)
     data = r.json()
     if not isinstance(data, list) or len(data) == 0:
@@ -41,8 +41,8 @@ def generate_powerlaw_png() -> bytes:
     Fetch history from Binance, generate a high-definition static PNG of the Power Law Heartbeat Model.
     Returns bytes of the PNG image.
     """
-    # Fetch history from start of 2024 to ensure 1000 limit is plenty for today
-    recent_start = pd.Timestamp("2024-01-01")
+    # Fetch history from start of 2021 to ensure plenty of cycle 4 context
+    recent_start = pd.Timestamp("2021-01-01")
     start_time_ms = int(recent_start.timestamp() * 1000)
     end_time_ms = int(datetime.utcnow().timestamp() * 1000)
     
@@ -77,8 +77,8 @@ def generate_powerlaw_png() -> bytes:
     df['ceiling'] = df['date'].apply(ceiling_price)
     df['model_price'] = df['date'].apply(model_price)
     
-    # Smooth moving average
-    df['sma100'] = df['price'].rolling(window=100).mean()
+    # Smooth moving average (20 weeks ~ 140 days)
+    df['sma20'] = df['price'].rolling(window=20).mean()
 
     # 3. Add future projections (only 1 year out to avoid empty space)
     last_date = df['date'].iloc[-1]
@@ -121,8 +121,9 @@ def generate_powerlaw_png() -> bytes:
     # BTC Market Price (Prominent)
     ax.plot(df['date'], df['price'], color='#06b6d4', linewidth=2.5, alpha=1.0, label='BTC MARKET PRICE')
 
-    # SMA 100 (Secondary)
-    ax.plot(df['date'], df['sma100'], color='#22d3ee', linewidth=1.0, linestyle='-', alpha=0.4, label='100d Avg')
+    # SMA 20 (Weekly)
+    df = df.dropna(subset=['sma20'])
+    ax.plot(df['date'], df['sma20'], color='#22d3ee', linewidth=1.0, linestyle='-', alpha=0.4, label='20w Avg')
 
     # "NOW" Line
     ax.axvline(x=mdates.date2num(last_date), color='#f97316', linestyle='-', linewidth=1.5, alpha=0.8)
