@@ -341,6 +341,23 @@
                     </div>
                 </div>
 
+                <div class="card" style="margin-top: 25px; padding: 15px;">
+                    <div class="card-header" style="justify-content: space-between;">
+                        <h2>Heartbeat Model Chart</h2>
+                        <button
+                            onclick="document.getElementById('powerlaw-chart').src = `${API_URL}/chart.png?secret=${apiSecret}&t=${new Date().getTime()}`"
+                            style="background: none; border: 1px solid rgba(255,255,255,0.2); color: var(--text-muted); padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
+                            ↻ REFRESH
+                        </button>
+                    </div>
+                    <div
+                        style="width: 100%; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); text-align: center; background: #0f172a;">
+                        <img id="powerlaw-chart"
+                            style="width: 100%; height: auto; max-height: 380px; object-fit: contain; opacity: 0.9;"
+                            alt="Model syncing...">
+                    </div>
+                </div>
+
                 <div class="card" style="margin-top: 25px;">
                     <div class="card-header">
                         <h2>Wallet Holdings</h2>

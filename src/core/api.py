@@ -24,10 +24,14 @@ pacman_app = None
 api_secret = os.getenv("PACMAN_API_SECRET")
 
 def require_auth(f):
-    """Decorator to enforce shared secret authentication."""
+    """Decorator to enforce shared secret authentication. 
+    Accepts via X-Pacman-Secret header OR ?secret= query param (for images/links)."""
     def decorated_function(*args, **kwargs):
         header_secret = request.headers.get("X-Pacman-Secret")
-        if not api_secret or header_secret != api_secret:
+        query_secret = request.args.get("secret")
+        provided = header_secret or query_secret
+        
+        if not api_secret or provided != api_secret:
             logger.warning(f"Unauthorized API access attempt from {request.remote_addr}")
             abort(401, description="Unauthorized")
         return f(*args, **kwargs)
@@ -204,6 +208,22 @@ def get_history():
         history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
         return jsonify(history[:limit])
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app_flask.route("/chart.png", methods=["GET"])
+@require_auth
+def get_powerlaw_chart():
+    """Returns a generated PNG chart of the PowerLaw Model."""
+    try:
+        from src.plugins.power_law.charting import generate_powerlaw_png
+        png_bytes = generate_powerlaw_png()
+        if not png_bytes:
+            return jsonify({"error": "Failed to generate chart"}), 500
+        from flask import send_file
+        import io
+        return send_file(io.BytesIO(png_bytes), mimetype='image/png')
+    except Exception as e:
+        logger.error(f"[API] Error generating chart: {e}")
         return jsonify({"error": str(e)}), 500
 
 def run_server(app, port=8088):

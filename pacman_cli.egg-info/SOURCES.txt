@@ -56,6 +56,7 @@ src/plugins/orders/plugin.py
 src/plugins/power_law/__init__.py
 src/plugins/power_law/adapter.py
 src/plugins/power_law/bot.py
+src/plugins/power_law/charting.py
 src/plugins/power_law/config.py
 src/plugins/power_law/heartbeat_model.py
 tests/test_approve.py
