@@ -131,9 +131,35 @@ class PacmanController:
             except Exception as e:
                 logger.warning(f"[Reload] Could not restart daemon: {e}")
 
-    def get_balances(self, token_highlights: list = None) -> Dict[str, float]:
+    def get_balances(self, token_highlights: list = None, account_id: str = None) -> Dict[str, float]:
         """Fetch all non-zero token balances for the account."""
+        if account_id:
+            from lib.saucerswap import hedera_id_to_evm
+            target_eoa = hedera_id_to_evm(account_id)
+            return self.executor.get_balances(token_highlights=token_highlights, eoa_override=target_eoa)
         return self.executor.get_balances(token_highlights=token_highlights)
+
+    def get_all_account_balances(self) -> Dict[str, Dict[str, float]]:
+        """Fetch balances for all configured accounts (main + robot)."""
+        results = {}
+        # Main account
+        main_id = self.config.hedera_account_id or "Current"
+        results[main_id] = self.get_balances()
+        
+        # Robot account
+        if self.config.robot_account_id and self.config.robot_account_id != self.config.hedera_account_id:
+            results[self.config.robot_account_id] = self.get_balances(account_id=self.config.robot_account_id)
+            
+        return results
+
+    def get_aggregated_balances(self) -> Dict[str, float]:
+        """Sum up balances across all accounts."""
+        all_bal = self.get_all_account_balances()
+        aggregated = {}
+        for acct_id, balances in all_bal.items():
+            for sym, bal in balances.items():
+                aggregated[sym] = aggregated.get(sym, 0.0) + bal
+        return aggregated
 
     def resolve_token_id(self, symbol: str) -> Optional[str]:
         """Resolve a token symbol to a Hedera ID."""
@@ -184,7 +210,7 @@ class PacmanController:
             volume_usd=usd_value
         )
 
-    def swap(self, from_token: str, to_token: str, amount: float, mode: str = "exact_in") -> ExecutionResult:
+    def swap(self, from_token: str, to_token: str, amount: float, mode: str = "exact_in", account_id: str = None) -> ExecutionResult:
         """
         Execute a swap.
         """
@@ -196,7 +222,8 @@ class PacmanController:
         return self.executor.execute_swap(
             route=route,
             raw_amount=amount,
-            mode=mode
+            mode=mode,
+            account_id_override=account_id
         )
 
     def transfer(self, token_symbol: str, amount: float, recipient: str, memo: str = None) -> dict:

@@ -170,14 +170,14 @@ class SaucerSwapV2:
         scaled_value = value * 10**10 if value > 0 else 0
 
         if dry_run:
-            self.router.functions.exactOutput(params).call({"from": self.eoa, "value": scaled_value})
+            self.router.functions.exactOutput(params).call({"from": recipient, "value": scaled_value})
             return "SIMULATED_OK"
 
         tx = self.router.functions.exactOutput(params).build_transaction({
-            "from": self.eoa,
+            "from": recipient,
             "gas": 2_000_000,
             "gasPrice": self.w3.eth.gas_price,
-            "nonce": self.w3.eth.get_transaction_count(self.eoa),
+            "nonce": self.w3.eth.get_transaction_count(recipient),
             "chainId": self.chain_id,
             "value": scaled_value,
         })
@@ -202,14 +202,14 @@ class SaucerSwapV2:
         scaled_value = value * 10**10 if value > 0 else 0
 
         if dry_run:
-            self.router.functions.exactInput(params).call({"from": self.eoa, "value": scaled_value})
+            self.router.functions.exactInput(params).call({"from": recipient, "value": scaled_value})
             return "SIMULATED_OK"
 
         tx = self.router.functions.exactInput(params).build_transaction({
-            "from": self.eoa,
+            "from": recipient,
             "gas": 2_000_000,
             "gasPrice": self.w3.eth.gas_price,
-            "nonce": self.w3.eth.get_transaction_count(self.eoa),
+            "nonce": self.w3.eth.get_transaction_count(recipient),
             "chainId": self.chain_id,
             "value": scaled_value,
         })
@@ -254,14 +254,14 @@ class SaucerSwapV2:
         scaled_value = value_to_send * 10**10 if value_to_send > 0 else 0
 
         if dry_run:
-            self.router.functions.multicall(encoded_calls).call({"from": self.eoa, "value": scaled_value})
+            self.router.functions.multicall(encoded_calls).call({"from": recipient, "value": scaled_value})
             return "SIMULATED_OK"
 
         tx = self.router.functions.multicall(encoded_calls).build_transaction({
-            "from": self.eoa,
+            "from": recipient,
             "gas": 2_500_000,
             "gasPrice": self.w3.eth.gas_price,
-            "nonce": self.w3.eth.get_transaction_count(self.eoa),
+            "nonce": self.w3.eth.get_transaction_count(recipient),
             "chainId": self.chain_id,
             "value": scaled_value
         })
@@ -302,14 +302,15 @@ class SaucerSwapV2:
         scaled_value = value_to_send * 10**10 if value_to_send > 0 else 0
 
         if dry_run:
-            self.router.functions.multicall(encoded_calls).call({"from": self.eoa, "value": scaled_value})
+            self.router.functions.multicall(encoded_calls).call({"from": self.eoa if not recipient else recipient, "value": scaled_value})
             return "SIMULATED_OK"
 
+        target_sender = self.eoa if not recipient else recipient
         tx = self.router.functions.multicall(encoded_calls).build_transaction({
-            "from": self.eoa,
+            "from": target_sender,
             "gas": 2_500_000,
             "gasPrice": self.w3.eth.gas_price,
-            "nonce": self.w3.eth.get_transaction_count(self.eoa),
+            "nonce": self.w3.eth.get_transaction_count(target_sender),
             "chainId": self.chain_id,
             "value": scaled_value
         })

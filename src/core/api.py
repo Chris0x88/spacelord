@@ -99,7 +99,7 @@ def get_portfolio():
                 return jsonify(pl_plugin._last_portfolio)
         
         # Fallback to direct check if needed (blocking)
-        balances = pacman_app.get_balances(token_highlights=["WBTC_HTS", "USDC", "HBAR"])
+        balances = pacman_app.get_balances(token_highlights=["WBTC[HTS]", "USDC", "HBAR"])
         return jsonify(balances)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -107,12 +107,12 @@ def get_portfolio():
 @app_flask.route("/holdings", methods=["GET"])
 @require_auth
 def get_holdings():
-    """Returns the full dictionary of all non-zero wallet balances with USD values."""
+    """Returns the full dictionary of all non-zero wallet balances with USD values (Aggregated)."""
     if not pacman_app:
         return jsonify({"error": "Controller not initialized"}), 500
     
     try:
-        raw_balances = pacman_app.get_balances()
+        raw_balances = pacman_app.get_aggregated_balances()
         holdings = []
         
         # Filter out NLP aliases (e.g. "DOLLAR", "BITCOIN") by checking standard tokens
@@ -155,6 +155,19 @@ def get_holdings():
             "holdings": holdings,
             "total_usd": total_portfolio_usd
         })
+    except Exception as e:
+        logger.error(f"API Error get_holdings: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app_flask.route("/accounts", methods=["GET"])
+@require_auth
+def get_accounts():
+    """Returns segregated balances for all accounts (Parent, Robot)."""
+    if not pacman_app:
+        return jsonify({"error": "Controller not initialized"}), 500
+    try:
+        all_balances = pacman_app.get_all_account_balances()
+        return jsonify(all_balances)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

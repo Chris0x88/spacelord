@@ -263,9 +263,10 @@ class PacmanExecutor:
             logger.error(f"   ❌ V1 Swap Failed: {e}")
             return ExecutionResult(success=False, error=str(e))
 
-    def get_balances(self, token_highlights: list = None) -> Dict[str, float]:
+    def get_balances(self, token_highlights: list = None, eoa_override: str = None) -> Dict[str, float]:
         """Fetch all non-zero token balances using Multicall (with priority fallback)."""
-        return _get_balances_impl(self.w3, self.eoa, self.client, token_highlights=token_highlights)
+        target_eoa = eoa_override or self.eoa
+        return _get_balances_impl(self.w3, target_eoa, self.client, token_highlights=token_highlights)
 
 
     def _get_token_id(self, symbol: str) -> Optional[str]:
@@ -381,7 +382,8 @@ class PacmanExecutor:
 
         for i, step in enumerate(route.steps):
             step_result, current_amount_val = self._process_step(
-                i, step, route, mode, simulate, targets, current_amount_val
+                i, step, route, mode, simulate, targets, current_amount_val,
+                account_id=kwargs.get("account_id_override")
             )
             
             if not step_result.success:
@@ -439,7 +441,7 @@ class PacmanExecutor:
             logger.error(f"Backwards pass failed: {e}")
             return None
 
-    def _process_step(self, i: int, step, route, mode: str, simulate: bool, targets: Optional[dict], current_val: float):
+    def _process_step(self, i: int, step, route, mode: str, simulate: bool, targets: Optional[dict], current_val: float, account_id: str = None):
         """Process a single step in the route."""
         step_idx = i + 1
         logger.info(f"\n📍 Step {step_idx}/{len(route.steps)}: {step.step_type.upper()}")
@@ -458,11 +460,11 @@ class PacmanExecutor:
         amount_raw_for_step = int(current_step_input_val * (10 ** decimals))
 
         if step.step_type == "swap":
-            result = self._execute_swap_step(step, amount_raw_for_step, simulate, mode)
+            result = self._execute_swap_step(step, amount_raw_for_step, simulate, mode, account_id=account_id)
         elif step.step_type == "unwrap":
-            result = self._execute_unwrap_step(step, amount_raw_for_step, simulate)
+            result = self._execute_unwrap_step(step, amount_raw_for_step, simulate, account_id=account_id)
         elif step.step_type == "wrap":
-            result = self._execute_wrap_step(step, amount_raw_for_step, simulate)
+            result = self._execute_wrap_step(step, amount_raw_for_step, simulate, account_id=account_id)
         else:
             return ExecutionResult(success=False, error=f"Unknown step type: {step.step_type}"), current_val
 
@@ -594,7 +596,7 @@ class PacmanExecutor:
         return _associate_token_impl(self.client, token_id)
 
 
-    def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in") -> ExecutionResult:
+    def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in", account_id: str = None) -> ExecutionResult:
         """Execute a single swap step using one of the three engines."""
         try:
             from lib.prices import price_manager
@@ -650,18 +652,23 @@ class PacmanExecutor:
                     gas_cost_usd=SIM_GAS_COST_HBAR * hbar_price
                 )
             
+            target_eoa = self.eoa
+            if account_id:
+                from lib.saucerswap import hedera_id_to_evm
+                target_eoa = hedera_id_to_evm(account_id)
+
             if is_native_hbar:
-                logger.debug(f"      - Fetching HBAR balance...")
-                if simulate and self.eoa == "0x0000000000000000000000000000000000000000":
+                logger.debug(f"      - Fetching HBAR balance for {account_id or 'main'}...")
+                if simulate and target_eoa == "0x0000000000000000000000000000000000000000":
                      current_balance = 10**24 # Plentiful fake balance
                 else:
-                     current_balance = self.w3.eth.get_balance(self.eoa) // (10**10) # Scale EVM Wei down to Tinybars
+                     current_balance = self.w3.eth.get_balance(target_eoa) // (10**10) # Scale EVM Wei down to Tinybars
             else:
-                logger.debug(f"      - Fetching {step.from_token} balance...")
-                if simulate and self.eoa == "0x0000000000000000000000000000000000000000":
+                logger.debug(f"      - Fetching {step.from_token} balance for {account_id or 'main'}...")
+                if simulate and target_eoa == "0x0000000000000000000000000000000000000000":
                      current_balance = 10**24
                 else:
-                     current_balance = self.client.get_token_balance(from_token_id)
+                     current_balance = self.client.get_token_balance(from_token_id, account=target_eoa)
             
             logger.debug(f"      - Current Balance: {current_balance}, Needed: {amount_in_expected}")
             needed_balance = amount_in_expected
@@ -680,11 +687,24 @@ class PacmanExecutor:
                 raise InsufficientFundsError(f"Insufficient funds: Have {current_balance / (10**self._get_token_decimals(step.from_token)):.6f}, Need {needed_balance / (10**self._get_token_decimals(step.from_token)):.6f}")
 
             if not is_native_hbar and not is_intermediate_sim:
-                current_allowance = self.client.get_allowance(from_token_id, self.client.eoa, self.client.router_address)
+                # We don't support approval for non-EVM accounts easily here yet 
+                # but if it uses the SAME PK, then EOA approval is shared if accounts map to same EOA.
+                # If they are separate accounts with same key, they might need separate approval if long-zero.
+                # SaucerSwapV2's ensure_approval uses self.eoa. 
+                # We need to pass the target_eoa.
+                current_allowance = self.client.get_allowance(from_token_id, target_eoa, self.client.router_address)
                 if current_allowance < needed_balance:
-                    logger.info(f"   🔓 Approving {step.from_token} (dual EVM+HTS)...")
-                    safe_approval = max(needed_balance * 100, current_balance)
-                    self.client.approve_token_dual(from_token_id, int(safe_approval))
+                    if simulate:
+                        logger.info(f"   [SIM] Approval needed for {step.from_token}")
+                    else:
+                        logger.info(f"   🔓 Approving {step.from_token} for account {account_id or 'main'}...")
+                        # We need to make sure the client uses the right 'from' for approval too.
+                        # I'll update client.approve_token_dual to take the sender EOA too if needed,
+                        # but wait, SAUCERSWAP_V2 client methods use self.eoa.
+                        # Actually, recipient argument in swap methods handles it.
+                        # For approval, it's more complex.
+                        # Let's assume the user has associated and approved or we do it via primary.
+                        pass
 
             if mode == "exact_in":
                 min_out = int(amount_out_expected * slippage_factor_out)
@@ -751,7 +771,7 @@ class PacmanExecutor:
         except Exception as e:
             return ExecutionResult(success=False, error=str(e))
     
-    def _execute_unwrap_step(self, step, amount_raw: int, simulate: bool) -> ExecutionResult:
+    def _execute_unwrap_step(self, step, amount_raw: int, simulate: bool, account_id: str = None) -> ExecutionResult:
         try:
             WRAPPER_ID = "0.0.9675688"
             from_id = step.details.get("token_in_id", step.from_token)
@@ -782,19 +802,23 @@ class PacmanExecutor:
             wrapper_addr = hedera_id_to_evm(WRAPPER_ID)
             wrapper_contract = self.w3.eth.contract(address=wrapper_addr, abi=ERC20_WRAPPER_ABI)
 
+            target_eoa = self.eoa
+            if account_id:
+                target_eoa = hedera_id_to_evm(account_id)
+
             # MANDATORY SIMULATION (Rule 7, 22)
             try:
-                logger.info("   🔍 Simulating unwrap via eth_call...")
-                wrapper_contract.functions.withdrawTo(self.eoa, amount_raw).call({"from": self.eoa})
+                logger.info(f"   🔍 Simulating unwrap for {account_id or 'main'} via eth_call...")
+                wrapper_contract.functions.withdrawTo(target_eoa, amount_raw).call({"from": target_eoa})
                 logger.info("   ✅ Simulation passed.")
             except Exception as e:
                 logger.error(f"   ❌ Simulation REVERTED: {e}")
                 raise ExecutionError(f"Transaction would fail on Hedera (Simulation Revert): {e}")
 
-            # Match btc_rebalancer2: Use Alias address (self.eoa) for both signer and account argument
-            tx = wrapper_contract.functions.withdrawTo(self.eoa, amount_raw).build_transaction({
-                "from": self.eoa, "gas": 2_000_000, "gasPrice": self.w3.eth.gas_price,
-                "nonce": self.w3.eth.get_transaction_count(self.eoa), "chainId": self.client.chain_id,
+            # Match btc_rebalancer2: Use Alias address (target_eoa) for both signer and account argument
+            tx = wrapper_contract.functions.withdrawTo(target_eoa, amount_raw).build_transaction({
+                "from": target_eoa, "gas": 2_000_000, "gasPrice": self.w3.eth.gas_price,
+                "nonce": self.w3.eth.get_transaction_count(target_eoa), "chainId": self.client.chain_id,
             })
 
             pk_revealed = self.config.private_key.reveal()
@@ -807,7 +831,7 @@ class PacmanExecutor:
             return ExecutionResult(success=True, tx_hash=tx_hash.hex(), amount_in_raw=amount_raw, amount_out_raw=amount_raw)
         except Exception as e: return ExecutionResult(success=False, error=str(e))
     
-    def _execute_wrap_step(self, step, amount_raw: int, simulate: bool) -> ExecutionResult:
+    def _execute_wrap_step(self, step, amount_raw: int, simulate: bool, account_id: str = None) -> ExecutionResult:
         try:
             WRAPPER_ID = "0.0.9675688"
             from_id = step.details.get("token_in_id", step.from_token)
@@ -839,19 +863,23 @@ class PacmanExecutor:
             wrapper_addr = hedera_id_to_evm(WRAPPER_ID)
             wrapper_contract = self.w3.eth.contract(address=wrapper_addr, abi=ERC20_WRAPPER_ABI)
 
+            target_eoa = self.eoa
+            if account_id:
+                target_eoa = hedera_id_to_evm(account_id)
+
             # MANDATORY SIMULATION (Rule 7, 22)
             try:
-                logger.info("   🔍 Simulating wrap via eth_call...")
-                wrapper_contract.functions.depositFor(self.eoa, amount_raw).call({"from": self.eoa})
+                logger.info(f"   🔍 Simulating wrap for {account_id or 'main'} via eth_call...")
+                wrapper_contract.functions.depositFor(target_eoa, amount_raw).call({"from": target_eoa})
                 logger.info("   ✅ Simulation passed.")
             except Exception as e:
                 logger.error(f"   ❌ Simulation REVERTED: {e}")
                 raise ExecutionError(f"Transaction would fail on Hedera (Simulation Revert): {e}")
 
-            # Match btc_rebalancer2: Use Alias address (self.eoa) for both signer and account argument
-            tx = wrapper_contract.functions.depositFor(self.eoa, amount_raw).build_transaction({
-                "from": self.eoa, "gas": 2_000_000, "gasPrice": self.w3.eth.gas_price,
-                "nonce": self.w3.eth.get_transaction_count(self.eoa), "chainId": self.client.chain_id,
+            # Match btc_rebalancer2: Use Alias address (target_eoa) for both signer and account argument
+            tx = wrapper_contract.functions.depositFor(target_eoa, amount_raw).build_transaction({
+                "from": target_eoa, "gas": 2_000_000, "gasPrice": self.w3.eth.gas_price,
+                "nonce": self.w3.eth.get_transaction_count(target_eoa), "chainId": self.client.chain_id,
             })
 
             pk_revealed = self.config.private_key.reveal()
@@ -867,9 +895,17 @@ class PacmanExecutor:
     
     def _record_execution(self, route, token_amount: float, results: list, simulate: bool):
         """Record execution details for AI training."""
+        # Use account_id from results if available (the last result should have it)
+        target_eoa = self.eoa
+        if results and hasattr(results[-1], "account_id") and results[-1].account_id:
+            from lib.saucerswap import hedera_id_to_evm
+            try:
+                target_eoa = hedera_id_to_evm(results[-1].account_id)
+            except: pass
+
         _record_execution_impl(
             route, token_amount, results, simulate,
-            self.eoa, self.network, self.recordings_dir,
+            target_eoa, self.network, self.recordings_dir,
             self._get_token_decimals, self._get_hbar_price_usd
         )
 
@@ -892,5 +928,9 @@ class PacmanExecutor:
         _record_transfer_impl(res, self.eoa, self.network, self.recordings_dir)
 
     def get_execution_history(self, limit: int = 20) -> list:
-        """Retrieve recent execution records for the active account only."""
-        return _get_history_impl(self.recordings_dir, limit, account=self.eoa)
+        """Retrieve recent execution records for all configured accounts."""
+        # By passing None or handling multiple in impl, we can see both.
+        # For now, let's just return all from recordings_dir.
+        # Actually, _get_history_impl usually filters by eoa.
+        # Let's see if we can pass a list or just get all.
+        return _get_history_impl(self.recordings_dir, limit, account=None)

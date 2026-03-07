@@ -116,31 +116,67 @@ def _cmd_start(app):
     print(f"\n  {C.BOLD}🤖 Power Law Robot Deployment{C.R}")
     print(f"  {C.CHROME}{'─' * 45}{C.R}")
     
-    # Check if they want to create an isolated sub-account
-    print(f"  {C.MUTED}Security Best Practice: Run the robot in an isolated child account{C.R}")
-    print(f"  {C.MUTED}so your daily transactions don't disturb its target thresholds.{C.R}")
-    confirm = input(f"\n  Would you like to create a dedicated Child Account now? {C.MUTED}(y/N){C.R} ").strip().lower()
-    
-    if confirm in ["y", "yes"]:
-        print(f"\n  {C.MUTED}Creating isolated sub-account...{C.R}")
-        # Determine safe initial balance
+    # Check if a robot account is already configured in .env
+    robot_id = app.config.robot_account_id
+    if not robot_id:
+        # Check local account registry for "Robot"
         try:
-            cur_bal = app.executor.w3.eth.get_balance(app.executor.eoa) / 10**18
-            init_bal = 1.0 if cur_bal > 1.5 else 0.1
-        except:
-            init_bal = 1.0
-        new_id = app.create_sub_account(initial_balance=init_bal, nickname="Robot")
+            from pathlib import Path
+            acc_path = Path("data/accounts.json")
+            if acc_path.exists():
+                with open(acc_path) as f:
+                    accs = _json.load(f)
+                    if isinstance(accs, list):
+                        for acc in accs:
+                            if acc.get("nickname") == "Robot":
+                                robot_id = acc.get("id")
+                                break
+                    elif isinstance(accs, dict):
+                        for aid, meta in accs.items():
+                            if meta.get("nickname") == "Robot":
+                                robot_id = aid
+                                break
+        except: pass
+    
+    if robot_id:
+        if app.config.hedera_account_id != robot_id:
+            print(f"  {C.ACCENT}ℹ{C.R} Dedicated Robot account found: {C.BOLD}{robot_id}{C.R}")
+            print(f"  {C.MUTED}To use it, update your .env: ROBOT_ACCOUNT_ID={robot_id}{C.R}")
+            # If they haven't set it in .env, we can still proceed if they want, 
+            # or remind them. The user said it needs to be "clean and easy".
+            if not app.config.robot_account_id:
+                app.config.robot_account_id = robot_id
+                print(f"  {C.OK}✓{C.R} auto-linked ROBOT_ACCOUNT_ID for this session.")
+    else:
+        # No robot account found anywhere
+        print(f"  {C.MUTED}Security Best Practice: Run the robot in an isolated child account{C.R}")
+        print(f"  {C.MUTED}so your daily transactions don't disturb its target thresholds.{C.R}")
+        confirm = input(f"\n  Would you like to create a dedicated Child Account now? {C.MUTED}(y/N){C.R} ").strip().lower()
         
-        if new_id:
-            print(f"  {C.OK}✅ Created Robot Sub-account: {C.BOLD}{new_id}{C.R}")
-            print(f"  {C.MUTED}1. This account uses your existing Private Key.{C.R}")
-            print(f"  {C.MUTED}2. Transfer your Power Law BTC/USDC allocation to this ID.{C.R}")
-            print(f"  {C.MUTED}3. Change your .env HEDERA_ACCOUNT_ID to '{new_id}'.{C.R}")
-            print(f"  {C.MUTED}4. Run 'pacman robot start' again.{C.R}")
-            print(f"\n  {C.ACCENT}Aborting startup so you can fund the new account.{C.R}")
-            return
-        else:
-            print(f"  {C.ERR}✗{C.R} Failed to create sub-account.")
+        if confirm in ["y", "yes"]:
+            print(f"\n  {C.MUTED}Creating isolated sub-account...{C.R}")
+            # Use AccountManager plugin logic
+            try:
+                # Check current HBAR for initial funding
+                cur_bal = app.executor.get_balances().get("HBAR", 0)
+                init_bal = 1.0 if cur_bal > 1.5 else 0.1
+                
+                # Use the AccountManager if available via discovery
+                # In CLI, we might need direct import if PM isn't fully active
+                from src.plugins.account_manager import AccountManager
+                am = AccountManager(app)
+                new_id = am.create_sub_account(initial_balance=init_bal, nickname="Robot")
+                
+                if new_id:
+                    print(f"  {C.OK}✅ Created Robot Sub-account: {C.BOLD}{new_id}{C.R}")
+                    print(f"  {C.MUTED}1. This account is derived from your primary key.{C.R}")
+                    print(f"  {C.MUTED}2. REQUIRED: Add 'ROBOT_ACCOUNT_ID={new_id}' to your .env{C.R}")
+                    print(f"  {C.MUTED}3. Transfer your WBTC/USDC allocation to this ID.{C.R}")
+                    print(f"\n  {C.ACCENT}Aborting startup so you can fund/configure the new account.{C.R}")
+                    return
+            except Exception as e:
+                print(f"  {C.ERR}✗{C.R} Failed to create sub-account: {e}")
+                return
     
     sim_tag = f" {C.ACCENT}(SIMULATION MODE){C.R}" if bot.config.simulate else ""
     print(f"\n  {C.OK}🤖{C.R} Starting Power Law rebalancer...{sim_tag}")

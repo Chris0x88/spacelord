@@ -71,6 +71,7 @@ class PacmanConfig:
     
     # Hedera Accounts
     hedera_account_id: Optional[str] = None  # 0.0.xxx format
+    robot_account_id: Optional[str] = None   # Dedicated robot account ID
 
     @property
     def debug(self) -> bool:
@@ -158,6 +159,7 @@ class PacmanConfig:
         
         # Hedera account ID (for transaction records)
         config.hedera_account_id = os.getenv("HEDERA_ACCOUNT_ID")
+        config.robot_account_id = os.getenv("ROBOT_ACCOUNT_ID")
         
         return config
     

@@ -22,8 +22,8 @@ from src.logger import logger
 from lib.prices import price_manager as _pm
 
 # Default token IDs for the rebalancer (highest-liquidity HTS pools)
-WBTC_TOKEN_ID = "0.0.10047837"
-WETH_TOKEN_ID = "0.0.9470869"
+WBTC_TOKEN_ID = "0.0.1055483"
+WETH_TOKEN_ID = "0.0.541564"
 USDC_TOKEN_ID = "0.0.456858"
 
 
@@ -89,8 +89,11 @@ class PacmanAdapter:
         """Get current portfolio balances and allocation percentages."""
         try:
             # Get balances from controller — highlight essential tokens for rebalancer
-            highlights = ["WBTC_HTS", "USDC", "HBAR"]
-            balances = self.controller.get_balances(token_highlights=highlights)
+            highlights = ["WBTC[HTS]", "USDC", "HBAR"]
+            
+            # Use dedicated robot account if configured
+            robot_id = getattr(self.controller.config, "robot_account_id", None)
+            balances = self.controller.get_balances(token_highlights=highlights, account_id=robot_id)
             if not balances:
                 # Fallback: try alternate method name
                 try:
@@ -103,7 +106,7 @@ class PacmanAdapter:
             
             # Extract WBTC, USDC, and HBAR balances
             # get_balances returns Dict[str, float] mapping token symbols -> balance amounts
-            wbtc_bal = balances.get("WBTC_HTS", 0.0)
+            wbtc_bal = balances.get("WBTC[HTS]", 0.0)
             usdc_bal = balances.get("USDC", 0.0)
             hbar_bal = balances.get("HBAR", 0.0)
             
@@ -155,10 +158,10 @@ class PacmanAdapter:
             
             if direction == "buy_btc":
                 from_token = "USDC"
-                to_token = "WBTC_HTS"
+                to_token = "WBTC[HTS]"
                 amount = amount_usd  # USDC amount
             elif direction == "sell_btc":
-                from_token = "WBTC_HTS"
+                from_token = "WBTC[HTS]"
                 to_token = "USDC"
                 amount = amount_usd / btc_price if btc_price > 0 else 0
             else:
@@ -180,11 +183,15 @@ class PacmanAdapter:
                 }
             
             # Live swap via controller
+            # Use dedicated robot account if configured
+            robot_id = getattr(self.controller.config, "robot_account_id", None)
+            
             route = self.controller.get_route(from_token, to_token, amount)
             if not route or route.confidence == 0.0:
                 return {"success": False, "error": "No route found for rebalance"}
             
-            result = self.controller.swap(from_token, to_token, amount)
+            # Pass account_id to swap if supported (I need to check controller.swap)
+            result = self.controller.swap(from_token, to_token, amount, account_id=robot_id)
             
             # The controller returns an ExecutionResult object, not a dict.
             # Convert it to a dict first if it has a to_dict method, or access properties directly.

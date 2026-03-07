@@ -119,10 +119,28 @@ class PowerLawBot(BasePlugin):
             
             # Check HBAR gas reserve
             if state.hbar_balance < self.config.hbar_reserve_min:
-                reason = (f"HBAR too low for gas: {state.hbar_balance:.2f} "
-                          f"< {self.config.hbar_reserve_min}")
-                logger.warning(f"   ⚠️ {reason}")
-                return {"success": False, "error": reason}
+                robot_id = getattr(self.app.config, "robot_account_id", None)
+                parent_id = self.app.config.hedera_account_id
+                
+                if robot_id and robot_id != parent_id:
+                    logger.info(f"   ⛽ HBAR low ({state.hbar_balance:.2f}). Attempting top-up from parent...")
+                    try:
+                        # Transfer 5 HBAR from parent to robot
+                        transfer_res = self.app.transfer("HBAR", 10.0, robot_id, memo="Robot Gas Top-up")
+                        if transfer_res.get("success"):
+                            logger.info(f"   ✅ Topped up robot with 10 HBAR.")
+                            # Refresh state
+                            state = self.adapter.get_portfolio_state()
+                        else:
+                            logger.warning(f"   ⚠️ Top-up failed: {transfer_res.get('error')}")
+                    except Exception as e:
+                        logger.error(f"   ❌ Top-up error: {e}")
+
+                if state.hbar_balance < self.config.hbar_reserve_min:
+                    reason = (f"HBAR too low for gas: {state.hbar_balance:.2f} "
+                              f"< {self.config.hbar_reserve_min}")
+                    logger.warning(f"   ⚠️ {reason}")
+                    return {"success": False, "error": reason}
             
             signal = self.get_signal()
             if not signal:
