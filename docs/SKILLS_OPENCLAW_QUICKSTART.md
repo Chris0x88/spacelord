@@ -58,7 +58,9 @@ These flags make Pacman safe to drive from a subprocess without TTY:
 ```
 bitcoin / btc / wbtc  → WBTC_HTS  (0.0.10047837, highest liquidity)
 ethereum / eth / weth → WETH_HTS  (0.0.9470869)
-dollar / usd / usdc   → USDC      (0.0.456858)
+```markdown
+dollar / usd / usdc / $ → USDC      (0.0.456858)
+```
 hbar / hedera         → HBAR      (native)
 ```
 

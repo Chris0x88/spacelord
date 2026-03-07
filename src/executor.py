@@ -263,9 +263,9 @@ class PacmanExecutor:
             logger.error(f"   ❌ V1 Swap Failed: {e}")
             return ExecutionResult(success=False, error=str(e))
 
-    def get_balances(self) -> Dict[str, float]:
-        """Fetch all non-zero token balances using Multicall."""
-        return _get_balances_impl(self.w3, self.eoa, self.client)
+    def get_balances(self, token_highlights: list = None) -> Dict[str, float]:
+        """Fetch all non-zero token balances using Multicall (with priority fallback)."""
+        return _get_balances_impl(self.w3, self.eoa, self.client, token_highlights=token_highlights)
 
 
     def _get_token_id(self, symbol: str) -> Optional[str]:

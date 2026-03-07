@@ -100,65 +100,13 @@ class PowerLawBot(BasePlugin):
         logger.info("-" * 40)
         logger.info("🤖 Checking portfolio...")
         
-        # 1. Get portfolio state
-        state = self.adapter.get_portfolio_state()
-        if not state:
-            reason = "Cannot fetch portfolio state"
-            self._log("error", reason)
-            return {"success": False, "reason": reason, "traded": False}
-        
-        # Cache for status dashboard immediately
-        self._last_portfolio = {
-            "wbtc_balance": state.wbtc_balance,
-            "usdc_balance": state.usdc_balance,
-            "hbar_balance": state.hbar_balance,
-            "total_value_usd": state.total_value_usd,
-            "wbtc_percent": state.wbtc_percent,
-        }
-        
-        # Check HBAR gas reserve
-        if state.hbar_balance < self.config.hbar_reserve_min:
-            reason = (f"HBAR too low for gas: {state.hbar_balance:.2f} "
-                     f"< {self.config.hbar_reserve_min}")
-            logger.warning(f"⚠️ {reason}")
-            self._log("blocked", reason)
-            return {"success": False, "reason": reason, "traded": False, 
-                    "hbar_blocked": True}
-        
-        logger.info(f"   WBTC: {state.wbtc_balance:.8f} (${state.wbtc_balance * state.wbtc_price_usd:,.2f})")
-        logger.info(f"   USDC: {state.usdc_balance:.2f}")
-        logger.info(f"   Total: ${state.total_value_usd:,.2f}")
-        logger.info(f"   Current allocation: {state.wbtc_percent:.1f}% BTC / {state.usdc_percent:.1f}% USDC")
-        
-        # 2. Get heartbeat signal
-        signal = self.get_signal()
-        if not signal:
-            reason = "Cannot compute heartbeat signal"
-            self._log("error", reason)
-            return {"success": False, "reason": reason, "traded": False}
-        
-        target_btc_pct = signal.get("allocation_pct", 50.0)
-        
-        logger.info(f"   🧠 Heartbeat signal:")
-        logger.info(f"      Target: {target_btc_pct:.1f}% BTC")
-        logger.info(f"      Valuation: {signal.get('valuation', 'unknown')}")
-        logger.info(f"      Stance: {signal.get('stance', 'unknown')}")
-        logger.info(f"      Band position: {signal.get('position_in_band_pct', 0):.1f}%")
-        
-        # 3. Check deviation
-        deviation = abs(state.wbtc_percent - target_btc_pct)
-        logger.info(f"   📊 Deviation: {deviation:.1f}% (threshold: {self.config.threshold_percent}%)")
-        
-        if deviation < self.config.threshold_percent:
-            reason = f"Within threshold ({deviation:.1f}% < {self.config.threshold_percent}%)"
-            logger.info(f"   ✅ {reason} — no action needed")
-            self._log("check", reason, {
-                "current_btc_pct": state.wbtc_percent,
-                "target_btc_pct": target_btc_pct,
-                "deviation": deviation,
-            })
-            # Cache for status dashboard
-            self._last_signal = signal
+        try:
+            state: Optional[PortfolioState] = self.adapter.get_portfolio_state()
+            if not state:
+                logger.error("   ❌ Failed to get portfolio state.")
+                return {"success": False, "error": "Could not fetch portfolio"}
+            
+            # Cache for status dashboard immediately
             self._last_portfolio = {
                 "wbtc_balance": state.wbtc_balance,
                 "usdc_balance": state.usdc_balance,
@@ -166,72 +114,118 @@ class PowerLawBot(BasePlugin):
                 "total_value_usd": state.total_value_usd,
                 "wbtc_percent": state.wbtc_percent,
             }
-            return {
-                "success": True, "reason": reason, "traded": False,
-                "current_btc_pct": state.wbtc_percent,
-                "target_btc_pct": target_btc_pct,
-                "deviation": deviation,
-                "signal": signal,
-            }
-        
-        # 4. Execute rebalance
-        if state.wbtc_percent < target_btc_pct:
-            # Need more BTC — buy
-            direction = "buy_btc"
-            # How much USDC to swap → BTC
-            target_btc_value = (target_btc_pct / 100) * state.total_value_usd
-            current_btc_value = state.wbtc_balance * state.wbtc_price_usd
-            trade_usd = target_btc_value - current_btc_value
-        else:
-            # Too much BTC — sell
-            direction = "sell_btc"
-            target_btc_value = (target_btc_pct / 100) * state.total_value_usd
-            current_btc_value = state.wbtc_balance * state.wbtc_price_usd
-            trade_usd = current_btc_value - target_btc_value
-        
-        # Enforce minimum trade size
-        if trade_usd < self.config.min_trade_usd:
-            reason = f"Trade too small (${trade_usd:.2f} < ${self.config.min_trade_usd})"
-            logger.info(f"   ⏭️ {reason}")
-            self._log("skip", reason)
-            return {"success": True, "reason": reason, "traded": False}
-        
-        logger.info(f"   🔄 Rebalancing: {direction} ${trade_usd:.2f}")
-        
-        result = self.adapter.execute_rebalance(
-            direction=direction,
-            amount_usd=trade_usd,
-            simulate=self.config.simulate
-        )
-        
-        if result.get("success"):
-            self.trades_executed += 1
-            self.last_rebalance = datetime.now()
-            self._save_state()
             
-            sim_tag = " (SIMULATED)" if result.get("simulated") else ""
-            logger.info(f"   ✅ Rebalance executed{sim_tag}")
-            self._log("trade", f"{direction} ${trade_usd:.2f}{sim_tag}", {
-                "direction": direction,
-                "amount_usd": trade_usd,
-                "simulated": result.get("simulated", False),
-            })
-        else:
-            logger.error(f"   ❌ Rebalance failed: {result.get('error')}")
-            self._log("error", f"Trade failed: {result.get('error')}")
-        
-        result["signal"] = signal
-        result["current_btc_pct"] = state.wbtc_percent
-        result["target_btc_pct"] = target_btc_pct
-        result["deviation"] = deviation
-        result["traded"] = result.get("success", False)
-        return result
+            logger.info(f"   💰 Portfolio: ${state.total_value_usd:.2f} | HBAR: {state.hbar_balance:.2f}ℏ")
+            
+            # Check HBAR gas reserve
+            if state.hbar_balance < self.config.hbar_reserve_min:
+                reason = (f"HBAR too low for gas: {state.hbar_balance:.2f} "
+                          f"< {self.config.hbar_reserve_min}")
+                logger.warning(f"   ⚠️ {reason}")
+                return {"success": False, "error": reason}
+            
+            signal = self.get_signal()
+            if not signal:
+                return {"success": False, "error": "Could not fetch heartbeat signal"}
+                
+            self._last_signal = signal
+            
+            # ... Log Model Output ...
+            logger.info(f"   📈 Model Price: ${signal['model_price']:,.2f}")
+            logger.info(f"   🎯 Target: {signal['allocation_pct']}% BTC | Current: {state.wbtc_percent:.1f}% BTC")
+            logger.info(f"   🏷️  Stance: {signal['stance']} - {signal['tagline']}")
+            
+            target_btc_pct = signal["allocation_pct"]
+            deviation = state.wbtc_percent - target_btc_pct
+            
+            log_dev = f"{abs(deviation):.1f}%"
+            logger.info(f"   📏 Deviation: {log_dev} (Threshold: {self.config.threshold_percent}%)")
+            
+            # Rebalance Logic
+            if abs(deviation) < self.config.threshold_percent:
+                reason = f"Deviation {log_dev} < {self.config.threshold_percent}%"
+                logger.info(f"   ⏭️ {reason}")
+                self._log("skip", reason)
+                return {
+                    "success": True, 
+                    "reason": reason, 
+                    "traded": False,
+                    "signal": signal,
+                    "current_btc_pct": state.wbtc_percent,
+                    "target_btc_pct": target_btc_pct
+                }
+            
+            # Calculate Trade Size
+            direction = "buy_btc" if deviation < 0 else "sell_btc"
+            
+            if direction == "buy_btc":
+                target_btc_value = (target_btc_pct / 100) * state.total_value_usd
+                current_btc_value = state.wbtc_balance * state.wbtc_price_usd
+                trade_usd = target_btc_value - current_btc_value
+            else:
+                target_btc_value = (target_btc_pct / 100) * state.total_value_usd
+                current_btc_value = state.wbtc_balance * state.wbtc_price_usd
+                trade_usd = current_btc_value - target_btc_value
+            
+            # Enforce minimum trade size
+            if trade_usd < self.config.min_trade_usd:
+                reason = f"Trade too small (${trade_usd:.2f} < ${self.config.min_trade_usd})"
+                logger.info(f"   ⏭️ {reason}")
+                self._log("skip", reason)
+                return {"success": True, "reason": reason, "traded": False}
+            
+            logger.info(f"   🔄 Rebalancing: {direction} ${trade_usd:.2f}")
+            
+            result = self.adapter.execute_rebalance(
+                direction=direction,
+                amount_usd=trade_usd,
+                simulate=self.config.simulate
+            )
+            
+            if result.get("success"):
+                self.trades_executed += 1
+                self.last_rebalance = datetime.now()
+                
+                sim_tag = " (SIMULATED)" if result.get("simulated") else ""
+                logger.info(f"   ✅ Rebalance executed{sim_tag}")
+                self._log("trade", f"{direction} ${trade_usd:.2f}{sim_tag}", {
+                    "direction": direction,
+                    "amount_usd": trade_usd,
+                    "simulated": result.get("simulated", False),
+                })
+            else:
+                logger.error(f"   ❌ Rebalance failed: {result.get('error')}")
+                self._log("error", f"Trade failed: {result.get('error')}")
+            
+            result["signal"] = signal
+            result["current_btc_pct"] = state.wbtc_percent
+            result["target_btc_pct"] = target_btc_pct
+            result["deviation"] = deviation
+            result["traded"] = result.get("success", False)
+            
+            return result
+        finally:
+            # Always save state to persist the latest portfolio and signal cache,
+            # even if we exited early due to an error.
+            self._save_state()
     
     def run_loop(self):
         """Standard work loop called by BasePlugin."""
-        self.check_and_rebalance()
+        result = self.check_and_rebalance()
+        
+        # Determine sleep interval: 
+        # If check failed or we have no portfolio data, retry much sooner (60s)
+        # otherwise use the full configured interval (usually 1 hour).
+        success = result.get("success", False)
+        has_data = bool(self._last_portfolio)
+        
+        sleep_interval = self.config.interval_seconds
+        if not success or not has_data:
+            sleep_interval = 60
+            logger.info(f"   ⏳ {self.plugin_name} in retry mode: checking again in 60s")
+            
         # Sleep in small segments to allow quick exit
-        for _ in range(self.config.interval_seconds):
+        for _ in range(sleep_interval):
             if not self.running:
                 break
             time.sleep(1)
@@ -261,6 +255,8 @@ class PowerLawBot(BasePlugin):
                     data = json.load(f)
                 self.trades_executed = data.get("trades_executed", 0)
                 self._activity_log = data.get("activity_log", [])
+                self._last_portfolio = data.get("last_portfolio", {})
+                self._last_signal = data.get("last_signal", {})
                 if data.get("last_rebalance"):
                     self.last_rebalance = datetime.fromisoformat(data["last_rebalance"])
         except Exception:
@@ -275,6 +271,8 @@ class PowerLawBot(BasePlugin):
                     "trades_executed": self.trades_executed,
                     "last_rebalance": self.last_rebalance.isoformat() if self.last_rebalance else None,
                     "activity_log": self._activity_log[-self._max_log_entries:],
+                    "last_portfolio": self._last_portfolio,
+                    "last_signal": self._last_signal,
                 }, f, indent=2)
         except Exception as e:
             logger.warning(f"[PowerLaw] Could not save state: {e}")

@@ -188,10 +188,15 @@ def main():
         
         # Start Secure API
         from src.core.api import start_api
-        start_api(app)
         
         for p_name in pm.plugins:
             print(f"  {C.OK}✓{C.R} Plugin started: {p_name}")
+
+        # 4. Attach PluginManager to the controller for memory-bridged API
+        app.pm = pm
+        
+        # 5. Start Secure API bridge (Daemon Thread)
+        start_api(app)
         
         print(f"\n  {C.MUTED}Daemon alive. Ctrl-C or kill PID to stop.{C.R}")
         print(f"  {C.MUTED}PID: {os.getpid()}{C.R}")
@@ -200,6 +205,7 @@ def main():
         import json
         last_sync = time.time()
         start_time = time.time()
+        app.start_time = start_time
         status_file = root_dir / "data/status.json"
         
         try:

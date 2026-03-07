@@ -192,7 +192,8 @@ class PacmanPriceManager:
             "0.0.1456986": "hedera-hashgraph", # WHBAR
             "0.0.731861": "saucerswap", # SAUCE
             "0.0.456858": "usd-coin", # USDC
-            "0.0.624505": "wrapped-bitcoin", # WBTC (hts) - approximate
+            "0.0.624505": "wrapped-bitcoin", # WBTC (hts) - old
+            "0.0.10082597": "wrapped-bitcoin", # WBTC (hts) - current 
         }
         binance_map = {
             "0.0.0": "HBARUSDT",

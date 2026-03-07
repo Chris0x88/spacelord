@@ -180,6 +180,25 @@
             border: 1px solid rgba(255, 51, 102, 0.2);
         }
 
+        /* --- Tables --- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: normal;
+        }
+
         /* --- Stats --- */
         .stat-grid {
             display: grid;
@@ -321,6 +340,31 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="card" style="margin-top: 25px;">
+                    <div class="card-header">
+                        <h2>Wallet Holdings</h2>
+                    </div>
+                    <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                        <table id="holdings-table">
+                            <thead>
+                                <tr>
+                                    <th>Asset</th>
+                                    <th style="text-align: right;">Balance</th>
+                                    <th style="text-align: right;">Price</th>
+                                    <th style="text-align: right;">Value (USD)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="holdings-body">
+                                <tr>
+                                    <td colspan="4"
+                                        style="text-align: center; color: var(--text-muted); padding: 20px;">Syncing...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <div class="right-col">
@@ -344,6 +388,54 @@
                     <div id="log-feed"
                         style="font-size: 0.8rem; max-height: 400px; overflow-y: auto; color: var(--text-muted); font-family: monospace;">
                         <div style="margin-bottom: 8px;">[System] Dashboard handshake complete...</div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 25px;">
+                    <div class="card-header">
+                        <h3>Swap Ledger</h3>
+                    </div>
+                    <div style="max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                        <table id="swap-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th style="padding-left:10px;">Route</th>
+                                    <th style="text-align: right;">Cost (USD)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="swap-body">
+                                <tr>
+                                    <td colspan="3"
+                                        style="text-align: center; color: var(--text-muted); padding: 20px;">Syncing...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 25px;">
+                    <div class="card-header">
+                        <h3>System Logic</h3>
+                    </div>
+                    <div style="max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                        <table id="system-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Event</th>
+                                    <th style="text-align: right;">Detail</th>
+                                </tr>
+                            </thead>
+                            <tbody id="system-body">
+                                <tr>
+                                    <td colspan="3"
+                                        style="text-align: center; color: var(--text-muted); padding: 20px;">Syncing...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -377,8 +469,13 @@
             document.getElementById('dashboard-content').style.opacity = '1';
             updateData();
             updateLogs();
+            updateHoldings();
+            updateHistory();
+
             setInterval(updateData, 3000); // 3s refresh for main data
             setInterval(updateLogs, 5000); // 5s refresh for logs
+            setInterval(updateHoldings, 30000); // 30s refresh for heavy RPC holdings
+            setInterval(updateHistory, 30000);  // 30s refresh for history
         }
 
         async function updateData() {
@@ -434,6 +531,101 @@
             } catch (err) { }
         }
 
+        async function updateHoldings() {
+            try {
+                const res = await fetch(`${API_URL}/holdings`, {
+                    headers: { 'X-Pacman-Secret': apiSecret }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const tbody = document.getElementById('holdings-body');
+                if (data.holdings && data.holdings.length > 0) {
+                    tbody.innerHTML = data.holdings.map(h => `
+                        <tr>
+                            <td style="font-weight: bold; color: var(--accent-secondary);">${h.symbol}</td>
+                            <td style="text-align: right;">${h.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })}</td>
+                            <td style="text-align: right; color: var(--text-muted);">$${h.price_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                            <td style="text-align: right; color: white;">$${h.value_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No holdings found.</td></tr>';
+                }
+            } catch (err) { }
+        }
+
+        async function updateHistory() {
+            try {
+                const res = await fetch(`${API_URL}/history?limit=25`, {
+                    headers: { 'X-Pacman-Secret': apiSecret }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const swapBody = document.getElementById('swap-body');
+                const systemBody = document.getElementById('system-body');
+
+                let swaps = [];
+                let systemEvents = [];
+
+                data.forEach(tx => {
+                    if (tx.type === "TRANSFER" || tx.mode === "STAKE" || tx.mode === "UNSTAKE" || (!tx.route && !tx.to_amount_token)) {
+                        systemEvents.push(tx);
+                    } else {
+                        swaps.push(tx);
+                    }
+                });
+
+                if (swaps.length > 0) {
+                    swapBody.innerHTML = swaps.slice(0, 10).map(tx => {
+                        const ts = new Date(tx.timestamp).toLocaleString();
+                        const routeStr = tx.route ? `<span style="color: var(--text-muted)">${tx.route.from} ➔</span> ${tx.route.to}` : "Unknown swap";
+                        const amountStr = tx.amount_usd ? `$${tx.amount_usd.toFixed(2)}` : `$0.00`;
+                        const statusColor = tx.success ? 'var(--success)' : 'var(--error)';
+
+                        return `
+                            <tr>
+                                <td style="color: var(--text-muted); font-size: 0.7rem;">${ts}</td>
+                                <td style="padding-left:10px; font-weight: bold; color: var(--accent-primary); font-size: 0.75rem;">${routeStr}</td>
+                                <td style="text-align: right; color: ${statusColor}; font-weight: bold;">${amountStr}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    swapBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No recent swaps.</td></tr>';
+                }
+
+                if (systemEvents.length > 0) {
+                    systemBody.innerHTML = systemEvents.slice(0, 10).map(tx => {
+                        const ts = new Date(tx.timestamp).toLocaleString();
+                        let eventType = tx.type || tx.mode || "SYSTEM";
+                        let detail = "";
+
+                        if (tx.type === "TRANSFER") {
+                            detail = `${tx.amount_token.toLocaleString()} ${tx.symbol}`;
+                        } else if (tx.mode === "STAKE" || tx.mode === "UNSTAKE") {
+                            detail = tx.route ? tx.route.to : "Unknown node";
+                        } else {
+                            detail = tx.error || (tx.tx_hash || tx.tx_id || "N/A").substring(0, 15);
+                        }
+
+                        const statusColor = tx.success ? 'white' : 'var(--error)';
+
+                        return `
+                            <tr>
+                                <td style="color: var(--text-muted); font-size: 0.7rem;">${ts}</td>
+                                <td style="font-weight: bold; color: var(--accent-secondary); font-size: 0.75rem;">${eventType}</td>
+                                <td style="text-align: right; color: ${statusColor}; font-size: 0.75rem;">${detail}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    systemBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No system logic events.</td></tr>';
+                }
+            } catch (err) { }
+        }
+
         function renderUI(data) {
             // Heartbeat & Uptime
             const uptime = data.uptime_sec || 0;
@@ -474,11 +666,21 @@
 
                     // PowerLaw Stats
                     if (p.name === 'PowerLaw') {
-                        if (p.portfolio && p.portfolio.total_value_usd) {
+                        if (p.portfolio) {
                             const port = p.portfolio;
-                            document.getElementById('val-total').innerText = `$${(port.total_value_usd).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-                            document.getElementById('val-btc').innerText = `${(port.wbtc_percent || 0).toFixed(1)}%`;
-                            document.getElementById('val-hbar').innerText = `${(port.hbar_balance || 0).toLocaleString()}ℏ`;
+                            const total = port.total_value_usd || 0;
+                            document.getElementById('val-total').innerText = `$${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                            const btc_pct = port.wbtc_percent || 0;
+                            document.getElementById('val-btc').innerText = `${btc_pct.toFixed(1)}%`;
+                            const hbar = port.hbar_balance || 0;
+                            document.getElementById('val-hbar').innerText = `${hbar.toLocaleString()}ℏ`;
+
+                            // Add a "Last Updated" indicator
+                            if (p.last_check) {
+                                const lastTs = new Date(p.last_check).toLocaleTimeString();
+                                document.querySelector('.card:has(#val-total) .card-header').innerHTML =
+                                    `<h2>Portfolio Pulse <span style="font-size: 0.6rem; color: var(--text-muted); font-weight: normal;">(Refreshed ${lastTs})</span></h2>`;
+                            }
                         }
                         if (p.signal && p.signal.allocation_pct) {
                             document.getElementById('val-target').innerText = `${p.signal.allocation_pct.toFixed(0)}% BTC`;

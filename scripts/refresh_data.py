@@ -3,7 +3,9 @@
 Refresh Data Script
 ===================
 
-Downloads ALL V2 (and V1) pool data from SaucerSwap API.
+```python
+Downloads all V2 pool data and necessary V1 pool data from the SaucerSwap API.
+```
 Saves everything — no manual whitelist filtering.
 Auto-populates tokens.json with every token that has a V2 pool.
 Marks preferred/default pools for ambiguous tokens (e.g. BTC, ETH).
@@ -67,8 +69,10 @@ ALIASES = {
     # These keys will be added to tokens.json pointing to the preferred token
     "BITCOIN":   "0.0.10082597",   # HTS-WBTC (highest V2 liquidity)
     "BTC":       "0.0.10082597",
+    "WBTC_HTS":  "0.0.10082597",   # System canonical
     "ETHEREUM":  "0.0.9470869",    # HTS-WETH
     "ETH":       "0.0.9470869",
+    "WETH_HTS":  "0.0.9470869",    # System canonical
     "DOLLAR":    "0.0.456858",
     "USD":       "0.0.456858",
     "HEDERA":    "0.0.0",
@@ -127,13 +131,25 @@ def refresh(force=False):
     # 1. Fetch ALL V2 pools — no whitelist filter
     # -------------------------------------------------------------------
     v2_pools = fetch_url(POOLS_URL_V2, api_key, "V2") or []
-    v1_pools = fetch_url(POOLS_URL_V1, api_key, "V1") or []
+    v1_all = fetch_url(POOLS_URL_V1, api_key, "V1") or []
+
+    # 1.5 Filter V1 pools against the approved registry
+    v1_pools = []
+    try:
+        approved_path = ROOT_DIR / "data/v1_pools_approved.json"
+        if approved_path.exists():
+            with open(approved_path) as f:
+                approved = json.load(f)
+                approved_ids = {p["contractId"] for p in approved if "contractId" in p}
+                v1_pools = [p for p in v1_all if p.get("contractId") in approved_ids]
+    except Exception as e:
+        print(f"  {C.WARN}⚠  Failed to load V1 approved list: {e}{C.R}")
 
     if not v2_pools:
         print(f"  {C.WARN}⚠  Failed to fetch V2 pools — using existing cache.{C.R}")
         return
 
-    print(f"  {C.OK}✓{C.R}  Fetched {len(v2_pools)} V2 pools, {len(v1_pools)} V1 pools")
+    print(f"  {C.OK}✓{C.R}  Fetched {len(v2_pools)} V2 pools, {len(v1_pools)} V1 (approved) pools")
 
     # Tag each pool with its protocol so the router can distinguish
     for p in v2_pools:
@@ -142,7 +158,6 @@ def refresh(force=False):
         p.setdefault("protocol", "v1")
 
     all_pools = v2_pools + v1_pools
-
     # -------------------------------------------------------------------
     # 2. Update pools.json: add any new pools (never remove existing)
     # -------------------------------------------------------------------
@@ -190,8 +205,13 @@ def refresh(force=False):
     # The existing tokens.json is the user-verified safe list.
     # Only V2 tokens (which have higher listing bar) are auto-added.
     # -------------------------------------------------------------------
-    with open(TOKENS_FILE) as f:
-        tokens = json.load(f)
+    tokens = {}
+    if TOKENS_FILE.exists():
+        try:
+            with open(TOKENS_FILE) as f:
+                tokens = json.load(f)
+        except Exception as e:
+            print(f"  {C.WARN}⚠  Failed to load existing tokens.json: {e}{C.R}")
 
     existing_ids = {meta.get("id") for meta in tokens.values()}
     added_tokens = 0

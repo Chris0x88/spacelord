@@ -131,9 +131,9 @@ class PacmanController:
             except Exception as e:
                 logger.warning(f"[Reload] Could not restart daemon: {e}")
 
-    def get_balances(self) -> Dict[str, float]:
+    def get_balances(self, token_highlights: list = None) -> Dict[str, float]:
         """Fetch all non-zero token balances for the account."""
-        return self.executor.get_balances()
+        return self.executor.get_balances(token_highlights=token_highlights)
 
     def resolve_token_id(self, symbol: str) -> Optional[str]:
         """Resolve a token symbol to a Hedera ID."""

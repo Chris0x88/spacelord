@@ -88,8 +88,9 @@ class PacmanAdapter:
     def get_portfolio_state(self) -> Optional[PortfolioState]:
         """Get current portfolio balances and allocation percentages."""
         try:
-            # Get balances from controller — use the correct method name
-            balances = self.controller.get_balances()
+            # Get balances from controller — highlight essential tokens for rebalancer
+            highlights = ["WBTC_HTS", "USDC", "HBAR"]
+            balances = self.controller.get_balances(token_highlights=highlights)
             if not balances:
                 # Fallback: try alternate method name
                 try:
