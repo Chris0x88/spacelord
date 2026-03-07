@@ -605,6 +605,14 @@ when your BTC allocation deviates too far from the model's target.
   3. Gas costs drop out of your HBAR reserve natively.
   4. Keeps a local log in data/robot_state.json.
 
+{C.ACCENT}OpenClaw / External Agent Integration:{C.R}
+  Agents can natively access live generated charts over HTTP when the daemon is running!
+  {C.TEXT}GET /chart.png?secret=<PACMAN_API_SECRET>{C.R}
+  Returns a high-definition static matplotlib PNG plotting the floor, ceiling, 
+  fair value, and cycle phases, alongside the SMA 100.
+  {C.MUTED}Use this in a helper function to instantly capture and return the image stream
+  to the user over Telegram or web interfaces.{C.R}
+
 {C.WARN}Note:{C.R} Runs in SIMULATION mode by default to protect funds. Add
 ROBOT_SIMULATE=false to .env to execute real swaps.""",
 }

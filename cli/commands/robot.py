@@ -112,9 +112,38 @@ def _cmd_start(app):
     if bot.running:
         print(f"  {C.ACCENT}ℹ{C.R} Robot is already running")
         return
+        
+    print(f"\n  {C.BOLD}🤖 Power Law Robot Deployment{C.R}")
+    print(f"  {C.CHROME}{'─' * 45}{C.R}")
+    
+    # Check if they want to create an isolated sub-account
+    print(f"  {C.MUTED}Security Best Practice: Run the robot in an isolated child account{C.R}")
+    print(f"  {C.MUTED}so your daily transactions don't disturb its target thresholds.{C.R}")
+    confirm = input(f"\n  Would you like to create a dedicated Child Account now? {C.MUTED}(y/N){C.R} ").strip().lower()
+    
+    if confirm in ["y", "yes"]:
+        print(f"\n  {C.MUTED}Creating isolated sub-account...{C.R}")
+        # Determine safe initial balance
+        try:
+            cur_bal = app.executor.w3.eth.get_balance(app.executor.eoa) / 10**18
+            init_bal = 1.0 if cur_bal > 1.5 else 0.1
+        except:
+            init_bal = 1.0
+        new_id = app.create_sub_account(initial_balance=init_bal, nickname="Robot")
+        
+        if new_id:
+            print(f"  {C.OK}✅ Created Robot Sub-account: {C.BOLD}{new_id}{C.R}")
+            print(f"  {C.MUTED}1. This account uses your existing Private Key.{C.R}")
+            print(f"  {C.MUTED}2. Transfer your Power Law BTC/USDC allocation to this ID.{C.R}")
+            print(f"  {C.MUTED}3. Change your .env HEDERA_ACCOUNT_ID to '{new_id}'.{C.R}")
+            print(f"  {C.MUTED}4. Run 'pacman robot start' again.{C.R}")
+            print(f"\n  {C.ACCENT}Aborting startup so you can fund the new account.{C.R}")
+            return
+        else:
+            print(f"  {C.ERR}✗{C.R} Failed to create sub-account.")
     
     sim_tag = f" {C.ACCENT}(SIMULATION MODE){C.R}" if bot.config.simulate else ""
-    print(f"  {C.OK}🤖{C.R} Starting Power Law rebalancer...{sim_tag}")
+    print(f"\n  {C.OK}🤖{C.R} Starting Power Law rebalancer...{sim_tag}")
     print(f"  {C.MUTED}   Threshold: {bot.config.threshold_percent}% | "
           f"Interval: {bot.config.interval_seconds}s{C.R}")
     

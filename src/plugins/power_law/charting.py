@@ -78,9 +78,9 @@ def generate_powerlaw_png() -> bytes:
     # Smooth moving average
     df['sma100'] = df['price'].rolling(window=100).mean()
 
-    # 3. Add future projections (e.g. up to 1 year after last data point, or end of cycle 5)
+    # 3. Add future projections (only 1 year out to avoid empty space)
     last_date = df['date'].iloc[-1]
-    future_dates = [last_date + timedelta(days=i) for i in range(1, 1095, 7)] # 3 years grouped locally
+    future_dates = [last_date + timedelta(days=i) for i in range(1, 365, 7)] # 1 year out
     future_df = pd.DataFrame({'date': future_dates})
     future_df['floor'] = future_df['date'].apply(floor_price)
     future_df['ceiling'] = future_df['date'].apply(ceiling_price)
@@ -90,24 +90,17 @@ def generate_powerlaw_png() -> bytes:
     all_dates = pd.concat([df['date'], future_df['date']])
     
     # 4. Plot Peak Zones (Golden Windows)
-    # Cycle 5 Peak: roughly 26% to 39% of the cycle
     s5, e5 = cycle_bounds(5)
     t5 = (e5 - s5).total_seconds()
     z5_start = s5 + timedelta(seconds=t5*0.26)
     z5_end = s5 + timedelta(seconds=t5*0.39)
     ax.axvspan(mdates.date2num(z5_start), mdates.date2num(z5_end), 
                color='#fbbf24', alpha=0.1, lw=0)
+    
+    # Position the Peak Zone text near the top
     ax.text(mdates.date2num(z5_start + (z5_end - z5_start)/2), 
-            1000000, 'Peak Zone', 
-            color='#fbbf24', alpha=0.6, ha='center', va='bottom', fontsize=8, fontweight='bold', rotation=90)
-            
-    # Cycle 6 Peak
-    s6, e6 = cycle_bounds(6)
-    t6 = (e6 - s6).total_seconds()
-    z6_start = s6 + timedelta(seconds=t6*0.26)
-    z6_end = s6 + timedelta(seconds=t6*0.39)
-    ax.axvspan(mdates.date2num(z6_start), mdates.date2num(z6_end), 
-               color='#fbbf24', alpha=0.1, lw=0)
+            0.9, 'Peak Zone', transform=ax.get_xaxis_transform(),
+            color='#fbbf24', alpha=0.6, ha='center', va='top', fontsize=8, fontweight='bold', rotation=90)
 
     # 5. Plot lines
     # Ceiling
@@ -130,14 +123,20 @@ def generate_powerlaw_png() -> bytes:
 
     # "NOW" Line
     ax.axvline(x=mdates.date2num(last_date), color='#f97316', linestyle='--', linewidth=1.0, alpha=0.6)
-    ax.text(mdates.date2num(last_date) - 15, 1000, 'NOW', 
-            color='#f97316', alpha=0.8, ha='right', va='center', fontsize=8, fontweight='bold')
+    ax.text(mdates.date2num(last_date) - 15, 0.05, 'NOW', transform=ax.get_xaxis_transform(),
+            color='#f97316', alpha=0.8, ha='right', va='bottom', fontsize=8, fontweight='bold')
 
     # Formatting axes
-    ax.set_yscale('log')
+    ax.set_yscale('linear')
+    
     # Set limits based on the recent halving minus a bit to focus the chart
-    ax.set_xlim(pd.Timestamp("2020-01-01"), future_dates[-1])
-    ax.set_ylim(4000, min(future_df['ceiling'].max() * 1.5, 3000000))
+    recent_start = pd.Timestamp("2023-01-01")  # Focus on the relevant recent period
+    ax.set_xlim(recent_start, future_dates[-1])
+    
+    # Set y limit smartly based on ceiling in the visible window
+    visible_df = future_df[future_df['date'] <= future_dates[-1]]
+    max_visible_ceiling = visible_df['ceiling'].max()
+    ax.set_ylim(bottom=0, top=max_visible_ceiling * 1.1)
 
     # Ticks
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
@@ -149,7 +148,7 @@ def generate_powerlaw_png() -> bytes:
 
     # Legends & Titles
     ax.legend(loc='upper left', frameon=False, labelcolor='#cbd5e1', fontsize=9, ncol=2)
-    ax.set_title("Bitcoin Power Law: Heatbeat Transform", color='white', pad=20, fontsize=14, fontweight='bold', loc='left')
+    ax.set_title("Bitcoin Power Law: Heartbeat Transform", color='white', pad=20, fontsize=14, fontweight='bold', loc='left')
 
     out = io.BytesIO()
     plt.tight_layout()
