@@ -132,9 +132,13 @@ def main():
         if "--verbose" in sys.argv: sys.argv.remove("--verbose")
         if "-v" in sys.argv: sys.argv.remove("-v")
 
-    # Detect --json flag early to suppress TUI banner for machine-readable output
-    json_mode = "--json" in sys.argv
-    if not json_mode:
+    # Determine run mode
+    has_args = len(sys.argv) > 1
+    is_oneshot = has_args  # Any args = one-shot (agent/subprocess mode)
+    is_daemon = has_args and sys.argv[1].lower() == "daemon"
+
+    # Banner: ONLY in interactive mode (no args). Agents never see it.
+    if not is_oneshot:
         print(PACMAN_BANNER)
         print_security_warning()
 
@@ -146,26 +150,68 @@ def main():
             
         app = PacmanController()
         
-        # Check for API Key and Wallet Setup
-        check_wallet_setup(app)
-        check_saucerswap_api_key(app)
+        # Wallet/API checks only in interactive mode (they use input() which breaks pipes)
+        if not is_oneshot:
+            check_wallet_setup(app)
+            check_saucerswap_api_key(app)
         
         # Auto-start Limit Order Daemon if enabled in settings
         if app.limit_engine._daemon_enabled:
             app.limit_engine.start_monitor(app)
         
-        if not json_mode:
+        if not is_oneshot:
             print(f"\n  {C.BOLD}{C.ACCENT}System Online{C.R}")
     except ConfigurationError as e:
         print(f"  {C.ERR}✗{C.R} Config Error: {e}")
         return
 
-    # One-Shot Mode
-    if len(sys.argv) > 1:
+    # ── DAEMON MODE ──────────────────────────────────────────────
+    # Persistent headless mode: starts robot + order daemons, stays alive.
+    # Usage: ./launch.sh daemon
+    #        nohup ./launch.sh daemon &
+    #        ./launch.sh daemon 2>&1 | tee daemon.log
+    if is_daemon:
+        import signal as _signal
+        import time
+        
+        print(f"  {C.BOLD}🤖 Pacman Daemon Mode{C.R}")
+        print(f"  {'─' * 45}")
+        
+        # Start robot if configured for live or sim
+        try:
+            from src.plugins.power_law.bot import PowerLawBot
+            robot = PowerLawBot(app)
+            robot.start()
+            sim_tag = "(sim)" if robot.config.simulate else "(LIVE)"
+            print(f"  {C.OK}✓{C.R} Robot daemon started {sim_tag}")
+        except Exception as e:
+            print(f"  {C.WARN}⚠{C.R} Robot not started: {e}")
+        
+        # Limit order daemon (already started above if enabled)
+        if app.limit_engine._daemon_enabled:
+            print(f"  {C.OK}✓{C.R} Limit order daemon running")
+        else:
+            print(f"  {C.MUTED}  Limit orders: disabled in settings{C.R}")
+        
+        print(f"\n  {C.MUTED}Daemon alive. Ctrl-C or kill PID to stop.{C.R}")
+        print(f"  {C.MUTED}PID: {__import__('os').getpid()}{C.R}")
+        
+        # Stay alive — sleep loop (compatible with all platforms)
+        try:
+            while True:
+                time.sleep(60)
+        except KeyboardInterrupt:
+            print(f"\n  {C.MUTED}Daemon shutting down.{C.R}")
+        return
+
+    # ── ONE-SHOT MODE ────────────────────────────────────────────
+    # Agent / subprocess: run one command and exit.
+    if is_oneshot:
         process_input(app, " ".join(sys.argv[1:]))
         return
 
-    # Interactive Mode
+    # ── INTERACTIVE MODE ─────────────────────────────────────────
+    # Human TUI: banner already shown, show help, enter REPL.
     cmd_help(app, [])
     
     import select
@@ -208,3 +254,4 @@ if __name__ == "__main__":
 
 # CLI entry point for compatibility
 cli = main
+

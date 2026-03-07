@@ -17,8 +17,8 @@ def setup_logger(name: str, log_file: str = "pacman.log", level=logging.INFO):
     file_handler = logging.FileHandler(LOG_DIR / log_file)
     file_handler.setFormatter(formatter)
 
-    # Console Handler (cleaner for CLI)
-    console_handler = logging.StreamHandler(sys.stdout)
+    # Console Handler — stderr so stdout stays clean for --json output
+    console_handler = logging.StreamHandler(sys.stderr)
     # If level is DEBUG, show more detail in console
     if level == logging.DEBUG:
         console_handler.setFormatter(logging.Formatter('\033[90m[DEBUG] %(message)s\033[0m'))
