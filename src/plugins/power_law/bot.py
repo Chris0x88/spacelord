@@ -107,6 +107,15 @@ class PowerLawBot(BasePlugin):
             self._log("error", reason)
             return {"success": False, "reason": reason, "traded": False}
         
+        # Cache for status dashboard immediately
+        self._last_portfolio = {
+            "wbtc_balance": state.wbtc_balance,
+            "usdc_balance": state.usdc_balance,
+            "hbar_balance": state.hbar_balance,
+            "total_value_usd": state.total_value_usd,
+            "wbtc_percent": state.wbtc_percent,
+        }
+        
         # Check HBAR gas reserve
         if state.hbar_balance < self.config.hbar_reserve_min:
             reason = (f"HBAR too low for gas: {state.hbar_balance:.2f} "

@@ -48,15 +48,29 @@ def get_status():
 @app_flask.route("/plugins", methods=["GET"])
 @require_auth
 def get_plugins():
-    """Return detailed health for all active plugins."""
-    # Assuming pm is accessible globally or through the pacman_app
-    # For now, we'll read from its status reporting mechanism
+    """Return health for ALL discovered plugins."""
+    # Read from pm if available instead of disk
     status_file = Path("data/status.json")
     if status_file.exists():
         with open(status_file, "r") as f:
             data = json.load(f)
         return jsonify(data.get("plugins", []))
     return jsonify([])
+
+@app_flask.route("/logs", methods=["GET"])
+@require_auth
+def get_logs():
+    """Return the last 50 lines of the system log."""
+    log_path = Path("logs/pacman.log")
+    if not log_path.exists():
+        return jsonify([])
+    
+    try:
+        with open(log_path, "r") as f:
+            lines = f.readlines()
+            return jsonify(lines[-50:])
+    except Exception as e:
+        return jsonify([f"Error reading logs: {e}"])
 
 @app_flask.route("/portfolio", methods=["GET"])
 @require_auth

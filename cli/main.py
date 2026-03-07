@@ -227,7 +227,7 @@ def main():
                     except Exception as e:
                         print(f"  {C.ERR}✗{C.R} Periodic refresh failed: {e}")
                 
-                time.sleep(60)
+                time.sleep(2)
         except KeyboardInterrupt:
             print(f"\n  {C.MUTED}Daemon shutting down.{C.R}")
             if status_file.exists():
