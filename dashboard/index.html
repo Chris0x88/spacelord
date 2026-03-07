@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacman Dashboard | Tactical AI Trading</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #050508;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-primary: #00f2ff;
+            --accent-secondary: #7000ff;
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            --success: #00ff88;
+            --error: #ff3366;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg-deep);
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(112, 0, 255, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(0, 242, 255, 0.1) 0%, transparent 40%);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding-bottom: 50px;
+        }
+
+        h1, h2, h3 { font-family: 'Orbitron', sans-serif; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* --- Header --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            font-size: 2.5rem;
+            color: var(--accent-primary);
+            text-shadow: 0 0 15px rgba(0, 242, 255, 0.5);
+        }
+
+        .brand-name {
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.active {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        /* --- Grid Layout --- */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 968px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(15px);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card:hover { border-color: rgba(0, 242, 255, 0.3); }
+
+        .card-header {
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* --- Plugin List --- */
+        .plugin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .plugin-info h4 { font-size: 1.1rem; margin-bottom: 4px; }
+        .plugin-info .meta { color: var(--text-muted); font-size: 0.8rem; }
+
+        .tag {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .tag-running { background: rgba(0, 255, 136, 0.1); color: var(--success); border: 1px solid rgba(0, 255, 136, 0.2); }
+        .tag-failed { background: rgba(255, 51, 102, 0.1); color: var(--error); border: 1px solid rgba(255, 51, 102, 0.2); }
+
+        /* --- Stats --- */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-val {
+            font-size: 1.8rem;
+            font-family: 'Orbitron', sans-serif;
+            color: var(--accent-primary);
+            margin: 10px 0;
+        }
+
+        .stat-label { color: var(--text-muted); font-size: 0.8rem; }
+
+        /* --- Auth Modal --- */
+        #auth-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-deep);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .auth-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            width: 400px;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            margin: 20px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        button:hover { opacity: 0.9; }
+
+    </style>
+</head>
+<body>
+
+    <div id="auth-overlay">
+        <div class="auth-card">
+            <div class="logo-icon">ᗧ</div>
+            <h2 style="margin: 20px 0;">Authentication Required</h2>
+            <p class="meta">Enter PACMAN_API_SECRET from your .env file</p>
+            <input type="password" id="api-secret" placeholder="••••••••••••••••">
+            <button onclick="saveSecret()">Connect Dashboard</button>
+        </div>
+    </div>
+
+    <div class="container" id="dashboard-content" style="opacity: 0;">
+        <header>
+            <div class="logo-group">
+                <div class="logo-icon">ᗧ</div>
+                <div class="brand-name">PACMAN DEEP RECOIL</div>
+            </div>
+            <div class="api-status">
+                <div id="global-status-dot" class="status-dot active"></div>
+                <span id="global-status-text">DAEMON ONLINE</span>
+                <span style="margin: 0 10px; color: var(--glass-border);">|</span>
+                <span id="uptime-display" style="font-family: 'Orbitron';">UPTIME: 0s</span>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <div class="left-col">
+                <div class="card" style="margin-bottom: 25px;">
+                    <div class="card-header">
+                        <h2>System Plugins</h2>
+                        <span class="meta" id="plugin-count">0 ACTIVE</span>
+                    </div>
+                    <div id="plugin-list">
+                        <!-- Dynamic content -->
+                        <div class="plugin-item">Loading plugins...</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Portfolio Pulse</h2>
+                    </div>
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-label">TOTAL VALUE</div>
+                            <div class="stat-val" id="val-total">$0.00</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">BTC CONCENTRATION</div>
+                            <div class="stat-val" id="val-btc">0.0%</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">HBAR EQUIVALENT</div>
+                            <div class="stat-val" id="val-hbar">0.0ℏ</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">CASH POSITION (USDC)</div>
+                            <div class="stat-val" id="val-usdc">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-col">
+                <div class="card" style="margin-bottom: 25px;">
+                    <div class="card-header">
+                        <h3>Backups</h3>
+                    </div>
+                    <div class="stat-box" style="margin-bottom: 15px;">
+                        <div class="stat-label">LAST SNAPSHOT</div>
+                        <div id="last-backup" style="font-size: 0.9rem; margin-top: 10px;">Never</div>
+                    </div>
+                    <div class="meta" style="text-align: center; font-size: 0.8rem;">
+                        Stored locally in <code>/backups</code>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Health Logs</h3>
+                    </div>
+                    <div id="log-feed" style="font-size: 0.8rem; max-height: 400px; overflow-y: auto; color: var(--text-muted);">
+                        <div style="margin-bottom: 8px;">[System] Dashboard handshake complete...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let apiSecret = localStorage.getItem('pacman_secret');
+        const API_URL = 'http://127.0.0.1:8088';
+
+        function checkAuth() {
+            if (!apiSecret) {
+                document.getElementById('auth-overlay').style.display = 'flex';
+            } else {
+                startDashboard();
+            }
+        }
+
+        function saveSecret() {
+            const input = document.getElementById('api-secret').value;
+            if (input) {
+                localStorage.setItem('pacman_secret', input);
+                apiSecret = input;
+                document.getElementById('auth-overlay').style.display = 'none';
+                startDashboard();
+            }
+        }
+
+        function startDashboard() {
+            document.getElementById('dashboard-content').style.opacity = '1';
+            updateData();
+            setInterval(updateData, 5000); // 5s refresh
+        }
+
+        async function updateData() {
+            try {
+                const res = await fetch(`${API_URL}/status`, {
+                    headers: { 'X-Pacman-Secret': apiSecret }
+                });
+
+                if (res.status === 401) {
+                    localStorage.removeItem('pacman_secret');
+                    location.reload();
+                    return;
+                }
+
+                const data = await res.json();
+                renderUI(data);
+                
+                // Set dot to active
+                document.getElementById('global-status-dot').className = 'status-dot active';
+                document.getElementById('global-status-text').innerText = 'DAEMON ONLINE';
+
+            } catch (err) {
+                console.error('API Error:', err);
+                document.getElementById('global-status-dot').className = 'status-dot';
+                document.getElementById('global-status-text').innerText = 'DAEMON OFFLINE';
+            }
+        }
+
+        function renderUI(data) {
+            // Heartbeat & Uptime
+            document.getElementById('uptime-display').innerText = `UPTIME: ${data.uptime_sec}s`;
+            
+            // Plugins
+            const pluginList = document.getElementById('plugin-list');
+            pluginList.innerHTML = '';
+            let activeCount = 0;
+            
+            data.plugins.forEach(p => {
+                if (p.running) activeCount++;
+                const item = document.createElement('div');
+                item.className = 'plugin-item';
+                
+                const statusTag = p.running ? 
+                    `<span class="tag tag-running">Active</span>` : 
+                    `<span class="tag tag-failed">Down</span>`;
+
+                item.innerHTML = `
+                    <div class="plugin-info">
+                        <h4>${p.name}</h4>
+                        <div class="meta">Last Beat: ${new Date(p.last_heartbeat).toLocaleTimeString()}</div>
+                    </div>
+                    <div>${statusTag}</div>
+                `;
+                pluginList.appendChild(item);
+
+                // If PowerLaw, update portfolio stats
+                if (p.name === 'PowerLaw' && p.portfolio) {
+                    const port = p.portfolio;
+                    document.getElementById('val-total').innerText = `$${port.total_value_usd.toFixed(2)}`;
+                    document.getElementById('val-btc').innerText = `${port.wbtc_percent.toFixed(1)}%`;
+                    document.getElementById('val-hbar').innerText = `${port.hbar_balance.toFixed(1)}ℏ`;
+                    document.getElementById('val-usdc').innerText = `$${port.usdc_balance.toFixed(2)}`;
+                }
+
+                // If Backup, update snapshot display
+                if (p.name === 'BackupService') {
+                    document.getElementById('last-backup').innerText = p.last_backup ? 
+                        new Date(p.last_backup).toLocaleString() : 'Never';
+                }
+            });
+
+            document.getElementById('plugin-count').innerText = `${activeCount} ACTIVE`;
+        }
+
+        checkAuth();
+    </script>
+</body>
+</html>

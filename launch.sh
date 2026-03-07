@@ -40,7 +40,14 @@ if ! command -v uv &> /dev/null; then
     echo -e "${GREEN}[Pacman]${NC} uv installed successfully."
 fi
 
-# --- Step 2: Run Pacman ---
+# --- Step 2: Special Commands ---
+if [ $# -gt 0 ] && [ "$1" == "dashboard" ]; then
+    echo -e "${CYAN}[Pacman]${NC} Opening High-Fidelity Dashboard..."
+    open "$SCRIPT_DIR/dashboard/index.html"
+    exit 0
+fi
+
+# --- Step 3: Run Pacman ---
 cd "$SCRIPT_DIR"
 
 if [ $# -eq 0 ]; then

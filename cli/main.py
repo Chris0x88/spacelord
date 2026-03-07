@@ -186,6 +186,10 @@ def main():
         pm.discover_and_load()
         pm.start_all()
         
+        # Start Secure API
+        from src.core.api import start_api
+        start_api(app)
+        
         for p_name in pm.plugins:
             print(f"  {C.OK}✓{C.R} Plugin started: {p_name}")
         

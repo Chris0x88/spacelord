@@ -45,8 +45,14 @@ src/sync_data.py
 src/translator.py
 src/types.py
 src/utils.py
+src/core/api.py
+src/core/base_plugin.py
+src/core/plugin_manager.py
+src/core/service.py
 src/plugins/__init__.py
 src/plugins/account_manager.py
+src/plugins/backup/plugin.py
+src/plugins/orders/plugin.py
 src/plugins/power_law/__init__.py
 src/plugins/power_law/adapter.py
 src/plugins/power_law/bot.py
