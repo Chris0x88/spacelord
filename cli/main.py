@@ -33,7 +33,7 @@ from cli.commands.staking import cmd_stake, cmd_unstake
 from cli.commands.liquidity import cmd_pool_deposit, cmd_pool_withdraw, cmd_lp_positions
 from cli.commands.info import (
     cmd_help, cmd_tokens, cmd_sources, cmd_price,
-    cmd_pools, cmd_history, cmd_verbose
+    cmd_pools, cmd_history, cmd_verbose, cmd_refresh
 )
 from cli.commands.orders import cmd_order
 from cli.commands.robot import cmd_robot
@@ -81,6 +81,7 @@ COMMANDS = {
     "lp-padding": cmd_lp_padding,
     "order": cmd_order, "orders": cmd_order,
     "robot": cmd_robot, "bot": cmd_robot,
+    "refresh": cmd_refresh, "sync": cmd_refresh,
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
 }
 

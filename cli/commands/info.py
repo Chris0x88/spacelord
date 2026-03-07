@@ -276,3 +276,21 @@ def _pools_delete(app, pool_id, protocol):
             print(f"  {C.OK}✅ Removed {protocol.upper()} pool {pool_id} from registry.{C.R}")
         else:
             print(f"  {C.WARN}⚠ Pool not found in {protocol.upper()} registry.{C.R}")
+
+
+def cmd_refresh(app, args):
+    """
+    Refresh all pool and token data from SaucerSwap API.
+    Fetches ALL V2 pools, updates tokens.json with every tradeable token,
+    and injects NLP aliases (BITCOIN, ETH, USD, etc.).
+    """
+    force = "--force" in args or "-f" in args
+    try:
+        from scripts.refresh_data import refresh
+        print(f"  {C.BOLD}📡 Refreshing pool and token data...{C.R}")
+        refresh(force=force)
+        # Also re-load the router graph
+        app.router.load_pools()
+        print(f"  {C.OK}✓{C.R}  Router graph reloaded.")
+    except Exception as e:
+        print(f"  {C.ERR}✗{C.R}  Refresh failed: {e}")

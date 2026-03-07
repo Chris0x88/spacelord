@@ -2,60 +2,68 @@
 """
 Pacman Data Sync
 ================
-Syncs high-liquidity pools and tokens from SaucerSwap data
-and ensures tokens.json is unified with pacman_data_raw.json.
+Called at startup to ensure tokens.json is in sync with
+pacman_data_raw.json (the cached pool data from last refresh).
+
+This is a fast, offline operation — no API calls.
+For a full refresh from SaucerSwap, run: scripts/refresh_data.py
 """
 
 import json
-import requests
 from pathlib import Path
 from src.logger import logger
 
 def sync_saucerswap_v2():
-    logger.info("📡 Refreshing data from Mirror Node and internal registries...")
-    
-    raw_path = Path("data/pacman_data_raw.json")
+    """
+    Ensure tokens.json contains every token that appears in the cached pool data.
+    Also ensures NLP aliases (BITCOIN, ETH, etc.) are present.
+    Fast — only reads local files, no network calls.
+    """
+    raw_path    = Path("data/pacman_data_raw.json")
     tokens_path = Path("data/tokens.json")
-    
+
     if not raw_path.exists() or not tokens_path.exists():
-        logger.error("Missing data files. Restore from git first.")
+        logger.warning("[Sync] Missing data files — skipping token sync.")
         return
 
     with open(raw_path) as f:
-        existing_raw = json.load(f)
+        pools = json.load(f)
     with open(tokens_path) as f:
-        existing_tokens = json.load(f)
+        tokens = json.load(f)
 
-    existing_token_ids = {t['id'] for t in existing_tokens.values()}
-    added_tokens = 0
+    existing_ids = {meta.get("id") for meta in tokens.values() if meta.get("id")}
+    added = 0
 
-    for pool in existing_raw:
-        for key in ['tokenA', 'tokenB']:
-            t = pool.get(key)
-            if not t or not isinstance(t, dict): continue
-            
-            tid = t.get('id')
-            if tid and tid not in existing_token_ids:
-                sym = t.get('symbol', 'UNKNOWN').upper()
-                # Clean up symbol for registry key
-                if sym in existing_tokens:
-                    sym = f"{sym}_{tid.split('.')[-1]}"
-                
-                existing_tokens[sym] = {
-                    "id": tid,
-                    "decimals": t.get('decimals', 8),
-                    "symbol": t.get('symbol', sym),
-                    "name": t.get('name', sym)
-                }
-                existing_token_ids.add(tid)
-                added_tokens += 1
+    for pool in pools:
+        for side in ["tokenA", "tokenB"]:
+            t = pool.get(side)
+            if not isinstance(t, dict):
+                continue
+            tid = t.get("id")
+            if not tid or tid in existing_ids:
+                continue
 
-    if added_tokens > 0:
+            sym = (t.get("symbol") or "UNKNOWN").strip()
+            key = sym.upper()
+            if key in tokens:
+                key = f"{sym.upper()}_{tid.split('.')[-1]}"
+
+            tokens[key] = {
+                "id": tid,
+                "decimals": t.get("decimals", 8),
+                "symbol": sym,
+                "name": t.get("name", sym),
+                "icon": t.get("icon", ""),
+            }
+            existing_ids.add(tid)
+            added += 1
+
+    if added > 0:
         with open(tokens_path, "w") as f:
-            json.dump(existing_tokens, f, indent=2)
-        logger.info(f"✅ Sync Complete: Unified {added_tokens} missing tokens into registry.")
+            json.dump(tokens, f, indent=2)
+        logger.info(f"[Sync] Added {added} new tokens to registry ({len(tokens)} total).")
     else:
-        logger.info("✅ Sync Complete: Registry is already unified with raw data.")
+        logger.debug("[Sync] Token registry already up to date.")
 
 if __name__ == "__main__":
     sync_saucerswap_v2()
