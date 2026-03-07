@@ -156,7 +156,20 @@ def refresh(force=False):
     for p in all_pools:
         cid = p.get("contractId")
         if cid and cid not in existing_pool_ids:
-            existing_pools.append(p)
+            # Standardize minimal registry format
+            ta = p.get("tokenA", {})
+            tb = p.get("tokenB", {})
+            ta_id = ta.get("id") if isinstance(ta, dict) else ta
+            tb_id = tb.get("id") if isinstance(tb, dict) else tb
+            
+            reg_entry = {
+                "contractId": cid,
+                "tokenA": ta_id,
+                "tokenB": tb_id,
+                "fee": p.get("fee", 3000),
+                "protocol": p.get("protocol", "v2")
+            }
+            existing_pools.append(reg_entry)
             existing_pool_ids.add(cid)
             new_pool_count += 1
 

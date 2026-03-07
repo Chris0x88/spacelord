@@ -294,3 +294,55 @@ def cmd_refresh(app, args):
         print(f"  {C.OK}✓{C.R}  Router graph reloaded.")
     except Exception as e:
         print(f"  {C.ERR}✗{C.R}  Refresh failed: {e}")
+
+
+def cmd_install_service(app, args):
+    """Install Pacman as a native OS service (launchd/systemd)."""
+    from src.core.service import ServiceManager
+    sm = ServiceManager()
+    sm.install()
+
+
+def cmd_uninstall_service(app, args):
+    """Remove the native OS service."""
+    from src.core.service import ServiceManager
+    sm = ServiceManager()
+    sm.uninstall()
+
+
+def cmd_service_status(app, args):
+    """Check the status of the native service and daemon heartbeat."""
+    from src.core.service import ServiceManager
+    sm = ServiceManager()
+    
+    print(f"\n  {C.BOLD}🖥 OS Service Status{C.R}")
+    print(f"  {'─' * 45}")
+    sm.status()
+    
+    status_file = Path("data/status.json")
+    if status_file.exists():
+        try:
+            with open(status_file) as f:
+                data = json.load(f)
+            
+            print(f"\n  {C.BOLD}🤖 Daemon Heartbeat{C.R}")
+            print(f"  {'─' * 45}")
+            print(f"  PID:    {data.get('pid')}")
+            print(f"  Uptime: {data.get('uptime_sec')}s")
+            print(f"  Last:   {data.get('last_heartbeat')}")
+            print(f"  Sync:   {data.get('last_pool_sync')}")
+            
+            plugins = data.get("plugins", [])
+            if plugins:
+                print(f"\n  {C.BOLD}🧩 Active Plugins{C.R}")
+                for p in plugins:
+                    p_name = p.get('name', '???')
+                    status = f"{C.OK}RUN{C.R}" if p.get('running') else f"{C.ERR}OFF{C.R}"
+                    errs = p.get('errors', 0)
+                    err_str = f" ({C.ERR}{errs} errs{C.R})" if errs > 0 else ""
+                    print(f"  [{status}] {p_name:<12} {p.get('last_heartbeat')}{err_str}")
+        except Exception as e:
+            print(f"  {C.WARN}⚠ Error reading heartbeat: {e}{C.R}")
+    else:
+        print(f"\n  {C.WARN}⚠ No daemon heartbeat found at data/status.json{C.R}")
+

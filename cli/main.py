@@ -10,8 +10,10 @@ Responsible ONLY for:
 3. The process_input() dispatcher
 4. The main() entry point loop
 """
-
+import os
 import sys
+import time
+import json
 from pathlib import Path
 
 # Add project root to sys.path
@@ -33,7 +35,8 @@ from cli.commands.staking import cmd_stake, cmd_unstake
 from cli.commands.liquidity import cmd_pool_deposit, cmd_pool_withdraw, cmd_lp_positions
 from cli.commands.info import (
     cmd_help, cmd_tokens, cmd_sources, cmd_price,
-    cmd_pools, cmd_history, cmd_verbose, cmd_refresh
+    cmd_pools, cmd_history, cmd_verbose, cmd_refresh,
+    cmd_install_service, cmd_uninstall_service, cmd_service_status
 )
 from cli.commands.orders import cmd_order
 from cli.commands.robot import cmd_robot
@@ -82,6 +85,9 @@ COMMANDS = {
     "order": cmd_order, "orders": cmd_order,
     "robot": cmd_robot, "bot": cmd_robot,
     "refresh": cmd_refresh, "sync": cmd_refresh,
+    "install-service": cmd_install_service,
+    "uninstall-service": cmd_uninstall_service,
+    "status-service": cmd_service_status,
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
 }
 
@@ -146,7 +152,6 @@ def main():
     # Initialize App (Logic)
     try:
         if verbose_requested:
-            import os
             os.environ["PACMAN_VERBOSE"] = "true"
             
         app = PacmanController()
@@ -156,9 +161,6 @@ def main():
             check_wallet_setup(app)
             check_saucerswap_api_key(app)
         
-        # Auto-start Limit Order Daemon if enabled in settings
-        if app.limit_engine._daemon_enabled:
-            app.limit_engine.start_monitor(app)
         
         if not is_oneshot:
             print(f"\n  {C.BOLD}{C.ACCENT}System Online{C.R}")
@@ -178,31 +180,54 @@ def main():
         print(f"  {C.BOLD}🤖 Pacman Daemon Mode{C.R}")
         print(f"  {'─' * 45}")
         
-        # Start robot if configured for live or sim
-        try:
-            from src.plugins.power_law.bot import PowerLawBot
-            robot = PowerLawBot(app)
-            robot.start()
-            sim_tag = "(sim)" if robot.config.simulate else "(LIVE)"
-            print(f"  {C.OK}✓{C.R} Robot daemon started {sim_tag}")
-        except Exception as e:
-            print(f"  {C.WARN}⚠{C.R} Robot not started: {e}")
+        # Initialize and start Plugin Manager
+        from src.core.plugin_manager import PluginManager
+        pm = PluginManager(app)
+        pm.discover_and_load()
+        pm.start_all()
         
-        # Limit order daemon (already started above if enabled)
-        if app.limit_engine._daemon_enabled:
-            print(f"  {C.OK}✓{C.R} Limit order daemon running")
-        else:
-            print(f"  {C.MUTED}  Limit orders: disabled in settings{C.R}")
+        for p_name in pm.plugins:
+            print(f"  {C.OK}✓{C.R} Plugin started: {p_name}")
         
         print(f"\n  {C.MUTED}Daemon alive. Ctrl-C or kill PID to stop.{C.R}")
-        print(f"  {C.MUTED}PID: {__import__('os').getpid()}{C.R}")
+        print(f"  {C.MUTED}PID: {os.getpid()}{C.R}")
         
-        # Stay alive — sleep loop (compatible with all platforms)
+        # Stay alive — sleep loop
+        import json
+        last_sync = time.time()
+        start_time = time.time()
+        status_file = root_dir / "data/status.json"
+        
         try:
             while True:
+                # 1. Heartbeat
+                status = {
+                    "pid": os.getpid(),
+                    "uptime_sec": int(time.time() - start_time),
+                    "last_heartbeat": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "plugins": pm.get_all_statuses(),
+                    "last_pool_sync": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(last_sync))
+                }
+                with open(status_file, "w") as f:
+                    json.dump(status, f, indent=2)
+                
+                # 2. Periodic Refresh (24h = 86400s)
+                if time.time() - last_sync > 86400:
+                    try:
+                        from scripts.refresh_data import refresh
+                        print(f"\n  {C.BOLD}📡 Periodic pool refresh...{C.R}")
+                        refresh(force=True)
+                        app.router.load_pools()
+                        last_sync = time.time()
+                        print(f"  {C.OK}✓{C.R} Pools updated.")
+                    except Exception as e:
+                        print(f"  {C.ERR}✗{C.R} Periodic refresh failed: {e}")
+                
                 time.sleep(60)
         except KeyboardInterrupt:
             print(f"\n  {C.MUTED}Daemon shutting down.{C.R}")
+            if status_file.exists():
+                status_file.unlink()
         return
 
     # ── ONE-SHOT MODE ────────────────────────────────────────────

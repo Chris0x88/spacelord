@@ -348,63 +348,12 @@ class LimitOrderEngine:
 
     # --- Monitor Daemon -----------------------------------------------------
 
-    @property
-    def is_running(self) -> bool:
-        """Check if the monitor daemon is running."""
-        return self._monitor_thread is not None and self._monitor_thread.is_alive()
-
-    def start_monitor(self, controller) -> bool:
+    def check_orders(self):
         """
-        Start the background price monitor.
-        Returns True if started, False if already running.
+        Public trigger for checking orders.
+        Evaluationpass: reload prices and trigger active orders.
         """
-        if self.is_running:
-            logger.warning("[LimitOrder] Monitor already running.")
-            return False
-
-        self._controller = controller
-        self._stop_event.clear()
-        self._monitor_thread = threading.Thread(
-            target=self._monitor_loop,
-            name="LimitOrderDaemon",
-            daemon=True,
-        )
-        self._monitor_thread.start()
-        self._daemon_enabled = True
-        self._save_daemon_enabled(True)
-        active_count = self.get_active_count(account_id=self._controller.account_id if self._controller else None)
-        logger.info(
-            f"[LimitOrder] Monitor started — polling every {format_interval(self._poll_interval)}, "
-            f"{active_count} active orders for this account."
-        )
-        return True
-
-    def stop_monitor(self):
-        """Stop the background monitor gracefully."""
-        if self.is_running:
-            self._stop_event.set()
-            self._monitor_thread.join(timeout=5)
-            self._monitor_thread = None
-            self._daemon_enabled = False
-            self._save_daemon_enabled(False)
-            logger.info("[LimitOrder] Monitor stopped.")
-
-    def _monitor_loop(self):
-        """Main daemon loop — runs until stop_event is set."""
-        logger.info("[LimitOrder] Daemon loop started.")
-        while not self._stop_event.is_set():
-            try:
-                self._check_orders()
-            except Exception as e:
-                logger.error(f"[LimitOrder] Monitor error: {e}")
-
-            # Sleep in 1-second increments for responsive shutdown
-            for _ in range(self._poll_interval):
-                if self._stop_event.is_set():
-                    break
-                time.sleep(1)
-
-        logger.info("[LimitOrder] Daemon loop exited.")
+        self._check_orders()
 
     def _check_orders(self):
         """

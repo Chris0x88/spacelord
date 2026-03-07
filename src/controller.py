@@ -279,24 +279,6 @@ class PacmanController:
         if self._limit_engine is None:
             from src.limit_orders import LimitOrderEngine
             self._limit_engine = LimitOrderEngine()
-            # Explicitly check setting from file
-            from src.logger import logger
-            import json
-            from src.limit_orders import SETTINGS_FILE
-            
-            daemon_enabled = False
-            if SETTINGS_FILE.exists():
-                try:
-                    with open(SETTINGS_FILE) as f:
-                        settings = json.load(f)
-                    daemon_enabled = settings.get("limit_order_daemon_enabled", False)
-                except: pass
-
-            if daemon_enabled:
-                logger.info("[Controller] Auto-starting Limit Order Daemon based on settings...")
-                self._limit_engine.start_monitor(self)
-            else:
-                logger.info("[Controller] Limit Order Daemon is disabled in settings.")
                 
         return self._limit_engine
 

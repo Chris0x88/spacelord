@@ -205,8 +205,17 @@ class PacmanVariantRouter:
         pair = {sym_a.upper(), sym_b.upper()}
         return pair in BLACKLIST
 
-    def _id_to_sym(self, token_id: str) -> Optional[str]:
+    def _id_to_sym(self, token_id) -> Optional[str]:
         """Resolve a token ID to its internal routing symbol."""
+        if not token_id:
+            return None
+            
+        # Robustness: handle cases where ID is passed as a dict {id: ...} from API
+        if isinstance(token_id, dict):
+            token_id = token_id.get("id")
+            if not token_id:
+                return None
+
         # Native HBAR and its wrapped form both map to "HBAR"
         if token_id == "0.0.0" or token_id == "0.0.1456986":
             return "HBAR"

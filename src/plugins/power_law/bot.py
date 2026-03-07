@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Optional, Callable
 
 from src.logger import logger
+from src.core.base_plugin import BasePlugin
 from src.plugins.power_law.config import RobotConfig, get_robot_config
 from src.plugins.power_law.adapter import PacmanAdapter, PortfolioState
 
@@ -25,29 +26,32 @@ from src.plugins.power_law.adapter import PacmanAdapter, PortfolioState
 STATE_FILE = Path(__file__).resolve().parent.parent.parent.parent / "data" / "robot_state.json"
 
 
-class PowerLawBot:
+class PowerLawBot(BasePlugin):
     """
     Rebalancer bot that uses the Bitcoin Heartbeat Model to determine
     optimal BTC allocation and rebalances via Pacman's swap engine.
     """
     
-    def __init__(self, controller, config: Optional[RobotConfig] = None):
+    def __init__(self, app, config: Optional[RobotConfig] = None):
         """
         Args:
-            controller: An initialized PacmanController instance.
+            app: An initialized PacmanController instance.
             config: Robot configuration. If None, loads from .env.
         """
+        super().__init__(app, "PowerLaw")
         self.config = config or get_robot_config()
-        self.adapter = PacmanAdapter(controller)
+        self.adapter = PacmanAdapter(app)
         
         # State
-        self.running = False
-        self._thread: Optional[threading.Thread] = None
         self.last_check: Optional[datetime] = None
         self.last_rebalance: Optional[datetime] = None
         self.trades_executed = 0
         self._activity_log: list = []
         self._max_log_entries = 25
+        
+        # Cached values for non-blocking status
+        self._last_signal = {}
+        self._last_portfolio = {}
         
         # Load persisted state
         self._load_state()
@@ -144,6 +148,15 @@ class PowerLawBot:
                 "target_btc_pct": target_btc_pct,
                 "deviation": deviation,
             })
+            # Cache for status dashboard
+            self._last_signal = signal
+            self._last_portfolio = {
+                "wbtc_balance": state.wbtc_balance,
+                "usdc_balance": state.usdc_balance,
+                "hbar_balance": state.hbar_balance,
+                "total_value_usd": state.total_value_usd,
+                "wbtc_percent": state.wbtc_percent,
+            }
             return {
                 "success": True, "reason": reason, "traded": False,
                 "current_btc_pct": state.wbtc_percent,
@@ -205,64 +218,29 @@ class PowerLawBot:
         result["traded"] = result.get("success", False)
         return result
     
-    def start(self):
-        """Start the bot daemon in a background thread."""
-        if self.running:
-            logger.warning("[PowerLaw] Bot is already running")
-            return
-        
-        self.running = True
-        self._thread = threading.Thread(target=self._run_loop, daemon=True)
-        self._thread.start()
-        logger.info("🤖 Power Law bot started (background thread)")
-    
-    def stop(self):
-        """Stop the bot daemon."""
-        self.running = False
-        if self._thread:
-            self._thread.join(timeout=5)
-            self._thread = None
-        logger.info("🤖 Power Law bot stopped")
-    
-    def _run_loop(self):
-        """Background loop: check_and_rebalance at configured interval."""
-        while self.running:
-            try:
-                self.check_and_rebalance()
-            except Exception as e:
-                logger.error(f"[PowerLaw] Bot loop error: {e}")
-                self._log("error", str(e))
-            
-            # Sleep in small intervals so we can stop quickly
-            for _ in range(self.config.interval_seconds):
-                if not self.running:
-                    break
-                time.sleep(1)
+    def run_loop(self):
+        """Standard work loop called by BasePlugin."""
+        self.check_and_rebalance()
+        # Sleep in small segments to allow quick exit
+        for _ in range(self.config.interval_seconds):
+            if not self.running:
+                break
+            time.sleep(1)
     
     def get_status(self) -> dict:
-        """Get comprehensive bot status."""
-        signal = self.get_signal()
-        state = self.adapter.get_portfolio_state()
-        
-        return {
-            "running": self.running,
+        """Get comprehensive bot status (non-blocking)."""
+        status = super().get_status()
+        status.update({
             "simulate": self.config.simulate,
             "model": self.config.model,
             "threshold": self.config.threshold_percent,
-            "interval_seconds": self.config.interval_seconds,
             "trades_executed": self.trades_executed,
             "last_check": self.last_check.isoformat() if self.last_check else None,
             "last_rebalance": self.last_rebalance.isoformat() if self.last_rebalance else None,
-            "signal": signal,
-            "portfolio": {
-                "wbtc_balance": state.wbtc_balance if state else 0,
-                "usdc_balance": state.usdc_balance if state else 0,
-                "hbar_balance": state.hbar_balance if state else 0,
-                "total_value_usd": state.total_value_usd if state else 0,
-                "wbtc_percent": state.wbtc_percent if state else 0,
-            } if state else None,
-            "activity_log": self._activity_log[-10:],
-        }
+            "signal": self._last_signal,
+            "portfolio": self._last_portfolio,
+        })
+        return status
     
     # --- Persistence ---
     
