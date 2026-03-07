@@ -1,6 +1,7 @@
 import io
 from datetime import datetime, timedelta
 import pandas as pd
+import requests
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -19,10 +20,9 @@ def cycle_bounds(c: int) -> tuple[datetime, datetime]:
         return (GENESIS, get_halving_date(1))
     return (get_halving_date(c - 1), get_halving_date(c))
 
-def download_binance_klines(start_time: int, end_time: int) -> pd.DataFrame:
-    # If startTime is provided, it returns klines starting from that time (up to 1000).
-    # If we want the MOST RECENT data, we should let Binance decide by only providing limit or endTime+limit.
-    url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=1000"
+def download_binance_klines(start_time_ms: int, end_time_ms: int) -> pd.DataFrame:
+    """Fetch daily candles from Binance. Uses startTime to ensure hard data range."""
+    url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime={start_time_ms}&limit=1000"
     r = requests.get(url, timeout=5)
     data = r.json()
     if not isinstance(data, list) or len(data) == 0:
@@ -41,12 +41,13 @@ def generate_powerlaw_png() -> bytes:
     Fetch history from Binance, generate a high-definition static PNG of the Power Law Heartbeat Model.
     Returns bytes of the PNG image.
     """
-    # Fetch 4 years of history (start of cycle 4 + 1 year)
-    end_time = int(datetime.utcnow().timestamp() * 1000)
-    start_time = int(HALVINGS[-1].timestamp() * 1000) - int(365 * 24 * 60 * 60 * 1000) # go back a year before last halving
+    # Fetch history from start of 2024 to ensure 1000 limit is plenty for today
+    recent_start = pd.Timestamp("2024-01-01")
+    start_time_ms = int(recent_start.timestamp() * 1000)
+    end_time_ms = int(datetime.utcnow().timestamp() * 1000)
     
     try:
-        df = download_binance_klines(start_time, end_time)
+        df = download_binance_klines(start_time_ms, end_time_ms)
         if df.empty:
             raise ValueError("No data returned from Binance")
     except Exception as e:
@@ -100,48 +101,57 @@ def generate_powerlaw_png() -> bytes:
     
     # Position the Peak Zone text near the top
     ax.text(mdates.date2num(z5_start + (z5_end - z5_start)/2), 
-            0.9, 'Peak Zone', transform=ax.get_xaxis_transform(),
-            color='#fbbf24', alpha=0.6, ha='center', va='top', fontsize=8, fontweight='bold', rotation=90)
+            0.85, 'CRYPTO PEAK WINDOW', transform=ax.get_xaxis_transform(),
+            color='#fbbf24', alpha=0.8, ha='center', va='top', fontsize=9, fontweight='bold', rotation=0)
 
-    # 5. Plot lines
-    # Ceiling
-    ax.plot(all_dates, pd.concat([df['ceiling'], future_df['ceiling']]), 
-            color='#ef4444', linewidth=1.5, label='Ceiling')
+    # 5. Plot Model Corridor (Fill)
+    ax.fill_between(all_dates, 
+                    pd.concat([df['floor'], future_df['floor']]), 
+                    pd.concat([df['ceiling'], future_df['ceiling']]), 
+                    color='#334155', alpha=0.2, label='Model Corridor')
     
-    # Floor
+    # Floor (Dashed)
     ax.plot(all_dates, pd.concat([df['floor'], future_df['floor']]), 
-            color='#10b981', linewidth=1.5, label='Floor')
+            color='#10b981', linewidth=1.0, linestyle=':', alpha=0.5)
             
-    # Model Price
+    # Model Price (Fair Value)
     ax.plot(all_dates, pd.concat([df['model_price'], future_df['model_price']]), 
-            color='#a855f7', linewidth=2.0, linestyle='--', alpha=0.8, label='Fair Value')
+            color='#a855f7', linewidth=2.0, linestyle='--', alpha=0.8, label='MODEL FAIR VALUE')
 
-    # BTC Price
-    ax.plot(df['date'], df['price'], color='#06b6d4', linewidth=2.0, alpha=0.9, label='BTC Price')
+    # BTC Market Price (Prominent)
+    ax.plot(df['date'], df['price'], color='#06b6d4', linewidth=2.5, alpha=1.0, label='BTC MARKET PRICE')
 
-    # SMA 100
-    ax.plot(df['date'], df['sma100'], color='#22d3ee', linewidth=1.0, linestyle=':', alpha=0.8, label='SMA 100')
+    # SMA 100 (Secondary)
+    ax.plot(df['date'], df['sma100'], color='#22d3ee', linewidth=1.0, linestyle='-', alpha=0.4, label='100d Avg')
 
     # "NOW" Line
-    ax.axvline(x=mdates.date2num(last_date), color='#f97316', linestyle='--', linewidth=1.0, alpha=0.6)
-    ax.text(mdates.date2num(last_date) - 15, 0.05, 'NOW', transform=ax.get_xaxis_transform(),
-            color='#f97316', alpha=0.8, ha='right', va='bottom', fontsize=8, fontweight='bold')
-
-    # Formatting axes
+    ax.axvline(x=mdates.date2num(last_date), color='#f97316', linestyle='-', linewidth=1.5, alpha=0.8)
+    
+    # 6. Formatting axes
     ax.set_yscale('linear')
     
-    # Set limits based on the recent halving minus a bit to focus the chart
-    recent_start = pd.Timestamp("2024-01-01")  # Focus more tightly on current cycle
-    ax.set_xlim(recent_start, future_dates[-1])
+    # Set limits: tight focus on current cycle
+    recent_start = pd.Timestamp("2024-01-01") 
+    ax.set_xlim(recent_start, last_date + timedelta(days=90)) # Only 3 months projection for "reality" focus
     
-    # Set y limit smartly: ensure the current price and fair value are the focus.
-    # We cap at the ceiling, but don't let a distant 3M ceiling squash the 60k price.
+    # Dynamic Y limits
     visible_hist = df[df['date'] >= recent_start]
     max_price_in_view = max(visible_hist['price'].max(), df['model_price'].max())
     
-    # Ensure current price is roughly in the middle-top half
-    ax.set_ylim(bottom=min(visible_hist['price'].min(), 30000) * 0.9, 
-                top=max_price_in_view * 1.4)
+    ax.set_ylim(bottom=min(visible_hist['price'].min(), 40000) * 0.9, 
+                top=max_price_in_view * 1.15)
+
+    # Add numeric labels at the 'NOW' line for total clarity
+    current_btc = df['price'].iloc[-1]
+    current_fair = df['model_price'].iloc[-1]
+    
+    ax.annotate(f' MARKET: ${current_btc/1000:.1f}k', xy=(last_date, current_btc),
+                xytext=(10, 0), textcoords='offset points', color='#06b6d4', 
+                fontweight='bold', fontsize=10, va='center')
+
+    ax.annotate(f' FAIR VAL: ${current_fair/1000:.1f}k', xy=(last_date, current_fair),
+                xytext=(10, 0), textcoords='offset points', color='#a855f7', 
+                fontweight='bold', fontsize=10, va='center')
 
     # Ticks
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))

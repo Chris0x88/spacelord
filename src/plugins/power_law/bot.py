@@ -125,14 +125,25 @@ class PowerLawBot(BasePlugin):
                 if robot_id and robot_id != parent_id:
                     logger.info(f"   ⛽ HBAR low ({state.hbar_balance:.2f}). Attempting top-up from parent...")
                     try:
-                        # Transfer 5 HBAR from parent to robot
-                        transfer_res = self.app.transfer("HBAR", 10.0, robot_id, memo="Robot Gas Top-up")
-                        if transfer_res.get("success"):
-                            logger.info(f"   ✅ Topped up robot with 10 HBAR.")
-                            # Refresh state
-                            state = self.adapter.get_portfolio_state()
+                        from lib.prices import price_manager
+                        hbar_price = price_manager.get_price("HBAR")
+                        if hbar_price > 0:
+                            # Target $1.00 USD worth of HBAR
+                            topup_amount = 1.0 / hbar_price
+                            # Round to 1 decimal place to be safe
+                            topup_amount = round(topup_amount, 1)
+                            
+                            logger.info(f"   💸 Current HBAR price: ${hbar_price:.4f}. Targeting $1.00 top-up ({topup_amount} HBAR)...")
+                            
+                            transfer_res = self.app.transfer("HBAR", topup_amount, robot_id, memo="Robot Gas Top-up ($1 USD)")
+                            if transfer_res.get("success"):
+                                logger.info(f"   ✅ Topped up robot with {topup_amount} HBAR.")
+                                # Refresh state
+                                state = self.adapter.get_portfolio_state()
+                            else:
+                                logger.warning(f"   ⚠️ Top-up failed: {transfer_res.get('error')}")
                         else:
-                            logger.warning(f"   ⚠️ Top-up failed: {transfer_res.get('error')}")
+                            logger.warning("   ⚠️ Could not fetch HBAR price for smart top-up.")
                     except Exception as e:
                         logger.error(f"   ❌ Top-up error: {e}")
 

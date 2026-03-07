@@ -161,6 +161,18 @@ class PacmanConfig:
         config.hedera_account_id = os.getenv("HEDERA_ACCOUNT_ID")
         config.robot_account_id = os.getenv("ROBOT_ACCOUNT_ID")
         
+        # Hands-free: Load robot_account_id from state if not in env
+        if not config.robot_account_id:
+            try:
+                import json
+                state_path = Path(__file__).parent.parent / "data" / "robot_state.json"
+                if state_path.exists():
+                    with open(state_path) as f:
+                        state_data = json.load(f)
+                        config.robot_account_id = state_data.get("robot_account_id")
+            except Exception:
+                pass
+        
         return config
     
     def validate(self) -> None:

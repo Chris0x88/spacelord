@@ -140,13 +140,25 @@ def _cmd_start(app):
     
     if robot_id:
         if app.config.hedera_account_id != robot_id:
-            print(f"  {C.ACCENT}ℹ{C.R} Dedicated Robot account found: {C.BOLD}{robot_id}{C.R}")
-            print(f"  {C.MUTED}To use it, update your .env: ROBOT_ACCOUNT_ID={robot_id}{C.R}")
-            # If they haven't set it in .env, we can still proceed if they want, 
-            # or remind them. The user said it needs to be "clean and easy".
+            # Hands-free: auto-link and persist
             if not app.config.robot_account_id:
                 app.config.robot_account_id = robot_id
-                print(f"  {C.OK}✓{C.R} auto-linked ROBOT_ACCOUNT_ID for this session.")
+                print(f"  {C.OK}✓{C.R} Hands-free: Auto-linked Dedicated Robot account: {C.BOLD}{robot_id}{C.R}")
+                
+                # Persist to robot_state.json so it's sticky
+                try:
+                    import json
+                    from pathlib import Path
+                    state_path = Path("data/robot_state.json")
+                    state_data = {}
+                    if state_path.exists():
+                        with open(state_path) as f:
+                            state_data = json.load(f)
+                    state_data["robot_account_id"] = robot_id
+                    with open(state_path, "w") as f:
+                        json.dump(state_data, f, indent=2)
+                except Exception as e:
+                    logger.debug(f"Failed to persist robot_account_id: {e}")
     else:
         # No robot account found anywhere
         print(f"  {C.MUTED}Security Best Practice: Run the robot in an isolated child account{C.R}")
@@ -169,11 +181,26 @@ def _cmd_start(app):
                 
                 if new_id:
                     print(f"  {C.OK}✅ Created Robot Sub-account: {C.BOLD}{new_id}{C.R}")
-                    print(f"  {C.MUTED}1. This account is derived from your primary key.{C.R}")
-                    print(f"  {C.MUTED}2. REQUIRED: Add 'ROBOT_ACCOUNT_ID={new_id}' to your .env{C.R}")
-                    print(f"  {C.MUTED}3. Transfer your WBTC/USDC allocation to this ID.{C.R}")
-                    print(f"\n  {C.ACCENT}Aborting startup so you can fund/configure the new account.{C.R}")
-                    return
+                    
+                    # Persist immediately
+                    try:
+                        import json
+                        from pathlib import Path
+                        state_path = Path("data/robot_state.json")
+                        state_data = {}
+                        if state_path.exists():
+                            with open(state_path) as f:
+                                state_data = json.load(f)
+                        state_data["robot_account_id"] = new_id
+                        with open(state_path, "w") as f:
+                            json.dump(state_data, f, indent=2)
+                        app.config.robot_account_id = new_id
+                        print(f"  {C.OK}✓{C.R} Auto-linked and persisted to robot_state.json")
+                    except Exception as e:
+                        logger.debug(f"Persistence failed: {e}")
+
+                    print(f"  {C.MUTED}Note: This account is derived from your primary key.{C.R}")
+                    print(f"  {C.MUTED}Please transfer your WBTC/USDC allocation to this ID to begin.{C.R}")
             except Exception as e:
                 print(f"  {C.ERR}✗{C.R} Failed to create sub-account: {e}")
                 return
@@ -295,6 +322,16 @@ def _print_robot_help():
     print(f"  {C.ACCENT}robot status{C.R}   Show bot status and portfolio")
     print()
     print(f"  {C.MUTED}Configure via .env:{C.R}")
+    print(f"  {C.MUTED}  ROBOT_ACCOUNT_ID=(0.0.x)      (dedicated child account){C.R}")
     print(f"  {C.MUTED}  ROBOT_THRESHOLD_PERCENT=15.0  (15% = optimal){C.R}")
-    print(f"  {C.MUTED}  ROBOT_INTERVAL_SECONDS=3600   (check hourly){C.R}")
-    print(f"  {C.MUTED}  ROBOT_SIMULATE=true           (safe mode){C.R}")
+    print(f"  {C.MUTED}  ROBOT_SIMULATE=true           (default: safe mode){C.R}")
+    print()
+    print(f"  {C.BOLD}OpenClaw Integration:{C.R}")
+    print(f"  {C.MUTED}To pull the latest Power Law chart into OpenClaw or an AI Agent:{C.R}")
+    print(f"  {C.ACCENT}GET http://127.0.0.1:8088/chart.png?secret=YOUR_PACMAN_API_SECRET{C.R}")
+    print()
+    print(f"  {C.BOLD}Startup Explainer:{C.R}")
+    print(f"  {C.MUTED}1. Run 'robot start' to initiate background monitoring.{C.R}")
+    print(f"  {C.MUTED}2. If prompted, create a Child Account to isolate trading.{C.R}")
+    print(f"  {C.MUTED}3. Ensure the Parent Account has >1 HBAR to fund gas fees.{C.R}")
+    print(f"  {C.MUTED}4. Dashboard: http://127.0.0.1:8088 (Glassmorphism UI){C.R}")
