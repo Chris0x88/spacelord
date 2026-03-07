@@ -35,7 +35,13 @@ def sync_saucerswap_v2():
     added = 0
 
     for pool in pools:
+        # V1 pools are not indexed — they contain unvetted/scam tokens.
+        # tokens.json is the user-verified safe list; only V2 tokens auto-populate it.
+        if pool.get("protocol", "v2") != "v2":
+            continue
+
         for side in ["tokenA", "tokenB"]:
+
             t = pool.get(side)
             if not isinstance(t, dict):
                 continue

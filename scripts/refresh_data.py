@@ -172,7 +172,10 @@ def refresh(force=False):
     print(f"  {C.OK}✓{C.R}  pacman_data_raw.json updated ({len(all_pools)} pools)")
 
     # -------------------------------------------------------------------
-    # 4. Auto-populate tokens.json from ALL pool tokens
+    # 4. Auto-populate tokens.json — V2 ONLY
+    # V1 pools are not indexed: they contain many unvetted/scam tokens.
+    # The existing tokens.json is the user-verified safe list.
+    # Only V2 tokens (which have higher listing bar) are auto-added.
     # -------------------------------------------------------------------
     with open(TOKENS_FILE) as f:
         tokens = json.load(f)
@@ -180,7 +183,7 @@ def refresh(force=False):
     existing_ids = {meta.get("id") for meta in tokens.values()}
     added_tokens = 0
 
-    for pool in all_pools:
+    for pool in v2_pools:   # ← V2 only, never v1_pools
         for side in ["tokenA", "tokenB"]:
             t = pool.get(side)
             if not isinstance(t, dict):
@@ -208,6 +211,7 @@ def refresh(force=False):
             }
             existing_ids.add(tid)
             added_tokens += 1
+
 
     # -------------------------------------------------------------------
     # 5. Inject NLP aliases (BITCOIN → WBTC_HTS, ETH → WETH_HTS, etc.)
