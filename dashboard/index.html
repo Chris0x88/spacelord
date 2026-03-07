@@ -489,6 +489,12 @@
             updateHoldings();
             updateHistory();
 
+            // Auto-load chart
+            const chart = document.getElementById('powerlaw-chart');
+            if (chart) {
+                chart.src = `${API_URL}/chart.png?secret=${apiSecret}&t=${new Date().getTime()}`;
+            }
+
             setInterval(updateData, 3000); // 3s refresh for main data
             setInterval(updateLogs, 5000); // 5s refresh for logs
             setInterval(updateHoldings, 30000); // 30s refresh for heavy RPC holdings
