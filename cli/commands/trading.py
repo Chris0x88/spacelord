@@ -14,6 +14,10 @@ from cli.display import C, print_receipt
 
 def handle_natural_language(app, text):
     """Process NLP commands like 'swap 10 HBAR for USDC'."""
+    # Strip --yes flag before NLP parsing
+    yes = "--yes" in text.split() or "-y" in text.split()
+    text = text.replace("--yes", "").replace("-y", "").strip()
+    
     req = translate(text)
     if not req:
         print(f"  {C.ERR}✗{C.R} Unknown command. Type {C.TEXT}help{C.R} for options.")
@@ -24,7 +28,7 @@ def handle_natural_language(app, text):
     logger.debug(f"NLP Interpretation: {intent} (Req: {req})")
     
     if intent == "swap":
-        _do_swap(app, req)
+        _do_swap(app, req, yes=yes)
     elif intent == "balance":
         from cli.commands.wallet import cmd_balance
         cmd_balance(app, [])
@@ -35,7 +39,7 @@ def handle_natural_language(app, text):
         print(f"  {C.ERR}✗{C.R} Unhandled intent: {intent}")
 
 
-def _do_swap(app, req):
+def _do_swap(app, req, yes=False):
     from_token = req["from_token"]
     to_token = req["to_token"]
     amount = req["amount"]
@@ -55,14 +59,27 @@ def _do_swap(app, req):
         route = app.get_route(from_token, to_token, amount)
         if not route:
             print(f"  {C.ERR}✗{C.R} No route found for {from_token} → {to_token}")
+            # --- AI-FRIENDLY: Actionable suggestions ---
+            intermediaries = ["USDC", "HBAR"]
+            intermediaries = [t for t in intermediaries if t not in (from_token, to_token)]
+            print(f"  {C.MUTED}💡 Try a 2-hop route via an intermediary token:"
+                  f" e.g. 'swap {amount} {from_token} for {intermediaries[0]}', "
+                  f"then 'swap {intermediaries[0]} for {to_token}'{C.R}")
+            print(f"  {C.MUTED}   Or run 'pools search {to_token}' to find a valid pool, then 'pools approve <ID>'{C.R}")
             return
 
         print(f"\n  {C.BOLD}Proposed Route:{C.R}")
         print(f"  {C.TEXT}{route.from_variant}{C.R} → {C.TEXT}{route.to_variant}{C.R}")
         print(route.explain())
 
-        if app.config.require_confirmation:
-            confirm = input(f"\n  Execute swap? {C.MUTED}(y/n){C.R} ").strip().lower()
+        if app.config.require_confirmation and not yes:
+            try:
+                confirm = input(f"\n  Execute swap? {C.MUTED}(y/n){C.R} ").strip().lower()
+            except EOFError:
+                # Non-interactive mode (e.g. AI agent piping commands)
+                # Default YES when stdin is not a TTY — agent explicitly chose to call swap
+                confirm = "y"
+                print(f"  {C.MUTED}[Non-interactive mode — auto-confirming]{C.R}")
             if confirm not in ["y", "yes"]:
                 print(f"  {C.MUTED}Cancelled.{C.R}")
                 return

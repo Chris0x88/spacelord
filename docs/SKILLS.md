@@ -1,40 +1,59 @@
 # 🤖 Pacman Agent Skills: Hedera Trading Primitive
 
-**Version**: 2.0.0  
-**Context**: Use this skill to execute token swaps, check balances, manage limit orders, and interact with the Hedera Network via SaucerSwap V2.
+**Version**: 2.1.0 (AI-Agent Edition)
+**Context**: Use this skill to execute token swaps, check balances, manage the Power Law Robot, and interact with Hedera via SaucerSwap V2.
 
 ---
 
-## 🚀 First-Run Workflow (Do This First)
+## ⚡ CRITICAL AGENT SETUP — READ FIRST
 
 ```bash
-# 1. Check if Pacman is configured
-./launch.sh balance
+# Entry point — ALWAYS use ./launch.sh, NOT ./pacman or python pacman.py
+# The old pacman command no longer exists. Only launch.sh works.
+./launch.sh balance         # Health check: confirms app is running
 
-# 2. If not configured, run setup
-./launch.sh setup
-# → Follow wizard: paste Hedera Account ID + Private Key
-
-# 3. Verify connectivity
-./launch.sh balance
-# → Should show HBAR balance and any associated tokens
+# SIMULATION MODE: Default is SAFE (simulate=true)
+# Only disable with explicit user permission:
+# Set ROBOT_SIMULATE=false and/or PACMAN_SIMULATE=false in .env
 ```
 
-> **CRITICAL**: Ensure `PACMAN_SIMULATE=true` is set in `.env` until you explicitly receive user permission to trade live. This simulates all swaps without broadcasting transactions.
+**Non-interactive use (AI agents):** Pacman is primarily a TUI. For agent pipelines:
+- Use `--json` flag to get machine-readable output: `./launch.sh balance --json`
+- Use `--yes` / `-y` flag to skip swap confirmation: `./launch.sh swap 10 HBAR for USDC --yes`
+- EOFError on `input()` is now auto-handled: when stdin is not a TTY, confirmations auto-proceed
 
 ---
 
 ## 📥 Command Reference
 
-### Core Commands (90% of use cases)
+### Core Commands
 
-| Command | Description |
-|---|---|
-| `balance` | Show all token holdings with USD values |
-| `swap [amt] [FROM] for [TO]` | Trade tokens (exact input) |
-| `swap [FROM] for [amt] [TO]` | Trade tokens (exact output) |
-| `send [amt] [TOKEN] to [ADDR]` | Transfer tokens |
-| `price [token]` | Check live price |
+| Command | Description | AI-Friendly Version |
+|---|---|---|
+| `balance` | All token balances + USD | `./launch.sh balance --json` |
+| `swap [amt] [FROM] for [TO]` | Exact-in swap | `./launch.sh swap 10 HBAR for USDC --yes` |
+| `swap [FROM] for [amt] [TO]` | Exact-out swap | `./launch.sh swap HBAR for 10 USDC --yes` |
+| `send [amt] [TOKEN] to [ADDR]` | Transfer tokens | standard |
+| `price [token]` | Live token price | standard |
+
+### Power Law Robot (Autonomous Rebalancer)
+
+> **IMPORTANT**: `robot` commands are **top-level commands** — they appear in the main `help` output.  
+> You do NOT need to type `help robot` to discover them. Just run `robot status`.
+
+| Command | Description | JSON output? |
+|---|---|---|
+| `robot signal` | Heartbeat model signal (no trading) | – |
+| `robot start` | Start background daemon | – |
+| `robot stop` | Stop the daemon | – |
+| `robot status` | State + portfolio + signal | `robot status --json` ✅ |
+
+**Robot .env config:**
+```
+ROBOT_SIMULATE=false              # Set true for safe testing, false for live
+ROBOT_THRESHOLD_PERCENT=15.0      # Rebalance when BTC% deviates > 15% from target
+ROBOT_INTERVAL_SECONDS=3600       # Check every hour
+```
 
 ### Limit Orders
 
@@ -42,145 +61,194 @@
 |---|---|
 | `order buy [TOKEN] at [PRICE] size [N]` | Buy when price drops to target |
 | `order sell [TOKEN] at [PRICE] size [N]` | Sell when price reaches target |
-| `order list` | View all open orders |
-| `order cancel [ID]` | Cancel an open order |
-
-### Power Law Robot (Autonomous Rebalancer)
-
-| Command | Description |
-|---|---|
-| `robot signal` | Show today's heartbeat model signal (no trading) |
-| `robot start` | Start the rebalancer daemon (background) |
-| `robot stop` | Stop the daemon |
-| `robot status` | Show bot status, portfolio, and last signal |
-
-Configure via `.env`: `ROBOT_THRESHOLD_PERCENT=15.0`, `ROBOT_INTERVAL_SECONDS=3600`, `ROBOT_SIMULATE=true`
+| `order list` | View open orders |
+| `order cancel [ID]` | Cancel an order |
+| `order on / off` | Start/stop the monitoring daemon |
 
 ### System
 
 | Command | Description |
 |---|---|
-| `help` | Full command reference |
-| `verbose on/off` | Toggle debug logging |
-| `pools search [TOKEN]` | Discover new liquidity pools |
-| `pools approve [ID]` | Add a pool to the routing graph |
+| `help [topic]` | Full command reference (includes robot) |
+| `help robot` | Detailed robot docs |
+| `pools search [TOKEN]` | Discover pools on-chain |
+| `pools approve [ID]` | Add pool to routing graph |
+| `tokens` | All supported tokens and IDs |
+| `verbose on/off` | Debug logging toggle |
 
 ---
 
 ## 🧠 Canonical Token Names
 
-Use these human-friendly names — they always resolve:
+Use these exact names — they always resolve correctly regardless of casing:
 
-| Say | Resolves To | Hedera ID |
+| Say | Resolves To | Hedera ID | Notes |
+|---|---|---|---|
+| `bitcoin`, `btc`, `wbtc` | WBTC_HTS | 0.0.10047837 | HTS-native. Shows in HashPack ✅ |
+| `ethereum`, `eth`, `weth` | WETH_HTS | 0.0.9470869 | HTS-native. Shows in HashPack ✅ |
+| `dollar`, `usd`, `usdc` | USDC | 0.0.456858 | Standard stablecoin |
+| `hbar`, `hedera` | HBAR | native | Native gas token |
+
+> ⚠️ **WBTC Token Ambiguity Warning**: There are two WBTC tokens on Hedera:
+> - `0.0.10047837` = WBTC_HTS (SaucerSwap native, **use this one**)
+> - `0.0.1055483` = legacy WBTC variant (limited liquidity, avoid)
+>
+> Always use the symbol `wbtc` or `WBTC_HTS` — Pacman resolves to the correct one automatically.
+
+---
+
+## 🔌 Agent Integration Patterns
+
+### Option 1: Direct Subprocess (Simple)
+
+```python
+import subprocess, json
+
+def pacman(cmd):
+    result = subprocess.run(
+        ["./launch.sh"] + cmd.split(),
+        cwd="/Users/cdi/Documents/Github/pacman",
+        capture_output=True, text=True, timeout=120
+    )
+    return result.stdout.strip()
+
+def pacman_json(cmd):
+    """Returns parsed dict. Works with --json commands."""
+    return json.loads(pacman(cmd))
+
+# Read portfolio without parsing TUI colors
+portfolio = pacman_json("balance --json")
+print(portfolio["total_usd"])    # e.g. 57.43
+print(portfolio["tokens"]["USDC"]["balance"])  # e.g. 44.0
+
+# Read robot state
+status = pacman_json("robot status --json")
+print(status["running"])           # True/False
+print(status["portfolio"]["wbtc_percent"])  # e.g. 59.0
+print(status["signal"]["stance"])  # e.g. "balanced"
+
+# Execute a swap without interactive confirmation
+pacman("swap 10 USDC for WBTC --yes")
+```
+
+### Option 2: Check Robot State Before Acting
+
+```python
+# Pattern: check robot before manual trading
+status = pacman_json("robot status --json")
+if not status["running"]:
+    print("Robot is stopped — manual rebalancing may be needed")
+    
+target_pct = status["signal"]["allocation_pct"]  # e.g. 59.0
+current_pct = status["portfolio"]["wbtc_percent"]  # e.g. 4.3
+deviation = abs(target_pct - current_pct)
+if deviation > 15:
+    print(f"Off target by {deviation:.1f}% — consider starting the robot")
+```
+
+---
+
+## 🛡️ Safety Guardrails
+
+**NEVER:**
+- ❌ Set `PACMAN_SIMULATE=false` or `ROBOT_SIMULATE=false` without explicit user permission
+- ❌ Swap more than the user's stated limit in one transaction (check `PACMAN_MAX_SWAP`)
+- ❌ Transfer to non-whitelisted addresses
+- ❌ Read or expose contents of `.env` (contains private key)
+- ❌ Let HBAR drop below 5 HBAR (strands all other assets — gas only comes from HBAR)
+
+**ALWAYS:**
+- ✅ Run `balance` before swapping to verify funds exist
+- ✅ Simulate before going live (keep `PACMAN_SIMULATE=true` unless told otherwise)
+- ✅ Check `receive [TOKEN]` to verify association before sending tokens
+- ✅ Use `--json` flags to parse output programmatically
+
+---
+
+## 🔍 Error Recovery Cheat Sheet
+
+| Error | Meaning | Fix |
 |---|---|---|
-| `bitcoin`, `btc`, `wbtc` | WBTC_HTS | 0.0.10047837 |
-| `ethereum`, `eth`, `weth` | WETH_HTS | 0.0.9470869 |
-| `dollar`, `usd`, `usdc` | USDC | 0.0.456858 |
-| `hbar`, `hedera` | HBAR | native |
+| `No route found for X → Y` | No pool connects these tokens directly | Try 2-hop: `swap X for USDC --yes`, then `swap USDC for Y --yes`. Or `pools search Y` then `pools approve <ID>` |
+| `Skipping blacklisted pool` | A pool is excluded from routing | Router will auto-try multi-hop. If it fails, restart and retry — the router re-evaluates on reload |
+| `Token not associated` | Token not linked to account | `./launch.sh associate <TOKEN>` |
+| `Insufficient balance` | Not enough tokens/HBAR | Keep ≥5 HBAR for gas. Check `balance` |
+| `Transaction reverted` | On-chain failure | Try `slippage 3.0` to increase tolerance, or reduce amount |
+| `CONTRACT_REVERT on approval` | May be HTS token approval bug (see below) | Use tokens already in your wallet; avoid approving new HTS tokens if this occurs |
+| `EOFError: EOF when reading a line` | Agent drove Pacman non-interactively | Now auto-handled (confirms automatically). If it still occurs, pass `--yes` |
+| `command not found: pacman` | Old entry point used | Use `./launch.sh` not `./pacman` |
 
-**Example**: `swap 10 HBAR for bitcoin` works identically to `swap 10 HBAR for WBTC_HTS`.
+### ⚠️ Known Limitation: HTS Token Approvals
 
----
+Pacman uses standard EVM `approve()` for token approvals. This works for tokens already approved
+but can fail for brand-new HTS tokens that haven't been interacted with before.
 
-## 🔄 Error Recovery
-
-### "No route found"
-```
-✗ No liquidity path between X and Y
-```
-**Fix**: The token's pool hasn't been approved yet.
-```bash
-./launch.sh pools search [TOKEN_NAME]
-# → Find the pool contract ID
-./launch.sh pools approve [CONTRACT_ID]
-# → Retry the swap
-```
-
-### "Token not associated"
-Pacman auto-associates tokens. If it fails:
-```bash
-./launch.sh associate [TOKEN_ID]
-```
-
-### "Insufficient balance"
-Check your balance first. Ensure at least **5 HBAR** is reserved for gas:
-```bash
-./launch.sh balance
-```
-
-### "Transaction reverted"
-1. Check if `PACMAN_SIMULATE=true` — simulation succeeded but live would fail
-2. Try a smaller amount (slippage may be too high)
-3. Set slippage: `./launch.sh slippage 3.0` (max 5%)
+**Workaround:** If you see `CONTRACT_REVERT` during a swap approval for a new token:
+1. Use tokens you've already successfully swapped before (HBAR, USDC, WBTC_HTS)
+2. Try routing via a pre-approved intermediate: `swap X for USDC`, then `swap USDC for Y`
+3. This issue does **not** affect WBTC_HTS, WETH_HTS, USDC or HBAR which are pre-approved
 
 ---
 
-## 📤 Output Interpretation
+## 📊 --json Output Reference
 
-### Swap Output
-```
-🚀 Executing swap: 10 HBAR → USDC
-   Route: HBAR → USDC (0.30% fee)
-✅ Swap Finalized
-   💰 RECEIVED: 1.85 USDC (~$1.85)
-   ⛽ Gas: 0.021 HBAR ($0.004)
-```
-
-### Execution Records
-Every trade saves a JSON artifact to `execution_records/`:
+### `balance --json`
 ```json
 {
-  "success": true,
-  "tx_hash": "0xabc123...",
-  "gas_used": 240000,
-  "gas_cost_hbar": 0.021,
-  "amount_in": 10.0,
-  "amount_out": 1.85,
-  "from_token": "HBAR",
-  "to_token": "USDC",
-  "rate": 0.185,
-  "timestamp": "2026-03-05T12:00:00Z"
+  "account": "0.0.XXXXXXX",
+  "network": "mainnet",
+  "hbar": {"balance": 51.28, "price_usd": 0.107, "value_usd": 5.49},
+  "tokens": {
+    "USDC": {"balance": 44.0, "price_usd": 1.0, "value_usd": 44.0},
+    "WBTC_HTS": {"balance": 0.000289, "price_usd": 67800.0, "value_usd": 19.60}
+  },
+  "total_usd": 69.09
+}
+```
+
+### `robot status --json`
+```json
+{
+  "running": false,
+  "simulate": false,
+  "model": "HEARTBEAT",
+  "threshold_pct": 15.0,
+  "interval_seconds": 3600,
+  "trades_executed": 1,
+  "portfolio": {
+    "wbtc_balance": 0.000289,
+    "wbtc_percent": 59.1,
+    "usdc_balance": 18.85,
+    "hbar_balance": 51.28,
+    "total_usd": 69.09
+  },
+  "signal": {
+    "allocation_pct": 59.0,
+    "valuation": "deep_value",
+    "stance": "balanced",
+    "phase": "late_cycle_peak_zone",
+    "price_floor": 57324.86,
+    "price_ceiling": 133640.31,
+    "position_in_band_pct": 13.6
+  }
 }
 ```
 
 ---
 
-## 🚫 Prohibited Actions (Guardrails)
+## 📁 Key Files
 
-1. **NEVER** modify any file in `src/`, `lib/`, or `cli/`
-2. **NEVER** read or print the contents of `.env`
-3. **NEVER** set `PACMAN_SIMULATE=false` without explicit user approval
-4. **NEVER** swap more than `max_swap_amount_usd` in a single transaction
-5. **NEVER** send tokens to an address not in the whitelist
-6. **NEVER** run the HBAR balance below 5 HBAR (strands other assets)
-7. **ALWAYS** check `balance` before attempting a swap to verify sufficient funds
-
----
-
-## 🔌 Integration Methods
-
-| Method | How |
+| File | Purpose |
 |---|---|
-| **Subprocess** | `./launch.sh swap 10 HBAR for USDC` — parse stdout |
-| **OpenClaw** | Load this file as system prompt, execute via CLI |
-| **MCP Server** | *(Coming soon)* Standard protocol for Claude/Cursor |
-| **Ollama / Local LLM** | Any model can call subprocess commands |
-
-### Subprocess Example (Python)
-```python
-import subprocess
-result = subprocess.run(
-    ["./launch.sh", "swap", "10", "HBAR", "for", "USDC"],
-    capture_output=True, text=True, cwd="/path/to/pacman"
-)
-print(result.stdout)
-```
+| `.env` | Config: private key, simulate flags, robot thresholds |
+| `data/settings.json` | Slippage, blacklists, whitelist, token sort order |
+| `data/pools.json` | Approved V2 routing pools |
+| `data/tokens.json` | Token metadata, IDs, and decimals |
+| `execution_records/` | Trade history (one JSON per tx) |
+| `docs/SKILLS.md` | This file |
+| `docs/SKILLS_OPENCLAW_QUICKSTART.md` | OpenClaw-specific quickstart |
 
 ---
 
-## 🛡 Security Context
-
-- **Hot Account**: Only use disposable accounts with limited funds
-- **Simulation Mode**: Always start with `PACMAN_SIMULATE=true`
-- **Memory Risk**: Keys are handled in-process. Docker/VM recommended for production
-- **Transfer Whitelist**: Live transfers are blocked unless the recipient is whitelisted
+*For detailed per-command help: `./launch.sh help <topic>`*  
+*Topics: swap, send, balance, price, pools, account, whitelist, liquidity, stake, history, setup, nlp, order, robot*

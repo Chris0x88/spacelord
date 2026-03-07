@@ -29,6 +29,12 @@ def _get_or_create_bot(app):
 
 def cmd_robot(app, args):
     """Robot command dispatcher."""
+    import json as _json
+    
+    # Strip --json flag before routing
+    json_mode = "--json" in args
+    args = [a for a in args if a != "--json"]
+    
     if not args:
         _print_robot_help()
         return
@@ -42,12 +48,13 @@ def cmd_robot(app, args):
     elif subcmd == "stop":
         _cmd_stop(app)
     elif subcmd == "status":
-        _cmd_status(app)
+        _cmd_status(app, json_mode=json_mode)
     elif subcmd in ("help", "?"):
         _print_robot_help()
     else:
         print(f"  {C.ERR}✗{C.R} Unknown robot command: {subcmd}")
         _print_robot_help()
+
 
 
 def _cmd_signal(app):
@@ -130,10 +137,48 @@ def _cmd_stop(app):
     print(f"  {C.OK}✓{C.R} Robot stopped. Trades executed this session: {_bot_instance.trades_executed}")
 
 
-def _cmd_status(app):
+def _cmd_status(app, json_mode=False):
     """Show comprehensive bot status."""
+    import json as _json
     bot = _get_or_create_bot(app)
     status = bot.get_status()
+    
+    if json_mode:
+        # Emit clean structured output for AI parsing  
+        out = {
+            "running": status.get("running", False),
+            "simulate": status.get("simulate", True),
+            "model": status.get("model", "HEARTBEAT"),
+            "threshold_pct": status.get("threshold", 15.0),
+            "interval_seconds": status.get("interval_seconds", 3600),
+            "trades_executed": status.get("trades_executed", 0),
+            "last_check": status.get("last_check"),
+            "last_rebalance": status.get("last_rebalance"),
+            "portfolio": None,
+            "signal": None,
+        }
+        port = status.get("portfolio")
+        if port:
+            out["portfolio"] = {
+                "wbtc_balance": port.get("wbtc_balance", 0),
+                "wbtc_percent": round(port.get("wbtc_percent", 0), 2),
+                "usdc_balance": port.get("usdc_balance", 0),
+                "hbar_balance": round(port.get("hbar_balance", 0), 6),
+                "total_usd": round(port.get("total_value_usd", 0), 2),
+            }
+        sig = status.get("signal")
+        if sig:
+            out["signal"] = {
+                "allocation_pct": sig.get("allocation_pct", 0),
+                "valuation": sig.get("valuation"),
+                "stance": sig.get("stance"),
+                "phase": sig.get("phase"),
+                "price_floor": sig.get("floor"),
+                "price_ceiling": sig.get("ceiling"),
+                "position_in_band_pct": sig.get("position_in_band_pct"),
+            }
+        print(_json.dumps(out, indent=2))
+        return
     
     print(f"\n  {C.BOLD}🤖 Power Law Robot Status{C.R}")
     print(f"  {'─' * 45}")
@@ -172,6 +217,7 @@ def _cmd_status(app):
             ts = entry.get("timestamp", "")[:19]
             msg = entry.get("message", "")
             print(f"    {C.MUTED}{ts}{C.R} {msg}")
+
 
 
 def _print_robot_help():

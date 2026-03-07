@@ -278,7 +278,52 @@ def cmd_associate(app, args):
 
 
 def cmd_balance(app, args):
+    import json as _json
+    
+    # AI-agent flag: --json emits parseable structure
+    json_mode = "--json" in args
+    args = [a for a in args if a != "--json"]
     token = args[0] if args else None
+    
+    if json_mode:
+        # Emit structured JSON for AI agents
+        try:
+            from lib.prices import price_manager
+            price_manager.reload()
+            balances = app.executor.get_balances()
+            hbar_raw = app.executor.w3.eth.get_balance(app.executor.eoa)
+            hbar_bal = hbar_raw / (10**18)
+            hbar_price = price_manager.get_hbar_price()
+            
+            result = {
+                "account": app.executor.hedera_account_id,
+                "network": app.executor.network,
+                "hbar": {"balance": round(hbar_bal, 6), "price_usd": round(hbar_price, 6), 
+                         "value_usd": round(hbar_bal * hbar_price, 2)},
+                "tokens": {},
+                "total_usd": 0,
+            }
+            total = hbar_bal * hbar_price
+            
+            for sym, bal in balances.items():
+                if sym == "HBAR": continue
+                try:
+                    from cli.pacman_filter import ui_filter
+                    meta = ui_filter.get_token_metadata().get(sym, {})
+                    token_id = meta.get("id", "")
+                    price = price_manager.get_price(token_id) if token_id else 0
+                    val = round(bal * price, 2)
+                    result["tokens"][sym] = {"balance": bal, "price_usd": price, "value_usd": val}
+                    total += val
+                except Exception:
+                    result["tokens"][sym] = {"balance": bal, "price_usd": 0, "value_usd": 0}
+            
+            result["total_usd"] = round(total, 2)
+            print(_json.dumps(result, indent=2))
+            return
+        except Exception as e:
+            print(_json.dumps({"error": str(e)}))
+            return
     
     lp_positions = []
     try:
@@ -287,6 +332,7 @@ def cmd_balance(app, args):
         logger.debug(f"Failed to fetch LPs: {e}")
         
     show_balance(app.executor, single_token=token, lp_positions=lp_positions)
+
 
 
 def cmd_send(app, args):

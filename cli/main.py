@@ -89,12 +89,22 @@ def process_input(app, text):
     parts = text.strip().split()
     if not parts: return
 
+    # Strip --yes / -y flag (used by AI agents to skip confirmation)
+    yes_flag = "--yes" in parts or "-y" in parts
+    parts = [p for p in parts if p not in ("--yes", "-y")]
+    if not parts: return
+
     cmd = parts[0].lower()
     args = parts[1:]
 
     if cmd in COMMANDS:
         try:
-            COMMANDS[cmd](app, args)
+            # Pass yes_flag to commands that support it
+            if yes_flag and cmd in ("swap", "swap-v1", "v1"):
+                # Trading commands get yes_flag injected into args
+                COMMANDS[cmd](app, args + ["--yes"])
+            else:
+                COMMANDS[cmd](app, args)
         except PacmanError as e:
             print(f"  {C.ERR}✗{C.R} {e}")
         except Exception as e:
@@ -122,8 +132,11 @@ def main():
         if "--verbose" in sys.argv: sys.argv.remove("--verbose")
         if "-v" in sys.argv: sys.argv.remove("-v")
 
-    print(PACMAN_BANNER)
-    print_security_warning()
+    # Detect --json flag early to suppress TUI banner for machine-readable output
+    json_mode = "--json" in sys.argv
+    if not json_mode:
+        print(PACMAN_BANNER)
+        print_security_warning()
 
     # Initialize App (Logic)
     try:
@@ -141,7 +154,8 @@ def main():
         if app.limit_engine._daemon_enabled:
             app.limit_engine.start_monitor(app)
         
-        print(f"\n  {C.BOLD}{C.ACCENT}System Online{C.R}")
+        if not json_mode:
+            print(f"\n  {C.BOLD}{C.ACCENT}System Online{C.R}")
     except ConfigurationError as e:
         print(f"  {C.ERR}✗{C.R} Config Error: {e}")
         return
