@@ -349,7 +349,7 @@ def get_history():
                         })
                         
             # Inject Limit Order background scans
-            log_file = Path("pacman.log")
+            log_file = Path("logs/pacman.log")
             if log_file.exists():
                 with open(log_file) as f:
                     lines = f.readlines()[-300:]

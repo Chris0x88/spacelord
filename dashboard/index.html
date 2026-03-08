@@ -725,6 +725,7 @@
                         location.reload();
                         return;
                     }
+                    if (!res.ok) throw new Error("Status API error");
 
                     const data = await res.json();
                     mainAccountId = data.main_account_id || ""; // Capture main account
@@ -774,6 +775,7 @@
                     });
                     if (!res.ok) return;
                     const accounts = await res.json();
+                    if (!Array.isArray(accounts)) return;
 
                     const tbody = document.getElementById('holdings-body');
                     let htmlOut = '';
@@ -835,6 +837,7 @@
                     });
                     if (!res.ok) return;
                     const data = await res.json();
+                    if (!Array.isArray(data)) return;
 
                     const swapBody = document.getElementById('swap-body');
                     const systemBody = document.getElementById('system-body');
@@ -873,7 +876,7 @@
                         systemBody.innerHTML = systemEvents.slice(0, 10).map(tx => {
                             const ts = new Date(tx.timestamp).toLocaleString();
                             let eventType = tx.type || tx.mode || "SYSTEM";
-                            let detail = tx.error || (tx.tx_hash || tx.tx_id || "N/A").substring(0, 15);
+                            let detail = tx.error || String(tx.tx_hash || tx.tx_id || "N/A").substring(0, 15);
                             const statusColor = tx.success ? 'white' : 'var(--error)';
 
                             return `
