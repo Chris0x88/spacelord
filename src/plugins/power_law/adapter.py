@@ -106,8 +106,14 @@ class PacmanAdapter:
             
             # Extract WBTC, USDC, and HBAR balances
             # get_balances returns Dict[str, float] mapping token symbols -> balance amounts
-            wbtc_bal = balances.get("WBTC[HTS]", 0.0)
-            usdc_bal = balances.get("USDC", 0.0)
+            # Ensure we check common aliases for WBTC in case the wallet string format differs
+            wbtc_bal = balances.get("WBTC[HTS]", 
+                        balances.get("WBTC_HTS", 
+                        balances.get("HTS-WBTC", 
+                        balances.get("BTC", 
+                        balances.get("WBTC", 0.0)))))
+                        
+            usdc_bal = balances.get("USDC", balances.get("USD", balances.get("DOLLAR", 0.0)))
             hbar_bal = balances.get("HBAR", 0.0)
             
             # Get BTC price

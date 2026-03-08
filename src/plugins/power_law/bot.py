@@ -53,6 +53,10 @@ class PowerLawBot(BasePlugin):
         self._last_signal = {}
         self._last_portfolio = {}
         
+        # Debounce for simulated trades
+        self._last_simulated_direction = None
+        self._last_simulated_usd = 0.0
+        
         # Load persisted state
         self._load_state()
         
@@ -137,7 +141,10 @@ class PowerLawBot(BasePlugin):
                             
                             transfer_res = self.app.transfer("HBAR", topup_amount, robot_id, memo="Robot Gas Top-up ($1 USD)")
                             if transfer_res.get("success"):
-                                logger.info(f"   ✅ Topped up robot with {topup_amount} HBAR.")
+                                if transfer_res.get("simulated"):
+                                    logger.info(f"   ⚠️  [Simulated] Would top up robot with {topup_amount} HBAR.")
+                                else:
+                                    logger.info(f"   ✅ Topped up robot with {topup_amount} HBAR.")
                                 # Refresh state
                                 state = self.adapter.get_portfolio_state()
                             else:
@@ -203,6 +210,13 @@ class PowerLawBot(BasePlugin):
                 self._log("skip", reason)
                 return {"success": True, "reason": reason, "traded": False}
             
+            # Debounce repeated identical simulated trades
+            if self.config.simulate and self._last_simulated_direction == direction:
+                if abs(trade_usd - self._last_simulated_usd) / max(self._last_simulated_usd, 1) < 0.05:
+                    reason = f"Simulated {direction} ${trade_usd:.2f} unchanged from last cycle."
+                    logger.info(f"   ⏭️ {reason}")
+                    return {"success": True, "reason": reason, "traded": False}
+                    
             logger.info(f"   🔄 Rebalancing: {direction} ${trade_usd:.2f}")
             
             result = self.adapter.execute_rebalance(
@@ -212,6 +226,12 @@ class PowerLawBot(BasePlugin):
             )
             
             if result.get("success"):
+                if self.config.simulate:
+                    self._last_simulated_direction = direction
+                    self._last_simulated_usd = trade_usd
+                else:
+                    self._last_simulated_direction = None
+                    
                 self.trades_executed += 1
                 self.last_rebalance = datetime.now()
                 

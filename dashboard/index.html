@@ -275,6 +275,74 @@
         button:hover {
             opacity: 0.9;
         }
+
+        /* --- Tabs --- */
+        .tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 15px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            font-size: 1.0rem;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 10px;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-primary);
+            background: rgba(0, 242, 255, 0.1);
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .accounts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 968px) {
+            .accounts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 
@@ -297,399 +365,568 @@
                 <div class="brand-name">PACMAN DEEP RECOIL</div>
             </div>
             <div class="api-status">
-                <div id="global-status-dot" class="status-dot active"></div>
-                <span id="global-status-text">DAEMON ONLINE</span>
+                <div id="global-status-dot" class="status-dot"></div>
+                <span id="global-status-text">DAEMON OFFLINE</span>
                 <span style="margin: 0 10px; color: var(--glass-border);">|</span>
                 <span id="uptime-display" style="font-family: 'Orbitron';">UPTIME: 0s</span>
             </div>
         </header>
 
-        <div class="dashboard-grid">
-            <div class="left-col">
-                <div class="card" style="margin-bottom: 25px;">
-                    <div class="card-header">
-                        <h2>System Plugins</h2>
-                        <span class="meta" id="plugin-count">0 ACTIVE</span>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+            <button class="tab-btn" onclick="switchTab('accounts')">Accounts & Holdings</button>
+            <button class="tab-btn" onclick="switchTab('config')">System Config</button>
+            <button class="tab-btn" onclick="switchTab('docs')">Documentation</button>
+        </div>
+
+        <div id="overview" class="tab-content active">
+            <div class="dashboard-grid">
+                <div class="left-col">
+                    <div class="card" style="margin-bottom: 25px;">
+                        <div class="card-header">
+                            <h2>System Plugins</h2>
+                            <span class="meta" id="plugin-count">0 ACTIVE</span>
+                        </div>
+                        <div id="plugin-list">
+                            <!-- Dynamic content -->
+                            <div class="plugin-item">Syncing plugins...</div>
+                        </div>
                     </div>
-                    <div id="plugin-list">
-                        <!-- Dynamic content -->
-                        <div class="plugin-item">Loading plugins...</div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Portfolio Pulse</h2>
+                        </div>
+                        <div class="stat-grid">
+                            <div class="stat-box">
+                                <div class="stat-label">TOTAL VALUE</div>
+                                <div class="stat-val" id="val-total">Syncing...</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">BTC CONCENTRATION</div>
+                                <div class="stat-val" id="val-btc">0.0%</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">HBAR EQUIVALENT</div>
+                                <div class="stat-val" id="val-hbar">0.0ℏ</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">TARGET SIGNAL</div>
+                                <div class="stat-val" id="val-target" style="color: var(--accent-secondary);">WAITING
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    <div class="card" style="margin-top: 25px; padding: 15px;">
+                        <div class="card-header" style="justify-content: space-between;">
+                            <h2>Heartbeat Model Chart</h2>
+                            <button
+                                onclick="document.getElementById('powerlaw-chart').src = `${API_URL}/chart.png?secret=${apiSecret}&t=${new Date().getTime()}`"
+                                style="background: none; border: 1px solid rgba(255,255,255,0.2); color: var(--text-muted); padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
+                                ↻ REFRESH
+                            </button>
+                        </div>
+                        <div
+                            style="width: 100%; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); text-align: center; background: #0f172a;">
+                            <img id="powerlaw-chart"
+                                style="width: 100%; height: auto; max-height: 380px; object-fit: contain; opacity: 0.9;"
+                                alt="Model syncing...">
+                        </div>
+                    </div>
+
+
                 </div>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h2>Portfolio Pulse</h2>
-                    </div>
-                    <div class="stat-grid">
-                        <div class="stat-box">
-                            <div class="stat-label">TOTAL VALUE</div>
-                            <div class="stat-val" id="val-total">Syncing...</div>
+                <div class="right-col">
+                    <div class="card" style="margin-bottom: 25px;">
+                        <div class="card-header">
+                            <h3>Backups</h3>
                         </div>
-                        <div class="stat-box">
-                            <div class="stat-label">BTC CONCENTRATION</div>
-                            <div class="stat-val" id="val-btc">0.0%</div>
+                        <div class="stat-box" style="margin-bottom: 15px;">
+                            <div class="stat-label">LAST SNAPSHOT</div>
+                            <div id="last-backup" style="font-size: 0.9rem; margin-top: 10px;">Never</div>
                         </div>
-                        <div class="stat-box">
-                            <div class="stat-label">HBAR EQUIVALENT</div>
-                            <div class="stat-val" id="val-hbar">0.0ℏ</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="stat-label">TARGET SIGNAL</div>
-                            <div class="stat-val" id="val-target" style="color: var(--accent-secondary);">WAITING</div>
+                        <div class="meta" style="text-align: center; font-size: 0.8rem;">
+                            Stored locally in <code>/backups</code>
                         </div>
                     </div>
-                </div>
 
-                <div class="card" style="margin-top: 25px; padding: 15px;">
-                    <div class="card-header" style="justify-content: space-between;">
-                        <h2>Heartbeat Model Chart</h2>
-                        <button
-                            onclick="document.getElementById('powerlaw-chart').src = `${API_URL}/chart.png?secret=${apiSecret}&t=${new Date().getTime()}`"
-                            style="background: none; border: 1px solid rgba(255,255,255,0.2); color: var(--text-muted); padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
-                            ↻ REFRESH
-                        </button>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Health Logs</h3>
+                        </div>
+                        <div id="log-feed"
+                            style="font-size: 0.8rem; max-height: 400px; overflow-y: auto; color: var(--text-muted); font-family: monospace;">
+                            <div style="margin-bottom: 8px;">[System] Dashboard handshake complete...</div>
+                        </div>
                     </div>
-                    <div
-                        style="width: 100%; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); text-align: center; background: #0f172a;">
-                        <img id="powerlaw-chart"
-                            style="width: 100%; height: auto; max-height: 380px; object-fit: contain; opacity: 0.9;"
-                            alt="Model syncing...">
-                    </div>
-                </div>
 
-                <div class="card" style="margin-top: 25px;">
-                    <div class="card-header">
-                        <h2>Wallet Holdings</h2>
+                    <div class="card" style="margin-top: 25px;">
+                        <div class="card-header">
+                            <h3>Swap Ledger</h3>
+                        </div>
+                        <div style="max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                            <table id="swap-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th style="padding-left:10px;">Route</th>
+                                        <th style="text-align: right;">Cost (USD)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="swap-body">
+                                    <tr>
+                                        <td colspan="3"
+                                            style="text-align: center; color: var(--text-muted); padding: 20px;">
+                                            Syncing...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
-                        <table id="holdings-table">
-                            <thead>
-                                <tr>
-                                    <th>Asset</th>
-                                    <th style="text-align: right;">Balance</th>
-                                    <th style="text-align: right;">Price</th>
-                                    <th style="text-align: right;">Value (USD)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="holdings-body">
-                                <tr>
-                                    <td colspan="4"
-                                        style="text-align: center; color: var(--text-muted); padding: 20px;">Syncing...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+
+                    <div class="card" style="margin-top: 25px;">
+                        <div class="card-header">
+                            <h3>System Logic</h3>
+                        </div>
+                        <div style="max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                            <table id="system-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Event</th>
+                                        <th style="text-align: right;">Detail</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="system-body">
+                                    <tr>
+                                        <td colspan="3"
+                                            style="text-align: center; color: var(--text-muted); padding: 20px;">
+                                            Syncing...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
+        </div> <!-- End Overview Tab -->
 
-            <div class="right-col">
-                <div class="card" style="margin-bottom: 25px;">
-                    <div class="card-header">
-                        <h3>Backups</h3>
+        <div id="accounts" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Accounts & Holdings</h2>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <thead>
+                            <tr
+                                style="text-align: left; border-bottom: 2px solid var(--glass-border); color: var(--text-muted); font-size: 0.75rem;">
+                                <th style="padding: 10px;">TOKEN</th>
+                                <th style="text-align: right; padding: 10px;">BALANCE</th>
+                                <th style="text-align: right; padding: 10px;">PRICE</th>
+                                <th style="text-align: right; padding: 10px;">VALUE (USD)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="holdings-body">
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                                    Syncing holdings...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="config" class="tab-content">
+            <div class="dashboard-grid">
+                <div class="left-col">
+                    <div class="card" style="margin-bottom:25px;">
+                        <div class="card-header">
+                            <h2>System Settings & Whitelist</h2>
+                        </div>
+                        <pre id="config-settings"
+                            style="overflow-x: auto; font-size: 0.8rem; color: var(--text-muted); margin: 0; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">Syncing...</pre>
                     </div>
-                    <div class="stat-box" style="margin-bottom: 15px;">
-                        <div class="stat-label">LAST SNAPSHOT</div>
-                        <div id="last-backup" style="font-size: 0.9rem; margin-top: 10px;">Never</div>
-                    </div>
-                    <div class="meta" style="text-align: center; font-size: 0.8rem;">
-                        Stored locally in <code>/backups</code>
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Active Tokens (tokens.json)</h2>
+                        </div>
+                        <div style="max-height: 500px; overflow-y: auto;">
+                            <pre id="config-tokens"
+                                style="overflow-x: auto; font-size: 0.8rem; color: var(--text-muted); margin: 0; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">Syncing...</pre>
+                        </div>
                     </div>
                 </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Health Logs</h3>
-                    </div>
-                    <div id="log-feed"
-                        style="font-size: 0.8rem; max-height: 400px; overflow-y: auto; color: var(--text-muted); font-family: monospace;">
-                        <div style="margin-bottom: 8px;">[System] Dashboard handshake complete...</div>
-                    </div>
-                </div>
-
-                <div class="card" style="margin-top: 25px;">
-                    <div class="card-header">
-                        <h3>Swap Ledger</h3>
-                    </div>
-                    <div style="max-height: 200px; overflow-y: auto; padding-right: 5px;">
-                        <table id="swap-table">
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th style="padding-left:10px;">Route</th>
-                                    <th style="text-align: right;">Cost (USD)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="swap-body">
-                                <tr>
-                                    <td colspan="3"
-                                        style="text-align: center; color: var(--text-muted); padding: 20px;">Syncing...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="card" style="margin-top: 25px;">
-                    <div class="card-header">
-                        <h3>System Logic</h3>
-                    </div>
-                    <div style="max-height: 200px; overflow-y: auto; padding-right: 5px;">
-                        <table id="system-table">
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Event</th>
-                                    <th style="text-align: right;">Detail</th>
-                                </tr>
-                            </thead>
-                            <tbody id="system-body">
-                                <tr>
-                                    <td colspan="3"
-                                        style="text-align: center; color: var(--text-muted); padding: 20px;">Syncing...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <div class="right-col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>DEX Pools (pools.json)</h2>
+                        </div>
+                        <div style="max-height: 800px; overflow-y: auto;">
+                            <pre id="config-pools"
+                                style="overflow-x: auto; font-size: 0.8rem; color: var(--text-muted); margin: 0; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">Syncing...</pre>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script>
-        let apiSecret = localStorage.getItem('pacman_secret');
-        const API_URL = 'http://127.0.0.1:8088';
-        let lastLogLine = "";
+        <div id="docs" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Documentation & Architecture</h2>
+                </div>
+                <div style="line-height: 1.6; color: var(--text-main); font-size: 0.95rem;">
+                    <h3 style="color: var(--accent-primary); margin-bottom: 10px; font-size: 1.4rem;">Pacman: AI Agentic
+                        Trading Primitive</h3>
+                    <p style="margin-bottom: 20px; color: var(--text-muted);">Pacman is a pure-terminal interface
+                        completely bypassing web frontends. It allows users, and more importantly, local AI Models, to
+                        navigate the SaucerSwap V2 infrastructure seamlessly using Natural Language.</p>
 
-        function checkAuth() {
-            if (!apiSecret) {
-                document.getElementById('auth-overlay').style.display = 'flex';
-            } else {
-                startDashboard();
+                    <h4
+                        style="color: white; margin: 25px 0 10px 0; font-size: 1.1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 5px;">
+                        🤖 Agent Configuration</h4>
+                    <p style="margin-bottom: 15px; color: var(--text-muted);">The primary objective of this project is
+                        serving as the "Hand" for AI Models. An agent like OpenClaw should be able to clone, scan, and
+                        set up the entire program hands-free for its own use. Agents interact by parsing simple terminal
+                        outputs and executing trades programmatically via the <code>pacman_cli</code>.</p>
+
+                    <h4
+                        style="color: white; margin: 25px 0 10px 0; font-size: 1.1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 5px;">
+                        ⚡ Passive Autonomy</h4>
+                    <p style="margin-bottom: 15px; color: var(--text-muted);">Pacman features an autonomous local daemon
+                        for executing Limit Orders and algorithmic models like the <strong>Bitcoin Power Law
+                            Heartbeat</strong> model while the user sleeps. This dashboard connects entirely to that
+                        daemon.</p>
+
+                    <h4
+                        style="color: white; margin: 25px 0 10px 0; font-size: 1.1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 5px;">
+                        💻 Core CLI Commands</h4>
+                    <pre
+                        style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid var(--glass-border); color: #00f2ff; font-family: monospace; font-size: 0.9rem; line-height: 1.8;">> balance
+> swap 10 HBAR for USDC
+> account --new
+> orders daemon on
+> pacman setup</pre>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            let apiSecret = localStorage.getItem('pacman_secret');
+            const API_URL = 'http://127.0.0.1:8088';
+            let lastLogLine = "";
+            let configLoaded = false;
+            let mainAccountId = ""; // Track the main account from API
+
+            function switchTab(tabId) {
+                const btn = document.querySelector(`.tab-btn[onclick="switchTab('${tabId}')"]`);
+                const content = document.getElementById(tabId);
+                if (!btn || !content) return;
+
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                btn.classList.add('active');
+                content.classList.add('active');
+
+                if (tabId === 'config' && !configLoaded) {
+                    loadConfigData();
+                }
+                if (tabId === 'accounts') {
+                    updateHoldings();
+                }
             }
-        }
 
-        function saveSecret() {
-            const input = document.getElementById('api-secret').value;
-            if (input) {
-                localStorage.setItem('pacman_secret', input.trim());
-                apiSecret = input.trim();
-                document.getElementById('auth-overlay').style.display = 'none';
-                startDashboard();
-            }
-        }
-
-        function startDashboard() {
-            document.getElementById('dashboard-content').style.opacity = '1';
-            updateData();
-            updateLogs();
-            updateHoldings();
-            updateHistory();
-
-            // Auto-load chart
-            const chart = document.getElementById('powerlaw-chart');
-            if (chart) {
-                chart.src = `${API_URL}/chart.png?secret=${apiSecret}&t=${new Date().getTime()}`;
-            }
-
-            setInterval(updateData, 3000); // 3s refresh for main data
-            setInterval(updateLogs, 5000); // 5s refresh for logs
-            setInterval(updateHoldings, 30000); // 30s refresh for heavy RPC holdings
-            setInterval(updateHistory, 30000);  // 30s refresh for history
-        }
-
-        async function updateData() {
-            try {
-                const res = await fetch(`${API_URL}/status`, {
-                    headers: { 'X-Pacman-Secret': apiSecret }
+            function syntaxHighlight(json) {
+                if (typeof json != 'string') {
+                    json = JSON.stringify(json, undefined, 2);
+                }
+                json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                    var cls = 'color: #a855f7;'; // default string color
+                    if (/^"/.test(match)) {
+                        if (/:$/.test(match)) { cls = 'color: #00f2ff;'; } // keys
+                    } else if (/true|false/.test(match)) { cls = 'color: #7000ff;'; }
+                    return '<span style="' + cls + '">' + match + '</span>';
                 });
+            }
 
-                if (res.status === 401) {
-                    localStorage.removeItem('pacman_secret');
-                    location.reload();
-                    return;
+            async function loadConfigData() {
+                try {
+                    const [setRes, tokRes, poolRes] = await Promise.all([
+                        fetch(`${API_URL}/config/settings.json`, { headers: { 'X-Pacman-Secret': apiSecret } }),
+                        fetch(`${API_URL}/config/tokens.json`, { headers: { 'X-Pacman-Secret': apiSecret } }),
+                        fetch(`${API_URL}/config/pools.json`, { headers: { 'X-Pacman-Secret': apiSecret } })
+                    ]);
+
+                    if (setRes.ok) document.getElementById('config-settings').innerHTML = syntaxHighlight(await setRes.json());
+                    if (tokRes.ok) document.getElementById('config-tokens').innerHTML = syntaxHighlight(await tokRes.json());
+                    if (poolRes.ok) document.getElementById('config-pools').innerHTML = syntaxHighlight(await poolRes.json());
+                    configLoaded = true;
+                } catch (e) { }
+            }
+
+            function checkAuth() {
+                if (!apiSecret) {
+                    document.getElementById('auth-overlay').style.display = 'flex';
+                } else {
+                    startDashboard();
+                }
+            }
+
+            function saveSecret() {
+                const input = document.getElementById('api-secret').value;
+                if (input) {
+                    localStorage.setItem('pacman_secret', input.trim());
+                    apiSecret = input.trim();
+                    document.getElementById('auth-overlay').style.display = 'none';
+                    startDashboard();
+                }
+            }
+
+            function startDashboard() {
+                document.getElementById('dashboard-content').style.opacity = '1';
+                updateData();
+                updateLogs();
+                updateHoldings();
+                updateHistory();
+
+                // Auto-load chart
+                const chart = document.getElementById('powerlaw-chart');
+                if (chart) {
+                    chart.src = `${API_URL}/chart.png?secret=${apiSecret}&t=${new Date().getTime()}`;
                 }
 
-                const data = await res.json();
-                renderUI(data);
-
-                document.getElementById('global-status-dot').className = 'status-dot active';
-                document.getElementById('global-status-text').innerText = 'DAEMON ONLINE';
-
-            } catch (err) {
-                document.getElementById('global-status-dot').className = 'status-dot';
-                document.getElementById('global-status-text').innerText = 'DAEMON OFFLINE';
+                setInterval(updateData, 3000);
+                setInterval(updateLogs, 5000);
+                setInterval(updateHoldings, 30000);
+                setInterval(updateHistory, 30000);
             }
-        }
 
-        async function updateLogs() {
-            try {
-                const res = await fetch(`${API_URL}/logs`, {
-                    headers: { 'X-Pacman-Secret': apiSecret }
-                });
-                if (!res.ok) return;
-                const lines = await res.json();
-                const logFeed = document.getElementById('log-feed');
+            async function updateData() {
+                try {
+                    // Try health first (no secret needed)
+                    const healthRes = await fetch(`${API_URL}/health`);
+                    if (!healthRes.ok) throw new Error("Offline");
 
-                // Only update if last line changed or feed is empty
-                if (lines.length > 0 && lines[lines.length - 1] !== lastLogLine) {
-                    lastLogLine = lines[lines.length - 1];
-                    logFeed.innerHTML = lines.map(line => {
-                        const parts = line.split('|');
-                        if (parts.length >= 3) {
-                            const level = parts[2].trim();
-                            const color = level === 'ERROR' ? 'var(--error)' : (level === 'WARNING' ? '#ffaa00' : 'var(--accent-primary)');
-                            return `<div style="margin-bottom: 6px; border-left: 2px solid ${color}; padding-left: 10px;">
+                    const res = await fetch(`${API_URL}/status`, {
+                        headers: { 'X-Pacman-Secret': apiSecret }
+                    });
+
+                    if (res.status === 401) {
+                        localStorage.removeItem('pacman_secret');
+                        location.reload();
+                        return;
+                    }
+
+                    const data = await res.json();
+                    mainAccountId = data.main_account_id || ""; // Capture main account
+                    renderUI(data);
+
+                    document.getElementById('global-status-dot').className = 'status-dot active';
+                    document.getElementById('global-status-text').innerText = 'DAEMON ONLINE';
+
+                } catch (err) {
+                    document.getElementById('global-status-dot').className = 'status-dot';
+                    document.getElementById('global-status-text').innerText = 'DAEMON OFFLINE';
+                }
+            }
+
+            async function updateLogs() {
+                try {
+                    const res = await fetch(`${API_URL}/logs`, {
+                        headers: { 'X-Pacman-Secret': apiSecret }
+                    });
+                    if (!res.ok) return;
+                    const lines = await res.json();
+                    const logFeed = document.getElementById('log-feed');
+
+                    if (lines.length > 0 && lines[lines.length - 1] !== lastLogLine) {
+                        lastLogLine = lines[lines.length - 1];
+                        logFeed.innerHTML = lines.map(line => {
+                            const parts = line.split('|');
+                            if (parts.length >= 3) {
+                                const level = parts[2].trim();
+                                const color = level === 'ERROR' ? 'var(--error)' : (level === 'WARNING' ? '#ffaa00' : 'var(--accent-primary)');
+                                return `<div style="margin-bottom: 6px; border-left: 2px solid ${color}; padding-left: 10px;">
                                 <span style="color:${color}; font-weight:bold; font-size: 0.7rem;">[${parts[0].trim().split(' ')[1]}]</span> 
                                 <span style="color:var(--text-main)">${parts[3].trim()}</span>
                             </div>`;
-                        }
-                        return `<div>${line}</div>`;
-                    }).join('');
-                    logFeed.scrollTop = logFeed.scrollHeight;
-                }
-            } catch (err) { }
-        }
-
-        async function updateHoldings() {
-            try {
-                const res = await fetch(`${API_URL}/holdings`, {
-                    headers: { 'X-Pacman-Secret': apiSecret }
-                });
-                if (!res.ok) return;
-                const data = await res.json();
-
-                const tbody = document.getElementById('holdings-body');
-                if (data.holdings && data.holdings.length > 0) {
-                    tbody.innerHTML = data.holdings.map(h => `
-                        <tr>
-                            <td style="font-weight: bold; color: var(--accent-secondary);">${h.symbol}</td>
-                            <td style="text-align: right;">${h.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })}</td>
-                            <td style="text-align: right; color: var(--text-muted);">$${h.price_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                            <td style="text-align: right; color: white;">$${h.value_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                    `).join('');
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No holdings found.</td></tr>';
-                }
-            } catch (err) { }
-        }
-
-        async function updateHistory() {
-            try {
-                const res = await fetch(`${API_URL}/history?limit=25`, {
-                    headers: { 'X-Pacman-Secret': apiSecret }
-                });
-                if (!res.ok) return;
-                const data = await res.json();
-
-                const swapBody = document.getElementById('swap-body');
-                const systemBody = document.getElementById('system-body');
-
-                let swaps = [];
-                let systemEvents = [];
-
-                data.forEach(tx => {
-                    if (tx.type === "TRANSFER" || tx.mode === "STAKE" || tx.mode === "UNSTAKE" || (!tx.route && !tx.to_amount_token)) {
-                        systemEvents.push(tx);
-                    } else {
-                        swaps.push(tx);
+                            }
+                            return `<div>${line}</div>`;
+                        }).join('');
+                        logFeed.scrollTop = logFeed.scrollHeight;
                     }
-                });
+                } catch (err) { }
+            }
 
-                if (swaps.length > 0) {
-                    swapBody.innerHTML = swaps.slice(0, 10).map(tx => {
-                        const ts = new Date(tx.timestamp).toLocaleString();
-                        const routeStr = tx.route ? `<span style="color: var(--text-muted)">${tx.route.from} ➔</span> ${tx.route.to}` : "Unknown swap";
-                        const amountStr = tx.amount_usd ? `$${tx.amount_usd.toFixed(2)}` : `$0.00`;
-                        const statusColor = tx.success ? 'var(--success)' : 'var(--error)';
+            async function updateHoldings() {
+                try {
+                    const res = await fetch(`${API_URL}/accounts`, {
+                        headers: { 'X-Pacman-Secret': apiSecret }
+                    });
+                    if (!res.ok) return;
+                    const accounts = await res.json();
 
-                        return `
+                    const tbody = document.getElementById('holdings-body');
+                    let htmlOut = '';
+
+                    accounts.forEach(acc => {
+                        const totalUsd = acc.total_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                        // Role-based accent color
+                        const roleColor = acc.role.includes("Main") ? "var(--accent-primary)" : "var(--accent-secondary)";
+
+                        // Account Header with Total USD
+                        htmlOut += `
+                        <tr style="background: rgba(255, 255, 255, 0.08); border-left: 4px solid ${roleColor};">
+                            <td colspan="3" style="font-weight: bold; color: ${roleColor}; font-size: 0.95rem; padding: 15px 12px;">
+                                ${acc.role} <span style="color: var(--text-muted); font-weight: normal; font-size: 0.75rem;">(ID: ${acc.id})</span>
+                            </td>
+                            <td style="text-align: right; font-weight: bold; color: white; padding: 15px 12px; font-family: 'Orbitron'; font-size: 1.1rem;">
+                                $${totalUsd}
+                            </td>
+                        </tr>
+                    `;
+
+                        if (acc.holdings && acc.holdings.length > 0) {
+                            acc.holdings.forEach(h => {
+                                const sym = h.symbol;
+                                const bal = h.balance;
+                                const price = h.price_usd;
+                                const valUsd = h.value_usd;
+
+                                // Significant balance check (already trimmed in backend, but keep safe)
+                                if (valUsd > 0.01 || bal > 0.000001 || sym === "HBAR") {
+                                    const accent = sym === "HBAR" ? "var(--success)" : "var(--accent-secondary)";
+                                    const priceStr = price > 0 ? `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}` : "-";
+
+                                    htmlOut += `
+                                    <tr>
+                                        <td style="font-weight: bold; color: ${accent}; padding-left: 20px;">${sym}</td>
+                                        <td style="text-align: right;">${bal.toLocaleString(undefined, { maximumFractionDigits: 6 })}</td>
+                                        <td style="text-align: right; color: var(--text-muted);">${priceStr}</td>
+                                        <td style="text-align: right; color: white;">$${valUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    </tr>
+                                `;
+                                }
+                            });
+                        } else {
+                            htmlOut += `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">No significant holdings.</td></tr>`;
+                        }
+                    });
+
+                    tbody.innerHTML = htmlOut || '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No accounts found.</td></tr>';
+
+                } catch (err) { }
+            }
+
+            async function updateHistory() {
+                try {
+                    const res = await fetch(`${API_URL}/history?limit=25`, {
+                        headers: { 'X-Pacman-Secret': apiSecret }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    const swapBody = document.getElementById('swap-body');
+                    const systemBody = document.getElementById('system-body');
+
+                    let swaps = [];
+                    let systemEvents = [];
+
+                    data.forEach(tx => {
+                        if (tx.type === "TRANSFER" || tx.mode === "STAKE" || tx.mode === "UNSTAKE" || (!tx.route && !tx.to_amount_token)) {
+                            systemEvents.push(tx);
+                        } else {
+                            swaps.push(tx);
+                        }
+                    });
+
+                    if (swaps.length > 0) {
+                        swapBody.innerHTML = swaps.slice(0, 10).map(tx => {
+                            const ts = new Date(tx.timestamp).toLocaleString();
+                            const routeStr = tx.route ? `<span style="color: var(--text-muted)">${tx.route.from} ➔</span> ${tx.route.to}` : "Unknown swap";
+                            const amountStr = tx.amount_usd ? `$${tx.amount_usd.toFixed(2)}` : `$0.00`;
+                            const statusColor = tx.success ? 'var(--success)' : 'var(--error)';
+
+                            return `
                             <tr>
                                 <td style="color: var(--text-muted); font-size: 0.7rem;">${ts}</td>
                                 <td style="padding-left:10px; font-weight: bold; color: var(--accent-primary); font-size: 0.75rem;">${routeStr}</td>
                                 <td style="text-align: right; color: ${statusColor}; font-weight: bold;">${amountStr}</td>
                             </tr>
                         `;
-                    }).join('');
-                } else {
-                    swapBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No recent swaps.</td></tr>';
-                }
+                        }).join('');
+                    } else {
+                        swapBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No recent swaps.</td></tr>';
+                    }
 
-                if (systemEvents.length > 0) {
-                    systemBody.innerHTML = systemEvents.slice(0, 10).map(tx => {
-                        const ts = new Date(tx.timestamp).toLocaleString();
-                        let eventType = tx.type || tx.mode || "SYSTEM";
-                        let detail = "";
+                    if (systemEvents.length > 0) {
+                        systemBody.innerHTML = systemEvents.slice(0, 10).map(tx => {
+                            const ts = new Date(tx.timestamp).toLocaleString();
+                            let eventType = tx.type || tx.mode || "SYSTEM";
+                            let detail = tx.error || (tx.tx_hash || tx.tx_id || "N/A").substring(0, 15);
+                            const statusColor = tx.success ? 'white' : 'var(--error)';
 
-                        if (tx.type === "TRANSFER") {
-                            detail = `${tx.amount_token.toLocaleString()} ${tx.symbol}`;
-                        } else if (tx.mode === "STAKE" || tx.mode === "UNSTAKE") {
-                            detail = tx.route ? tx.route.to : "Unknown node";
-                        } else {
-                            detail = tx.error || (tx.tx_hash || tx.tx_id || "N/A").substring(0, 15);
-                        }
-
-                        const statusColor = tx.success ? 'white' : 'var(--error)';
-
-                        return `
+                            return `
                             <tr>
                                 <td style="color: var(--text-muted); font-size: 0.7rem;">${ts}</td>
                                 <td style="font-weight: bold; color: var(--accent-secondary); font-size: 0.75rem;">${eventType}</td>
                                 <td style="text-align: right; color: ${statusColor}; font-size: 0.75rem;">${detail}</td>
                             </tr>
                         `;
-                    }).join('');
-                } else {
-                    systemBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No system logic events.</td></tr>';
-                }
-            } catch (err) { }
-        }
+                        }).join('');
+                    } else {
+                        systemBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No system logic events.</td></tr>';
+                    }
+                } catch (err) { }
+            }
 
-        function renderUI(data) {
-            // Heartbeat & Uptime
-            const uptime = data.uptime_sec || 0;
-            const h = Math.floor(uptime / 3600);
-            const m = Math.floor((uptime % 3600) / 60);
-            const s = uptime % 60;
-            document.getElementById('uptime-display').innerText = `UPTIME: ${h}h ${m}m ${s}s`;
+            function renderUI(data) {
+                const uptime = data.uptime_sec || 0;
+                const h = Math.floor(uptime / 3600);
+                const m = Math.floor((uptime % 3600) / 60);
+                const s = uptime % 60;
+                document.getElementById('uptime-display').innerText = `UPTIME: ${h}h ${m}m ${s}s`;
 
-            // Plugins
-            const pluginList = document.getElementById('plugin-list');
-            pluginList.innerHTML = '';
-            let activeCount = 0;
+                const pluginList = document.getElementById('plugin-list');
+                pluginList.innerHTML = '';
+                let activeCount = 0;
 
-            if (data.plugins) {
-                data.plugins.forEach(p => {
-                    const isRunning = p.running;
-                    if (isRunning) activeCount++;
+                if (data.plugins) {
+                    data.plugins.forEach(p => {
+                        const isRunning = p.running;
+                        if (isRunning) activeCount++;
 
-                    const item = document.createElement('div');
-                    item.className = 'plugin-item';
+                        const item = document.createElement('div');
+                        item.className = 'plugin-item';
 
-                    const statusTag = isRunning ?
-                        `<span class="tag tag-running">Active</span>` :
-                        `<span class="tag tag-failed">Off</span>`;
+                        const statusTag = isRunning ?
+                            `<span class="tag tag-running">Active</span>` :
+                            `<span class="tag tag-failed">Off</span>`;
 
-                    const beatInfo = p.last_heartbeat ?
-                        new Date(p.last_heartbeat).toLocaleTimeString() :
-                        'Waiting...';
+                        const beatInfo = p.last_heartbeat ?
+                            new Date(p.last_heartbeat).toLocaleTimeString() :
+                            'Waiting...';
 
-                    item.innerHTML = `
+                        item.innerHTML = `
                         <div class="plugin-info">
                             <h4>${p.name}</h4>
                             <div class="meta">${beatInfo}${p.errors > 0 ? ` | Errors: ${p.errors}` : ''}</div>
                         </div>
                         <div>${statusTag}</div>
                     `;
-                    pluginList.appendChild(item);
+                        pluginList.appendChild(item);
 
-                    // PowerLaw Stats
-                    if (p.name === 'PowerLaw') {
-                        if (p.portfolio) {
+                        if (p.name === 'PowerLaw' && p.portfolio) {
                             const port = p.portfolio;
                             const total = port.total_value_usd || 0;
                             document.getElementById('val-total').innerText = `$${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -697,32 +934,22 @@
                             document.getElementById('val-btc').innerText = `${btc_pct.toFixed(1)}%`;
                             const hbar = port.hbar_balance || 0;
                             document.getElementById('val-hbar').innerText = `${hbar.toLocaleString()}ℏ`;
-
-                            // Add a "Last Updated" indicator
-                            if (p.last_check) {
-                                const lastTs = new Date(p.last_check).toLocaleTimeString();
-                                document.querySelector('.card:has(#val-total) .card-header').innerHTML =
-                                    `<h2>Portfolio Pulse <span style="font-size: 0.6rem; color: var(--text-muted); font-weight: normal;">(Refreshed ${lastTs})</span></h2>`;
+                            if (p.signal && p.signal.allocation_pct) {
+                                document.getElementById('val-target').innerText = `${p.signal.allocation_pct.toFixed(0)}% BTC`;
                             }
                         }
-                        if (p.signal && p.signal.allocation_pct) {
-                            document.getElementById('val-target').innerText = `${p.signal.allocation_pct.toFixed(0)}% BTC`;
-                        }
-                    }
 
-                    // Backup Stats
-                    if (p.name === 'BackupService') {
-                        document.getElementById('last-backup').innerText = p.last_backup ?
-                            new Date(p.last_backup).toLocaleString() : 'Never';
-                    }
-                });
+                        if (p.name === 'BackupService') {
+                            document.getElementById('last-backup').innerText = p.last_backup ?
+                                new Date(p.last_backup).toLocaleString() : 'Never';
+                        }
+                    });
+                }
+                document.getElementById('plugin-count').innerText = `${activeCount} ACTIVE`;
             }
 
-            document.getElementById('plugin-count').innerText = `${activeCount} ACTIVE`;
-        }
-
-        checkAuth();
-    </script>
+            checkAuth();
+        </script>
 </body>
 
 </html>

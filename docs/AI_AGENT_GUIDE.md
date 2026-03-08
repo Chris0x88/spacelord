@@ -66,13 +66,17 @@ The CLI outputs professional transaction records. When reporting back to a user:
 
 Agents can operate multiple isolated identities under one master `.env` key.
 
-- **Create a New Sub-Account**: `account --new` (Derives a fresh Hedera ED25519 key, funds it with 1 HBAR if possible, and stores it in `data/accounts.json`).
-- **List Sub-Accounts**: `account --list`
+- **Autonomous Discovery**: The system scans `data/accounts.json` on startup. Accounts with `type: "derived"` are automatically tagged for robot/autonomous roles.
 - **Switch Context**: `account --switch 0.0.xxxxx` 
 - **Context Isolation**: When you switch accounts, active limit orders and history views are automatically scoped to the *currently active* wallet. 
 
 ### 🛡️ Agent Constraint:
 If you are running a risky experimental strategy, **always** spin up a new sub-account (`account --new`) and isolate your trades rather than risking the master wallet balance.
+
+## 6. Token Data Integrity (Aggregation)
+Pacman implements **ID-level aggregation** for all tokens. 
+- **Unique IDs**: Even if multiple aliases exist (BTC, BITCOIN), the system calculates the total balance based on the unique HTS Token ID.
+- **Reporting**: Always report the aggregated balance when communicating with the user.
 
 ## 6. Autonomous Limit Orders
 

@@ -136,6 +136,7 @@ class PacmanController:
         if account_id:
             from lib.saucerswap import hedera_id_to_evm
             target_eoa = hedera_id_to_evm(account_id)
+            # Make sure we use the eoa_override property of the executor to fetch from mirror node
             return self.executor.get_balances(token_highlights=token_highlights, eoa_override=target_eoa)
         return self.executor.get_balances(token_highlights=token_highlights)
 

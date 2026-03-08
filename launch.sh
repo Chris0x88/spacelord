@@ -41,10 +41,32 @@ if ! command -v uv &> /dev/null; then
 fi
 
 # --- Step 2: Special Commands ---
-if [ $# -gt 0 ] && [ "$1" == "dashboard" ]; then
-    echo -e "${CYAN}[Pacman]${NC} Opening High-Fidelity Dashboard..."
-    open "$SCRIPT_DIR/dashboard/index.html"
-    exit 0
+if [ $# -gt 0 ]; then
+    if [ "$1" == "dashboard" ]; then
+        echo -e "${CYAN}[Pacman]${NC} Opening dashboard at http://127.0.0.1:8088/..."
+        open "http://127.0.0.1:8088/"
+        exit 0
+    elif [ "$1" == "daemon-start" ]; then
+        echo -e "${CYAN}[Pacman]${NC} Killing any existing daemon instances & clearing ports..."
+        pkill -f 'cli.main daemon' || true
+        lsof -ti:8088 | xargs kill -9 2>/dev/null || true
+        sleep 2
+        
+        echo -e "${GREEN}[Pacman]${NC} Starting background daemon..."
+        # We must use the exact venv python binary because `uv run` forwards signals
+        # and will terminate the background process when this launcher script exits.
+        PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
+        nohup "$PYTHON_EXEC" -m cli.main daemon > "$SCRIPT_DIR/daemon_output.log" 2>&1 &
+        disown
+        echo -e "${GREEN}[Pacman]${NC} Daemon started! Output is logging to daemon_output.log"
+        exit 0
+    elif [ "$1" == "daemon-stop" ]; then
+        echo -e "${CYAN}[Pacman]${NC} Stopping the daemon..."
+        pkill -f 'cli.main daemon' || true
+        lsof -ti:8088 | xargs kill -9 2>/dev/null || true
+        echo -e "${GREEN}[Pacman]${NC} Daemon and API safely stopped."
+        exit 0
+    fi
 fi
 
 # --- Step 3: Run Pacman ---

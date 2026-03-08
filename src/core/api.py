@@ -11,7 +11,7 @@ import os
 import threading
 import time
 import json
-from flask import Flask, jsonify, request, abort
+from flask import Flask, jsonify, request, abort, send_from_directory
 from flask_cors import CORS
 from pathlib import Path
 from src.logger import logger
@@ -38,6 +38,36 @@ def require_auth(f):
     decorated_function.__name__ = f.__name__
     return decorated_function
 
+@app_flask.route("/", methods=["GET"])
+def serve_dashboard():
+    """Serve the dashboard UI directly from the root."""
+    dashboard_dir = Path(__file__).resolve().parent.parent.parent / "dashboard"
+    return send_from_directory(dashboard_dir, "index.html")
+
+@app_flask.route("/config/<filename>", methods=["GET"])
+@require_auth
+def get_config(filename):
+    """Securely serve JSON configuration files from the data directory."""
+    if not filename.endswith(".json") or "/" in filename or "\\" in filename:
+        return jsonify({"error": "Invalid request"}), 400
+        
+    data_dir = Path(__file__).resolve().parent.parent.parent / "data"
+    file_path = data_dir / filename
+    
+    if not file_path.exists():
+        return jsonify({"error": f"Configuration '{filename}' not found"}), 404
+        
+    try:
+        with open(file_path, "r") as f:
+            return jsonify(json.load(f))
+    except Exception as e:
+         return jsonify({"error": str(e)}), 500
+
+@app_flask.route("/health", methods=["GET"])
+def health_check():
+    """Simple ping for dashboard connectivity."""
+    return jsonify({"status": "online", "time": time.time()})
+
 @app_flask.route("/status", methods=["GET"])
 @require_auth
 def get_status():
@@ -55,6 +85,7 @@ def get_status():
     return jsonify({
         "pid": os.getpid(),
         "uptime_sec": uptime,
+        "main_account_id": pacman_app.account_id,
         "last_heartbeat": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "plugins": pacman_app.pm.get_all_statuses()
     })
@@ -162,13 +193,132 @@ def get_holdings():
 @app_flask.route("/accounts", methods=["GET"])
 @require_auth
 def get_accounts():
-    """Returns segregated balances for all accounts (Parent, Robot)."""
+    """Returns enriched, role-segregated balances for all known accounts."""
     if not pacman_app:
         return jsonify({"error": "Controller not initialized"}), 500
     try:
-        all_balances = pacman_app.get_all_account_balances()
-        return jsonify(all_balances)
+        # 1. Gather all IDs to show
+        main_id = pacman_app.account_id or "Current"
+        robot_id = pacman_app.config.robot_account_id
+        
+        account_ids = []
+        # Main first
+        account_ids.append({"id": main_id, "role": "Main Account"})
+        
+        # Robot second (even if same as main, for "separation")
+        if robot_id:
+            account_ids.append({"id": robot_id, "role": "Robot Account"})
+        
+        # Others from registry
+        try:
+            with open("data/accounts.json") as f:
+                registry = json.load(f)
+                for acc in registry:
+                    aid = acc.get("id")
+                    if aid and aid not in [a["id"] for a in account_ids]:
+                        role = acc.get("nickname") or "Sub Account"
+                        account_ids.append({"id": aid, "role": role})
+        except: pass
+
+        # 2. Token metadata for prices
+        tokens_data = {}
+        try:
+            with open("data/tokens.json") as f:
+                tokens_data = json.load(f)
+        except: pass
+
+        def enrich_account(acc_id, role):
+            # Use account_id_override for non-main IDs
+            try:
+                balances = pacman_app.get_balances(account_id=(acc_id if acc_id != main_id else None))
+                if balances is None:
+                    balances = {}
+            except Exception as e:
+                logger.warning(f"Failed to fetch balances for {acc_id}: {e}")
+                balances = {}
+
+            # Map to store aggregated balances by Token ID
+            # { "token_id": { "symbol": "...", "balance": 0.0, "price": 0.0 } }
+            aggregated = {}
+            total_usd = 0.0
+            
+            # Ensure HBAR is always present
+            if "HBAR" not in balances:
+                balances["HBAR"] = 0.0
+
+            for sym, bal in balances.items():
+                if bal < 0 and sym != "HBAR": # Skip negative leftovers unless it's gas
+                    continue
+
+                # 1. Resolve Token ID
+                token_id = sym
+                preferred_sym = sym
+                if sym in tokens_data:
+                    token_id = tokens_data[sym].get("id", sym)
+                    # If it's an alias, try to get the 'symbol' field from the target
+                    token_id = tokens_data[sym].get("alias_for", token_id)
+                
+                # Native HBAR handling
+                if sym == "HBAR" or token_id == "0.0.0":
+                    token_id = "0.0.0"
+                    preferred_sym = "HBAR"
+
+                # 2. Skip if we already processed this token ID for this account
+                # This fixes the "BITCOIN" vs "WBTC_HTS" vs "BTC" duplication root cause
+                if token_id in aggregated:
+                    # Just add the balance to the existing entry
+                    aggregated[token_id]["balance"] += bal
+                    continue
+
+                # 3. Get Price
+                price_id = token_id
+                raw_price = pacman_app.router.price_manager.get_price(price_id)
+                price_usd = 1.0 if sym in ("USDC", "USDT") else (float(raw_price) if raw_price else 0.0)
+                
+                # HBAR price fallback
+                if token_id == "0.0.0" and price_usd == 0:
+                    price_usd = pacman_app.router.price_manager.hbar_price
+
+                # 4. Store entry
+                aggregated[token_id] = {
+                    "symbol": preferred_sym,
+                    "balance": bal,
+                    "price_usd": price_usd,
+                    "token_id": token_id
+                }
+
+            # Convert map to sorted list
+            holdings = []
+            for tid, data in aggregated.items():
+                val_usd = data["balance"] * data["price_usd"]
+                total_usd += val_usd
+                holdings.append({
+                    "symbol": data["symbol"],
+                    "balance": data["balance"],
+                    "price_usd": data["price_usd"],
+                    "value_usd": val_usd,
+                    "token_id": tid
+                })
+
+            # SORTING: HBAR FIRST, then by USD value descending
+            holdings.sort(key=lambda x: (x["token_id"] != "0.0.0", -x["value_usd"]))
+
+            return {
+                "role": role,
+                "id": acc_id,
+                "total_usd": total_usd,
+                "holdings": holdings
+            }
+
+        final_results = []
+        for entry in account_ids:
+            final_results.append(enrich_account(entry["id"], entry["role"]))
+        
+        return jsonify(final_results)
     except Exception as e:
+        logger.error(f"API Error get_accounts: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app_flask.route("/history", methods=["GET"])
@@ -257,7 +407,12 @@ def run_server(app, port=8088):
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
     
-    app_flask.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
+    try:
+        app_flask.run(host="127.0.0.1", port=port, debug=False, use_reloader=False, threaded=True)
+    except Exception as e:
+        logger.error(f"🔥 API Server crashed: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 def start_api(app, port=8088):
     """Start the API server in a separate thread."""

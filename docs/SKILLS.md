@@ -84,8 +84,10 @@ Daemon mode starts:
 | `robot stop` | Stop the daemon | – |
 | `robot status` | State + portfolio + signal | `robot status --json` ✅ |
 
-**Robot .env config:**
-```
+**Robot Configuration:**
+The `robot_account_id` is now **automatically discovered** from `data/accounts.json` (scanning for `type: "derived"`). Manual `.env` configuration is optional and serves only as an override.
+
+```bash
 ROBOT_SIMULATE=false              # Set true for safe testing, false for live
 ROBOT_THRESHOLD_PERCENT=15.0      # Rebalance when BTC% deviates > 15% from target
 ROBOT_INTERVAL_SECONDS=3600       # Check every hour
@@ -120,16 +122,13 @@ Use these exact names — they always resolve correctly regardless of casing:
 
 | Say | Resolves To | Hedera ID | Notes |
 |---|---|---|---|
-| `bitcoin`, `btc`, `wbtc` | WBTC_HTS | 0.0.10047837 | HTS-native. Shows in HashPack ✅ |
-| `ethereum`, `eth`, `weth` | WETH_HTS | 0.0.9470869 | HTS-native. Shows in HashPack ✅ |
-| `dollar`, `usd`, `usdc` | USDC | 0.0.456858 | Standard stablecoin |
-| `hbar`, `hedera` | HBAR | native | Native gas token |
+| `bitcoin`, `btc`, `wbtc` | HTS-WBTC | 0.0.10082597 | HTS-native. Aggregated by ID ✅ |
+| `ethereum`, `eth`, `weth` | ETH | 0.0.9470869 | HTS-native. Aggregated by ID ✅ |
+| `dollar`, `usd`, `usdc` | USDC | 0.0.456858 | Standard stablecoin ✅ |
+| `hbar`, `hedera` | HBAR | 0.0.0 | Native gas token (Pinned Top) ✅ |
 
-> ⚠️ **WBTC Token Ambiguity Warning**: There are two WBTC tokens on Hedera:
-> - `0.0.10047837` = WBTC_HTS (SaucerSwap native, **use this one**)
-> - `0.0.1055483` = legacy WBTC variant (limited liquidity, avoid)
->
-> Always use the symbol `wbtc` or `WBTC_HTS` — Pacman resolves to the correct one automatically.
+> ⚠️ **Token Aggregation Rule**: Pacman now deduplicates holdings by **HTS Token ID**. 
+> Multiple aliases (e.g., `BITCOIN`, `BTC`, `WBTC_HTS`) for the same ID are aggregated into a single total balance in the API and UI.
 
 ---
 

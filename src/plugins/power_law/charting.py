@@ -125,8 +125,8 @@ def generate_powerlaw_png() -> bytes:
     df['ceiling'] = df['date'].apply(ceiling_price)
     df['model_price'] = df['date'].apply(model_price)
     
-    # Smooth moving average (20 weeks ~ 140 days)
-    df['sma20'] = df['price'].rolling(window=20).mean()
+    # Smooth moving average (200 days)
+    df['sma200'] = df['price'].rolling(window=200).mean()
 
     # 3. Add future projections (only 1 year out to avoid empty space)
     last_date = df['date'].iloc[-1]
@@ -140,6 +140,18 @@ def generate_powerlaw_png() -> bytes:
     all_dates = pd.concat([df['date'], future_df['date']])
     
     # 4. Plot Peak Zones (Golden Windows)
+    # Cycle 4 peak (2021)
+    s4, e4 = cycle_bounds(4)
+    t4 = (e4 - s4).total_seconds()
+    z4_start = s4 + timedelta(seconds=t4*0.26)
+    z4_end = s4 + timedelta(seconds=t4*0.39)
+    ax.axvspan(mdates.date2num(z4_start), mdates.date2num(z4_end), 
+               color='#fbbf24', alpha=0.1, lw=0)
+    ax.text(mdates.date2num(z4_start + (z4_end - z4_start)/2), 
+            0.85, 'CRYPTO PEAK WINDOW', transform=ax.get_xaxis_transform(),
+            color='#fbbf24', alpha=0.8, ha='center', va='top', fontsize=9, fontweight='bold', rotation=0)
+
+    # Cycle 5 peak (current cycle)
     s5, e5 = cycle_bounds(5)
     t5 = (e5 - s5).total_seconds()
     z5_start = s5 + timedelta(seconds=t5*0.26)
@@ -169,9 +181,9 @@ def generate_powerlaw_png() -> bytes:
     # BTC Market Price (Prominent)
     ax.plot(df['date'], df['price'], color='#06b6d4', linewidth=2.5, alpha=1.0, label='BTC MARKET PRICE')
 
-    # SMA 20 (Weekly)
-    df = df.dropna(subset=['sma20'])
-    ax.plot(df['date'], df['sma20'], color='#22d3ee', linewidth=1.0, linestyle='-', alpha=0.4, label='20w Avg')
+    # SMA 200 (Daily)
+    df_sma = df.dropna(subset=['sma200'])
+    ax.plot(df_sma['date'], df_sma['sma200'], color='#22d3ee', linewidth=1.0, linestyle='-', alpha=0.4, label='200d Avg')
 
     # "NOW" Line
     ax.axvline(x=mdates.date2num(last_date), color='#f97316', linestyle='-', linewidth=1.5, alpha=0.8)
@@ -179,9 +191,9 @@ def generate_powerlaw_png() -> bytes:
     # 6. Formatting axes
     ax.set_yscale('linear')
     
-    # Set limits: tight focus on current cycle
-    recent_start = pd.Timestamp("2024-01-01") 
-    ax.set_xlim(recent_start, last_date + timedelta(days=90)) # Only 3 months projection for "reality" focus
+    # Set limits: focus to include the 2021 market top
+    recent_start = pd.Timestamp("2021-01-01") 
+    ax.set_xlim(recent_start, last_date + timedelta(days=365)) # 12 months projection
     
     # Dynamic Y limits
     visible_hist = df[df['date'] >= recent_start]
