@@ -64,5 +64,5 @@ class OpenClawBot(BasePlugin):
 
 ## 4. Testing Your Plugin
 1. Drop your code into `src/plugins/my_new_bot/bot.py`.
-2. Restart the daemon: `./launch.sh daemon`.
+2. Restart the daemon: `./launch.sh daemon-start`.
 3. Verify it appears in `./launch.sh status-service`.

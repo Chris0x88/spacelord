@@ -88,7 +88,12 @@ Agents can set passive background targets.
 - **Start Daemon**: `orders daemon on` (This starts a background polling thread that will watch prices and execute the swap when conditions are met).
 
 ### 🤖 Agent Tactic:
-Instead of constantly polling prices yourself and wasting your token context limits, offload price-monitoring by spawning limit orders and turning the daemon on. The daemon will execute the trade for you while you sleep.
+Instead of constantly polling prices yourself and wasting your token context limits, offload price-monitoring by spawning limit orders and turning the daemon on using:
+
+```bash
+./launch.sh daemon-start
+```
+The daemon will execute the trade for you while you sleep. Logs are kept in `daemon_output.log`.
 
 ---
 

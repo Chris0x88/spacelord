@@ -270,13 +270,14 @@ class SaucerSwapV2:
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         return tx_hash.hex()
 
-    def swap_exact_output_multicall(self, token_in: str, token_out: str, amount_out: int, max_amount_in: int, input_is_native: bool = False, output_is_native: bool = False, fee: int = 1500, dry_run: bool = False) -> str:
+    def swap_exact_output_multicall(self, token_in: str, token_out: str, amount_out: int, max_amount_in: int, input_is_native: bool = False, output_is_native: bool = False, fee: int = 1500, recipient: str = None, dry_run: bool = False) -> str:
         """
         Execute multicall for exact output swaps involving native HBAR.
         """
         if not self.private_key and not dry_run:
             raise ValueError("Private key required")
 
+        recipient = self.eoa if not recipient else recipient
         deadline = int(time.time() * 1000) + 180000  # 3 mins (Hedera blocks ~2s)
         path = encode_path([token_out, token_in], [fee])
         encoded_calls = []
@@ -302,15 +303,14 @@ class SaucerSwapV2:
         scaled_value = value_to_send * 10**10 if value_to_send > 0 else 0
 
         if dry_run:
-            self.router.functions.multicall(encoded_calls).call({"from": self.eoa if not recipient else recipient, "value": scaled_value})
+            self.router.functions.multicall(encoded_calls).call({"from": recipient, "value": scaled_value})
             return "SIMULATED_OK"
 
-        target_sender = self.eoa if not recipient else recipient
         tx = self.router.functions.multicall(encoded_calls).build_transaction({
-            "from": target_sender,
+            "from": recipient,
             "gas": 2_500_000,
             "gasPrice": self.w3.eth.gas_price,
-            "nonce": self.w3.eth.get_transaction_count(target_sender),
+            "nonce": self.w3.eth.get_transaction_count(recipient),
             "chainId": self.chain_id,
             "value": scaled_value
         })

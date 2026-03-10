@@ -37,21 +37,21 @@ In one-shot mode (`./launch.sh robot start`), the process exits immediately — 
 To keep daemons running persistently:
 
 ```bash
-# Foreground (see output, Ctrl-C to stop)
-./launch.sh daemon
+# Start background daemon (persists after terminal closes)
+./launch.sh daemon-start
 
-# Background (persists after terminal closes)
-nohup ./launch.sh daemon &
-
-# With logging
-nohup ./launch.sh daemon > daemon.log 2>&1 &
+# Stop background daemon and API
+./launch.sh daemon-stop
 
 # Check if running
-ps aux | grep "launch.sh daemon"
-
-# Stop it
-kill <PID>    # PID is printed on startup
+ps aux | grep "cli.main daemon"
 ```
+
+The `./launch.sh daemon-start` command:
+- Kills any existing instances automatically
+- Clears the 8088 port
+- Uses `nohup` internally to ensure persistence
+- Logs all output to `daemon_output.log`
 
 Daemon mode starts:
 - ✅ Power Law Robot (rebalancer)

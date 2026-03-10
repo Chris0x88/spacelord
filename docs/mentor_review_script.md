@@ -16,19 +16,19 @@ PHASE 1: SAFE SETUP
 Before starting, we highly recommend you use a DISPOSABLE TEST WALLET with 
 roughly 5-10 HBAR. Do not use your primary HBAR holding wallet.
 
-1. Clone and install the tool locally:
+1. Clone and run (auto-installs environment via uv):
    git clone https://github.com/chris0x88/pacman.git
    cd pacman
-   pip install -e .
+   ./launch.sh
 
-2. Run the interactive setup:
-   pacman setup
+2. Run the interactive setup (if first time):
+   ./launch.sh setup
 
 3. Follow the prompts to input your Hedera Account ID and Private Key. 
    When asked, keep Simulation Mode turned ON! (This prevents actual gas loss).
 
-4. Enter the interactive Pacman shell by typing:
-   pacman
+4. Enter the interactive Pacman shell:
+   ./launch.sh
 
 (All commands below should be typed directly into the 'pacman>' interactive prompt).
 
@@ -61,15 +61,17 @@ the user sleeps or while an AI model does other background tasks.
    orders buy 100 USDC below 0.15 HBAR
 
 2. Start the autonomous daemon:
-   orders daemon on
+   ./launch.sh daemon-start
 
 3. Check the daemon log stream:
-   orders daemon status
+   tail -f daemon_output.log
 
-4. Cancel the target:
-   orders list
-   (Find your order ID)
-   orders cancel <order_id>
+4. Stop the daemon:
+   ./launch.sh daemon-stop
+
+5. Review the massive test suite:
+   uv run python tests/massive_test_suite.py
+   (Verifies 50+ NLP, Routing, and Limit Order scenarios in simulation)
 
 NOTE: Currently, the daemon runs a local background thread. We are incrementally 
 adding features! Our roadmap step-up is migrating this intent-logic directly into 
