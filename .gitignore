@@ -22,6 +22,7 @@ data/accounts.json
 data/pacman_data_raw.json
 execution_records/
 logs/
+daemon_output.log
 training_data/
 
 # Node
