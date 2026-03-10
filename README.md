@@ -42,6 +42,7 @@ That's it. The `launch.sh` script auto-installs `uv` (if needed), resolves Pytho
 ### 30-Second Demo
 
 ```bash
+./launch.sh dashboard                      # Open the web dashboard (http://127.0.0.1:8088/)
 ./launch.sh balance                        # Show your portfolio
 ./launch.sh swap 10 HBAR for USDC          # Execute a swap
 ./launch.sh send 5 USDC to 0.0.1234       # Transfer tokens

@@ -46,6 +46,7 @@ These flags make Pacman safe to drive from a subprocess without TTY:
 | Command | AI Version | Returns |
 |---|---|---|
 | `balance` | `balance --json` | All token balances + USD |
+| `dashboard` | – | Opens the web dashboard at `http://127.0.0.1:8088/` |
 | `swap 10 HBAR for USDC` | `swap 10 HBAR for USDC --yes` | Swap result |
 | `robot status` | `robot status --json` | Bot state + portfolio + signal |
 | `robot start` | – | Starts background daemon |

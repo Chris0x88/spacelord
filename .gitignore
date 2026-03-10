@@ -48,6 +48,9 @@ tui/
 TODO_*.md
 personal/
 planning/
+power_law_model_import/
+power_law_model_import*/
+*desktop_chart.png
 
 # Backups
 backups/
