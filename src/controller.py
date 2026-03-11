@@ -10,7 +10,6 @@ The PacmanController class orchestrates the business logic:
 It is designed to be imported by CLIs, Daemons, or Web APIs.
 """
 
-import logging
 import requests
 from typing import Optional, Dict, Tuple
 
@@ -151,10 +150,9 @@ class PacmanController:
     def get_balances(self, token_highlights: list = None, account_id: str = None) -> Dict[str, float]:
         """Fetch all non-zero token balances for the account."""
         if account_id:
-            from lib.saucerswap import hedera_id_to_evm
-            target_eoa = hedera_id_to_evm(account_id)
-            # Make sure we use the eoa_override property of the executor to fetch from mirror node
-            return self.executor.get_balances(token_highlights=token_highlights, eoa_override=target_eoa)
+            # We pass the account_id directly to use the Mirror Node for isolated sub-accounts
+            # because EVM EOAs are shared if sub-accounts share the same ECDSA key.
+            return self.executor.get_balances(token_highlights=token_highlights, account_id=account_id)
         return self.executor.get_balances(token_highlights=token_highlights)
 
     def get_all_account_balances(self) -> Dict[str, Dict[str, float]]:
@@ -560,7 +558,7 @@ class PacmanController:
         # Only approve the non-HBAR side (HBAR goes as tx value, not ERC20)
         # NB: _ensure_lp_approval is self-contained in v2_liquidity.py — does NOT touch swap engine
         # Approval must happen BEFORE the simulation (dry_run) too so the allowance is set
-        logger.info(f"Approving tokens for PositionManager...")
+        logger.info("Approving tokens for PositionManager...")
         if not is_native0:
             self.liquidity_manager._ensure_lp_approval(t0_id, opt_raw0)
         if not is_native1:
@@ -907,7 +905,6 @@ class PacmanController:
             import requests
             from web3 import Web3
             from eth_abi import decode as abi_decode
-            from lib.saucerswap import hedera_id_to_evm
 
             res = requests.get(url, timeout=10)
             if res.status_code == 200:

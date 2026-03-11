@@ -263,10 +263,10 @@ class PacmanExecutor:
             logger.error(f"   ❌ V1 Swap Failed: {e}")
             return ExecutionResult(success=False, error=str(e))
 
-    def get_balances(self, token_highlights: list = None, eoa_override: str = None) -> Dict[str, float]:
-        """Fetch all non-zero token balances using Multicall (with priority fallback)."""
-        target_eoa = eoa_override or self.eoa
-        return _get_balances_impl(self.w3, target_eoa, self.client, token_highlights=token_highlights, hedera_account_id=self.hedera_account_id)
+    def get_balances(self, token_highlights: list = None, account_id: str = None) -> Dict[str, float]:
+        """Fetch all non-zero token balances. Uses Mirror Node via account_id for exact per-account isolation."""
+        effective_id = account_id or self.hedera_account_id
+        return _get_balances_impl(self.w3, self.eoa, self.client, token_highlights=token_highlights, account_id=effective_id)
 
 
     def _get_token_id(self, symbol: str) -> Optional[str]:
@@ -460,7 +460,7 @@ class PacmanExecutor:
         amount_raw_for_step = int(current_step_input_val * (10 ** decimals))
 
         if step.step_type == "swap":
-            result = self._execute_swap_step(step, amount_raw_for_step, simulate, mode, account_id=account_id)
+            result = self._execute_swap_step(step, amount_raw_for_step, simulate, mode, account_id=account_id, is_intermediate=i > 0)
         elif step.step_type == "unwrap":
             result = self._execute_unwrap_step(step, amount_raw_for_step, simulate, account_id=account_id)
         elif step.step_type == "wrap":
@@ -603,7 +603,7 @@ class PacmanExecutor:
         return _associate_token_impl(self.client, token_id)
 
 
-    def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in", account_id: str = None) -> ExecutionResult:
+    def _execute_swap_step(self, step: dict, amount_raw: int, simulate: bool = False, mode: str = "exact_in", account_id: str = None, is_intermediate: bool = False) -> ExecutionResult:
         """Execute a single swap step using one of the three engines."""
         try:
             from lib.prices import price_manager
@@ -685,9 +685,9 @@ class PacmanExecutor:
             if mode == "exact_out":
                  needed_balance = int(amount_in_expected * slippage_factor_in)
             
-            # If we are simulating a multi-hop, intermediate balances may not exist in-wallet yet.
-            # Current step context does not expose hop index here, so keep strict checks.
-            is_intermediate_sim = False
+            # If we are simulating a multi-hop, the intermediate balance won't actually be in the wallet.
+            # We skip the strict balance check for intermediate steps in dry runs.
+            is_intermediate_sim = (simulate and is_intermediate)
 
             if current_balance < needed_balance and not is_intermediate_sim:
                 # RAISE EXCEPTION instead of returning fail

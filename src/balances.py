@@ -13,23 +13,58 @@ from pathlib import Path
 from src.logger import logger
 
 
-def get_balances(w3, eoa: str, client, token_highlights: list = None, hedera_account_id: str = None) -> Dict[str, float]:
+def get_balances(w3, eoa: str, client, token_highlights: list = None, account_id: str = None) -> Dict[str, float]:
     """
-    Fetch all non-zero token balances using Multicall.
-    This reduces 30+ RPC calls to 1-2 chunks.
+    Fetch all non-zero token balances.
+    If account_id is provided, uses the Hedera Mirror Node to get exact segregated balances.
+    Otherwise, uses EVM Multicall.
     
     Args:
-        token_highlights: Optional list of token symbols to prioritize 
-                         or ONLY fetch if sequential fallback occurs.
+        w3: Web3 instance
+        eoa: EVM address for fallback multicall
+        client: SaucerSwapV2 client
+        token_highlights: Optional list of token symbols to prioritize
+        account_id: Hedera Account ID (e.g., 0.0.123) for exact lookup
     """
     from lib.multicall import Multicall
     from lib.saucerswap import hedera_id_to_evm
+    import requests
 
     balances = {}
 
-    # 1. HBAR Balance (Native)
+    # If we have an explicit account_id, use Mirror Node for exact segregated balances
+    # This prevents sub-accounts sharing an ECDSA key from showing combined balances.
+    if account_id:
+        try:
+            network_prefix = "mainnet-public" if client.network == "mainnet" else "testnet"
+            base_url = f"https://{network_prefix}.mirrornode.hedera.com"
+
+            # 1. Fetch HBAR Balance
+            hbar_url = f"{base_url}/api/v1/accounts/{account_id}"
+            hbar_res = requests.get(hbar_url, timeout=5)
+            if hbar_res.status_code == 200:
+                hbar_bal_tinybars = hbar_res.json().get("balance", {}).get("balance", 0)
+                hbar_readable = hbar_bal_tinybars / (10**8) # Mirror Node HBAR balance is in tinybars (8 decimals)
+                if hbar_readable > 0:
+                    balances["0.0.0"] = hbar_readable
+
+            # 2. Fetch Token Balances
+            tokens_url = f"{base_url}/api/v1/accounts/{account_id}/tokens"
+            tokens_res = requests.get(tokens_url, params={"limit": 100}, timeout=5)
+            if tokens_res.status_code == 200:
+                for token in tokens_res.json().get("tokens", []):
+                    bal = token.get("balance", 0)
+                    if bal > 0:
+                        tid = token.get("token_id")
+                        decimals = token.get("decimals", 8) # The Mirror Node /tokens endpoint includes 'decimals'
+                        balances[tid] = bal / (10**decimals)
+                return balances
+        except Exception as e:
+            logger.warning(f"   ⚠️ Mirror Node balance lookup failed for {account_id}: {e}. Falling back to EVM.")
+
+    # 1. Fallback HBAR Balance (Native via EVM)
     hbar_bal = w3.eth.get_balance(eoa)
-    hbar_readable = hbar_bal / (10**18)
+    hbar_readable = hbar_bal / (10**18) # EVM HBAR is in Wei (18 decimals)
     if hbar_readable > 0:
         balances["0.0.0"] = hbar_readable
     else:
@@ -46,7 +81,7 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None, hedera_acc
             return balances
         return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network, hedera_account_id)
 
-    # ... (rest of loading tokens_data)
+    # Load tokens_data
     try:
         root = Path(__file__).parent.parent
         tokens_path = root / "data" / "tokens.json"
