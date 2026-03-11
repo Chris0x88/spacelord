@@ -31,7 +31,7 @@ def load_static_aliases():
         "BITCOIN": "0.0.10082597", "BTC": "0.0.10082597",
         "ETHEREUM": "0.0.9470869", "ETH": "0.0.9470869",
         "DOLLAR": "0.0.456858", "USD": "0.0.456858", "STABLECOIN": "0.0.456858",
-        "HEDERA": "0.0.0", "HBAR": "0.0.0",
+        "HEDERA": "0.0.0", "HBAR": "0.0.1456986",
     }
     ALIASES.update(CANONICAL)
     

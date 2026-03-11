@@ -468,7 +468,7 @@ def _show_all_balances(executor, price_manager, lp_positions: list = None):
         hbar_price = price_manager.get_hbar_price()
         hbar_usd = hbar_readable * hbar_price
 
-        print(f"  {C.ACCENT}HBAR{C.R}       {C.TEXT}{hbar_readable:>14.6f}{C.R}  {C.OK}${hbar_usd:>10.2f}{C.R}")
+        print(f"  {C.ACCENT}HEDERA{C.R}     {C.TEXT}{hbar_readable:>14.6f}{C.R}  {C.OK}${hbar_usd:>10.2f}{C.R}")
         
         tokens_data = ui_filter.get_token_metadata()
         total_usd = hbar_usd
@@ -483,8 +483,8 @@ def _show_all_balances(executor, price_manager, lp_positions: list = None):
         
         # Merge balances with metadata
         for sym, bal in all_balances.items():
-            # Skip HBAR (handled above)
-            if sym == "HBAR": continue
+            # Skip HEDERA (handled above)
+            if sym == "0.0.0": continue
             
             # Find metadata
             meta = tokens_data.get(sym)
@@ -503,8 +503,8 @@ def _show_all_balances(executor, price_manager, lp_positions: list = None):
             if not token_id or ui_filter.is_blacklisted(token_id):
                 continue
                 
-            # Skip WHBAR to avoid confusion (users see HBAR)
-            if token_id == "0.0.1456986": continue
+            # Skip WHBAR to avoid confusion (users see HBAR) - REMOVED per user request
+            # if token_id == "0.0.1456986": continue
             
             price = price_manager.get_price(token_id)
             usd_val = bal * price

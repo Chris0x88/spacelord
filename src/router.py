@@ -81,8 +81,8 @@ class PacmanVariantRouter:
     CANONICAL_DEFAULTS = {
         "bitcoin": "0.0.10082597", "btc": "0.0.10082597", "wbtc": "0.0.10082597",
         "ethereum": "0.0.9470869", "eth": "0.0.9470869", "weth": "0.0.9470869",
-        "dollar": "0.0.456858", "usd": "0.0.456858", "usdc": "0.0.456858", "stablecoin": "0.0.456858",
-        "hbar": "0.0.0", "hedera": "0.0.0",
+        "dollar": "0.0.456858", "usd": "0.0.456858",        "usdc": "USDC", "usdt": "USDT[hts]", "dai": "DAI[hts]",
+        "sauce": "SAUCE", "hbar": "HBAR", "hedera": "HEDERA"
     }
     
     def __init__(self, price_manager=None):
@@ -252,7 +252,11 @@ class PacmanVariantRouter:
 
     def find_swap_step(self, from_id: str, to_id: str) -> Optional[RouteStep]:
         """Find a direct swap between two token IDs."""
-        idx = (from_id, to_id)
+        # Treat WHBAR as HBAR for topological pathfinding
+        f_key = "0.0.0" if from_id == "0.0.1456986" else from_id
+        t_key = "0.0.0" if to_id == "0.0.1456986" else to_id
+        
+        idx = (f_key, t_key)
         if idx in self.pool_graph:
             pool_id, fee_bps, id_in, id_out, liquidity_usd = self.pool_graph[idx]
             # Fee is 3000 (0.3%). We want 0.003 for human readable reporting.

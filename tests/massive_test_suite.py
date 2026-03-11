@@ -37,7 +37,7 @@ class TestCoreLogic(unittest.TestCase):
         self.assertEqual(resolve_token("usdc"), "0.0.456858")
 
     def test_canonical_resolution_hbar(self):
-        self.assertEqual(resolve_token("hbar"), "0.0.0")
+        self.assertEqual(resolve_token("hbar"), "0.0.1456986")
         self.assertEqual(resolve_token("hedera"), "0.0.0")
 
     def test_canonical_resolution_unknown(self):
@@ -55,7 +55,8 @@ class TestTranslator(unittest.TestCase):
             self.assertEqual(translate(cmd), {"intent": "balance"})
 
     def test_price_intents(self):
-        self.assertEqual(translate("price hbar"), {"intent": "price", "token": "0.0.0"})
+        self.assertEqual(translate("price hbar"), {"intent": "price", "token": "0.0.1456986"})
+        self.assertEqual(translate("price hedera"), {"intent": "price", "token": "0.0.0"})
         self.assertEqual(translate("what is the price of bitcoin"), {"intent": "price", "token": "0.0.10082597"})
 
     def test_swap_exact_in(self):
@@ -63,7 +64,7 @@ class TestTranslator(unittest.TestCase):
         req = translate("swap 100 hbar for usdc")
         self.assertEqual(req["intent"], "swap")
         self.assertEqual(req["amount"], 100.0)
-        self.assertEqual(req["from_token"], "0.0.0")
+        self.assertEqual(req["from_token"], "0.0.1456986")
         self.assertEqual(req["to_token"], "0.0.456858")
         self.assertEqual(req["mode"], "exact_in")
 
@@ -71,7 +72,7 @@ class TestTranslator(unittest.TestCase):
         # swap TOKEN to AMOUNT TOKEN
         req = translate("swap hbar to 10 usdc")
         self.assertEqual(req["amount"], 10.0)
-        self.assertEqual(req["from_token"], "0.0.0")
+        self.assertEqual(req["from_token"], "0.0.1456986")
         self.assertEqual(req["to_token"], "0.0.456858")
         self.assertEqual(req["mode"], "exact_out")
 
@@ -87,7 +88,7 @@ class TestTranslator(unittest.TestCase):
         # swap TOKEN to TOKEN
         req = translate("swap hbar for usdc")
         self.assertEqual(req["amount"], 1.0)
-        self.assertEqual(req["from_token"], "0.0.0")
+        self.assertEqual(req["from_token"], "0.0.1456986")
         self.assertEqual(req["to_token"], "0.0.456858")
         self.assertEqual(req["mode"], "exact_in")
 
@@ -346,9 +347,9 @@ class TestNLPVariations(unittest.TestCase):
 
     # --- PRICE/BALANCE VARIATIONS ---
     def test_nlp_price_1(self):
-        req = translate("price of hbar")
+        req = translate("price hbar")
         self.assertEqual(req["intent"], "price")
-        self.assertEqual(req["token"], "0.0.0")
+        self.assertEqual(req["token"], "0.0.1456986")
 
     def test_nlp_price_2(self):
         req = translate("what is the price of wbtc")
