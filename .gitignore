@@ -38,8 +38,9 @@ package.json
 pacman_env/
 pacman_cli.egg-info/
 
-# Repo Map
+# Repo Map & Rules
 REPO_MAP.md
+ARCHITECTURE_RULES.md
 !data/*.template.json
 
 # Private Documentation
