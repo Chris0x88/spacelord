@@ -157,7 +157,15 @@ class AccountManager:
                 # Assume it's already a receipt
                 receipt = response
             
+            if not receipt.account_id:
+                print(f"   ❌ Account creation returned no ID. Network may be congested.")
+                return None, None
+                
             new_id = str(receipt.account_id)
+            if new_id == "None":
+                print(f"   ❌ Network returned string 'None' as ID.")
+                return None, None
+                
             return new_id, (None if is_sub_account else new_key.to_string())
 
         except Exception as e:
