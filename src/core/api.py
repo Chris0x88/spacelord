@@ -250,12 +250,13 @@ def get_accounts():
                 if bal < 0 and sym != "HBAR": # Skip negative leftovers unless it's gas
                     continue
 
-                # 1. Resolve Token ID
+                # 1. Resolve Token ID & Symbol
                 token_id = sym
                 preferred_sym = sym
                 if sym in tokens_data:
                     token_id = tokens_data[sym].get("id", sym)
-                    # If it's an alias, try to get the 'symbol' field from the target
+                    preferred_sym = tokens_data[sym].get("symbol", sym)
+                    # If it's an alias, update token_id
                     token_id = tokens_data[sym].get("alias_for", token_id)
                 
                 # Native HBAR handling
