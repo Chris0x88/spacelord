@@ -84,6 +84,7 @@ HELP_COMMANDS = [
     # System
     ("--- SYSTEM ---", ""),
     ("verbose [on/off]",            "Toggle verbose / debug logging"),
+    ("doctor",                      "Run system health & AI safety diagnostics"),
     ("help <topic>",                "In-depth help for a specific topic"),
     ("exit",                        "Quit Pacman"),
 ]
@@ -110,6 +111,7 @@ HELP_EXAMPLES = [
     ("order sell HBAR at 0.12 size 50",   "Sell HBAR when price reaches $0.12"),
     ("robot start",                       "Start the autonomous BTC rebalancer"),
     ("robot signal",                      "Check the model without trading"),
+    ("doctor",                            "Scan for environment bugs and AI-confusing issues"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -617,4 +619,22 @@ when your BTC allocation deviates too far from the model's target.
 
 {C.WARN}Note:{C.R} Runs in SIMULATION mode by default to protect funds. Add
 ROBOT_SIMULATE=false to .env to execute real swaps.""",
+
+    "doctor": """{C.BOLD}PACMAN DOCTOR — SYSTEM DIAGNOSTICS{C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+A simple diagnostics tool to ensure your environment is healthy
+and optimized for both humans and AI agents.
+
+{C.ACCENT}Checks Performed:{C.R}
+  1. {C.BOLD}.env Integrity{C.R}: Verifies private keys and account IDs exist.
+  2. {C.BOLD}Account Registry{C.R}: Cross-checks .env with data/accounts.json.
+  3. {C.BOLD}Permissions{C.R}: Verifies data, logs, and backup folders are writable.
+  4. {C.BOLD}AI Guardrails{C.R}: Scans for common configuration errors that cause 
+     AI agents (like OpenClaw) to enter infinite loops.
+
+{C.ACCENT}When to run:{C.R}
+  - After updating the app.
+  - After creating new sub-accounts.
+  - If an AI agent seems confused or stuck in a loop.
+  - Before starting the robot daemon for the first time.""",
 }

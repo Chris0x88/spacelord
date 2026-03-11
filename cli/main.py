@@ -40,6 +40,7 @@ from cli.commands.info import (
 )
 from cli.commands.orders import cmd_order
 from cli.commands.robot import cmd_robot
+from cli.commands.doctor import cmd_doctor
 
 # Load banner from cli.text_content
 try:
@@ -85,6 +86,7 @@ COMMANDS = {
     "order": cmd_order, "orders": cmd_order,
     "robot": cmd_robot, "bot": cmd_robot,
     "refresh": cmd_refresh, "sync": cmd_refresh,
+    "doctor": cmd_doctor,
     "install-service": cmd_install_service,
     "uninstall-service": cmd_uninstall_service,
     "status-service": cmd_service_status,
