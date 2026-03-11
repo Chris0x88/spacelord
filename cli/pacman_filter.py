@@ -9,7 +9,6 @@ Supports user-defined priority sorting and blacklisting.
 """
 
 import json
-import os
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
