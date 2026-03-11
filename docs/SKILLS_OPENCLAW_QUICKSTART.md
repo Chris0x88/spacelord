@@ -57,6 +57,23 @@ These flags make Pacman safe to drive from a subprocess without TTY:
 
 ---
 
+## 🔍 The Agent Execution Workflow (Variable Discovery)
+
+Agents must NEVER guess token IDs, balances, or configuration states. You must forcefully gather this information from the CLI before formulating an execution command.
+
+**When asked to perform a trade or transfer, follow this exact sequence:**
+
+1. **Who am I?** Run `./launch.sh account` to discover your active `HEDERA_ACCOUNT_ID` and ensure you are in the correct mode (SIMULATION vs LIVE).
+2. **What are the IDs?** Run `./launch.sh tokens` to find the exact Hedera ID for the requested assets (e.g., discovering that USDC is `0.0.456858`). Never use raw symbols if ambiguous.
+3. **Do I have the money?** Run `./launch.sh balance --json` to get a machine-readable exact readout of your holdings. 
+    - Check that you have enough of the source token.
+    - Check that your `HBAR` balance will remain > 5 after the transaction for gas fees.
+    - Check if the destination token is associated (if not, you need to run `./launch.sh associate <ID>`).
+4. **Determine the Price:** Run `./launch.sh price <TOKEN>` to do any necessary math to determine exact swap sizes.
+5. **Execute:** Only *after* sequentially gathering these variables do you formulate and execute the final command (e.g., `./launch.sh swap 100 HBAR for USDC --yes`).
+
+---
+
 ## 📦 Key Commands
 
 | Command | AI Version | Returns |
