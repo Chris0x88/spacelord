@@ -1,0 +1,88 @@
+{
+    "WBTC_LZ": {
+        "id": "0.0.1055483",
+        "symbol": "WBTC[hts]",
+        "type": "ERC20_BRIDGED",
+        "layer": "LayerZero",
+        "visible_in_hashpack": false,
+        "pool_preference": "high",
+        "unwrap_to": "WBTC_HTS",
+        "unwrap_contract": "0.0.9675688",
+        "unwrap_gas_hbar": 0.02
+    },
+    "WBTC_HTS": {
+        "id": "0.0.10082597",
+        "symbol": "HTS-WBTC",
+        "type": "HTS_NATIVE",
+        "layer": "Hedera",
+        "visible_in_hashpack": true,
+        "pool_preference": "low",
+        "wrap_to": "WBTC_LZ",
+        "wrap_contract": "0.0.9675688",
+        "wrap_gas_hbar": 0.02
+    },
+    "WETH_LZ": {
+        "id": "0.0.9770617",
+        "symbol": "HTS-WETH",
+        "type": "ERC20_BRIDGED",
+        "layer": "LayerZero",
+        "visible_in_hashpack": false,
+        "pool_preference": "high",
+        "unwrap_to": "WETH_HTS",
+        "unwrap_contract": "0.0.9675688",
+        "unwrap_gas_hbar": 0.02
+    },
+    "WETH_HTS": {
+        "id": "0.0.541564",
+        "symbol": "WETH[hts]",
+        "type": "HTS_NATIVE",
+        "layer": "Hedera",
+        "visible_in_hashpack": true,
+        "pool_preference": "low",
+        "wrap_to": "WETH_LZ",
+        "wrap_contract": "0.0.9675688",
+        "wrap_gas_hbar": 0.02
+    },
+    "USDC": {
+        "id": "0.0.456858",
+        "symbol": "USDC",
+        "type": "ERC20_BRIDGED",
+        "layer": "Circle",
+        "visible_in_hashpack": true,
+        "pool_preference": "high",
+        "is_bridgeable_to_hts": true,
+        "hts_variant": "USDC_HTS"
+    },
+    "USDC_HTS": {
+        "id": "0.0.1055459",
+        "symbol": "USDC[hts]",
+        "type": "HTS_NATIVE",
+        "layer": "Hedera",
+        "visible_in_hashpack": true,
+        "pool_preference": "high"
+    },
+    "HEDERA": {
+        "id": "0.0.0",
+        "symbol": "HEDERA",
+        "type": "HTS_NATIVE",
+        "layer": "Hedera",
+        "visible_in_hashpack": true,
+        "pool_preference": "high"
+    },
+    "HBAR": {
+        "id": "0.0.1456986",
+        "symbol": "HBAR",
+        "type": "HTS_NATIVE",
+        "layer": "Hedera",
+        "visible_in_hashpack": true,
+        "pool_preference": "high"
+    },
+    "SAUCE": {
+        "id": "0.0.731861",
+        "symbol": "SAUCE",
+        "type": "HTS_NATIVE",
+        "layer": "Hedera",
+        "visible_in_hashpack": true,
+        "pool_preference": "high"
+    }
+}

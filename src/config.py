@@ -170,10 +170,18 @@ class PacmanConfig:
                 if acc_path.exists():
                     with open(acc_path) as f:
                         acc_data = json.load(f)
+                        # Priority 1: Match "Bitcoin Rebalancer Daemon" nickname
                         for acc in acc_data:
-                            if acc.get("type") == "derived":
+                            if acc.get("nickname") == "Bitcoin Rebalancer Daemon":
                                 config.robot_account_id = acc.get("id")
                                 break
+                        
+                        # Priority 2: Fallback to first derived account if no specific nickname found
+                        if not config.robot_account_id:
+                            for acc in acc_data:
+                                if acc.get("type") == "derived":
+                                    config.robot_account_id = acc.get("id")
+                                    break
                 
                 # 2. Fallback to robot_state.json if still not found
                 if not config.robot_account_id:
@@ -218,6 +226,46 @@ class PacmanConfig:
         if math.isnan(self.max_slippage_percent) or self.max_slippage_percent > 5.0 or self.max_slippage_percent < 0:
             raise ConfigurationError(f"Invalid max_slippage_percent: {self.max_slippage_percent}% (Max permitted: 5%)")
     
+    @staticmethod
+    def set_env_value(key: str, value: str):
+        """Programmatically update a value in the .env file."""
+        from pathlib import Path
+        import os
+        
+        env_path = Path(__file__).parent.parent / ".env"
+        
+        # Priority: Use python-dotenv if available
+        try:
+            from dotenv import set_key
+            set_key(str(env_path), key, value)
+            # Also update current session
+            os.environ[key] = value
+            return
+        except ImportError:
+            pass
+
+        # Fallback: Robust manual update
+        if not env_path.exists():
+            with open(env_path, "w") as f:
+                f.write(f"{key}={value}\n")
+            return
+
+        lines = env_path.read_text().splitlines()
+        found = False
+        new_lines = []
+        for line in lines:
+            if line.strip().startswith(f"{key}="):
+                new_lines.append(f"{key}={value}")
+                found = True
+            else:
+                new_lines.append(line)
+        
+        if not found:
+            new_lines.append(f"{key}={value}")
+            
+        env_path.write_text("\n".join(new_lines) + "\n")
+        os.environ[key] = value
+
     def print_status(self):
         """Print current configuration status."""
         print("="*60)

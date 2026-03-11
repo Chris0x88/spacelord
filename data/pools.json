@@ -1,0 +1,324 @@
+[
+  {
+    "contractId": "0.0.3948521",
+    "tokenA": "0.0.456858",
+    "tokenB": "0.0.1055459",
+    "fee": 500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3951117",
+    "tokenA": "0.0.731861",
+    "tokenB": "0.0.1456986",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3961531",
+    "tokenA": "0.0.834116",
+    "tokenB": "0.0.1456986",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964782",
+    "tokenA": "0.0.1055459",
+    "tokenB": "0.0.1055472",
+    "fee": 500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964785",
+    "tokenA": "0.0.1055459",
+    "tokenB": "0.0.1055477",
+    "fee": 500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964790",
+    "tokenA": "0.0.731861",
+    "tokenB": "0.0.1460200",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964795",
+    "tokenA": "0.0.1055483",
+    "tokenB": "0.0.1456986",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964800",
+    "tokenA": "0.0.541564",
+    "tokenB": "0.0.1456986",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964804",
+    "tokenA": "0.0.456858",
+    "tokenB": "0.0.1456986",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964808",
+    "tokenA": "0.0.1055459",
+    "tokenB": "0.0.1456986",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964809",
+    "tokenA": "0.0.1055472",
+    "tokenB": "0.0.1456986",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964815",
+    "tokenA": "0.0.1055477",
+    "tokenB": "0.0.1456986",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964821",
+    "tokenA": "0.0.1055459",
+    "tokenB": "0.0.1055483",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964825",
+    "tokenA": "0.0.541564",
+    "tokenB": "0.0.1055459",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964827",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.1460200",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964834",
+    "tokenA": "0.0.1157020",
+    "tokenB": "0.0.1456986",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964837",
+    "tokenA": "0.0.1304757",
+    "tokenB": "0.0.1456986",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964855",
+    "tokenA": "0.0.968069",
+    "tokenB": "0.0.1456986",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964860",
+    "tokenA": "0.0.456858",
+    "tokenB": "0.0.731861",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.3964840",
+    "tokenA": "0.0.1055495",
+    "tokenB": "0.0.1456986",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.4129330",
+    "tokenA": "0.0.859814",
+    "tokenB": "0.0.1456986",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.4601632",
+    "tokenA": "0.0.127877",
+    "tokenB": "0.0.1456986",
+    "fee": 10000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.5029347",
+    "tokenA": "0.0.1159074",
+    "tokenB": "0.0.1456986",
+    "fee": 10000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.5328590",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.3716059",
+    "fee": 10000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.6071041",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.2283230",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.6071051",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.1958126",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.6071074",
+    "tokenA": "0.0.1157005",
+    "tokenB": "0.0.1456986",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.6071119",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.4794920",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.6071911",
+    "tokenA": "0.0.456858",
+    "tokenB": "0.0.1958126",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.6078459",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.6070128",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.6078473",
+    "tokenA": "0.0.456858",
+    "tokenB": "0.0.6070123",
+    "fee": 500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.6126395",
+    "tokenA": "0.0.1159074",
+    "tokenB": "0.0.1456986",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.7255884",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.3210123",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.7302964",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.6070123",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.7450422",
+    "tokenA": "0.0.1460200",
+    "tokenB": "0.0.4352885",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.7474726",
+    "tokenA": "0.0.4794920",
+    "tokenB": "0.0.7243470",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.8315114",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.8279134",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.8491060",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.3706639",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.8780317",
+    "tokenA": "0.0.8279134",
+    "tokenB": "0.0.8490541",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.9235337",
+    "tokenA": "0.0.5989978",
+    "tokenB": "0.0.8061363",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.9774462",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.7893707",
+    "fee": 10000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.9774523",
+    "tokenA": "0.0.456858",
+    "tokenB": "0.0.9770617",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.10018365",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.9770617",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.10092996",
+    "tokenA": "0.0.456858",
+    "tokenB": "0.0.10082597",
+    "fee": 1500,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.10093026",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.10082597",
+    "fee": 3000,
+    "protocol": "v2"
+  },
+  {
+    "contractId": "0.0.7894520",
+    "tokenA": "0.0.1456986",
+    "tokenB": "0.0.7894159",
+    "fee": 3000,
+    "protocol": "v1"
+  }
+]

@@ -197,28 +197,42 @@ def get_accounts():
     if not pacman_app:
         return jsonify({"error": "Controller not initialized"}), 500
     try:
-        # 1. Gather all IDs to show
-        main_id = pacman_app.account_id or "Current"
+        # 1. Gather all IDs and their roles
+        main_id = pacman_app.account_id
         robot_id = pacman_app.config.robot_account_id
         
-        account_ids = []
-        # Main first
-        account_ids.append({"id": main_id, "role": "Main Account"})
-        
-        # Robot second (even if same as main, for "separation")
-        if robot_id:
-            account_ids.append({"id": robot_id, "role": "Robot Account"})
-        
-        # Others from registry
+        # Load registry for nicknames
+        registry_map = {}
         try:
             with open("data/accounts.json") as f:
                 registry = json.load(f)
                 for acc in registry:
                     aid = acc.get("id")
-                    if aid and aid not in [a["id"] for a in account_ids]:
-                        role = acc.get("nickname") or "Sub Account"
-                        account_ids.append({"id": aid, "role": role})
+                    if aid:
+                        registry_map[aid] = acc.get("nickname")
         except: pass
+
+        # Build unique account list with prioritized roles
+        accounts_to_process = {} # id -> role
+
+        # Primary roles
+        if main_id:
+            accounts_to_process[main_id] = registry_map.get(main_id) or "Main Account"
+        
+        if robot_id:
+            if robot_id == main_id:
+                if main_id in accounts_to_process:
+                    accounts_to_process[main_id] = f"{accounts_to_process[main_id]} (Robot)"
+            else:
+                accounts_to_process[robot_id] = registry_map.get(robot_id) or "Robot Account"
+        
+        # Others from registry
+        for aid, nickname in registry_map.items():
+            if aid not in accounts_to_process:
+                accounts_to_process[aid] = nickname or "Sub Account"
+
+        # Convert to list for enriched processing
+        account_ids = [{"id": aid, "role": role} for aid, role in accounts_to_process.items()]
 
         # 2. Token metadata for prices
         tokens_data = {}

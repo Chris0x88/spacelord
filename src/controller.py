@@ -322,11 +322,15 @@ class PacmanController:
             alias_key=alias_key
         )
 
-    def create_sub_account(self, initial_balance: float = 1.0, nickname: str = "") -> Optional[str]:
+    def create_sub_account(self, initial_balance: float = 1.0, nickname: str = "", purpose: Optional[str] = None) -> Optional[str]:
         """
-        Create a new Account ID that uses the SAME private key as the current account.
+        Create a new derived sub-account using the main private key.
         """
-        return self.account_manager.create_sub_account(initial_balance_hbar=initial_balance, nickname=nickname)
+        return self.account_manager.create_sub_account(
+            initial_balance_hbar=initial_balance, 
+            nickname=nickname,
+            purpose=purpose
+        )
 
     def rename_account(self, account_id: str, nickname: str) -> bool:
         """Update the nickname for a known account in the local registry."""
@@ -587,8 +591,7 @@ class PacmanController:
         # Expected: {contractId, tokenA, tokenB, fee, label}
         fee = pool_data.get("fee")
         if protocol == "v1" and fee is None:
-            fee = 3000 # Default V1 fee is 0.3%
-
+            fee = 3000 # Default V1 fee
         tokenA_meta = pool_data.get("tokenA", {})
         tokenB_meta = pool_data.get("tokenB", {})
         
@@ -596,6 +599,18 @@ class PacmanController:
         symB = tokenB_meta.get("symbol") if isinstance(tokenB_meta, dict) else None
         idA = tokenA_meta.get("id") if isinstance(tokenA_meta, dict) else tokenA_meta
         idB = tokenB_meta.get("id") if isinstance(tokenB_meta, dict) else tokenB_meta
+
+        # Fallback symbol resolution from tokens.json
+        if not symA or not symB:
+            try:
+                tokens_path = Path("data/tokens.json")
+                if tokens_path.exists():
+                    with open(tokens_path) as f:
+                        tokens = json.load(f)
+                        if not symA: symA = tokens.get(idA, {}).get("symbol")
+                        if not symB: symB = tokens.get(idB, {}).get("symbol")
+            except Exception:
+                pass
 
         label = pool_data.get("label")
         if not label:

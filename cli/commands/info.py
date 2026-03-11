@@ -158,6 +158,16 @@ def _pools_list(app):
         ("V1 (Legacy)", "data/v1_pools_approved.json")
     ]
     
+    # Pre-load tokens metadata for symbol resolution
+    tokens = {}
+    tokens_path = Path("data/tokens.json")
+    if tokens_path.exists():
+        try:
+            with open(tokens_path) as f:
+                tokens = json.load(f)
+        except Exception:
+            pass
+
     print(f"\n{C.BOLD}{C.TEXT}  APPROVED POOL REGISTRIES{C.R}")
     
     for label, path_str in registries:
@@ -176,6 +186,18 @@ def _pools_list(app):
                 for entry in data:
                     cid = entry.get("contractId", "N/A")
                     lbl = entry.get("label", "Unknown")
+                    
+                    # Fix: Resolve symbols if label is Unknown
+                    if lbl == "Unknown":
+                        idA = entry.get("tokenA")
+                        idB = entry.get("tokenB")
+                        # Look up symbols in tokens.json
+                        symA = tokens.get(idA, {}).get("symbol") if idA else None
+                        symB = tokens.get(idB, {}).get("symbol") if idB else None
+                        # Fallback to ID if symbol not found
+                        if symA or symB:
+                            lbl = f"{symA or idA}/{symB or idB}"
+
                     fee = entry.get("fee")
                     fee_str = str(fee) if fee is not None else "N/A"
                     print(f"    {C.TEXT}{cid:<12} {lbl:<20} {fee_str:<6}{C.R}")

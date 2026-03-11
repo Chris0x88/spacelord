@@ -1,0 +1,44 @@
+{
+    "swap_settings": {
+        "slippage_percent": 2.0
+    },
+    "display_rules": {
+        "priority_symbols": [
+            "HBAR",
+            "USDC",
+            "WBTC",
+            "WETH",
+            "QNT",
+            "LINK",
+            "AVAX",
+            "SAUCE",
+            "XSAUCE",
+            "BONZO"
+        ],
+        "blacklist_ids": [
+            "0.0.1456986"
+        ],
+        "wallet_balance_order": [
+            "USDC",
+            "WBTC",
+            "WETH"
+        ]
+    },
+    "refresh_rules": {
+        "strategy": "curated",
+        "use_all_v2_pools": false,
+        "min_liquidity_threshold": 0,
+        "always_include_ids": [
+            "0.0.0",
+            "0.0.1456986"
+        ]
+    },
+    "transfer_whitelist": [
+        {
+            "address": "0.0.7949179",
+            "nickname": ""
+        }
+    ],
+    "limit_order_poll_seconds": 3600,
+    "limit_order_daemon_enabled": true
+}

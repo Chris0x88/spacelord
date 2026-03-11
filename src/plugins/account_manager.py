@@ -21,6 +21,13 @@ class AccountManager:
     """
     Handles native Hedera account creation and management.
     """
+    # Standard Purpose Mapping for automated labeling and configuration
+    PURPOSE_MAP = {
+        "rebalancer": "Bitcoin Rebalancer Daemon",
+        "main": "Main Transaction Account",
+        "gas": "Gas Source",
+        "backup": "Backup Signer"
+    }
 
     def __init__(self, network: str = "mainnet"):
         self.network = network.lower()
@@ -71,12 +78,34 @@ class AccountManager:
         except Exception:
             return []
 
-    def _save_account(self, account_id: str, type: str = "imported", nickname: str = ""):
+    def _save_account(self, account_id: str, type: str = "imported", nickname: str = "", purpose: Optional[str] = None):
         """Save an account ID to the local registry."""
         import json
         from pathlib import Path
         import time
         from src.logger import logger
+
+        # Resolve nickname from purpose if provided
+        if purpose and purpose in self.PURPOSE_MAP:
+            nickname = self.PURPOSE_MAP[purpose]
+
+        # Standard Account Mapping for Pacman project (Legacy fallback)
+        STANDARD_NICKNAMES = {
+            "0.0.10289160": "Main Transaction Account",
+            "0.0.10301803": "Bitcoin Rebalancer Daemon"
+        }
+        if not nickname and account_id in STANDARD_NICKNAMES:
+            nickname = STANDARD_NICKNAMES[account_id]
+
+        # Sync to .env if robot account
+        if nickname == "Bitcoin Rebalancer Daemon" or purpose == "rebalancer":
+            nickname = "Bitcoin Rebalancer Daemon"
+            try:
+                from src.config import PacmanConfig
+                PacmanConfig.set_env_value("ROBOT_ACCOUNT_ID", account_id)
+                logger.info(f"✨ Auto-configured ROBOT_ACCOUNT_ID={account_id} in .env")
+            except Exception as e:
+                logger.error(f"Failed to sync ROBOT_ACCOUNT_ID to .env: {e}")
 
         accounts_path = Path("data/accounts.json")
         accounts = self.get_known_accounts()
@@ -84,7 +113,7 @@ class AccountManager:
         # Check if already exists — update nickname if provided
         for a in accounts:
             if a.get("id") == account_id:
-                if nickname:
+                if nickname and a.get("nickname") != nickname:
                     a["nickname"] = nickname
                     try:
                         with open(accounts_path, "w") as f:
@@ -176,10 +205,10 @@ class AccountManager:
             print(f"   ❌ Account creation failed: {err_msg}")
             return None, None
 
-    def create_sub_account(self, initial_balance_hbar: float = 1.0, nickname: str = "") -> Optional[str]:
+    def create_sub_account(self, initial_balance_hbar: float = 1.0, nickname: str = "", purpose: Optional[str] = None) -> Optional[str]:
         """
         Create a new Account ID using the current operator's Private Key.
-        Automatically saves to the local registry with an optional nickname.
+        Automatically saves to the local registry with an optional nickname or purpose.
         """
         if not hasattr(self, "_operator_raw_key") or not self._operator_raw_key:
             raise RuntimeError("Operator key not set. Call set_operator() first.")
@@ -190,7 +219,7 @@ class AccountManager:
         )
 
         if new_id:
-            self._save_account(new_id, type="derived", nickname=nickname)
+            self._save_account(new_id, type="derived", nickname=nickname, purpose=purpose)
 
         return new_id
 

@@ -1,0 +1,51 @@
+{
+    "_comment": "Base tokens auto-associated on new account creation. Edit this file to customise the set.",
+    "_note": "HBAR (0.0.0) and WHBAR (0.0.1456986) are native and never need association.",
+    "tokens": [
+        {
+            "id": "0.0.456858",
+            "symbol": "USDC",
+            "note": "USD Coin (Circle) — primary stablecoin"
+        },
+        {
+            "id": "0.0.1055459",
+            "symbol": "USDC_HTS",
+            "note": "USD Coin HTS-native variant"
+        },
+        {
+            "id": "0.0.1055472",
+            "symbol": "USDT_HTS",
+            "note": "Tether HTS-native"
+        },
+        {
+            "id": "0.0.731861",
+            "symbol": "SAUCE",
+            "note": "SaucerSwap governance token"
+        },
+        {
+            "id": "0.0.1460200",
+            "symbol": "XSAUCE",
+            "note": "Staked SAUCE (xSAUCE)"
+        },
+        {
+            "id": "0.0.1055483",
+            "symbol": "WBTC_LZ",
+            "note": "Wrapped BTC (LayerZero ERC20)"
+        },
+        {
+            "id": "0.0.10082597",
+            "symbol": "WBTC_HTS",
+            "note": "Wrapped BTC (HTS native)"
+        },
+        {
+            "id": "0.0.541564",
+            "symbol": "WETH_HTS",
+            "note": "Wrapped ETH (HTS native)"
+        },
+        {
+            "id": "0.0.9770617",
+            "symbol": "WETH_LZ",
+            "note": "Wrapped ETH (LayerZero ERC20)"
+        }
+    ]
+}

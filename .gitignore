@@ -38,8 +38,8 @@ package.json
 pacman_env/
 pacman_cli.egg-info/
 
-# Local Data Storage
-data/*.json
+# Repo Map
+REPO_MAP.md
 !data/*.template.json
 
 # Private Documentation

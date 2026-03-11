@@ -42,7 +42,27 @@ class PowerLawBot(BasePlugin):
         self.config = config or get_robot_config()
         self.adapter = PacmanAdapter(app)
         
-        # State
+        # 1. Ensure Robot Account exists and is configured
+        self._ensure_robot_account()
+
+    def _ensure_robot_account(self):
+        """Check if robot account exists, otherwise create it with the correct purpose."""
+        robot_id = getattr(self.app.config, "robot_account_id", None)
+        if not robot_id:
+            logger.info("🤖 No robot account found. Attempting to auto-provision...")
+            try:
+                # Use the new purpose-based creation
+                new_id = self.app.create_sub_account(
+                    initial_balance=2.0, 
+                    purpose="rebalancer"
+                )
+                if new_id:
+                    self.app.config.robot_account_id = new_id
+                    logger.info(f"✅ Auto-provisioned {new_id} for 'rebalancer' purpose.")
+                else:
+                    logger.error("❌ Failed to auto-provision robot account.")
+            except Exception as e:
+                logger.error(f"❌ Error during auto-provisioning: {e}")
         self.last_check: Optional[datetime] = None
         self.last_rebalance: Optional[datetime] = None
         self.trades_executed = 0
