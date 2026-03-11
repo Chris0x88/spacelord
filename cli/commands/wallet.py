@@ -196,13 +196,48 @@ def cmd_account(app, args):
             print(f"  {C.ERR}✗{C.R} Account {target_id} not found in local registry.")
         return
 
+    # Handle 'switch' sub-command: account switch <nickname>
+    if args and args[0].lower() == "switch":
+        if len(args) < 2:
+            print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}account switch <nickname_or_id>{C.R}")
+            return
+            
+        target = " ".join(args[1:]).lower()
+        known = app.account_manager.get_known_accounts()
+        
+        # Find match by ID or nickname
+        match_id = None
+        match_name = None
+        for acc in known:
+            acc_id = acc.get("id", "")
+            nick = acc.get("nickname", "").lower()
+            if target == acc_id.lower() or target == nick:
+                match_id = acc_id
+                match_name = acc.get("nickname", acc_id)
+                break
+                
+        if not match_id:
+            print(f"  {C.ERR}✗{C.R} Account '{target}' not found in known sub-accounts.")
+            return
+            
+        if match_id == app.executor.hedera_account_id:
+            print(f"  {C.OK}✅ Already using account {C.ACCENT}{match_name}{C.R}")
+            return
+            
+        # Perform switch
+        _update_env("HEDERA_ACCOUNT_ID", match_id, force=True)
+        app.reload_wallet()
+        print(f"  {C.OK}✅ Switched active account to {C.ACCENT}{match_name}{C.R} ({match_id})")
+        return
+
     known = app.account_manager.get_known_accounts()
     show_account(app.executor, known_accounts=known)
 
     # Sub-account creation only on explicit --new flag
     if "--new" not in args and "-n" not in args:
         print(f"  {C.MUTED}To create a sub-account (same key), run: {C.ACCENT}account --new{C.R}")
-        print(f"  {C.MUTED}To rename an account: {C.ACCENT}account rename <0.0.xxx> <label>{C.R}")
+        print(f"  {C.MUTED}To switch active accounts, run: {C.ACCENT}account switch <name>{C.R}")
+        print(f"  {C.MUTED}To rename an account, run: {C.ACCENT}account rename <0.0.xxx> <label>{C.R}")
         print()
         return
 
