@@ -85,6 +85,7 @@ Agents must NEVER guess token IDs, balances, or configuration states. You must f
 | `daemon-start` | – | Starts background robot + limit order daemon |
 | `daemon-stop` | – | Stops the background-running daemon and API |
 | `price bitcoin` | – | BTC live price |
+| `doctor` | – | Scan for environment bugs and AI-confusing issues |
 
 ---
 
@@ -147,6 +148,7 @@ pacman("swap 10 USDC for WBTC --yes")
 | `Transaction reverted` | `./launch.sh slippage 3.0` then retry |
 | `CONTRACT_REVERT on approval` | HTS token approval bug — route via USDC instead |
 | `command not found: pacman` | Use `./launch.sh` not `./pacman` |
+| AI Agent looping | Run `./launch.sh doctor` and fix reported warnings |
 
 ---
 

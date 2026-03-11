@@ -128,6 +128,7 @@ ROBOT_INTERVAL_SECONDS=3600       # Check every hour
 | `pools approve [ID]` | Add pool to routing graph |
 | `tokens` | All supported tokens and IDs |
 | `verbose on/off` | Debug logging toggle |
+| `doctor` | Run system health & AI safety diagnostics |
 
 ---
 
@@ -228,6 +229,7 @@ if deviation > 15:
 | `CONTRACT_REVERT on approval` | May be HTS token approval bug (see below) | Use tokens already in your wallet; avoid approving new HTS tokens if this occurs |
 | `EOFError: EOF when reading a line` | Agent drove Pacman non-interactively | Now auto-handled (confirms automatically). If it still occurs, pass `--yes` |
 | `command not found: pacman` | Old entry point used | Use `./launch.sh` not `./pacman` |
+| AI Agent looping | Environment/Registry mismatch | Run `./launch.sh doctor` and fix reported warnings |
 
 ### ⚠️ Known Limitation: HTS Token Approvals
 
