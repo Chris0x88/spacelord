@@ -21,6 +21,7 @@ HELP_COMMANDS = [
     ("--- WALLET & SETUP ---", ""),
     ("setup",                       "Create or import a wallet (guided wizard)"),
     ("account",                     "Show active wallet + Hedera & EVM addresses"),
+    ("account switch <name>",       "Switch active wallet by nickname or ID"),
     ("account --new",               "Create a sub-account funded from your current wallet"),
     ("account rename <id> <name>",  "Label any known account for easy reference"),
     ("balance",                     "All token balances + USD values"),
@@ -316,6 +317,7 @@ View wallet details and manage Hedera account IDs.
 
 {C.ACCENT}Commands:{C.R}
   {C.TEXT}account{C.R}                          View current account info
+  {C.TEXT}account switch <name_or_id>{C.R}      Switch active account instantly
   {C.TEXT}account --new{C.R}                    Create sub-account (same private key)
   {C.TEXT}account rename <0.0.xxx> <name>{C.R}  Label any known account
 
