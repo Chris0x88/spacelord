@@ -64,7 +64,7 @@ class PacmanPriceManager:
             with open(self.data_file, 'r') as f:
                 pools = json.load(f)
             
-            logger.info(f"[PriceManager] Loading from {self.data_file} ({len(pools)} pools)...")
+            logger.debug(f"[PriceManager] Loading from {self.data_file} ({len(pools)} pools)...")
             
             for pool in pools:
                 pool_id = pool.get("contractId", "Unknown Pool")
@@ -101,7 +101,7 @@ class PacmanPriceManager:
                 self.sources["0.0.0"] = self.sources.get("0.0.1456986", "SaucerSwap V2")
                 
         except Exception as e:
-            print(f"⚠️ Price Manager Load Error: {e}")
+            logger.warning(f"[PriceManager] Load Error: {e}")
 
     def get_price(self, token_id: str) -> float:
         """Get USD price for a token."""

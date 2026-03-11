@@ -21,10 +21,10 @@ from src.logger import logger
 # Price manager is a module-level singleton from lib.prices
 from lib.prices import price_manager as _pm
 
-# Default token IDs for the rebalancer (highest-liquidity HTS pools)
-WBTC_TOKEN_ID = "0.0.1055483"
-WETH_TOKEN_ID = "0.0.541564"
-USDC_TOKEN_ID = "0.0.456858"
+# Default token IDs for the rebalancer (highest-liquidity HTS preferred pools)
+WBTC_TOKEN_ID = "0.0.10082597"  # HTS-WBTC (Preferred)
+WETH_TOKEN_ID = "0.0.9470869"   # ETH (Preferred)
+USDC_TOKEN_ID = "0.0.456858"    # USDC (Standard)
 
 
 @dataclass
@@ -65,7 +65,7 @@ class PacmanAdapter:
                 self._cached_price = price
                 return price
             
-            # Fallback: try legacy WBTC token ID
+            # Fallback: try alternate WBTC token ID
             price = _pm.get_price("0.0.1055483")
             if price and price > 0:
                 self._cached_price = price

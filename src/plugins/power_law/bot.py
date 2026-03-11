@@ -60,13 +60,13 @@ class PowerLawBot(BasePlugin):
         # Load persisted state
         self._load_state()
         
-        logger.info("=" * 50)
-        logger.info("🤖 Power Law Rebalancer Bot initialized")
-        logger.info(f"   Model: {self.config.model}")
-        logger.info(f"   Threshold: {self.config.threshold_percent}%")
-        logger.info(f"   Interval: {self.config.interval_seconds}s")
-        logger.info(f"   Simulate: {self.config.simulate}")
-        logger.info("=" * 50)
+        logger.debug("=" * 50)
+        logger.debug("🤖 Power Law Rebalancer Bot initialized")
+        logger.debug(f"   Model: {self.config.model}")
+        logger.debug(f"   Threshold: {self.config.threshold_percent}%")
+        logger.debug(f"   Interval: {self.config.interval_seconds}s")
+        logger.debug(f"   Simulate: {self.config.simulate}")
+        logger.debug("=" * 50)
     
     def get_signal(self) -> Optional[dict]:
         """

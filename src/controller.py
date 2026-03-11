@@ -589,12 +589,24 @@ class PacmanController:
         if protocol == "v1" and fee is None:
             fee = 3000 # Default V1 fee is 0.3%
 
+        tokenA_meta = pool_data.get("tokenA", {})
+        tokenB_meta = pool_data.get("tokenB", {})
+        
+        symA = tokenA_meta.get("symbol") if isinstance(tokenA_meta, dict) else None
+        symB = tokenB_meta.get("symbol") if isinstance(tokenB_meta, dict) else None
+        idA = tokenA_meta.get("id") if isinstance(tokenA_meta, dict) else tokenA_meta
+        idB = tokenB_meta.get("id") if isinstance(tokenB_meta, dict) else tokenB_meta
+
+        label = pool_data.get("label")
+        if not label:
+            label = f"{symA or idA}/{symB or idB}"
+
         entry = {
             "contractId": pool_id,
-            "tokenA": pool_data.get("tokenA", {}).get("id") if isinstance(pool_data.get("tokenA"), dict) else pool_data.get("tokenA"),
-            "tokenB": pool_data.get("tokenB", {}).get("id") if isinstance(pool_data.get("tokenB"), dict) else pool_data.get("tokenB"),
+            "tokenA": idA,
+            "tokenB": idB,
             "fee": fee,
-            "label": f"{pool_data.get('tokenA', {}).get('symbol')}/{pool_data.get('tokenB', {}).get('symbol')}"
+            "label": label
         }
         
         registry.append(entry)

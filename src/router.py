@@ -194,7 +194,7 @@ class PacmanVariantRouter:
         except Exception as e:
             logger.warning(f"Live data {pools_file} not found or malformed. Using static registry only.")
 
-        logger.info(f"Loaded {len(self.pool_graph)//2} unique pools into routing graph.")
+        logger.debug(f"Loaded {len(self.pool_graph)//2} unique pools into routing graph.")
 
     def _is_blacklisted(self, id_a: str, id_b: str) -> bool:
         """Check if a pair is blacklisted for direct routing based on Token IDs."""

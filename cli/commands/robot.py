@@ -14,8 +14,9 @@ from cli.display import C
 from src.logger import logger
 
 
-# Module-level bot instance (persists across commands)
+# Module-level bot instance (for interactive/one-shot use within this process)
 _bot_instance = None
+PID_FILE = "data/robot.pid"
 
 
 def _get_or_create_bot(app):
@@ -49,6 +50,8 @@ def cmd_robot(app, args):
         _cmd_stop(app)
     elif subcmd == "status":
         _cmd_status(app, json_mode=json_mode)
+    elif subcmd == "run-internal":
+        _cmd_run_internal(app)
     elif subcmd in ("help", "?"):
         _print_robot_help()
     else:
@@ -205,6 +208,21 @@ def _cmd_start(app):
                 print(f"  {C.ERR}✗{C.R} Failed to create sub-account: {e}")
                 return
     
+    import subprocess
+    import os
+    import sys
+    
+    # Check if already running via PID file
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE) as f:
+                pid = int(f.read().strip())
+            os.kill(pid, 0) # Check if process exists
+            print(f"  {C.ACCENT}ℹ{C.R} Robot is already running (PID: {pid})")
+            return
+        except (ProcessLookupError, ValueError, OverflowError):
+            os.remove(PID_FILE)
+    
     sim_tag = f" {C.ACCENT}(SIMULATION MODE){C.R}" if bot.config.simulate else ""
     print(f"\n  {C.OK}🤖{C.R} Starting Power Law rebalancer...{sim_tag}")
     print(f"  {C.MUTED}   Threshold: {bot.config.threshold_percent}% | "
@@ -213,32 +231,107 @@ def _cmd_start(app):
     if not bot.config.simulate:
         print(f"  {C.ERR}⚠️  LIVE TRADING MODE — real transactions will execute!{C.R}")
     
-    bot.start()
-    print(f"  {C.OK}✓{C.R} Robot daemon started in background")
+    # Spawn detached process
+    try:
+        # We use the same command line as 'daemon' mode but filtered for robot
+        # This ensures the bot runs in a clean environment.
+        cmd = [sys.executable, "-m", "cli.main", "robot", "run-internal"]
+        
+        # Log to daemon_output.log
+        log_file = open("daemon_output.log", "a")
+        
+        # Start detached
+        proc = subprocess.Popen(
+            cmd,
+            stdout=log_file,
+            stderr=log_file,
+            start_new_session=True,
+            cwd=os.getcwd()
+        )
+        
+        # Write PID
+        with open(PID_FILE, "w") as f:
+            f.write(str(proc.pid))
+            
+        print(f"  {C.OK}✓{C.R} Robot daemon started in background (PID: {proc.pid})")
+    except Exception as e:
+        print(f"  {C.ERR}✗{C.R} Failed to start robot daemon: {e}")
 
 
 def _cmd_stop(app):
     """Stop the rebalancer daemon."""
-    global _bot_instance
+    import os
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE) as f:
+                pid = int(f.read().strip())
+            
+            print(f"  {C.MUTED}Stopping robot (PID: {pid})...{C.R}")
+            os.kill(pid, 15) # SIGTERM
+            
+            # Wait a bit then force if needed?
+            import time
+            for _ in range(5):
+                try:
+                    os.kill(pid, 0)
+                    time.sleep(1)
+                except ProcessLookupError:
+                    break
+            else:
+                os.kill(pid, 9) # SIGKILL
+            
+            os.remove(PID_FILE)
+            print(f"  {C.OK}✓{C.R} Robot stopped.")
+            return
+        except Exception as e:
+            print(f"  {C.ERR}✗{C.R} Error stopping robot: {e}")
+            if os.path.exists(PID_FILE): os.remove(PID_FILE)
     
-    if _bot_instance is None or not _bot_instance.running:
-        print(f"  {C.MUTED}Robot is not running.{C.R}")
-        return
-    
-    _bot_instance.stop()
-    print(f"  {C.OK}✓{C.R} Robot stopped. Trades executed this session: {_bot_instance.trades_executed}")
+    print(f"  {C.MUTED}Robot is not running.{C.R}")
 
+
+def _cmd_run_internal(app):
+    """Internal use only: starts bot thread and keeps process alive."""
+    bot = _get_or_create_bot(app)
+    # Reset running state for the new process
+    bot.stop_plugin() 
+    bot.start_plugin()
+    
+    try:
+        # Keep process alive while bot is running
+        while bot.running:
+            import time
+            time.sleep(1)
+            # If the thread actually died but 'running' is still true, exit
+            if not bot.is_alive():
+                logger.error("[Robot] Thread died unexpectedly.")
+                break
+    except KeyboardInterrupt:
+        bot.stop_plugin()
 
 def _cmd_status(app, json_mode=False):
     """Show comprehensive bot status."""
     import json as _json
+    import os
     bot = _get_or_create_bot(app)
     status = bot.get_status()
     
+    is_running = False
+    pid = None
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE) as f:
+                pid = int(f.read().strip())
+            os.kill(pid, 0)
+            is_running = True
+        except (ProcessLookupError, ValueError):
+            pass
+
     if json_mode:
         # Emit clean structured output for AI parsing  
         out = {
-            "running": status.get("running", False),
+            "running": is_running,
+            "pid": pid if is_running else None,
             "simulate": status.get("simulate", True),
             "model": status.get("model", "HEARTBEAT"),
             "threshold_pct": status.get("threshold", 15.0),
@@ -275,9 +368,22 @@ def _cmd_status(app, json_mode=False):
     print(f"\n  {C.BOLD}🤖 Power Law Robot Status{C.R}")
     print(f"  {'─' * 45}")
     
-    running_str = f"{C.OK}RUNNING{C.R}" if status["running"] else f"{C.MUTED}STOPPED{C.R}"
+    import os
+    is_running = False
+    pid = None
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE) as f:
+                pid = int(f.read().strip())
+            os.kill(pid, 0)
+            is_running = True
+        except (ProcessLookupError, ValueError):
+            if os.path.exists(PID_FILE): os.remove(PID_FILE)
+
+    running_str = f"{C.OK}RUNNING{C.R}" if is_running else f"{C.MUTED}STOPPED{C.R}"
+    pid_str = f" (PID: {pid})" if pid and is_running else ""
     sim_str = f" {C.ACCENT}(sim){C.R}" if status["simulate"] else f" {C.ERR}(LIVE){C.R}"
-    print(f"  {C.BOLD}State:{C.R}      {running_str}{sim_str}")
+    print(f"  {C.BOLD}State:{C.R}      {running_str}{sim_str}{pid_str}")
     print(f"  {C.BOLD}Model:{C.R}      {status['model']}")
     print(f"  {C.BOLD}Threshold:{C.R}  {status['threshold']}%")
     print(f"  {C.BOLD}Trades:{C.R}     {status['trades_executed']}")

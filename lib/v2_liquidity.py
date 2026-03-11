@@ -104,6 +104,21 @@ class V2LiquidityManager:
         if current >= amount:
             return  # Already approved
 
+        # Some HTS tokens/Relay versions prefer resetting to 0 first 
+        # if a non-zero allowance already exists (standard ERC20 safeguard)
+        if current > 0:
+            logger.info(f"   🔓 Resetting {token_id} allowance to 0 first...")
+            reset_tx = token.functions.approve(spender_evm, 0).build_transaction({
+                "from": self.eoa,
+                "gas": 1_000_000,
+                "gasPrice": self.w3.eth.gas_price,
+                "nonce": self.w3.eth.get_transaction_count(self.eoa),
+                "chainId": self.chain_id,
+            })
+            signed_reset = self.w3.eth.account.sign_transaction(reset_tx, self.private_key)
+            tx_hash_reset = self.w3.eth.send_raw_transaction(signed_reset.raw_transaction)
+            self.w3.eth.wait_for_transaction_receipt(tx_hash_reset, timeout=60)
+
         print(f"   🔓 Approving {token_id} for PositionManager...")
         approve_tx = token.functions.approve(spender_evm, amount).build_transaction({
             "from": self.eoa,
@@ -117,7 +132,7 @@ class V2LiquidityManager:
         print(f"   ⏳ Waiting for approval ({tx_hash.hex()})...")
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
         if receipt.status != 1:
-            raise RuntimeError(f"Approval tx failed: {tx_hash.hex()}")
+            raise RuntimeError(f"Approval tx failed: {tx_hash.hex()}. If this persists, try associating the token first or using the dedicated approval script.")
 
 
     def add_liquidity(
