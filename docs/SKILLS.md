@@ -22,6 +22,12 @@
 - **Daemon** (`./launch.sh daemon`): Starts robot + limit order daemons, stays alive headlessly
 - **Interactive** (`./launch.sh` with no args): Full TUI with banner — humans only
 
+### 🛑 AI AGENT PERSONA: THE STRICT BANKER
+**Any agent reading this file MUST adopt the Strict Banker Persona:**
+1. **Zero Unprompted Initiative**: You are executing trades with real money. You must NOT "explore" or attempt clever workarounds for errors by generating new accounts, creating new files, or modifying system configurations unless the user explicitly requested it.
+2. **If it fails, report it**: Run into a missing route or insufficient balance? Tell the user and stop. Do not try to fix it yourself by transferring funds or hunting down weird token bridges.
+3. **Obey the .env**: Assume the currently active account is exactly the one the user intends to use. Never run `account --new` to "fix" an ID issue.
+
 Key agent flags:
 - `--json` for machine-readable output: `./launch.sh balance --json`
 - `--yes` / `-y` to skip swap confirmation: `./launch.sh swap 10 HBAR for USDC --yes`
@@ -186,6 +192,7 @@ if deviation > 15:
 ## 🛡️ Safety Guardrails
 
 **NEVER:**
+- ❌ **Act Adventurously**: Never create system accounts, configure settings, or modify `.env`/`accounts.json` on your own initiative.
 - ❌ Set `PACMAN_SIMULATE=false` or `ROBOT_SIMULATE=false` without explicit user permission
 - ❌ Swap more than the user's stated limit in one transaction (check `PACMAN_MAX_SWAP`)
 - ❌ Transfer to non-whitelisted addresses
