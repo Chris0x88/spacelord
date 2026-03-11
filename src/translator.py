@@ -26,12 +26,12 @@ def load_static_aliases():
     """Load manually curated nicknames from aliases.json + built-in canonical defaults."""
     global ALIASES
     
-    # Built-in canonical aliases — these MUST always resolve
+    # Built-in canonical aliases — these MUST always resolve to absolute IDs
     CANONICAL = {
-        "BITCOIN": "WBTC_HTS", "BTC": "WBTC_HTS",
-        "ETHEREUM": "WETH_HTS", "ETH": "WETH_HTS",
-        "DOLLAR": "USDC", "USD": "USDC", "STABLECOIN": "USDC",
-        "HEDERA": "HBAR",
+        "BITCOIN": "0.0.10082597", "BTC": "0.0.10082597",
+        "ETHEREUM": "0.0.9470869", "ETH": "0.0.9470869",
+        "DOLLAR": "0.0.456858", "USD": "0.0.456858", "STABLECOIN": "0.0.456858",
+        "HEDERA": "0.0.0", "HBAR": "0.0.0",
     }
     ALIASES.update(CANONICAL)
     
@@ -45,17 +45,17 @@ def load_static_aliases():
         pass
 
 def resolve_token(name: str) -> Optional[str]:
-    """Resolve a nickname or symbol to its internal token key (e.g. WBTC_HTS)."""
+    """Resolve a nickname or symbol to its internal token ID (e.g. 0.0.10082597)."""
     if not name: return None
     
-    # Normalize input: UPPERCASE and handle hyphens as underscores
-    clean = name.strip().upper().replace("-", "_")
+    # Normalize input: UPPERCASE
+    clean = name.strip().upper()
     
-    # 1. Direct Alias Match
+    # 1. Direct Alias Match (checks aliases.json mappings which are now all IDs)
     if clean in ALIASES:
         return ALIASES[clean]
     
-    # 2. Key Match in Tokens.json
+    # 2. Key Match in Tokens.json (e.g. if User actually passed 0.0.456858)
     try:
         with open(TOKENS_FILE) as f:
             t_data = json.load(f)
@@ -63,15 +63,10 @@ def resolve_token(name: str) -> Optional[str]:
                 return clean
             
             # 3. Symbol Match in Tokens.json
-            for key, meta in t_data.items():
+            for token_id, meta in t_data.items():
                 sym = meta.get("symbol", "").upper()
-                if sym == clean:
-                    return key
-                
-                # 4. Partial Symbol Match (e.g. "DAI" fits "DAI[hts]")
-                clean_sym = sym.split("[")[0].strip()
-                if clean_sym == clean:
-                    return key
+                if sym == clean or sym.replace("[HTS]", "") == clean:
+                    return token_id
     except Exception:
         pass
         

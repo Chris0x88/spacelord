@@ -31,7 +31,7 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None) -> Dict[st
     hbar_bal = w3.eth.get_balance(eoa)
     hbar_readable = hbar_bal / (10**18)
     if hbar_readable > 0:
-        balances["HBAR"] = hbar_readable
+        balances["0.0.0"] = hbar_readable
 
     # ... (rest of loading tokens_data)
     try:
@@ -55,15 +55,14 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None) -> Dict[st
     calldata = temp_contract.encode_abi("balanceOf", args=[eoa])
 
     idx = 0
-    for sym, meta in tokens_data.items():
-        token_id = meta.get("id")
+    for token_id, meta in tokens_data.items():
         if not token_id or token_id in ["0.0.0", "HBAR"]:
             continue
 
         try:
             target = hedera_id_to_evm(token_id)
             calls.append((target, True, calldata))
-            token_meta_map[idx] = (sym, meta.get("decimals", 8))
+            token_meta_map[idx] = (token_id, meta.get("decimals", 8))
             idx += 1
         except:
             continue
@@ -82,8 +81,8 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None) -> Dict[st
             if success and len(return_data) >= 32:
                 val = int.from_bytes(return_data, byteorder='big')
                 if val > 0:
-                    sym, decimals = token_meta_map[i]
-                    balances[sym] = val / (10**decimals)
+                    token_id, decimals = token_meta_map[i]
+                    balances[token_id] = val / (10**decimals)
     except Exception as e:
         logger.warning(f"   ⚠️ Multicall failed ({e}), falling back to sequential...")
         # Fallback to sequential if multicall fails - use highlights to save time
@@ -96,26 +95,23 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None) -> Dict[st
 def _get_balances_sequential(client, tokens_data, token_highlights: list = None) -> Dict[str, float]:
     """
     Fallback method for sequential fetching.
-    If highlights are provided, we ONLY check those symbols or prioritize them.
-    Given 1500+ tokens, checking all is too slow.
+    If highlights are provided, they must be Token IDs.
     """
     balances = {}
     
     # Symbols we definitely should check first/only
-    targets = token_highlights if token_highlights else ["USDC", "WBTC_HTS", "WETH_HTS", "SAUCE"]
+    targets = token_highlights if token_highlights else ["0.0.456858", "0.0.10082597", "0.0.9470869", "0.0.731861"]
     
     # First pass: Essential highlights
-    for sym in targets:
-        meta = tokens_data.get(sym)
+    for token_id in targets:
+        meta = tokens_data.get(token_id)
         if not meta: continue
-        token_id = meta.get("id")
-        if not token_id: continue
         
         try:
             raw_bal = client.get_token_balance(token_id)
             if raw_bal > 0:
                 decimals = meta.get("decimals", 8)
-                balances[sym] = raw_bal / (10**decimals)
+                balances[token_id] = raw_bal / (10**decimals)
         except:
             continue
             
@@ -127,17 +123,29 @@ def _get_balances_sequential(client, tokens_data, token_highlights: list = None)
     # Full scan fallback (only if no highlights provided)
     # Limiting to first 50 tokens to prevent complete hang
     count = 0
-    for sym, meta in tokens_data.items():
-        if sym in balances: continue
+    seen_ids = set()
+    
+    # Pre-populate seen_ids with those already found in targets
+    for token_id in (targets or []):
+        m = tokens_data.get(token_id)
+        if m and m.get("id"):
+            seen_ids.add(m.get("id"))
+
+    for token_id, meta in tokens_data.items():
+        if token_id in balances: continue
+        
+        if not token_id: continue
+        
+        if token_id in seen_ids: continue
+        seen_ids.add(token_id)
+
         if count > 50: break
         
-        token_id = meta.get("id")
-        if not token_id: continue
         try:
             raw_bal = client.get_token_balance(token_id)
             if raw_bal > 0:
                 decimals = meta.get("decimals", 8)
-                balances[sym] = raw_bal / (10**decimals)
+                balances[token_id] = raw_bal / (10**decimals)
             count += 1
         except:
             continue

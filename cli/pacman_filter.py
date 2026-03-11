@@ -105,49 +105,43 @@ class UIFilter:
         items = list(tokens.items())
         
         def sort_key(pair):
-            key, meta = pair
-            sym = meta.get("symbol", key).upper()
+            token_id, meta = pair
+            sym = meta.get("symbol", "UNKNOWN").upper()
             p_val = priority_map.get(sym, 999)
             return (p_val, sym)
             
         return sorted(items, key=sort_key)
     
-    def get_display_aliases(self, token_id: str) -> Optional[str]:
-        """Get display alias for a token."""
+    def get_display_aliases(self, query_id: str) -> Optional[str]:
+        """Get display alias for a token ID."""
         aliases = self._load_json("aliases.json") or {}
-        # Use tokens.json as the Source of Truth for ID Lookups
         tokens = self._load_tokens()
         
         found = []
         
         # 1. Automatic Alias: Use Symbol (lowercase, stripped of [hts] etc)
-        # This makes it robust even if aliases.json is incomplete.
-        for key, meta in tokens.items():
-            if meta.get("id") == token_id:
-                sym = meta.get("symbol", key).lower()
-                clean_sym = sym.split("[")[0].strip() # "DAI[hts]" -> "dai"
+        meta = tokens.get(query_id)
+        if meta:
+            sym = meta.get("symbol", "").lower()
+            if sym:
+                clean_sym = sym.split("[")[0].strip()
                 found.append(clean_sym)
                 if clean_sym != sym:
                     found.append(sym)
-                break
 
-        # 2. Manual Aliases from aliases.json
-        for alias, token_key in aliases.items():
-            # Check if alias points directly to this token ID
-            if token_key == token_id:
-                if alias not in found:
-                    found.append(alias)
-                continue
-                
-            # Check if alias points to a Token Key that has this ID
-            if token_key in tokens:
-                if tokens[token_key].get("id") == token_id:
-                    if alias not in found:
-                        found.append(alias)
+        # 2. Manual Aliases from aliases.json (keys are lowercase variants)
+        for alias_name, target_id in aliases.items():
+            if target_id == query_id:
+                if alias_name not in found:
+                    found.append(alias_name)
                     
         # Sort for consistency (shorter aliases first)
         found.sort(key=len)
-        return ", ".join(found) if found else None
+        # Deduplicate while preserving order
+        unique_found = []
+        for x in found:
+            if x not in unique_found: unique_found.append(x)
+        return ", ".join(unique_found) if unique_found else None
 
 # Singleton instance for compatibility
 ui_filter = UIFilter()

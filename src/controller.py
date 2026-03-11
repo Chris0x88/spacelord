@@ -216,7 +216,7 @@ class PacmanController:
         Execute a swap.
         """
         route = self.get_route(from_token, to_token, amount, mode=mode)
-        if not route:
+        if not route or route.output_format == "ERROR" or len(route.steps) == 0:
             raise PacmanError(f"No route found for {from_token} -> {to_token}")
 
         # Execution using the refactored raw_amount parameter
@@ -835,7 +835,7 @@ class PacmanController:
             return False
     def get_liquidity_positions(self) -> list:
         """Fetch NFT IDs of LP tokens for this account with full position details via Mirror Node."""
-        if not self.account_id: return []
+        if not self.account_id or self.account_id.lower() in ["unknown", "none"]: return []
         network_prefix = "mainnet-public" if self.network == "mainnet" else "testnet"
         nft_token_id = "0.0.4054027"
         url = f"https://{network_prefix}.mirrornode.hedera.com/api/v1/accounts/{self.account_id}/nfts?token.id={nft_token_id}"

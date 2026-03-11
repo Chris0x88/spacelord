@@ -6,11 +6,11 @@ from src.translator import translate
 
 def test():
     test_cases = [
-        ("swap 10 HBAR for USDC", {"intent": "swap", "amount": 10.0, "from_token": "HBAR", "to_token": "USDC", "mode": "exact_in"}),
-        ("swap HBAR for 10 USDC", {"intent": "swap", "amount": 10.0, "from_token": "HBAR", "to_token": "USDC", "mode": "exact_out"}),
-        ("swap HTS-WBTC to 1 USDC", {"intent": "swap", "amount": 1.0, "from_token": "WBTC_HTS", "to_token": "USDC", "mode": "exact_out"}),
-        ("buy 0.5 WBTC with USDC", {"intent": "swap", "amount": 0.5, "from_token": "USDC", "to_token": "WBTC_HTS", "mode": "exact_out"}),
-        ("swap SAUCE for HBAR", {"intent": "swap", "amount": 1.0, "from_token": "SAUCE", "to_token": "HBAR", "mode": "exact_in"}),
+        ("swap 10 HBAR for USDC", {"intent": "swap", "amount": 10.0, "from_token": "0.0.0", "to_token": "0.0.456858", "mode": "exact_in"}),
+        ("swap HBAR for 10 USDC", {"intent": "swap", "amount": 10.0, "from_token": "0.0.0", "to_token": "0.0.456858", "mode": "exact_out"}),
+        ("swap HTS-WBTC to 1 USDC", {"intent": "swap", "amount": 1.0, "from_token": "0.0.10082597", "to_token": "0.0.456858", "mode": "exact_out"}),
+        ("buy 0.5 WBTC with USDC", {"intent": "swap", "amount": 0.5, "from_token": "0.0.456858", "to_token": "0.0.10082597", "mode": "exact_out"}),
+        ("swap SAUCE for HBAR", {"intent": "swap", "amount": 1.0, "from_token": "0.0.731861", "to_token": "0.0.0", "mode": "exact_in"}),
     ]
 
     success = True

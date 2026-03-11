@@ -77,13 +77,12 @@ class PacmanVariantRouter:
     BLACKLISTED_TOKENS = ["0.0.1456986"]
     
     # Canonical token defaults — human-friendly names → internal variant keys
-    # These MUST always resolve. Users say "bitcoin", agents say "WBTC_HTS".
-    # Default pool token IDs: WBTC=0.0.10047837, WETH=0.0.9470869, USDC=0.0.456858
+    # These MUST always resolve. Users say "bitcoin", agents say "0.0.10082597".
     CANONICAL_DEFAULTS = {
-        "bitcoin": "WBTC_HTS", "btc": "WBTC_HTS", "wbtc": "WBTC_HTS",
-        "ethereum": "WETH_HTS", "eth": "WETH_HTS", "weth": "WETH_HTS",
-        "dollar": "USDC", "usd": "USDC", "usdc": "USDC", "stablecoin": "USDC",
-        "hbar": "HBAR", "hedera": "HBAR",
+        "bitcoin": "0.0.10082597", "btc": "0.0.10082597", "wbtc": "0.0.10082597",
+        "ethereum": "0.0.9470869", "eth": "0.0.9470869", "weth": "0.0.9470869",
+        "dollar": "0.0.456858", "usd": "0.0.456858", "usdc": "0.0.456858", "stablecoin": "0.0.456858",
+        "hbar": "0.0.0", "hedera": "0.0.0",
     }
     
     def __init__(self, price_manager=None):
@@ -162,12 +161,14 @@ class PacmanVariantRouter:
                     ta_id = ta.get("id")
                     tb_id = tb.get("id")
                     
-                    ta_sym = self._id_to_sym(ta_id)
-                    tb_sym = self._id_to_sym(tb_id)
-                    
-                    if not (ta_sym and tb_sym):
+                    if not (ta_id and tb_id):
                         continue
-                    if self._is_blacklisted(ta_sym, tb_sym):
+                        
+                    # Treat WHBAR as HBAR for topological pathfinding
+                    ta_key = "0.0.0" if ta_id == "0.0.1456986" else ta_id
+                    tb_key = "0.0.0" if tb_id == "0.0.1456986" else tb_id
+                    
+                    if self._is_blacklisted(ta_key, tb_key):
                         continue
                     
                     fee = pool.get("fee", 3000)
@@ -181,28 +182,27 @@ class PacmanVariantRouter:
                     )
                     
                     # Update existing entries WITH liquidity data, or add new ones
-                    existing = self.pool_graph.get((ta_sym, tb_sym))
+                    existing = self.pool_graph.get((ta_key, tb_key))
                     if existing and existing[4] > 0:
                         # Keep the deeper pool if we already have one
                         if liq_usd > existing[4]:
-                            self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id, liq_usd)
-                            self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id, liq_usd)
+                            self.pool_graph[(ta_key, tb_key)] = (cid, fee, ta_id, tb_id, liq_usd)
+                            self.pool_graph[(tb_key, ta_key)] = (cid, fee, tb_id, ta_id, liq_usd)
                     else:
-                        self.pool_graph[(ta_sym, tb_sym)] = (cid, fee, ta_id, tb_id, liq_usd)
-                        self.pool_graph[(tb_sym, ta_sym)] = (cid, fee, tb_id, ta_id, liq_usd)
+                        self.pool_graph[(ta_key, tb_key)] = (cid, fee, ta_id, tb_id, liq_usd)
+                        self.pool_graph[(tb_key, ta_key)] = (cid, fee, tb_id, ta_id, liq_usd)
         except Exception as e:
             logger.warning(f"Live data {pools_file} not found or malformed. Using static registry only.")
 
         logger.info(f"Loaded {len(self.pool_graph)//2} unique pools into routing graph.")
 
-    def _is_blacklisted(self, sym_a: str, sym_b: str) -> bool:
-        """Check if a pair is blacklisted for direct routing."""
+    def _is_blacklisted(self, id_a: str, id_b: str) -> bool:
+        """Check if a pair is blacklisted for direct routing based on Token IDs."""
         # broken pools or low liquidity direct pairs that should be routed via hub
         BLACKLIST = [
-            {"HBAR", "WBTC[HTS]"}, # Old format, left for safety
-            {"HBAR", "HTS-WBTC"},  # Direct pool is broken/reverting. Match _id_to_sym output.
+            {"0.0.0", "0.0.10082597"}, # HBAR to WBTC pool is broken/low liq
         ]
-        pair = {sym_a.upper(), sym_b.upper()}
+        pair = {id_a, id_b}
         return pair in BLACKLIST
 
     def _id_to_sym(self, token_id) -> Optional[str]:
@@ -250,9 +250,9 @@ class PacmanVariantRouter:
         except (ValueError, TypeError):
             return 0.0
 
-    def find_swap_step(self, from_symbol: str, to_symbol: str) -> Optional[RouteStep]:
-        """Find a direct swap between two token symbols (Case-insensitive)."""
-        idx = (from_symbol.upper(), to_symbol.upper())
+    def find_swap_step(self, from_id: str, to_id: str) -> Optional[RouteStep]:
+        """Find a direct swap between two token IDs."""
+        idx = (from_id, to_id)
         if idx in self.pool_graph:
             pool_id, fee_bps, id_in, id_out, liquidity_usd = self.pool_graph[idx]
             # Fee is 3000 (0.3%). We want 0.003 for human readable reporting.
@@ -260,8 +260,8 @@ class PacmanVariantRouter:
             
             return RouteStep(
                 step_type="swap",
-                from_token=from_symbol,
-                to_token=to_symbol,
+                from_token=from_id,
+                to_token=to_id,
                 contract="0.0.3949434",  # SaucerSwap Router
                 fee_percent=fee_pct,
                 gas_estimate_hbar=0.02,
@@ -273,10 +273,10 @@ class PacmanVariantRouter:
             )
         return None
     
-    def find_hub_route(self, from_symbol: str, to_symbol: str, hub: str = "USDC") -> Optional[List[RouteStep]]:
-        """Find a route via a hub token (USDC, WHBAR, etc.)."""
-        step1 = self.find_swap_step(from_symbol, hub)
-        step2 = self.find_swap_step(hub, to_symbol)
+    def find_hub_route(self, from_id: str, to_id: str, hub: str = "0.0.456858") -> Optional[List[RouteStep]]:
+        """Find a route via a hub token ID (USDC, HBAR, etc.)."""
+        step1 = self.find_swap_step(from_id, hub)
+        step2 = self.find_swap_step(hub, to_id)
         
         if step1 and step2:
             return [step1, step2]
@@ -326,27 +326,28 @@ class PacmanVariantRouter:
         if not meta_in or not meta_out:
             return None
             
-        from_symbol = meta_in["symbol"]
-        to_symbol = meta_out["symbol"]
+        from_id = meta_in["id"]
+        to_id = meta_out["id"]
         
         steps = []
         total_fee = 0.0
         total_gas = 0.0
         
         # Try direct swap first
-        direct = self.find_swap_step(from_symbol, to_symbol)
+        direct = self.find_swap_step(from_id, to_id)
         if direct:
             steps.append(direct)
             total_fee = direct.fee_percent
             total_gas = direct.gas_estimate_hbar
         else:
             # Try via multiple hubs — score by FULL effective cost
-            potential_hubs = ["USDC", "USDC[hts]", "HBAR", "SAUCE"]
+            # Hubs are absolute Token IDs: USDC, USDC[hts], native HBAR, SAUCE
+            potential_hubs = ["0.0.456858", "0.0.1055459", "0.0.0", "0.0.731861"]
             best_hub_route = None
             best_score = float('inf')
             
             for hub in potential_hubs:
-                hub_route = self.find_hub_route(from_symbol, to_symbol, hub)
+                hub_route = self.find_hub_route(from_id, to_id, hub)
                 if hub_route:
                     score = self._score_route(hub_route, volume_usd)
                     if score < best_score:

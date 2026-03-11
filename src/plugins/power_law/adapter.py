@@ -89,7 +89,7 @@ class PacmanAdapter:
         """Get current portfolio balances and allocation percentages."""
         try:
             # Get balances from controller — highlight essential tokens for rebalancer
-            highlights = ["WBTC[HTS]", "USDC", "HBAR"]
+            highlights = [WBTC_TOKEN_ID, USDC_TOKEN_ID, "0.0.0"] # 0.0.0 is native HBAR
             
             # Use dedicated robot account if configured
             robot_id = getattr(self.controller.config, "robot_account_id", None)
@@ -105,16 +105,10 @@ class PacmanAdapter:
                 return None
             
             # Extract WBTC, USDC, and HBAR balances
-            # get_balances returns Dict[str, float] mapping token symbols -> balance amounts
-            # Ensure we check common aliases for WBTC in case the wallet string format differs
-            wbtc_bal = balances.get("WBTC[HTS]", 
-                        balances.get("WBTC_HTS", 
-                        balances.get("HTS-WBTC", 
-                        balances.get("BTC", 
-                        balances.get("WBTC", 0.0)))))
-                        
-            usdc_bal = balances.get("USDC", balances.get("USD", balances.get("DOLLAR", 0.0)))
-            hbar_bal = balances.get("HBAR", 0.0)
+            # get_balances returns Dict[str, float] mapping token ID -> balance amounts
+            wbtc_bal = balances.get(WBTC_TOKEN_ID, 0.0)
+            usdc_bal = balances.get(USDC_TOKEN_ID, 0.0)
+            hbar_bal = balances.get("0.0.0", balances.get("HBAR", 0.0))
             
             # Get BTC price
             btc_price = self.get_btc_price()
@@ -163,12 +157,12 @@ class PacmanAdapter:
             btc_price = self.get_btc_price()
             
             if direction == "buy_btc":
-                from_token = "USDC"
-                to_token = "WBTC[HTS]"
+                from_token = USDC_TOKEN_ID
+                to_token = WBTC_TOKEN_ID
                 amount = amount_usd  # USDC amount
             elif direction == "sell_btc":
-                from_token = "WBTC[HTS]"
-                to_token = "USDC"
+                from_token = WBTC_TOKEN_ID
+                to_token = USDC_TOKEN_ID
                 amount = amount_usd / btc_price if btc_price > 0 else 0
             else:
                 return {"success": False, "error": f"Unknown direction: {direction}"}
