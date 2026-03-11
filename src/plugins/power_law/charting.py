@@ -168,11 +168,11 @@ def generate_powerlaw_png() -> bytes:
     ax.fill_between(all_dates, 
                     pd.concat([df['floor'], future_df['floor']]), 
                     pd.concat([df['ceiling'], future_df['ceiling']]), 
-                    color='#334155', alpha=0.2, label='Model Corridor')
+                    color='#ef4444', alpha=0.15, label='Model Corridor')
     
     # Floor (Dashed)
     ax.plot(all_dates, pd.concat([df['floor'], future_df['floor']]), 
-            color='#10b981', linewidth=1.0, linestyle=':', alpha=0.5)
+            color='#ef4444', linewidth=1.2, linestyle=':', alpha=0.6)
             
     # Model Price (Fair Value)
     ax.plot(all_dates, pd.concat([df['model_price'], future_df['model_price']]), 

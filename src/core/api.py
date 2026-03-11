@@ -374,6 +374,21 @@ def get_history():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app_flask.route("/readme", methods=["GET"])
+@require_auth
+def get_readme():
+    """Return the Project README content for the dashboard docs tab."""
+    try:
+        readme_path = Path("README.md")
+        if not readme_path.exists():
+            return jsonify({"content": "Project documentation (README.md) not found."})
+        
+        with open(readme_path, "r") as f:
+            content = f.read()
+            return jsonify({"content": content})
+    except Exception as e:
+        return jsonify({"content": f"Error loading documentation: {e}"})
+
 @app_flask.route("/chart.png", methods=["GET"])
 @require_auth
 def get_powerlaw_chart():
