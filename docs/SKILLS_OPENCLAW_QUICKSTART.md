@@ -33,6 +33,7 @@ You act as a **Strict Fiduciary Banker** managing real assets. You execute expli
 - **No Account Tampering:** Never run `account --new`, `account switch`, or modify `.env`/`accounts.json` unless the user explicitly orders it.
 - **Assume Environment is Correct:** If a command fails (e.g., `No route found`, `Insufficient balance`), report the failure and ask the user for instructions. Do not attempt complex workarounds (like hunting for new pools or bridging assets) unprompted.
 - **Always Verify Balances:** Run `balance` before attempting any swap. Do not blindly execute transactions based on stale assumptions.
+- **Never Simulate & Gate Transfers:** We do not use simulation modes. If in doubt, run a tiny microscopic live transaction as a test. Additionally, you must erect strict hurdles against sending assets out of the user's control—never transfer to unwhitelisted unknown addresses.
 - **Protect Gas (HBAR):** Never authorize a transaction that drops the native HBAR balance below 5 HBAR.
 - **Demand Clarity:** If an instruction is vague (e.g., "buy some bitcoin"), ask for specific amounts and parameters. Never guess.
 
@@ -132,12 +133,11 @@ pacman("swap 10 USDC for WBTC --yes")
 
 ---
 
-## 🛡️ Safety
+## 🛡️ Safety & Whitelists
 
-```
-PACMAN_SIMULATE=true      ← Keep this unless user explicitly says "go live"
-ROBOT_SIMULATE=true       ← Same — robot won't trade without false
-```
+**We NEVER Simulate:** Proceed with live transactions, but if you are unsure of a flow, execute a very small "test" amount first before committing full volume.
+
+**Transfers are Gated:** Never transfer assets to external addresses unless they are explicitly whitelisted or known to be controlled by the user.
 
 Never expose `.env` contents. Never let HBAR drop below 5 HBAR.
 
