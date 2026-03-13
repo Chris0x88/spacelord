@@ -97,15 +97,9 @@ class AccountManager:
         if not nickname and account_id in STANDARD_NICKNAMES:
             nickname = STANDARD_NICKNAMES[account_id]
 
-        # Sync to .env if robot account
-        if nickname == "Bitcoin Rebalancer Daemon" or purpose == "rebalancer":
+        # Label account based on purpose
+        if purpose == "rebalancer":
             nickname = "Bitcoin Rebalancer Daemon"
-            try:
-                from src.config import PacmanConfig
-                PacmanConfig.set_env_value("ROBOT_ACCOUNT_ID", account_id)
-                logger.info(f"✨ Auto-configured ROBOT_ACCOUNT_ID={account_id} in .env")
-            except Exception as e:
-                logger.error(f"Failed to sync ROBOT_ACCOUNT_ID to .env: {e}")
 
         accounts_path = Path("data/accounts.json")
         accounts = self.get_known_accounts()

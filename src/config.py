@@ -228,26 +228,26 @@ class PacmanConfig:
     
     @staticmethod
     def set_env_value(key: str, value: str):
-        """Programmatically update a value in the .env file."""
+        """Programmatically update a value in the .env file securely."""
         from pathlib import Path
         import os
         
         env_path = Path(__file__).parent.parent / ".env"
         
-        # Priority: Use python-dotenv if available
+        # Also update current session immediately
+        os.environ[key] = value
+
+        # Use python-dotenv if available for standard parsing
         try:
             from dotenv import set_key
             set_key(str(env_path), key, value)
-            # Also update current session
-            os.environ[key] = value
             return
         except ImportError:
             pass
 
-        # Fallback: Robust manual update
+        # Fallback: Manual update without risky archival/backup behavior
         if not env_path.exists():
-            with open(env_path, "w") as f:
-                f.write(f"{key}={value}\n")
+            env_path.write_text(f"{key}={value}\n")
             return
 
         lines = env_path.read_text().splitlines()
@@ -264,7 +264,6 @@ class PacmanConfig:
             new_lines.append(f"{key}={value}")
             
         env_path.write_text("\n".join(new_lines) + "\n")
-        os.environ[key] = value
 
     def print_status(self):
         """Print current configuration status."""

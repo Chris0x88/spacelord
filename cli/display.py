@@ -163,7 +163,7 @@ def show_help(topic: str = None):
 
     print(f"  {C.MUTED}For in-depth help, type: {C.R}{C.TEXT}help <topic>{C.R}")
     print(f"  {C.MUTED}Topics: swap  swap-v1  send  associate  balance  price{C.R}")
-    print(f"  {C.MUTED}        pools  account  whitelist  liquidity  stake  history  setup  nlp  order  robot{C.R}\n")
+    print(f"          {C.MUTED}pools  account  whitelist  liquidity  stake  history  setup  nlp  order  robot  hcs{C.R}\n")
 
 
 

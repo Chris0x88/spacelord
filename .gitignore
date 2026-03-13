@@ -6,6 +6,7 @@ deprecated/
 
 # Environments
 .env
+.env.backup
 .env.local
 .DS_Store
 

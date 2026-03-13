@@ -80,6 +80,14 @@ HELP_COMMANDS = [
     ("robot start",                 "Start the autonomous BTC rebalancing daemon"),
     ("robot stop",                  "Stop the daemon"),
     ("robot status",                "Show bot status, portfolio, and last signal"),
+    
+    # HCS
+    ("--- HCS MESSAGING ---", ""),
+    ("hcs status",                  "Show active topic and subscription info"),
+    ("hcs topic create",            "Create a new signal topic (walled garden)"),
+    ("hcs signals",                 "View recent investment signals from the topic"),
+    ("hcs send <msg>",              "Submit a raw message to HCS"),
+    ("hcs signal <t> <d>",          "Broadcast a structured JSON signal"),
 
     # System
     ("--- SYSTEM ---", ""),
@@ -112,6 +120,8 @@ HELP_EXAMPLES = [
     ("robot start",                       "Start the autonomous BTC rebalancer"),
     ("robot signal",                      "Check the model without trading"),
     ("doctor",                            "Scan for environment bugs and AI-confusing issues"),
+    ("hcs signals",                       "View recent investment signals from the swarm"),
+    ("hcs topic create",                  "Create your own signal topic"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -637,4 +647,29 @@ and optimized for both humans and AI agents.
   - After creating new sub-accounts.
   - If an AI agent seems confused or stuck in a loop.
   - Before starting the robot daemon for the first time.""",
+
+    "hcs": """{C.BOLD}HCS MESSAGING (WALLED GARDENS){C.R}
+{C.CHROME}────────────────────────────────────────────────────────{C.R}
+Pacman uses the Hedera Consensus Service (HCS) as a decentralized 
+communication layer for sharing investment signals between accounts.
+
+{C.ACCENT}Walled Garden Concept:{C.R}
+  Owning a topic allows you to control who can read/write and 
+  optionally collect fees for access or message submission.
+
+{C.ACCENT}Commands:{C.R}
+  {C.TEXT}hcs topic create{C.R}         Create a new signal topic
+  {C.TEXT}hcs status{C.R}               Check active topic ID from .env
+  {C.TEXT}hcs signals{C.R}              Read recent signals via Mirror Node
+  {C.TEXT}hcs signal <type> <json>{C.R}  Broadcast structured data
+
+{C.ACCENT}Power Law Integration:{C.R}
+  The {C.TEXT}robot{C.R} daemon automatically broadcasts rebalancing signals 
+  to your active HCS topic. Other Pacman instances listening 
+  to the same topic can react to your "lead" signals.
+
+{C.ACCENT}Monetization (BETA):{C.R}
+  Use {C.TEXT}submit_with_fee{C.R} to require payments before 
+  broadcasting messages on your topic.
+""",
 }

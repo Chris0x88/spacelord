@@ -82,13 +82,21 @@ def get_status():
     if hasattr(pacman_app, 'start_time'):
         uptime = int(time.time() - pacman_app.start_time)
         
-    return jsonify({
-        "pid": os.getpid(),
-        "uptime_sec": uptime,
-        "main_account_id": pacman_app.account_id,
-        "last_heartbeat": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "plugins": pacman_app.pm.get_all_statuses()
-    })
+    try:
+        return jsonify({
+            "pid": os.getpid(),
+            "uptime_sec": uptime,
+            "main_account_id": pacman_app.account_id,
+            "last_heartbeat": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "plugins": pacman_app.pm.get_all_statuses(),
+            "hcs": {
+                "topic_id": getattr(pacman_app.hcs_manager, 'topic_id', None) if hasattr(pacman_app, 'hcs_manager') else None,
+                "is_active": hasattr(pacman_app, 'hcs_manager') and pacman_app.hcs_manager is not None and getattr(pacman_app.hcs_manager, 'topic_id', None) is not None
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error in get_status: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app_flask.route("/plugins", methods=["GET"])
 @require_auth
@@ -387,6 +395,20 @@ def get_history():
         return jsonify(history[:limit])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app_flask.route("/hcs/messages", methods=["GET"])
+@require_auth
+def get_hcs_messages():
+    """Return recent HCS signals from the active topic."""
+    if not pacman_app or not hasattr(pacman_app, 'hcs_manager'):
+        return jsonify([])
+    try:
+        limit = int(request.args.get("limit", 10))
+        messages = pacman_app.hcs_manager.get_messages(limit=limit)
+        return jsonify(messages)
+    except Exception as e:
+        logger.error(f"API Error get_hcs_messages: {e}")
+        return jsonify([])
 
 @app_flask.route("/readme", methods=["GET"])
 @require_auth

@@ -302,6 +302,14 @@ class PacmanController:
         return self._account_manager
 
     @property
+    def hcs_manager(self):
+        """Lazy initialization of the HCSManager plugin."""
+        if not hasattr(self, '_hcs_manager') or self._hcs_manager is None:
+            from src.plugins.hcs_manager import HcsManager
+            self._hcs_manager = HcsManager(self)
+        return self._hcs_manager
+
+    @property
     def limit_engine(self):
         """Lazy initialization of the LimitOrderEngine."""
         if self._limit_engine is None:

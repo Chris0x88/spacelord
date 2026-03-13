@@ -257,6 +257,21 @@ class PowerLawBot(BasePlugin):
                 
                 sim_tag = " (SIMULATED)" if result.get("simulated") else ""
                 logger.info(f"   ✅ Rebalance executed{sim_tag}")
+                
+                # Broadcast signal via HCS if available
+                try:
+                    self.app.hcs_manager.broadcast_signal(
+                        signal_type=f"REBALANCE_{direction.upper()}",
+                        data={
+                            "amount_usd": trade_usd,
+                            "simulated": result.get("simulated", False),
+                            "btc_pct": state.wbtc_percent,
+                            "target_pct": target_btc_pct
+                        }
+                    )
+                except Exception as e:
+                    logger.debug(f"HCS Broadcast failed: {e}")
+
                 self._log("trade", f"{direction} ${trade_usd:.2f}{sim_tag}", {
                     "direction": direction,
                     "amount_usd": trade_usd,

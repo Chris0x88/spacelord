@@ -512,11 +512,17 @@
                     <div style="font-family: 'Orbitron'; font-size: 0.65rem; letter-spacing: 2px; color: var(--accent-primary); opacity: 0.8;">PACMATE NODE</div>
                 </div>
             </div>
-            <div class="api-status" style="background: rgba(0, 255, 136, 0.05); border-color: rgba(0, 255, 136, 0.2);">
-                <div id="global-status-dot" class="status-dot active"></div>
-                <span id="global-status-text" style="color: var(--success); font-weight: 600; font-size: 0.75rem;">DAEMON ONLINE</span>
-                <span style="margin: 0 10px; color: rgba(255,255,255,0.1);">|</span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-primary);"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div id="hcs-status" class="api-status" style="background: rgba(0, 242, 255, 0.05); border-color: rgba(0, 242, 255, 0.2); display: none;">
+                    <div id="hcs-status-dot" class="status-dot"></div>
+                    <span id="hcs-status-text" style="color: var(--accent-primary); font-weight: 600; font-size: 0.75rem;">HCS SWARM</span>
+                </div>
+                <div class="api-status" style="background: rgba(0, 255, 136, 0.05); border-color: rgba(0, 255, 136, 0.2);">
+                    <div id="global-status-dot" class="status-dot active"></div>
+                    <span id="global-status-text" style="color: var(--success); font-weight: 600; font-size: 0.75rem;">DAEMON ONLINE</span>
+                    <span style="margin: 0 10px; color: rgba(255,255,255,0.1);">|</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-primary);"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                </div>
             </div>
         </header>
 
@@ -592,6 +598,16 @@
                             <div class="log-line"><span class="log-prefix">></span> <span class="log-info">[INFO]</span> Handshake with node 0.0.3 stable</div>
                             <div class="log-line"><span class="log-prefix">></span> <span class="log-info">[INFO]</span> Key rotation validated: OK</div>
                             <div class="log-line"><span class="log-prefix">></span> <span class="log-warn">[WARN]</span> Remote peer 142.1.xx timed out</div>
+                        </div>
+                    </div>
+
+                    <div class="card" id="hcs-card" style="display: none; margin-bottom: 25px;">
+                        <div class="card-header">
+                            <h2>HCS Signal Swarm</h2>
+                            <span class="meta" id="hcs-topic-badge" style="font-size: 0.6rem; background: rgba(0,242,255,0.1); padding: 2px 6px; border-radius: 4px; color: var(--accent-primary);">OFFLINE</span>
+                        </div>
+                        <div id="hcs-signals" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px;">Waiting for signals...</div>
                         </div>
                     </div>
 
@@ -867,12 +883,14 @@
                 updateHoldings();
                 updateHistory();
                 refreshChart();
+                updateHcs();
 
                 setInterval(updateData, 3000);
                 setInterval(updateLogs, 5000);
                 setInterval(updateHoldings, 30000);
                 setInterval(updateHistory, 30000);
                 setInterval(refreshChart, 60000); // Once a minute
+                setInterval(updateHcs, 10000); // Every 10s
             }
 
             function refreshChart() {
@@ -945,6 +963,50 @@
                 const latency = Math.floor(10 + Math.random() * 5);
                 const latencyEl = document.getElementById('latency-val');
                 if (latencyEl) latencyEl.innerText = `${latency}ms`;
+
+                // HCS Connection Status
+                if (data.hcs && data.hcs.is_active) {
+                    document.getElementById('hcs-status').style.display = 'flex';
+                    document.getElementById('hcs-status-dot').className = 'status-dot active';
+                    document.getElementById('hcs-card').style.display = 'block';
+                    document.getElementById('hcs-topic-badge').innerText = data.hcs.topic_id;
+                } else {
+                    document.getElementById('hcs-status').style.display = 'none';
+                    document.getElementById('hcs-card').style.display = 'none';
+                }
+            }
+
+            async function updateHcs() {
+                try {
+                    const res = await fetch(`${API_URL}/hcs/messages`, { headers: { 'X-Pacman-Secret': apiSecret } });
+                    if (!res.ok) return;
+                    const messages = await res.json();
+                    const container = document.getElementById('hcs-signals');
+                    if (!container) return;
+
+                    if (messages.length === 0) {
+                        container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px;">No signals detected on topic.</div>';
+                        return;
+                    }
+
+                    container.innerHTML = messages.map(m => {
+                        const sig = m.signal || "SIGNAL";
+                        const typeColor = sig === "REBALANCE" ? "var(--accent-secondary)" : "var(--accent-primary)";
+                        const time = m.timestamp ? new Date(parseFloat(m.timestamp) * 1000).toLocaleTimeString() : "";
+                        
+                        return `
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 10px; padding: 12px; transition: all 0.2s;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                <span style="font-size: 0.65rem; font-weight: 700; color: ${typeColor}; letter-spacing: 1px;">${sig}</span>
+                                <span style="font-size: 0.6rem; color: var(--text-muted);">${time}</span>
+                            </div>
+                            <div style="font-size: 0.8rem; color: white; margin-bottom: 4px;">${m.sender || "Unknown Swarm"}</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${JSON.stringify(m.data || {})}
+                            </div>
+                        </div>`;
+                    }).join('');
+                } catch (e) {}
             }
 
             async function updateLogs() {
