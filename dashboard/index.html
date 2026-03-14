@@ -112,6 +112,10 @@
             gap: 25px;
         }
 
+        .left-col, .right-col {
+            min-width: 0; /* Prevents flex/grid children from overflowing */
+        }
+
         @media (max-width: 968px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
@@ -215,14 +219,17 @@
             border-radius: 12px;
             padding: 15px;
             font-family: 'JetBrains Mono', 'Fira Code', monospace;
-            font-size: 0.75rem;
-            line-height: 1.6;
+            font-size: 0.8rem;
+            line-height: 1.8;
             color: #94a3b8;
+            overflow-x: auto;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
         }
 
         .log-line {
             display: flex;
             gap: 10px;
+            white-space: nowrap;
         }
 
         .log-prefix {
@@ -259,6 +266,12 @@
             grid-template-columns: 1fr 1fr;
             gap: 15px;
             margin-bottom: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .metrics-row {
+                grid-template-columns: 1fr;
+            }
         }
 
         .metric-card {
@@ -368,6 +381,12 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* --- Auth Modal --- */
@@ -483,10 +502,20 @@
             gap: 25px;
         }
 
+        .accounts-grid > div {
+            min-width: 0;
+        }
+
         @media (max-width: 968px) {
             .accounts-grid {
                 grid-template-columns: 1fr;
             }
+        }
+
+        /* Utility classes */
+        .word-break {
+            overflow-wrap: break-word;
+            word-break: break-all;
         }
     </style>
 </head>
@@ -814,6 +843,19 @@
             }
             if (canvas) drawHeartbeat();
 
+            function sanitizeHTML(str) {
+                if (typeof str !== 'string') return str;
+                return str.replace(/[&<>'"]/g,
+                    tag => ({
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        "'": '&#39;',
+                        '"': '&quot;'
+                    }[tag] || tag)
+                );
+            }
+
             function syntaxHighlight(json) {
                 if (typeof json != 'string') {
                     json = JSON.stringify(json, undefined, 2);
@@ -895,8 +937,20 @@
 
             function refreshChart() {
                 const chart = document.getElementById('powerlaw-chart');
+                const placeholder = document.getElementById('chart-placeholder');
                 if (chart) {
                     chart.src = `${API_URL}/chart.png?secret=${apiSecret}&t=${new Date().getTime()}`;
+                    chart.onload = () => {
+                        chart.style.display = 'block';
+                        if (placeholder) placeholder.style.display = 'none';
+                    };
+                    chart.onerror = () => {
+                        chart.style.display = 'none';
+                        if (placeholder) {
+                            placeholder.style.display = 'block';
+                            placeholder.innerText = 'Model insights currently unavailable';
+                        }
+                    };
                 }
             }
 
@@ -934,12 +988,14 @@
                     pluginList.innerHTML = data.plugins.map(p => {
                         const name = p.name || p.id || "Unknown Plugin";
                         const icon = name.toLowerCase().includes('backup') ? '💾' : (name.toLowerCase().includes('order') ? '📑' : '⚡');
+                        const safeName = sanitizeHTML(name);
+                        const safeVersion = sanitizeHTML(p.version || '1.0.0');
                         return `
                         <div class="plugin-item">
                             <div class="plugin-icon">${icon}</div>
                             <div class="plugin-info">
-                                <h4>${name}</h4>
-                                <div class="meta">v${p.version || '1.0.0'}</div>
+                                <h4 class="word-break">${safeName}</h4>
+                                <div class="meta">v${safeVersion}</div>
                             </div>
                             <div class="tag tag-active">ACTIVE</div>
                         </div>`;
@@ -984,26 +1040,25 @@
                     const container = document.getElementById('hcs-signals');
                     if (!container) return;
 
-                    if (messages.length === 0) {
+                    if (!Array.isArray(messages) || messages.length === 0) {
                         container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px;">No signals detected on topic.</div>';
                         return;
                     }
 
                     container.innerHTML = messages.map(m => {
-                        const sig = m.signal || "SIGNAL";
+                        const sig = sanitizeHTML(m.signal || "SIGNAL");
                         const typeColor = sig === "REBALANCE" ? "var(--accent-secondary)" : "var(--accent-primary)";
                         const time = m.timestamp ? new Date(parseFloat(m.timestamp) * 1000).toLocaleTimeString() : "";
+                        const sender = sanitizeHTML(m.sender || "Unknown Swarm");
                         
                         return `
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 10px; padding: 12px; transition: all 0.2s;">
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 10px; padding: 12px; transition: all 0.2s; margin-bottom: 10px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                <span style="font-size: 0.65rem; font-weight: 700; color: ${typeColor}; letter-spacing: 1px;">${sig}</span>
+                                <span style="font-size: 0.75rem; font-weight: 700; color: ${typeColor}; letter-spacing: 1px;">${sig}</span>
                                 <span style="font-size: 0.6rem; color: var(--text-muted);">${time}</span>
                             </div>
-                            <div style="font-size: 0.8rem; color: white; margin-bottom: 4px;">${m.sender || "Unknown Swarm"}</div>
-                            <div style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                ${JSON.stringify(m.data || {})}
-                            </div>
+                            <div style="font-size: 0.9rem; color: white; margin-bottom: 8px; font-weight: 600;" class="word-break">${sender}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-main); font-family: 'JetBrains Mono', 'Fira Code', monospace; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); line-height: 1.5;">${syntaxHighlight(JSON.stringify(m.data || {}, null, 2))}</div>
                         </div>`;
                     }).join('');
                 } catch (e) {}
@@ -1022,14 +1077,16 @@
                         logFeed.innerHTML = lines.map(line => {
                             const parts = line.split('|');
                             if (parts.length >= 3) {
-                                const level = parts[2].trim();
+                                const level = sanitizeHTML(parts[2].trim());
                                 const color = level === 'ERROR' ? 'var(--error)' : (level === 'WARNING' ? '#ffaa00' : 'var(--accent-primary)');
-                                return `<div style="margin-bottom: 6px; border-left: 2px solid ${color}; padding-left: 10px;">
-                                    <span style="color:${color}; font-weight:bold; font-size: 0.7rem;">[${parts[0].trim().split(' ')[1] || ''}]</span> 
-                                    <span style="color:var(--text-main)">${parts[3] ? parts[3].trim() : ''}</span>
+                                const timeStr = sanitizeHTML(parts[0].trim().split(' ')[1] || '');
+                                const msgStr = sanitizeHTML(parts.slice(3).join('|').trim() || '');
+                                return `<div style="margin-bottom: 10px; border-left: 3px solid ${color}; padding-left: 12px; line-height: 1.5; background: rgba(255,255,255,0.01); padding-top: 4px; padding-bottom: 4px; border-radius: 0 6px 6px 0;">
+                                    <span style="color:${color}; font-weight:bold; font-size: 0.75rem; margin-right: 5px;">[${timeStr}]</span>
+                                    <span style="color:var(--text-main); font-size: 0.85rem;" class="word-break">${msgStr}</span>
                                 </div>`;
                             }
-                            return `<div>${line}</div>`;
+                            return `<div class="word-break" style="margin-bottom: 10px; font-size: 0.85rem; line-height: 1.5; padding-left: 12px;">${sanitizeHTML(line)}</div>`;
                         }).join('');
                         logFeed.scrollTop = logFeed.scrollHeight;
                     }
@@ -1044,28 +1101,42 @@
                     const tbody = document.getElementById('holdings-body');
                     if (!tbody) return;
 
+                    if (!Array.isArray(accounts)) {
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--error); padding: 40px;">Error loading holdings</td></tr>';
+                        return;
+                    }
+
                     let totalValueHbar = 0;
                     let htmlOut = '';
                     accounts.forEach(acc => {
-                        const totalUsd = acc.total_usd.toLocaleString(undefined, { minimumFractionDigits: 2 });
-                        const roleColor = acc.role.includes("Main") ? "var(--accent-primary)" : "var(--accent-secondary)";
+                        const safeTotalUsd = sanitizeHTML((acc.total_usd || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }));
+                        const safeRole = sanitizeHTML(acc.role || 'Unknown Role');
+                        const safeId = sanitizeHTML(acc.id || 'N/A');
+                        const roleColor = safeRole.includes("Main") ? "var(--accent-primary)" : "var(--accent-secondary)";
 
                         htmlOut += `<tr style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid ${roleColor};">
-                            <td colspan="3" style="font-weight: bold; color: ${roleColor}; padding: 12px;">${acc.role} <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: normal;">(ID: ${acc.id})</span></td>
-                            <td style="text-align: right; font-weight: bold; color: white; padding: 12px;">$${totalUsd}</td>
+                            <td colspan="3" style="font-weight: bold; color: ${roleColor}; padding: 12px; word-break: break-all;">${safeRole} <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: normal;">(ID: ${safeId})</span></td>
+                            <td style="text-align: right; font-weight: bold; color: white; padding: 12px;">$${safeTotalUsd}</td>
                         </tr>`;
 
-                        acc.holdings.forEach(h => {
-                            if (h.value_usd > 0.01 || h.symbol === "HBAR") {
-                                htmlOut += `<tr>
-                                    <td style="padding: 10px; font-weight: 500;">${h.symbol}</td>
-                                    <td style="text-align: right; padding: 10px;">${h.balance.toLocaleString()}</td>
-                                    <td style="text-align: right; padding: 10px; color: var(--text-muted);">$${h.price_usd.toFixed(4)}</td>
-                                    <td style="text-align: right; padding: 10px; color: white; font-weight: 600;">$${h.value_usd.toFixed(2)}</td>
-                                </tr>`;
-                            }
-                        });
-                        totalValueHbar += acc.total_usd / 0.07;
+                        if (Array.isArray(acc.holdings)) {
+                            acc.holdings.forEach(h => {
+                                if ((h.value_usd || 0) > 0.01 || h.symbol === "HBAR") {
+                                    const safeSymbol = sanitizeHTML(h.symbol || 'UNK');
+                                    const safeBalance = sanitizeHTML((h.balance || 0).toLocaleString());
+                                    const safePrice = sanitizeHTML((h.price_usd || 0).toFixed(4));
+                                    const safeValueUsd = sanitizeHTML((h.value_usd || 0).toFixed(2));
+
+                                    htmlOut += `<tr>
+                                        <td style="padding: 10px; font-weight: 500;" class="word-break">${safeSymbol}</td>
+                                        <td style="text-align: right; padding: 10px;">${safeBalance}</td>
+                                        <td style="text-align: right; padding: 10px; color: var(--text-muted);">$${safePrice}</td>
+                                        <td style="text-align: right; padding: 10px; color: white; font-weight: 600;">$${safeValueUsd}</td>
+                                    </tr>`;
+                                }
+                            });
+                        }
+                        totalValueHbar += (acc.total_usd || 0) / 0.07;
                     });
                     tbody.innerHTML = htmlOut;
                     document.getElementById('val-total').innerText = `${totalValueHbar.toLocaleString(undefined, { maximumFractionDigits: 0 })} HBAR`;
@@ -1078,25 +1149,37 @@
                     if (!res.ok) return;
                     const history = await res.json();
                     const swapList = document.getElementById('swap-list');
-                    if (swapList) {
-                        const swaps = history.filter(h => h.amount_in);
-                        if (swaps.length > 0) {
-                            swapList.innerHTML = swaps.slice(0, 5).map(s => {
-                                const time = (s.timestamp || '').split(' ')[1] || '';
-                                return `<div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border);">
-                                    <div>
-                                        <div style="font-weight: 600; font-size: 0.85rem; color: white;">${s.from_symbol || 'TOKEN'} → ${s.to_symbol || 'TOKEN'}</div>
-                                        <div style="font-size: 0.7rem; color: var(--text-muted);">${s.route || 'SaucerSwap V2'}</div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div style="font-family: 'Orbitron'; font-size: 0.85rem; color: var(--accent-primary);">${(s.amount_in || 0).toFixed(1)} ${s.from_symbol || ''}</div>
-                                        <div style="font-size: 0.7rem; color: var(--text-muted);">${time}</div>
-                                    </div>
-                                </div>`;
-                            }).join('');
-                        } else {
-                            swapList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px;">No swaps recorded</div>';
-                        }
+                    if (!swapList) return;
+
+                    if (!Array.isArray(history)) {
+                        swapList.innerHTML = '<div style="color: var(--error); font-size: 0.8rem; text-align: center; padding: 20px;">Error loading swap history</div>';
+                        return;
+                    }
+
+                    const swaps = history.filter(h => h && h.amount_in !== undefined);
+                    if (swaps.length > 0) {
+                        swapList.innerHTML = swaps.slice(0, 5).map(s => {
+                            const time = sanitizeHTML((s.timestamp || '').split(' ')[1] || '');
+                            const fromSymbol = sanitizeHTML(s.from_symbol || 'TOKEN');
+                            const toSymbol = sanitizeHTML(s.to_symbol || 'TOKEN');
+                            const route = sanitizeHTML(s.route || 'SaucerSwap V2');
+                            const amountIn = sanitizeHTML((s.amount_in || 0).toFixed(2));
+                            const statusColor = s.error ? "var(--error)" : "var(--accent-primary)";
+                            const statusOpacity = s.error ? "0.5" : "1";
+
+                            return `<div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); margin-bottom: 10px; opacity: ${statusOpacity};">
+                                <div style="min-width: 0; flex: 1; padding-right: 10px;">
+                                    <div style="font-weight: 600; font-size: 0.85rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${fromSymbol} → ${toSymbol}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${route}</div>
+                                </div>
+                                <div style="text-align: right; flex-shrink: 0;">
+                                    <div style="font-family: 'Orbitron'; font-size: 0.85rem; color: ${statusColor};">${amountIn} ${fromSymbol}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted);">${time}</div>
+                                </div>
+                            </div>`;
+                        }).join('');
+                    } else {
+                        swapList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px;">No swaps recorded</div>';
                     }
                 } catch (e) {}
             }
