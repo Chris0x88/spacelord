@@ -968,6 +968,7 @@
                         location.reload();
                         return;
                     }
+                    if (!res.ok) throw new Error("Status API error");
 
                     const data = await res.json();
                     renderUI(data);
@@ -1098,13 +1099,10 @@
                     const res = await fetch(`${API_URL}/accounts`, { headers: { 'X-Pacman-Secret': apiSecret } });
                     if (!res.ok) return;
                     const accounts = await res.json();
+                    if (!Array.isArray(accounts)) return;
+
                     const tbody = document.getElementById('holdings-body');
                     if (!tbody) return;
-
-                    if (!Array.isArray(accounts)) {
-                        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--error); padding: 40px;">Error loading holdings</td></tr>';
-                        return;
-                    }
 
                     let totalValueHbar = 0;
                     let htmlOut = '';
@@ -1181,7 +1179,88 @@
                     } else {
                         swapList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px;">No swaps recorded</div>';
                     }
+<<<<<<< HEAD
                 } catch (e) {}
+=======
+
+                    if (systemEvents.length > 0) {
+                        systemBody.innerHTML = systemEvents.slice(0, 10).map(tx => {
+                            const ts = new Date(tx.timestamp).toLocaleString();
+                            let eventType = tx.type || tx.mode || "SYSTEM";
+                            let detail = tx.error || String(tx.tx_hash || tx.tx_id || "N/A").substring(0, 15);
+                            const statusColor = tx.success ? 'white' : 'var(--error)';
+
+                            return `
+                            <tr>
+                                <td style="color: var(--text-muted); font-size: 0.7rem;">${ts}</td>
+                                <td style="font-weight: bold; color: var(--accent-secondary); font-size: 0.75rem;">${eventType}</td>
+                                <td style="text-align: right; color: ${statusColor}; font-size: 0.75rem;">${detail}</td>
+                            </tr>
+                        `;
+                        }).join('');
+                    } else {
+                        systemBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No system logic events.</td></tr>';
+                    }
+                } catch (err) { }
+            }
+
+            function renderUI(data) {
+                const uptime = data.uptime_sec || 0;
+                const h = Math.floor(uptime / 3600);
+                const m = Math.floor((uptime % 3600) / 60);
+                const s = uptime % 60;
+                document.getElementById('uptime-display').innerText = `UPTIME: ${h}h ${m}m ${s}s`;
+
+                const pluginList = document.getElementById('plugin-list');
+                pluginList.innerHTML = '';
+                let activeCount = 0;
+
+                if (data.plugins) {
+                    data.plugins.forEach(p => {
+                        const isRunning = p.running;
+                        if (isRunning) activeCount++;
+
+                        const item = document.createElement('div');
+                        item.className = 'plugin-item';
+
+                        const statusTag = isRunning ?
+                            `<span class="tag tag-running">Active</span>` :
+                            `<span class="tag tag-failed">Off</span>`;
+
+                        const beatInfo = p.last_heartbeat ?
+                            new Date(p.last_heartbeat).toLocaleTimeString() :
+                            'Waiting...';
+
+                        item.innerHTML = `
+                        <div class="plugin-info">
+                            <h4>${p.name}</h4>
+                            <div class="meta">${beatInfo}${p.errors > 0 ? ` | Errors: ${p.errors}` : ''}</div>
+                        </div>
+                        <div>${statusTag}</div>
+                    `;
+                        pluginList.appendChild(item);
+
+                        if (p.name === 'PowerLaw' && p.portfolio) {
+                            const port = p.portfolio;
+                            const total = port.total_value_usd || 0;
+                            document.getElementById('val-total').innerText = `$${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                            const btc_pct = port.wbtc_percent || 0;
+                            document.getElementById('val-btc').innerText = `${btc_pct.toFixed(1)}%`;
+                            const hbar = port.hbar_balance || 0;
+                            document.getElementById('val-hbar').innerText = `${hbar.toLocaleString()}ℏ`;
+                            if (p.signal && p.signal.allocation_pct) {
+                                document.getElementById('val-target').innerText = `${p.signal.allocation_pct.toFixed(0)}% BTC`;
+                            }
+                        }
+
+                        if (p.name === 'BackupService') {
+                            document.getElementById('last-backup').innerText = p.last_backup ?
+                                new Date(p.last_backup).toLocaleString() : 'Never';
+                        }
+                    });
+                }
+                document.getElementById('plugin-count').innerText = `${activeCount} ACTIVE`;
+>>>>>>> origin/fix-dashboard-errors-and-logging-14120225708487651482
             }
 
             checkAuth();
