@@ -315,6 +315,22 @@ def _cmd_status(app, json_mode=False):
     import os
     bot = _get_or_create_bot(app)
     status = bot.get_status()
+
+    # Refresh live portfolio snapshot on explicit status calls so we don't
+    # report stale zero balances when daemon hasn't completed a loop yet.
+    try:
+        live_state = bot.adapter.get_portfolio_state()
+        if live_state:
+            status["portfolio"] = {
+                "wbtc_balance": live_state.wbtc_balance,
+                "usdc_balance": live_state.usdc_balance,
+                "hbar_balance": live_state.hbar_balance,
+                "total_value_usd": live_state.total_value_usd,
+                "wbtc_percent": live_state.wbtc_percent,
+                "usdc_percent": live_state.usdc_percent,
+            }
+    except Exception:
+        pass
     
     is_running = False
     pid = None

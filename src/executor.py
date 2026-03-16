@@ -675,9 +675,9 @@ class PacmanExecutor:
             if mode == "exact_out":
                  needed_balance = int(amount_in_expected * slippage_factor_in)
             
-            # If we are simulating a multi-hop, the intermediate balance won't actually be in the wallet.
-            # We skip the strict balance check for intermediate steps in dry runs.
-            is_intermediate_sim = (simulate and i > 0)
+            # If we are simulating a multi-hop, intermediate balances may not exist in-wallet yet.
+            # Current step context does not expose hop index here, so keep strict checks.
+            is_intermediate_sim = False
 
             if current_balance < needed_balance and not is_intermediate_sim:
                 # RAISE EXCEPTION instead of returning fail

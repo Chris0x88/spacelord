@@ -420,6 +420,64 @@ class LimitOrderEngine:
         if triggered_any:
             self._save()
 
+    # --- Daemon Control -----------------------------------------------------
+
+    @property
+    def is_running(self) -> bool:
+        """Whether the monitor daemon thread is currently alive."""
+        return self._monitor_thread is not None and self._monitor_thread.is_alive()
+
+    def start_monitor(self, controller) -> bool:
+        """
+        Start the background monitoring daemon.
+
+        Returns True when daemon starts, False if it is already running.
+        """
+        if self.is_running:
+            return False
+
+        self._controller = controller
+        self._stop_event.clear()
+        self._daemon_enabled = True
+        self._save_daemon_enabled(True)
+
+        self._monitor_thread = threading.Thread(
+            target=self._monitor_loop,
+            name="pacman-limit-orders",
+            daemon=True,
+        )
+        self._monitor_thread.start()
+        logger.info(f"[LimitOrder] Daemon started (interval={format_interval(self._poll_interval)}).")
+        return True
+
+    def stop_monitor(self):
+        """Stop the background monitoring daemon gracefully."""
+        self._daemon_enabled = False
+        self._save_daemon_enabled(False)
+        self._stop_event.set()
+
+        t = self._monitor_thread
+        if t and t.is_alive():
+            t.join(timeout=3)
+
+        self._monitor_thread = None
+        logger.info("[LimitOrder] Daemon stopped.")
+
+    def _monitor_loop(self):
+        """Background daemon loop for periodic limit-order checks."""
+        logger.info("[LimitOrder] Monitor loop active.")
+        while not self._stop_event.is_set():
+            try:
+                self._check_orders()
+            except Exception as e:
+                logger.error(f"[LimitOrder] Monitor loop error: {e}")
+
+            wait_seconds = max(int(self._poll_interval), 1)
+            if self._stop_event.wait(wait_seconds):
+                break
+
+        logger.info("[LimitOrder] Monitor loop exited.")
+
     # --- Persistence --------------------------------------------------------
 
     def _save(self):

@@ -12,9 +12,35 @@ Usage:
 
 import time
 import json
+import requests
 from typing import Optional, Dict, Any
 from src.logger import logger
 from lib.saucerswap import hedera_id_to_evm, ERC20_ABI
+
+def resolve_evm_address(executor, hedera_id: str) -> str:
+    """
+    Resolve the EVM address for a Hedera account ID by querying Mirror Node.
+    Falls back to numeric mapping if lookup fails.
+    """
+    network = getattr(executor, 'network', 'mainnet')
+    # Determine Mirror Node base URL
+    if network == 'mainnet':
+        base_url = "https://mainnet-public.mirrornode.hedera.com"
+    else:
+        base_url = f"https://{network}-mirrornode.hedera.com"
+    url = f"{base_url}/api/v1/accounts/{hedera_id}"
+    try:
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            evm_addr = data.get("evm_address")
+            if evm_addr:
+                return executor.w3.to_checksum_address(evm_addr)
+    except Exception as e:
+        logger.warning(f"Mirror Node lookup failed for {hedera_id}: {e}")
+    # Fallback to numeric mapping (may cause revert)
+    logger.warning(f"Using numeric fallback for {hedera_id} (may fail).")
+    return hedera_id_to_evm(hedera_id)
 
 def execute_transfer(executor, token_symbol: str, amount: float, recipient: str, memo: str = None) -> dict:
     """
@@ -33,7 +59,7 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str,
     try:
         # 1. Resolve Recipient Address
         if recipient.startswith("0.0."):
-            to_address = hedera_id_to_evm(recipient)
+            to_address = resolve_evm_address(executor, recipient)
             # SAFETY CHECK: Whitelist
             if not executor.is_sim:
                 from pathlib import Path

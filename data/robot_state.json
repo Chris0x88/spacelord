@@ -3,127 +3,127 @@
   "last_rebalance": "2026-03-08T17:47:25.359623",
   "activity_log": [
     {
-      "timestamp": "2026-03-13T02:20:44.696198",
+      "timestamp": "2026-03-16T03:44:24.976062",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T03:21:11.350247",
+      "timestamp": "2026-03-16T04:50:54.917075",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T04:21:38.206631",
+      "timestamp": "2026-03-16T05:57:25.026574",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T05:22:05.038777",
+      "timestamp": "2026-03-16T07:03:54.427382",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T06:22:31.475649",
+      "timestamp": "2026-03-16T08:10:19.075955",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T07:22:58.174498",
+      "timestamp": "2026-03-16T09:16:47.556047",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T08:23:25.227176",
+      "timestamp": "2026-03-16T10:23:17.512791",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T09:23:51.801645",
+      "timestamp": "2026-03-16T11:29:48.531212",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T10:24:19.179764",
+      "timestamp": "2026-03-16T12:36:19.953583",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T11:24:45.580959",
+      "timestamp": "2026-03-16T13:41:06.486404",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T12:25:09.194267",
+      "timestamp": "2026-03-16T14:46:57.222514",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T13:25:36.177142",
+      "timestamp": "2026-03-16T15:52:16.661424",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T14:25:58.331097",
+      "timestamp": "2026-03-16T16:57:23.878217",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T15:26:23.035658",
+      "timestamp": "2026-03-16T18:03:58.833767",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T16:17:38.145293",
+      "timestamp": "2026-03-16T19:10:36.091580",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T17:23:01.537652",
+      "timestamp": "2026-03-16T20:17:10.950977",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T18:29:37.232665",
+      "timestamp": "2026-03-16T21:23:46.013166",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T19:36:04.194257",
+      "timestamp": "2026-03-16T22:30:21.564825",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T20:42:26.219669",
+      "timestamp": "2026-03-16T23:37:00.158360",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T21:48:53.964554",
+      "timestamp": "2026-03-17T00:43:42.582366",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T22:55:05.661558",
+      "timestamp": "2026-03-17T01:50:15.226160",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T23:20:07.861846",
+      "timestamp": "2026-03-17T02:56:45.993878",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T23:21:15.635718",
+      "timestamp": "2026-03-17T04:03:16.652555",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T23:22:03.790918",
+      "timestamp": "2026-03-17T05:09:51.490673",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     },
     {
-      "timestamp": "2026-03-13T23:22:18.345704",
+      "timestamp": "2026-03-17T06:16:20.732108",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     }
@@ -131,24 +131,24 @@
   "last_portfolio": {
     "wbtc_balance": 0.0,
     "usdc_balance": 0.0,
-    "hbar_balance": 14.08686134,
+    "hbar_balance": 12.531384,
     "total_value_usd": 0,
     "wbtc_percent": 0
   },
   "last_signal": {
-    "date": "2026-03-13",
-    "price": 72507.7745546538,
-    "allocation_pct": 58.0,
-    "floor": 57745.23,
-    "ceiling": 134267.93,
-    "revised_ceiling": 134267.93,
-    "model_price": 91800.6,
-    "position_in_band_pct": 19.3,
+    "date": "2026-03-17",
+    "price": 70390.87954223555,
+    "allocation_pct": 60.0,
+    "floor": 57956.37,
+    "ceiling": 134582.66,
+    "revised_ceiling": 134582.66,
+    "model_price": 91130.66,
+    "position_in_band_pct": 16.2,
     "cycle": 5,
-    "cycle_progress_pct": 47.4,
+    "cycle_progress_pct": 47.6,
     "phase": "late_cycle_peak_zone",
     "valuation": "deep_value",
     "stance": "balanced",
-    "tagline": "Cycle 5 | 47% complete | Late Cycle Peak Zone | Price at 19% of range (deep value) | Favorable accumulation: 58% BTC recommended"
+    "tagline": "Cycle 5 | 48% complete | Late Cycle Peak Zone | Price at 16% of range (deep value) | Favorable accumulation: 60% BTC recommended"
   }
 }

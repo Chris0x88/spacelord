@@ -1,39 +1,39 @@
 {
-  "pid": 75339,
-  "uptime_sec": 59,
-  "last_heartbeat": "2026-03-13T13:23:16Z",
+  "pid": 25576,
+  "uptime_sec": 139024,
+  "last_heartbeat": "2026-03-16T20:57:19Z",
   "plugins": [
     {
       "name": "PowerLaw",
       "running": true,
-      "last_heartbeat": "2026-03-13T13:22:16Z",
+      "last_heartbeat": "2026-03-16T20:09:11Z",
       "errors": 0,
       "simulate": false,
       "model": "HEARTBEAT",
       "threshold": 15.0,
       "trades_executed": 38,
-      "last_check": "2026-03-13T23:22:16.666455",
+      "last_check": "2026-03-17T06:09:11.400408",
       "last_rebalance": "2026-03-08T17:47:25.359623",
       "signal": {
-        "date": "2026-03-13",
+        "date": "2026-03-17",
         "price": 72507.7745546538,
-        "allocation_pct": 58.0,
-        "floor": 57745.23,
-        "ceiling": 134267.93,
-        "revised_ceiling": 134267.93,
-        "model_price": 91800.6,
-        "position_in_band_pct": 19.3,
+        "allocation_pct": 57.5,
+        "floor": 57956.37,
+        "ceiling": 134582.66,
+        "revised_ceiling": 134582.66,
+        "model_price": 91130.66,
+        "position_in_band_pct": 19.0,
         "cycle": 5,
-        "cycle_progress_pct": 47.4,
+        "cycle_progress_pct": 47.6,
         "phase": "late_cycle_peak_zone",
         "valuation": "deep_value",
         "stance": "balanced",
-        "tagline": "Cycle 5 | 47% complete | Late Cycle Peak Zone | Price at 19% of range (deep value) | Favorable accumulation: 58% BTC recommended"
+        "tagline": "Cycle 5 | 48% complete | Late Cycle Peak Zone | Price at 19% of range (deep value) | Favorable accumulation: 58% BTC recommended"
       },
       "portfolio": {
         "wbtc_balance": 0.0,
         "usdc_balance": 0.0,
-        "hbar_balance": 14.08686134,
+        "hbar_balance": 12.531384,
         "total_value_usd": 0,
         "wbtc_percent": 0
       }
@@ -41,7 +41,7 @@
     {
       "name": "LimitOrders",
       "running": true,
-      "last_heartbeat": "2026-03-13T13:22:16Z",
+      "last_heartbeat": "2026-03-16T20:08:30Z",
       "errors": 0,
       "active_orders": 0,
       "interval": 3600
@@ -49,11 +49,11 @@
     {
       "name": "BackupService",
       "running": true,
-      "last_heartbeat": "2026-03-13T13:22:16Z",
+      "last_heartbeat": "2026-03-16T07:32:30Z",
       "errors": 0,
-      "last_backup": "2026-03-13T23:22:16.666810",
-      "backup_count": 53
+      "last_backup": "2026-03-16T17:32:31.256528",
+      "backup_count": 59
     }
   ],
-  "last_pool_sync": "2026-03-13T13:22:16Z"
+  "last_pool_sync": "2026-03-16T06:20:20Z"
 }
