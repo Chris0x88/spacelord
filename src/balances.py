@@ -84,70 +84,84 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None) -> Dict[st
                     token_id, decimals = token_meta_map[i]
                     balances[token_id] = val / (10**decimals)
     except Exception as e:
-        logger.warning(f"   ⚠️ Multicall failed ({e}), falling back to sequential...")
-        # Fallback to sequential if multicall fails - use highlights to save time
-        return _get_balances_sequential(client, tokens_data, token_highlights)
+        logger.warning(f"   ⚠️ Multicall failed ({e}), falling back to Mirror Node...")
+        return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network)
+
+    # For sub-accounts on Hedera, Mirror Node is the only reliable source for HTS balances
+    # when multiple IDs share an ECDSA alias. We double-check if we found low token count.
+    if len(balances) <= 1:
+        logger.debug("   ⚠️ Low token count via RPC, checking with Mirror Node...")
+        mirror_bal = _get_balances_mirror(eoa, tokens_data, token_highlights, client.network)
+        balances.update(mirror_bal)
 
     logger.debug(f"Fetched {len(balances)} non-zero balances.")
+    return balances
+
+
+def _get_balances_mirror(eoa: str, tokens_data: dict, token_highlights: list = None, network: str = "mainnet") -> Dict[str, float]:
+    """
+    Fallback: Fetch HTS balances directly from Mirror Node API.
+    Required for sub-accounts where EVM long-zero or alias queries fail.
+    """
+    import requests
+    balances = {}
+    
+    # Resolve Hedera ID if eoa is long-zero or alias
+    account_id = eoa
+    if eoa.startswith("0x0000000000000000000000000000000000"):
+        # Convert hex suffix to decimal ID
+        num = int(eoa[34:], 16)
+        account_id = f"0.0.{num}"
+    
+    base_url = "https://mainnet-public.mirrornode.hedera.com" if network == "mainnet" else "https://testnet.mirrornode.hedera.com"
+    url = f"{base_url}/api/v1/accounts/{account_id}"
+    
+    try:
+        logger.debug(f"   📡 Mirror Node balance check for {account_id}...")
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            balance_data = data.get("balance", {})
+            for t_entry in balance_data.get("tokens", []):
+                tid = t_entry.get("token_id")
+                raw_bal = t_entry.get("balance", 0)
+                if raw_bal > 0:
+                    # Find decimals from our tokens_data
+                    meta = tokens_data.get(tid)
+                    if not meta:
+                        # Find by scanning values if tid is not a key
+                        for m in tokens_data.values():
+                            if m.get("id") == tid:
+                                meta = m
+                                break
+                    
+                    decimals = meta.get("decimals", 8) if meta else 8
+                    balances[tid] = raw_bal / (10**decimals)
+                    
+            logger.debug(f"   ✅ Mirror Node returned {len(balances)} tokens.")
+        else:
+            logger.warning(f"   ⚠️ Mirror Node returned {resp.status_code}")
+    except Exception as e:
+        logger.error(f"   ❌ Mirror Node fallback failed: {e}")
+        
     return balances
 
 
 def _get_balances_sequential(client, tokens_data, token_highlights: list = None) -> Dict[str, float]:
     """
     Fallback method for sequential fetching.
-    If highlights are provided, they must be Token IDs.
+    Still kept for architectural completeness, but Mirror Node is preferred now.
     """
     balances = {}
-    
-    # Symbols we definitely should check first/only
-    targets = token_highlights if token_highlights else ["0.0.456858", "0.0.10082597", "0.0.9470869", "0.0.731861"]
-    
-    # First pass: Essential highlights
+    targets = token_highlights if token_highlights else ["0.0.456858", "0.0.10082597", "0.0.9470869"]
     for token_id in targets:
         meta = tokens_data.get(token_id)
         if not meta: continue
-        
         try:
             raw_bal = client.get_token_balance(token_id)
             if raw_bal > 0:
                 decimals = meta.get("decimals", 8)
                 balances[token_id] = raw_bal / (10**decimals)
-        except:
-            continue
-            
-    # If no highlights provided, or if user wants full scan (risky)
-    # we stop here to prevent 30min hangs unless token_highlights is None
-    if token_highlights is not None:
-        return balances
-
-    # Full scan fallback (only if no highlights provided)
-    # Limiting to first 50 tokens to prevent complete hang
-    count = 0
-    seen_ids = set()
-    
-    # Pre-populate seen_ids with those already found in targets
-    for token_id in (targets or []):
-        m = tokens_data.get(token_id)
-        if m and m.get("id"):
-            seen_ids.add(m.get("id"))
-
-    for token_id, meta in tokens_data.items():
-        if token_id in balances: continue
-        
-        if not token_id: continue
-        
-        if token_id in seen_ids: continue
-        seen_ids.add(token_id)
-
-        if count > 50: break
-        
-        try:
-            raw_bal = client.get_token_balance(token_id)
-            if raw_bal > 0:
-                decimals = meta.get("decimals", 8)
-                balances[token_id] = raw_bal / (10**decimals)
-            count += 1
-        except:
-            continue
-            
+        except: continue
     return balances
+

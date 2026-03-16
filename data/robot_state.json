@@ -3,21 +3,6 @@
   "last_rebalance": "2026-03-08T17:47:25.359623",
   "activity_log": [
     {
-      "timestamp": "2026-03-16T03:44:24.976062",
-      "type": "skip",
-      "message": "Trade too small ($0.00 < $1.0)"
-    },
-    {
-      "timestamp": "2026-03-16T04:50:54.917075",
-      "type": "skip",
-      "message": "Trade too small ($0.00 < $1.0)"
-    },
-    {
-      "timestamp": "2026-03-16T05:57:25.026574",
-      "type": "skip",
-      "message": "Trade too small ($0.00 < $1.0)"
-    },
-    {
       "timestamp": "2026-03-16T07:03:54.427382",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
@@ -124,6 +109,21 @@
     },
     {
       "timestamp": "2026-03-17T06:16:20.732108",
+      "type": "skip",
+      "message": "Trade too small ($0.00 < $1.0)"
+    },
+    {
+      "timestamp": "2026-03-17T07:20:44.583045",
+      "type": "skip",
+      "message": "Trade too small ($0.00 < $1.0)"
+    },
+    {
+      "timestamp": "2026-03-17T08:26:57.992820",
+      "type": "skip",
+      "message": "Trade too small ($0.00 < $1.0)"
+    },
+    {
+      "timestamp": "2026-03-17T09:33:38.537450",
       "type": "skip",
       "message": "Trade too small ($0.00 < $1.0)"
     }

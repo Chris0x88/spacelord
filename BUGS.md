@@ -9,19 +9,8 @@
 ---
 
 ### [BUG-003] Unknown token ID in balance
-**Date:** 2026-03-17 03:15 AEST
-**Severity:** Low
-**Status:** Open
-**Affects:** `balance` command
-**Details:** Balance shows token ID `0.0.1055459` (value $17.62) which is not resolved by `tokens` command. Needs identification.
-**Reproduction:** Run `balance --json` and look for token ID `0.0.1055459`
-**Fix needed:** Investigate token registry or add token mapping. Determine what token this is (possibly HTS token on Hedera).
-
----
-
----
-
-## Resolved Bugs
+**Resolved:** 2026-03-17 07:45 AEST
+**Fix:** Verified token ID `0.0.1055459` as **USDC[hts]**. Corrected balance retrieval via Mirror Node fallback to ensure visibility.
 
 ### [BUG-001] LimitOrderEngine missing `is_running` property
 **Resolved:** 2026-03-17 07:01 AEST
