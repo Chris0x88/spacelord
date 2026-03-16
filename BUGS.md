@@ -6,31 +6,6 @@
 
 ---
 
-## Active Bugs
-
-### [BUG-001] LimitOrderEngine missing `is_running` property
-**Date:** 2026-03-17 03:13 AEST
-**Severity:** High (blocks daemon status checks)
-**Status:** Open
-**Affects:** `order status` command
-**Error:** `AttributeError: 'LimitOrderEngine' object has no attribute 'is_running'`
-**Details:** The `order status` CLI command attempts to check `engine.is_running` but `LimitOrderEngine` class does not define this property.
-**Reproduction:** Run `pacman order status` or `./launch.sh order status`
-**Fix needed:** Add `is_running` property to `LimitOrderEngine` (probably in `src/limit_order_engine.py`) that returns whether the daemon thread/process is active.
-**Related:** Also see BUG-002 (Robot portfolio mismatch)
-
----
-
-### [BUG-002] Robot portfolio mismatch
-**Date:** 2026-03-17 03:15 AEST
-**Severity:** Medium
-**Status:** Open
-**Affects:** `robot status` command
-**Details:** `robot status --json` reports `usdc_balance=0` and `wbtc_balance=0` even though the wallet holds USDC and WBTC. The `balance` command correctly shows holdings.
-**Reproduction:** Run `balance --json` (shows holdings) then `robot status --json` (shows zeros)
-**Fix needed:** Robot's portfolio fetch logic should use current balance data, not cached/stale values. Check `src/executor.py` or robot daemon portfolio calculation.
-**Note:** Robot daemon last rebalance: 2026-03-08 (4 days ago) despite `running: true`. May be stuck or interval misconfigured.
-
 ---
 
 ### [BUG-003] Unknown token ID in balance
@@ -44,9 +19,25 @@
 
 ---
 
+---
+
 ## Resolved Bugs
 
-*(None yet)*
+### [BUG-001] LimitOrderEngine missing `is_running` property
+**Resolved:** 2026-03-17 07:01 AEST
+**Fix:** Added `is_running` property and background thread management to `LimitOrderEngine`.
+
+### [BUG-002] Robot portfolio mismatch
+**Resolved:** 2026-03-17 07:01 AEST
+**Fix:** Added live portfolio snapshot refresh to the `robot status` command.
+
+### [BUG-004] Incorrect Simulation Balance Check
+**Resolved:** 2026-03-17 07:01 AEST
+**Fix:** Corrected logic in `executor.py` to ensure strict balance checks during dry-runs.
+
+### [BUG-005] Hedera ID to EVM Address Mapping
+**Resolved:** 2026-03-17 07:01 AEST
+**Fix:** Implemented Mirror Node lookup in `transfers.py` for robust address resolution.
 
 ---
 
