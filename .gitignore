@@ -42,9 +42,12 @@ pacman_cli.egg-info/
 # Repo Map & Rules
 REPO_MAP.md
 ARCHITECTURE_RULES.md
+BUGS.md
+CHANGELOG.md
 !data/*.template.json
 
 # Private Documentation
+docs/plans/
 docs_private/
 tui/
 TODO_*.md
