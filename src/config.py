@@ -74,6 +74,10 @@ class PacmanConfig:
     robot_account_id: Optional[str] = None   # Dedicated robot account ID
     robot_private_key: Optional[SecureString] = None  # Dedicated robot private key (if independent)
 
+    # HCS Topics
+    hcs_topic_id: Optional[str] = None         # Walled garden signal topic (your own broadcasts)
+    hcs_inbound_topic_id: Optional[str] = None  # HCS-10 public inbox (agent-to-agent connections)
+
     @property
     def debug(self) -> bool:
         return self.verbose_mode
@@ -169,6 +173,10 @@ class PacmanConfig:
         # Hedera account ID (for transaction records)
         config.hedera_account_id = os.getenv("HEDERA_ACCOUNT_ID")
         config.robot_account_id = os.getenv("ROBOT_ACCOUNT_ID")
+
+        # HCS topic IDs
+        config.hcs_topic_id = os.getenv("HCS_TOPIC_ID")
+        config.hcs_inbound_topic_id = os.getenv("HCS_INBOUND_TOPIC_ID")
 
         # Robot private key (for independent robot accounts with their own key)
         robot_key = os.getenv("ROBOT_PRIVATE_KEY")

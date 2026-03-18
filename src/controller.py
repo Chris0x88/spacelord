@@ -303,11 +303,19 @@ class PacmanController:
 
     @property
     def hcs_manager(self):
-        """Lazy initialization of the HCSManager plugin."""
+        """Lazy initialization of the HCSManager plugin (walled garden signal broadcasts)."""
         if not hasattr(self, '_hcs_manager') or self._hcs_manager is None:
             from src.plugins.hcs_manager import HcsManager
             self._hcs_manager = HcsManager(self)
         return self._hcs_manager
+
+    @property
+    def hcs10_agent(self):
+        """Lazy initialization of the HCS-10 OpenConvAI agent (agent-to-agent messaging)."""
+        if not hasattr(self, '_hcs10_agent') or self._hcs10_agent is None:
+            from src.plugins.hcs10.plugin import Hcs10Agent
+            self._hcs10_agent = Hcs10Agent(self)
+        return self._hcs10_agent
 
     @property
     def limit_engine(self):

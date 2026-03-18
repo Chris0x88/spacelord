@@ -83,11 +83,18 @@ HELP_COMMANDS = [
     
     # HCS
     ("--- HCS MESSAGING ---", ""),
-    ("hcs status",                  "Show active topic and subscription info"),
-    ("hcs topic create",            "Create a new signal topic (walled garden)"),
+    ("hcs status",                  "Show active signal topic info"),
+    ("hcs topic create",            "Create a new signal topic (walled garden, your key only)"),
     ("hcs signals",                 "View recent investment signals from the topic"),
     ("hcs send <msg>",              "Submit a raw message to HCS"),
     ("hcs signal <t> <d>",          "Broadcast a structured JSON signal"),
+    ("--- HCS-10 AGENT COMMS ---", ""),
+    ("hcs10 setup",                 "Create your public inbound topic (one-time)"),
+    ("hcs10 connect <topic_id>",    "Request a connection to another agent"),
+    ("hcs10 send <id> <msg>",       "Send a message to a connected agent"),
+    ("hcs10 connections",           "List all agent connections"),
+    ("hcs10 read <topic_id>",       "Read messages from any HCS topic"),
+    ("hcs10 start",                 "Start the HCS-10 background listener"),
 
     # System
     ("--- SYSTEM ---", ""),

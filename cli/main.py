@@ -42,6 +42,7 @@ from cli.commands.info import (
 )
 from cli.commands.orders import cmd_order
 from cli.commands.hcs import cmd_hcs
+from cli.commands.hcs10 import cmd_hcs10
 from cli.commands.staking import cmd_stake, cmd_unstake
 from cli.commands.robot import cmd_robot
 from cli.commands.doctor import cmd_doctor
@@ -81,7 +82,8 @@ COMMANDS = {
     "v1": cmd_swap_v1,
     "whitelist": cmd_whitelist,
     "stake": cmd_stake,
-    "hcs": cmd_hcs, # Added hcs command
+    "hcs": cmd_hcs,
+    "hcs10": cmd_hcs10,
     "unstake": cmd_unstake,
     "sources": cmd_sources, "source": cmd_sources,
     "accounts": cmd_account,

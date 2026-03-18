@@ -25,7 +25,7 @@ class HcsManager(BasePlugin):
     
     def __init__(self, app):
         super().__init__(app, "HCS")
-        self.topic_id: Optional[str] = app.config.from_env().get_env_value("HCS_TOPIC_ID") if hasattr(app.config, "get_env_value") else None
+        self.topic_id: Optional[str] = getattr(app.config, "hcs_topic_id", None)
         
     def create_topic(self, memo: str = "Pacman HCS Topic") -> Optional[str]:
         """Create a new HCS topic and set it as the active one."""
@@ -50,7 +50,7 @@ class HcsManager(BasePlugin):
             return None
         except Exception as e:
             logger.error(f"❌ Failed to create HCS topic: {e}")
-            self.topic_id = self.app.config.hcs_topic_id
+            return None
 
     def run_loop(self):
         """No background processing needed for now, just keep the thread alive."""
