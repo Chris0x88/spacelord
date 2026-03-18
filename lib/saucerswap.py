@@ -371,10 +371,11 @@ class SaucerSwapV2:
 
     def ensure_approval(self, token_id: str, amount: int, spender: str | None = None) -> bool:
         """Only call approve_token_dual if current allowance is insufficient."""
-        current = self.get_allowance(token_id, spender)
+        spender_val = spender or CONTRACTS[self.network]["router"]
+        current = self.get_allowance(token_id, self.eoa, spender_val)
         if current >= amount:
             return False
-            
+
         self.approve_token_dual(token_id, amount, spender)
         return True
 
