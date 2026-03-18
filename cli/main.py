@@ -129,20 +129,17 @@ def process_input(app, text):
     if not parts: return
 
     # Strip --yes / -y flag (used by AI agents to skip confirmation)
-    yes_flag = "--yes" in parts or "-y" in parts
+    explicit_yes = "--yes" in parts or "-y" in parts
     parts = [p for p in parts if p not in ("--yes", "-y")]
     if not parts: return
-
-    # Auto-detect non-interactive mode (pipes, subprocess, OpenClaw exec)
-    if not sys.stdin.isatty():
-        yes_flag = True
 
     cmd = parts[0].lower()
     args = parts[1:]
 
-    # Inject --yes into args for ALL commands when yes_flag is set
-    # This lets individual command handlers check for it
-    if yes_flag and "--yes" not in args:
+    # Only inject --yes into args if the caller explicitly passed it.
+    # Non-interactive auto-yes is handled by _safe_input() which checks isatty() directly.
+    # Injecting --yes on every non-TTY call breaks positional args (e.g. `balance HBAR`).
+    if explicit_yes and "--yes" not in args:
         args = args + ["--yes"]
 
     if cmd in COMMANDS:
