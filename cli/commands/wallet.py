@@ -380,10 +380,10 @@ def cmd_account(app, args):
         if saved_files:
             for fp in saved_files:
                 print(f"  {C.OK}✅ Key saved:{C.R} {fp}")
-            # Try to open email draft locally
+            # Try to open email draft (short summary, no raw keys in mailto:)
             _try_open_email_draft(
                 f"Pacman Key Backup — {new_id}",
-                f"Account: {new_id}\nNickname: {nickname}\nKey Type: ECDSA\nPrivate Key: {new_private_key}\nEVM: {evm_addr}\n\nSave to a password manager."
+                f"New Pacman account created.\n\nAccount: {new_id}\nNickname: {nickname or '(none)'}\nKey Type: ECDSA (secp256k1)\nEVM: {evm_addr}\n\nFull private key saved to:\n{saved_files[0]}\n\nAttach this file to the email for safekeeping."
             )
         else:
             print(f"  {C.WARN}⚠  Could not auto-save key backup. Copy from .env manually.{C.R}")
@@ -1106,11 +1106,18 @@ def _try_open_email_draft(subject, body_text):
     mailto: URI. This runs LOCALLY — the mailto content never touches
     stdout or agent APIs.
 
+    NOTE: mailto: URIs have a ~2000 char limit. If body_text is too long,
+    we truncate and point the user to the local backup file instead.
+
     Returns True if opened, False if not available.
     """
     import subprocess
     import urllib.parse
     import platform
+
+    # Truncate body to stay within mailto: URI limits (~1500 chars safe)
+    if len(body_text) > 1500:
+        body_text = body_text[:1400] + "\n\n[TRUNCATED — Full backup saved to ~/Downloads and backups/ folder]"
 
     mailto = f"mailto:?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body_text)}"
 
@@ -1221,32 +1228,14 @@ def cmd_backup_keys(app, args):
                 entry["ecdsa_pub"] = pub.to_string()
                 entry["evm_address"] = f"0x{evm}"
 
-                # Try to find matching account on-chain via public key lookup
-                try:
-                    r = requests.get(f"{mirror}/api/v1/accounts?account.publickey={pub.to_string()}&limit=1", timeout=5)
-                    if r.status_code == 200:
-                        accts = r.json().get("accounts", [])
-                        if accts:
-                            entry["account_id"] = accts[0].get("account")
-                except Exception:
-                    pass
-
-                # Fallback: check known accounts by matching on-chain key
-                if not entry["account_id"]:
+                # Look up on-chain account — only for active keys (skip archived to save API calls)
+                if entry["is_active"]:
                     try:
-                        known = app.account_manager.get_known_accounts()
-                        for acc in known:
-                            acc_id = acc.get("id", "")
-                            try:
-                                r2 = requests.get(f"{mirror}/api/v1/accounts/{acc_id}", timeout=3)
-                                if r2.status_code == 200:
-                                    on_chain_key = r2.json().get("key", {}).get("key", "")
-                                    if on_chain_key == pub.to_string():
-                                        entry["account_id"] = acc_id
-                                        entry["account_nickname"] = acc.get("nickname", "")
-                                        break
-                            except Exception:
-                                pass
+                        r = requests.get(f"{mirror}/api/v1/accounts?account.publickey={pub.to_string()}&limit=1", timeout=5)
+                        if r.status_code == 200:
+                            accts = r.json().get("accounts", [])
+                            if accts:
+                                entry["account_id"] = accts[0].get("account")
                     except Exception:
                         pass
             except Exception:
@@ -1303,9 +1292,17 @@ def cmd_backup_keys(app, args):
         except Exception:
             pass
 
-        # Try to open email client locally (keys never go through stdout)
+        # Try to open email client with a SHORT summary (not full keys — too long for mailto:)
         email_subject = f"Pacman Key Backup — {time.strftime('%Y-%m-%d')}"
-        email_opened = _try_open_email_draft(email_subject, file_content)
+        active_keys = [e for e in inventory if e["is_active"]]
+        email_summary = f"Pacman key backup saved to:\n{backup_file_path}\n"
+        if downloads_path:
+            email_summary += f"{downloads_path}\n"
+        email_summary += f"\n{len(active_keys)} active key(s), {len(inventory)} total.\n\n"
+        for e in active_keys:
+            email_summary += f"- {e['env_name']}: {e.get('account_id', 'unknown')} ({e['key_hex_redacted']})\n"
+        email_summary += "\nAttach the backup file from Downloads to this email for safekeeping."
+        email_opened = _try_open_email_draft(email_subject, email_summary)
 
     # 4. Output
     if json_mode:

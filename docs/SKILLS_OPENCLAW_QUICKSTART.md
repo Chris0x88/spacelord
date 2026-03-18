@@ -6,17 +6,50 @@
 
 ---
 
+## INSTALLATION & LAUNCH
+
+```bash
+# Install and launch (one line, zero dependencies):
+git clone https://github.com/chris0x88/pacman.git && cd pacman && ./launch.sh
+
+# First-time setup (guided wizard):
+./launch.sh setup
+
+# Start background daemon (robot + API + dashboard):
+./launch.sh daemon-start
+
+# Open the web dashboard:
+./launch.sh dashboard
+# → http://127.0.0.1:8088
+
+# Stop daemon:
+./launch.sh daemon-stop
+```
+
+**IMPORTANT:** The entry point is ALWAYS `./launch.sh`. Never use `python`, `pip`, or `./pacman`.
+
+---
+
 ## QUICK START: First 3 Commands
 
 Run these immediately when you start operating for a user:
 
 ```bash
+./launch.sh doctor               # 0. System health check — errors, daemons, gas, connectivity
 ./launch.sh status --json        # 1. Who am I? What do I have?
 ./launch.sh robot status --json  # 2. What is the bot doing?
-./launch.sh nfts --json          # 3. What NFTs do I own?
 ```
 
+**After doctor:** If daemon is not running, start it:
+```bash
+./launch.sh daemon-start
+```
+
+**After status:** Verify HBAR >= 5 (gas), check `simulate_mode`, confirm correct account.
+
 The `status` command gives you everything in one shot: account ID, network, EVM address, simulate mode, all balances, and total USD value.
+
+The `doctor` command checks: environment, accounts, HBAR gas level, daemon processes, stale PID files, API connectivity, key backups, and Hedera Mirror Node reachability.
 
 ---
 
