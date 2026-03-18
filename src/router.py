@@ -58,7 +58,9 @@ class VariantRoute:
         ]
         for i, step in enumerate(self.steps, 1):
             if step.step_type == "swap":
-                lines.append(f"  {i}. Swap {step.from_token} → {step.to_token} ({step.fee_percent * 100:.2f}%)")
+                liq = step.details.get("liquidity_usd", 0)
+                liq_str = f", pool depth: ${liq:,.0f}" if liq > 0 else ""
+                lines.append(f"  {i}. Swap {step.from_token} → {step.to_token} ({step.fee_percent * 100:.2f}%{liq_str})")
             elif step.step_type == "unwrap":
                 lines.append(f"  {i}. Unwrap {step.from_token} → {step.to_token} (gas: {step.gas_estimate_hbar:.3f} HBAR)")
             elif step.step_type == "wrap":
@@ -250,18 +252,40 @@ class PacmanVariantRouter:
         except (ValueError, TypeError):
             return 0.0
 
+    # Minimum pool liquidity (USD) required to propose a route through that pool.
+    # Pools below this threshold will be skipped — the swap would likely revert
+    # on-chain due to insufficient depth or excessive price impact.
+    # BUG-015: Agent swapped 17.58 USDC[hts] through a shallow pool → on-chain revert.
+    MIN_POOL_LIQUIDITY_USD = 50.0
+
     def find_swap_step(self, from_id: str, to_id: str) -> Optional[RouteStep]:
-        """Find a direct swap between two token IDs."""
+        """Find a direct swap between two token IDs.
+
+        Returns None if the pool's liquidity is below MIN_POOL_LIQUIDITY_USD,
+        preventing routes through dry pools that would revert on-chain.
+        """
         # Treat WHBAR as HBAR for topological pathfinding
         f_key = "0.0.0" if from_id == "0.0.1456986" else from_id
         t_key = "0.0.0" if to_id == "0.0.1456986" else to_id
-        
+
         idx = (f_key, t_key)
         if idx in self.pool_graph:
             pool_id, fee_bps, id_in, id_out, liquidity_usd = self.pool_graph[idx]
+
+            # --- LIQUIDITY GATE ---
+            # Skip pools with insufficient depth. The sentinel value 0.0
+            # means "static registry only, no live data" — allow those
+            # through (better to try than silently block).
+            if liquidity_usd > 0 and liquidity_usd < self.MIN_POOL_LIQUIDITY_USD:
+                logger.warning(
+                    f"Pool {pool_id} ({f_key}↔{t_key}) skipped: "
+                    f"liquidity ${liquidity_usd:.0f} < min ${self.MIN_POOL_LIQUIDITY_USD:.0f}"
+                )
+                return None
+
             # Fee is 3000 (0.3%). We want 0.003 for human readable reporting.
-            fee_pct = fee_bps / 1_000_000 
-            
+            fee_pct = fee_bps / 1_000_000
+
             return RouteStep(
                 step_type="swap",
                 from_token=from_id,

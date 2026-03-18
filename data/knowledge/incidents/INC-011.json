@@ -1,0 +1,12 @@
+{
+  "id": "INC-011",
+  "date": "2026-03-19",
+  "category": "execution",
+  "title": "Token approval no-op caused on-chain revert for USDC[hts] swaps",
+  "description": "Agent attempted swap of 17.58 USDC[hts] to USDC. Transaction reverted on-chain, burning 0.106 HBAR gas. The executor detected insufficient allowance, logged 'Approving...', but the approval code was a `pass` (no-op). Agent then misdiagnosed the revert as 'token not associated' despite the account holding 1.39 USDC — proof of association.",
+  "root_cause": "executor.py line 704 had `pass` where `self.client.ensure_approval()` should have been called. This was a TODO from the multi-account refactor that was never completed. Tokens previously approved (USDC, HBAR, WBTC) worked fine, masking the bug for common pairs. USDC[hts] had never been approved for the router.",
+  "resolution": "Replaced `pass` with `self.client.ensure_approval(from_token_id, needed_balance)`. Added 2-second propagation wait after approval.",
+  "prevention": "1. Any token the user holds should be pre-approved for the router during association. 2. Agents must understand: holding a balance PROVES association. Association != Approval. 3. On-chain reverts must be reported with exact error messages, never guessed diagnoses.",
+  "agent_lesson": "Association = 'can this account hold this token?' (proven by any nonzero balance). Approval = 'can this contract spend this token on behalf of the account?' (requires explicit allowance grant). These are completely different concepts. Never suggest associating a token the user already holds.",
+  "tags": ["execution", "approval", "association", "agent-misdiagnosis", "on-chain-revert"]
+}

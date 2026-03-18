@@ -19,7 +19,10 @@ tests = [
     ("Native to HTS", "swap 1 hbar to USDC"),
     ("HTS to Native (Exact Out)", "swap USDC to 1 hbar"),
     ("Variant to Variant", "swap 1 USDC to USDC[hts]"),
-    ("Cross-Token (Exact Out)", "swap HTS-WBTC to 1 USDC")
+    ("Variant to Variant (Reverse)", "swap 5 USDC[hts] for USDC"),
+    ("Cross-Token (Exact Out)", "swap HTS-WBTC to 1 USDC"),
+    ("Flags before command", "--yes --json swap 10 hbar for usdc"),
+    ("Flags after command (defensive)", "swap 10 hbar for usdc --yes --json"),
 ]
 
 for name, cmd in tests:

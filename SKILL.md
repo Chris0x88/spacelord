@@ -157,16 +157,26 @@ Swap attempt fails
   │       NEVER: Try to "approve" random pools without user consent.
   │       NEVER: Suggest wrapping/unwrapping HBAR to WHBAR.
   │
-  ├─ Error: "Transaction reverted"
-  │   ├─ Try: Increase slippage with `slippage 3.0`
+  ├─ Error: "Transaction reverted" or "Transaction REVERTED on-chain"
+  │   ├─ FIRST CHECK: Does the user already hold a balance of the OUTPUT token?
+  │   │   If YES → the token IS associated. Do NOT suggest associating it.
+  │   │   Holding any balance of a token proves association conclusively.
   │   ├─ Try: Reduce amount (smaller trade = less impact)
-  │   └─ Report: "The swap failed on-chain. This usually means price moved too fast."
+  │   ├─ Try: Increase slippage with `slippage 3.0`
+  │   ├─ Check: Token approval may be insufficient for the router contract.
+  │   │   The executor handles approvals automatically, but if it fails,
+  │   │   the swap reverts. Report the exact error — don't guess "association".
+  │   └─ Report: "The swap failed on-chain." + the exact error message.
+  │       NEVER invent a cause. Report what the error says.
   │
   ├─ Error: "Insufficient balance"
   │   └─ Show: Current balance vs. required amount. Never proceed.
   │
   ├─ Error: "Token not associated"
-  │   └─ Ask: "This token isn't linked to your account. Want me to associate it?"
+  │   └─ ONLY valid if the user has ZERO balance of that token.
+  │       If they hold ANY amount, it's already associated — the error
+  │       is something else (likely approval, not association).
+  │       Ask: "This token isn't linked to your account. Want me to associate it?"
   │       Only associate on explicit approval.
   │
   └─ Error: "CONTRACT_REVERT on approval"
@@ -536,7 +546,7 @@ Show the menu from the startup routine with current portfolio context. Highlight
 ## "Swap" / "Buy" / "Trade"
 1. Run `status --json` silently
 2. Confirm: "Swap 5 USDC → HBAR. You have 18.97 USDC. Proceed?"
-3. Execute: `swap 5 USDC for HBAR --yes --json`
+3. Execute: `./launch.sh --yes --json swap 5 USDC for HBAR`
 4. Show: "✅ Swapped 5 USDC → 46.2 HBAR. New balance: 55.7 HBAR ($5.47)"
 
 **Anti-patterns**:
@@ -544,6 +554,9 @@ Show the menu from the startup routine with current portfolio context. Highlight
 - ❌ Not confirming with user before executing
 - ❌ Showing raw JSON output
 - ❌ Suggesting V1 when V2 swap fails
+- ❌ Putting flags AFTER the token names (`swap 5 USDC for HBAR --yes` — BREAKS PARSER)
+- ❌ Swapping full balance through a pool without checking if the pool has enough liquidity (route output now shows pool depth — check it)
+- ❌ Piping `printf 'y\n'` instead of using `--yes` flag
 
 ## "Send" / "Transfer"
 1. Check balances + whitelist
@@ -627,15 +640,46 @@ These are documented failures from real agent sessions. Each one has cost time, 
 **Root cause**: Old documentation mentioned "mandatory simulation."
 **The rule**: Every trade is live. There is no simulation mode in production.
 
+## AP-009: Flags After Token Names Break Parser
+**What happened**: Agent ran `./launch.sh swap 17.58 usdc[hts] for usdc --yes --json`. The parser captured `usdc --yes --json` as the destination token, causing IndexError.
+**What was wrong**: NLP commands are parsed by regex. Flags at the end get swallowed into the last capture group.
+**Root cause**: SKILL.md showed `swap <amt> <FROM> for <TO> --yes --json` — flags in the wrong position.
+**The rule**: Flags go BEFORE the NLP command: `./launch.sh --yes --json swap 17.58 usdc[hts] for usdc`. Non-NLP commands (balance, status) accept flags anywhere.
+
+## AP-010: Misdiagnosing On-Chain Revert as "Token Not Associated"
+**What happened**: USDC[hts] → USDC swap reverted on-chain. Agent told user "your account is not associated with USDC" and suggested running `associate`. The account already held 1.39 USDC.
+**What was wrong**: Holding ANY balance of a token proves it is associated. The agent fabricated an impossible diagnosis instead of reporting the actual error. The real cause was insufficient token allowance (approval) for the router contract — a code bug, not a user error.
+**Root cause**: Agent did not understand the difference between **association** (token linked to account — proven by any nonzero balance) and **approval** (spending allowance granted to a smart contract). These are completely different Hedera concepts.
+**The rule**:
+1. If the user holds a balance of a token, it IS associated. Period. Never suggest associating it.
+2. On-chain reverts have many possible causes. Report the EXACT error message — never invent a cause.
+3. Association = "can this account hold this token?" Approval = "can this contract spend this token on behalf of the account?" Don't confuse them.
+4. If a swap reverts and the user has sufficient balance, the most likely cause is approval, slippage, or pool depth — NOT association.
+
 ---
 
 # SECTION 11: COMMAND REFERENCE (Internal — Don't Show Users)
 
 ## Entry Point
-`./launch.sh <command> --json --yes`
+`./launch.sh <command>`
 
-Always include `--json` (structured output) and `--yes` (skip confirmations).
-Logger output goes to stderr, so stdout is always clean for JSON parsing.
+Always include `--json` and `--yes` flags. Logger output goes to stderr, so stdout is always clean for JSON parsing.
+
+**⚠️ CRITICAL: Flag Placement for NLP Commands (swap, send, buy, price)**
+NLP commands are parsed by a regex-based translator. Flags (`--yes`, `--json`, `-y`)
+**MUST go BEFORE the natural-language part** of the command — never after the token names.
+The translator strips flags before regex matching, but placing flags after destination
+tokens can still confuse shell escaping and older versions of the parser.
+
+```
+✅ CORRECT:  ./launch.sh --json --yes swap 5 USDC for HBAR
+✅ CORRECT:  ./launch.sh --yes --json swap 10 usdc[hts] for usdc
+❌ WRONG:    ./launch.sh swap 5 USDC for HBAR --yes --json
+❌ WRONG:    ./launch.sh swap 10 usdc[hts] for usdc --yes --json
+```
+
+Non-NLP commands (balance, status, doctor, etc.) accept flags anywhere:
+`./launch.sh balance --json` ← fine.
 
 ## Portfolio & Account
 | Command | Purpose |
@@ -649,9 +693,9 @@ Logger output goes to stderr, so stdout is always clean for JSON parsing.
 ## Trading
 | Command | Purpose |
 |---|---|
-| `swap <amt> <FROM> for <TO> --yes --json` | Exact-in swap |
-| `swap <FROM> for <amt> <TO> --yes --json` | Exact-out swap |
-| `send <amt> <TOKEN> to <ADDR> --yes --json` | Transfer (whitelist enforced) |
+| `--yes --json swap <amt> <FROM> for <TO>` | Exact-in swap |
+| `--yes --json swap <FROM> for <amt> <TO>` | Exact-out swap |
+| `--yes --json send <amt> <TOKEN> to <ADDR>` | Transfer (whitelist enforced) |
 | `price <token>` | Live price |
 | `slippage <percent>` | Set slippage tolerance (default 2.0, max 5.0) |
 
@@ -784,7 +828,7 @@ These limits are loaded from `data/governance.json` at runtime. They can be adju
 - ✅ Confirm with user before executing trades
 - ✅ Check whitelist before transfers
 - ✅ Show remaining balance after operations
-- ✅ Use `--json --yes` flags for subprocess calls
+- ✅ Use `--json --yes` flags BEFORE the NLP command (e.g. `--yes --json swap ...`)
 - ✅ Report errors with exact messages
 - ✅ Check robot funding before suggesting rebalancer actions
 

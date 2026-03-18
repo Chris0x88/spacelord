@@ -684,24 +684,20 @@ class PacmanExecutor:
                 raise InsufficientFundsError(f"Insufficient funds: Have {current_balance / (10**self._get_token_decimals(step.from_token)):.6f}, Need {needed_balance / (10**self._get_token_decimals(step.from_token)):.6f}")
 
             if not is_native_hbar and not is_intermediate_sim:
-                # We don't support approval for non-EVM accounts easily here yet 
-                # but if it uses the SAME PK, then EOA approval is shared if accounts map to same EOA.
-                # If they are separate accounts with same key, they might need separate approval if long-zero.
-                # SaucerSwapV2's ensure_approval uses self.eoa. 
-                # We need to pass the target_eoa.
+                # Check if the SaucerSwap router has sufficient allowance to
+                # pull tokens from the signing account.  If not, run dual
+                # approval (EVM + HTS precompile) before broadcasting.
+                # BUG-016: The approval path was a no-op (`pass`), causing
+                # on-chain reverts when swapping tokens that hadn't been
+                # previously approved for the router (e.g. USDC[hts]).
                 current_allowance = self.client.get_allowance(from_token_id, target_eoa, self.client.router_address)
                 if current_allowance < needed_balance:
                     if simulate:
                         logger.info(f"   [SIM] Approval needed for {step.from_token}")
                     else:
                         logger.info(f"   🔓 Approving {step.from_token} for account {account_id or 'main'}...")
-                        # We need to make sure the client uses the right 'from' for approval too.
-                        # I'll update client.approve_token_dual to take the sender EOA too if needed,
-                        # but wait, SAUCERSWAP_V2 client methods use self.eoa.
-                        # Actually, recipient argument in swap methods handles it.
-                        # For approval, it's more complex.
-                        # Let's assume the user has associated and approved or we do it via primary.
-                        pass
+                        self.client.ensure_approval(from_token_id, needed_balance)
+                        time.sleep(2)  # Wait for approval to propagate on-chain
 
             if mode == "exact_in":
                 min_out = int(amount_out_expected * slippage_factor_out)

@@ -15,11 +15,12 @@ from cli.commands.wallet import _safe_input
 
 
 def handle_natural_language(app, text):
-    """Process NLP commands like 'swap 10 HBAR for USDC'."""
-    # Strip --yes flag before NLP parsing
-    yes = "--yes" in text.split() or "-y" in text.split()
-    text = text.replace("--yes", "").replace("-y", "").strip()
-    
+    """Process NLP commands like 'swap 10 HBAR for USDC'.
+
+    Flags (--yes, --json, etc.) are stripped by the translator's
+    strip_cli_flags() before regex matching, so they never pollute
+    token names. The parsed flags are returned in req['flags'].
+    """
     req = translate(text)
     if not req:
         print(f"  {C.ERR}✗{C.R} Unknown command. Type {C.TEXT}help{C.R} for options.")
@@ -30,6 +31,8 @@ def handle_natural_language(app, text):
     logger.debug(f"NLP Interpretation: {intent} (Req: {req})")
     
     if intent == "swap":
+        req_flags = req.get("flags", {})
+        yes = req_flags.get("yes", False) or req_flags.get("y", False)
         _do_swap(app, req, yes=yes)
     elif intent == "balance":
         from cli.commands.wallet import cmd_balance

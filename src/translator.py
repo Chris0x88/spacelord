@@ -72,10 +72,37 @@ def resolve_token(name: str) -> Optional[str]:
         
     return clean # Fallback to original normalized string
 
+def strip_cli_flags(text: str) -> tuple:
+    """Strip CLI flags (--flag or -f) from text, return (cleaned_text, flags_dict).
+
+    Must be called BEFORE regex matching to prevent flags being captured
+    into token names (e.g. 'usdc --yes --json' → to_token='usdc --yes --json').
+    """
+    words = text.split()
+    clean_words = []
+    flags = {}
+    i = 0
+    while i < len(words):
+        word = words[i]
+        if word.startswith("--"):
+            flags[word.lstrip("-")] = True
+        elif word.startswith("-") and len(word) == 2 and word[1].isalpha():
+            flags[word.lstrip("-")] = True
+        else:
+            clean_words.append(word)
+        i += 1
+    return " ".join(clean_words), flags
+
+
 def translate_command(text: str) -> Optional[dict]:
     """Main entry point for command interpretation."""
     if not text: return None
-    t = text.lower().strip()
+
+    # Strip ALL CLI flags before NLP parsing to prevent them from being
+    # captured into token names by greedy regex patterns.
+    # BUG-014: --yes/--json after destination token caused IndexError
+    text_clean, flags = strip_cli_flags(text)
+    t = text_clean.lower().strip()
     
     # Static Intents
     if t in ["balance", "wallet", "bal", "show balance"]:
@@ -98,7 +125,7 @@ def translate_command(text: str) -> Optional[dict]:
         amount = float(m.group(1))
         from_token = resolve_token(m.group(2))
         to_token = resolve_token(m.group(3))
-        return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_in"}
+        return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_in", "flags": flags}
 
     # Pattern 3: "swap TOKEN to AMOUNT TOKEN" (Exact Out)
     # e.g. "swap hbar to 10 usdc"
@@ -107,7 +134,7 @@ def translate_command(text: str) -> Optional[dict]:
         from_token = resolve_token(m.group(1))
         amount = float(m.group(2))
         to_token = resolve_token(m.group(3))
-        return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_out"}
+        return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_out", "flags": flags}
 
     # Pattern 4: "buy AMOUNT TOKEN with TOKEN" (Exact Out)
     # e.g. "buy 1 wbtc with usdc"
@@ -116,7 +143,7 @@ def translate_command(text: str) -> Optional[dict]:
         amount = float(m.group(1))
         to_token = resolve_token(m.group(2))
         from_token = resolve_token(m.group(3))
-        return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_out"}
+        return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_out", "flags": flags}
 
     # Pattern 5: "swap TOKEN to TOKEN" (No amount -> Default 1.0)
     # e.g. "swap hbar for usdc"
@@ -126,7 +153,7 @@ def translate_command(text: str) -> Optional[dict]:
         to_token = resolve_token(m.group(2))
         # Ensure we didn't just match a previous pattern's fragment
         if from_token and to_token:
-            return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": 1.0, "mode": "exact_in"}
+            return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": 1.0, "mode": "exact_in", "flags": flags}
 
     # Pattern 6: "send AMOUNT TOKEN to RECIPIENT"
     m = re.match(r"(?:send|transfer|give)\s+([\d\.]+)\s+(.+?)\s+to\s+(.+)", t)
