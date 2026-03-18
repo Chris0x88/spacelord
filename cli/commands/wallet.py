@@ -1000,49 +1000,311 @@ def cmd_fund(app, args):
 
 
 # ---------------------------------------------------------------------------
+# Key Backup Command
+# ---------------------------------------------------------------------------
+
+def cmd_backup_keys(app, args):
+    """
+    Display key inventory and optionally export to file or email link.
+
+    Usage:
+      backup-keys                    → show key inventory (redacted on screen)
+      backup-keys --file             → export full keys to backups/key_backup_<date>.txt
+      backup-keys --email user@x.com → generate mailto: link with key inventory
+      backup-keys --json             → structured JSON output (keys REDACTED for agent safety)
+    """
+    import json as _json
+    import time
+    import requests
+    from pathlib import Path
+
+    json_mode = "--json" in args
+    file_mode = "--file" in args
+    clean = _clean_args(args)
+
+    # Parse --email flag
+    email_addr = None
+    for i, a in enumerate(clean):
+        if a.lower() == "--email" and i + 1 < len(clean):
+            email_addr = clean[i + 1]
+
+    env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    if not env_path.exists():
+        msg = "No .env file found. Run 'setup' first."
+        if json_mode:
+            print(_json.dumps({"error": msg}))
+        else:
+            print(f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    # 1. Read all keys from .env
+    keys = {}
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            # Collect private keys (not API keys or secrets)
+            if "KEY" in k.upper() and "API" not in k.upper() and "SECRET" not in k.upper():
+                if len(v) >= 60:  # Private keys are 64 hex chars
+                    keys[k] = v
+
+    if not keys:
+        msg = "No private keys found in .env"
+        if json_mode:
+            print(_json.dumps({"error": msg}))
+        else:
+            print(f"  {C.MUTED}No private keys found in .env{C.R}")
+        return
+
+    # 2. Derive ECDSA public key and EVM address for each
+    inventory = []
+    try:
+        from hiero_sdk_python.crypto.private_key import PrivateKey as _PK
+    except ImportError:
+        _PK = None
+
+    mirror = "https://mainnet-public.mirrornode.hedera.com"
+    network = getattr(app, 'network', 'mainnet')
+    if network == "testnet":
+        mirror = "https://testnet.mirrornode.hedera.com"
+
+    for name, hex_key in keys.items():
+        entry = {
+            "env_name": name,
+            "key_hex_redacted": f"{hex_key[:4]}...{hex_key[-4:]}",
+            "key_type": "ECDSA (secp256k1)",
+            "ecdsa_pub": None,
+            "evm_address": None,
+            "account_id": None,
+            "account_nickname": None,
+            "is_active": name in ("PRIVATE_KEY", "ROBOT_PRIVATE_KEY", "MAIN_OPERATOR_KEY"),
+            "is_backup": "BACKUP" in name,
+        }
+
+        if _PK:
+            try:
+                clean_hex = hex_key.replace("0x", "")
+                pk = _PK.from_bytes_ecdsa(bytes.fromhex(clean_hex))
+                pub = pk.public_key()
+                evm = pub.to_evm_address()
+                entry["ecdsa_pub"] = pub.to_string()
+                entry["evm_address"] = f"0x{evm}"
+
+                # Try to find matching account on-chain
+                try:
+                    r = requests.get(f"{mirror}/api/v1/accounts?account.publickey={pub.to_string()}&limit=1", timeout=5)
+                    if r.status_code == 200:
+                        accts = r.json().get("accounts", [])
+                        if accts:
+                            entry["account_id"] = accts[0].get("account")
+                except Exception:
+                    pass
+
+                # Also check known accounts
+                if not entry["account_id"]:
+                    try:
+                        known = app.account_manager.get_known_accounts()
+                        # Match by checking if any known account's EVM matches
+                        for acc in known:
+                            acc_id = acc.get("id", "")
+                            try:
+                                r2 = requests.get(f"{mirror}/api/v1/accounts/{acc_id}", timeout=3)
+                                if r2.status_code == 200:
+                                    on_chain_key = r2.json().get("key", {}).get("key", "")
+                                    if on_chain_key == pub.to_string():
+                                        entry["account_id"] = acc_id
+                                        entry["account_nickname"] = acc.get("nickname", "")
+                                        break
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        inventory.append(entry)
+
+    # 3. Output
+    if json_mode:
+        # Agent-safe: keys are REDACTED
+        print(_json.dumps({
+            "count": len(inventory),
+            "keys": inventory,
+            "note": "Private keys are redacted. Use --file to export full keys securely.",
+        }, indent=2))
+        return
+
+    # Pretty display
+    print(f"\n  {C.BOLD}Key Inventory{C.R}")
+    print(f"  {C.CHROME}{'═' * 60}{C.R}")
+    print(f"  {C.MUTED}Found {len(inventory)} key(s) in .env{C.R}")
+    print()
+
+    for entry in inventory:
+        is_active = entry["is_active"]
+        is_backup = entry["is_backup"]
+        status = f"{C.OK}ACTIVE{C.R}" if is_active else f"{C.MUTED}ARCHIVE{C.R}"
+
+        print(f"  {C.BOLD}{entry['env_name']}{C.R}  [{status}]")
+        print(f"    Key:     {C.ACCENT}{entry['key_hex_redacted']}{C.R}")
+        if entry.get("evm_address"):
+            print(f"    EVM:     {entry['evm_address']}")
+        if entry.get("account_id"):
+            nick = f" ({entry['account_nickname']})" if entry.get("account_nickname") else ""
+            print(f"    Account: {C.OK}{entry['account_id']}{nick}{C.R}")
+        elif not is_backup:
+            print(f"    Account: {C.WARN}No on-chain match found{C.R}")
+        print()
+
+    # 4. Export options
+    if file_mode:
+        backup_dir = Path(__file__).resolve().parent.parent.parent / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        backup_file = backup_dir / f"key_backup_{timestamp}.txt"
+
+        with open(backup_file, "w") as f:
+            f.write(f"PACMAN KEY BACKUP — {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("=" * 60 + "\n")
+            f.write("IMPORTANT: Store this file securely. Delete after saving\n")
+            f.write("to a password manager. These keys control real funds.\n")
+            f.write("=" * 60 + "\n\n")
+            for entry in inventory:
+                f.write(f"{'─' * 60}\n")
+                f.write(f"Name:        {entry['env_name']}\n")
+                f.write(f"Status:      {'ACTIVE' if entry['is_active'] else 'ARCHIVED'}\n")
+                f.write(f"Key Type:    {entry['key_type']}\n")
+                # Write FULL key for backup
+                f.write(f"Private Key: {keys[entry['env_name']]}\n")
+                if entry.get("evm_address"):
+                    f.write(f"EVM Address: {entry['evm_address']}\n")
+                if entry.get("account_id"):
+                    f.write(f"Account ID:  {entry['account_id']}")
+                    if entry.get("account_nickname"):
+                        f.write(f" ({entry['account_nickname']})")
+                    f.write("\n")
+                f.write("\n")
+
+        print(f"  {C.OK}✅ Full key backup written to:{C.R}")
+        print(f"  {C.ACCENT}{backup_file}{C.R}")
+        print(f"  {C.WARN}⚠  Move this file to a secure location immediately.{C.R}")
+        return
+
+    if email_addr:
+        # Generate mailto: link with key inventory
+        import urllib.parse
+        subject = f"Pacman Key Backup — {time.strftime('%Y-%m-%d')}"
+        body_lines = [
+            f"PACMAN KEY BACKUP",
+            f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+            "",
+        ]
+        for entry in inventory:
+            body_lines.append(f"---")
+            body_lines.append(f"Name: {entry['env_name']}")
+            body_lines.append(f"Status: {'ACTIVE' if entry['is_active'] else 'ARCHIVED'}")
+            body_lines.append(f"Key Type: {entry['key_type']}")
+            body_lines.append(f"Private Key: {keys[entry['env_name']]}")
+            if entry.get("evm_address"):
+                body_lines.append(f"EVM Address: {entry['evm_address']}")
+            if entry.get("account_id"):
+                acct_str = entry['account_id']
+                if entry.get("account_nickname"):
+                    acct_str += f" ({entry['account_nickname']})"
+                body_lines.append(f"Account: {acct_str}")
+            body_lines.append("")
+
+        body_lines.append("IMPORTANT: Store securely. Delete after saving to a password manager.")
+        body = "\n".join(body_lines)
+
+        mailto = f"mailto:{email_addr}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body)}"
+
+        print(f"\n  {C.OK}✅ Email link generated.{C.R}")
+        print(f"  {C.MUTED}Open this link to send yourself the backup:{C.R}")
+        print(f"\n  {C.ACCENT}{mailto[:120]}...{C.R}")
+        print(f"\n  {C.WARN}⚠  The link contains your FULL private keys.{C.R}")
+        print(f"  {C.WARN}   Only open on a trusted device.{C.R}")
+
+        # Also try to open it
+        try:
+            import webbrowser
+            webbrowser.open(mailto)
+            print(f"  {C.OK}✓{C.R} Opened in default email client.")
+        except Exception:
+            print(f"  {C.MUTED}Could not auto-open. Copy the link above manually.{C.R}")
+        return
+
+    # Default: show export options
+    print(f"  {C.BOLD}Export Options:{C.R}")
+    print(f"  {C.ACCENT}backup-keys --file{C.R}               Save full backup to backups/ folder")
+    print(f"  {C.ACCENT}backup-keys --email you@mail.com{C.R}  Email keys to yourself")
+    print(f"  {C.ACCENT}backup-keys --json{C.R}               Structured output (keys redacted)")
+    print()
+
+
+# ---------------------------------------------------------------------------
 # .env Helpers
 # ---------------------------------------------------------------------------
 
 def _update_env(key, value, force=False):
-    """Update or add a key-value pair in the .env file with archival safety."""
+    """
+    Update or add a key-value pair in the .env file.
+
+    SAFETY: If the key contains 'KEY' (but not 'API'), and the old value differs,
+    a timestamped backup line is automatically appended BEFORE overwriting.
+    This ensures private keys are NEVER lost — they are the only copy of
+    self-custody funds.
+    """
     from pathlib import Path
     import time
     import os
     env_path = Path(__file__).resolve().parent.parent.parent / ".env"
-    
+
     # Create file if missing
     if not env_path.exists():
         with open(env_path, "w") as f:
             f.write("# Pacman .env\n")
-    
+
     lines = []
     found = False
-    
+
     with open(env_path, "r") as f:
         existing_lines = f.readlines()
 
-    # 2. Update/Append logic
     for line in existing_lines:
         if line.strip().startswith(f"{key}="):
             current_val = line.split("=", 1)[1].strip()
+
+            # SAFETY: Archive the old value if it's a private key
+            # Never lose a key — it may be the only copy of self-custody funds
+            is_sensitive = "KEY" in key.upper() and "API" not in key.upper() and "SECRET" not in key.upper()
+            if is_sensitive and current_val and current_val != value:
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                backup_key = f"{key}_BACKUP_{timestamp}"
+                lines.append(f"# Archived by _update_env on {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                lines.append(f"{backup_key}={current_val}\n")
+
             if not force and current_val and current_val != value:
-                # This prompt is usually handled by the caller, but keep it as a safety valve
                 print(f"\n  {C.WARN}⚠  Warning: {key} already has a value.{C.R}")
                 confirm = _safe_input(f"  Overwrite? {C.MUTED}(y/n){C.R} ")
                 if confirm.lower() not in ["y", "yes"]:
                     print(f"  {C.MUTED}Update skipped.{C.R}")
                     return False
-            
+
             lines.append(f"{key}={value}\n")
             found = True
         else:
             lines.append(line)
-    
+
     if not found:
         if lines and not lines[-1].endswith("\n"):
             lines.append("\n")
         lines.append(f"{key}={value}\n")
-        
+
     with open(env_path, "w") as f:
         f.writelines(lines)
     return True

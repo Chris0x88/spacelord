@@ -131,6 +131,18 @@ Returns a single JSON object with:
 Present the URL to the user — they click to purchase HBAR with credit/debit card.
 ```
 
+### User says "Back up my keys" or "I want to save my keys"
+```
+1. Ask the user for their email address
+2. ./launch.sh backup-keys --email user@example.com --yes
+   → Generates mailto: link with full key inventory
+   → Keys are REDACTED in --json output — agent never sees raw keys
+   → Only the user's email contains the full private keys
+```
+
+**CRITICAL:** When a user creates a new account, ALWAYS suggest they run `backup-keys`.
+The .env file is the ONLY copy of their private keys. If lost, funds are gone forever.
+
 ### User says "What's the bot doing?" or "Check the rebalancer"
 ```
 ./launch.sh robot status --json        → full state, portfolio, signal
@@ -162,6 +174,9 @@ Present the URL to the user — they click to purchase HBAR with credit/debit ca
 | `associate [token]` | `associate USDC --json --yes` | Link token to account |
 | `whitelist` | — | View trusted transfer recipients |
 | `whitelist add [addr]` | — | Add address to whitelist |
+| `backup-keys` | `backup-keys --json` | Show key inventory (redacted for agents) |
+| `backup-keys --file` | — | Export full keys to backups/ folder |
+| `backup-keys --email [addr]` | — | Email key backup to user |
 
 ### NFTs
 | Command | AI Version | Description |

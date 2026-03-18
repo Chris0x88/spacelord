@@ -71,6 +71,8 @@ Before ANY trade or transfer:
 | `fund` | Get MoonPay buy link or testnet faucet |
 | `associate <token> --json` | Link token to account |
 | `whitelist` | View/add/remove trusted recipients |
+| `backup-keys --json` | Key inventory (redacted — agent never sees raw keys) |
+| `backup-keys --email <addr>` | Email full key backup to user |
 
 ### NFTs
 | Command | Description |

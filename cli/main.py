@@ -28,7 +28,7 @@ from cli.display import C, print_security_warning
 # Import command handlers from modules
 from cli.commands.wallet import (
     cmd_setup, cmd_account, cmd_balance, cmd_send, cmd_receive,
-    cmd_whitelist, cmd_associate, cmd_status, cmd_fund,
+    cmd_whitelist, cmd_associate, cmd_status, cmd_fund, cmd_backup_keys,
     check_wallet_setup, check_saucerswap_api_key
 )
 from cli.commands.nfts import cmd_nfts
@@ -95,6 +95,7 @@ COMMANDS = {
     "nfts": cmd_nfts, "nft": cmd_nfts,
     "status": cmd_status, "whoami": cmd_status,
     "fund": cmd_fund, "faucet": cmd_fund, "buy": cmd_fund,
+    "backup-keys": cmd_backup_keys, "export-keys": cmd_backup_keys,
     "install-service": cmd_install_service,
     "uninstall-service": cmd_uninstall_service,
     "status-service": cmd_service_status,
