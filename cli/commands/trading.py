@@ -6,10 +6,12 @@ CLI Commands: Trading & Swap Execution
 Handles: NLP swap parsing, _do_swap execution, swap-v1 legacy swaps.
 """
 
+import sys
 from src.logger import logger
 from src.errors import PacmanError
 from src.translator import translate
 from cli.display import C, print_receipt
+from cli.commands.wallet import _safe_input
 
 
 def handle_natural_language(app, text):
@@ -73,13 +75,7 @@ def _do_swap(app, req, yes=False):
         print(route.explain())
 
         if app.config.require_confirmation and not yes:
-            try:
-                confirm = input(f"\n  Execute swap? {C.MUTED}(y/n){C.R} ").strip().lower()
-            except EOFError:
-                # Non-interactive mode (e.g. AI agent piping commands)
-                # Default YES when stdin is not a TTY — agent explicitly chose to call swap
-                confirm = "y"
-                print(f"  {C.MUTED}[Non-interactive mode — auto-confirming]{C.R}")
+            confirm = _safe_input(f"\n  Execute swap? {C.MUTED}(y/n){C.R} ").strip().lower()
             if confirm not in ["y", "yes"]:
                 print(f"  {C.MUTED}Cancelled.{C.R}")
                 return
@@ -139,9 +135,13 @@ def cmd_swap_v1(app, args):
         return
 
     simulate = getattr(app.config, "simulate_mode", True)
+    yes_flag = "--yes" in args or "-y" in args or not sys.stdin.isatty()
     confirm = "y"
-    if not simulate:
-        confirm = input(f"\n  Execute V1 Swap? {C.MUTED}(y/n){C.R} ").strip().lower()
+    if not simulate and not yes_flag:
+        try:
+            confirm = input(f"\n  Execute V1 Swap? {C.MUTED}(y/n){C.R} ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            confirm = "y"  # Auto-confirm in non-interactive mode
     
     if confirm in ["y", "yes"]:
         res = app.executor.execute_v1_swap(from_id, to_id, amount, simulate=simulate)

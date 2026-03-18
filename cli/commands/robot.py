@@ -110,15 +110,18 @@ def _cmd_signal(app):
 
 def _cmd_start(app):
     """Start the rebalancer daemon."""
+    import json
+    from cli.commands.wallet import _safe_input
+
     bot = _get_or_create_bot(app)
-    
+
     if bot.running:
         print(f"  {C.ACCENT}ℹ{C.R} Robot is already running")
         return
-        
+
     print(f"\n  {C.BOLD}🤖 Power Law Robot Deployment{C.R}")
     print(f"  {C.CHROME}{'─' * 45}{C.R}")
-    
+
     # Check if a robot account is already configured in .env
     robot_id = app.config.robot_account_id
     if not robot_id:
@@ -128,7 +131,7 @@ def _cmd_start(app):
             acc_path = Path("data/accounts.json")
             if acc_path.exists():
                 with open(acc_path) as f:
-                    accs = _json.load(f)
+                    accs = json.load(f)
                     if isinstance(accs, list):
                         for acc in accs:
                             if acc.get("nickname") == "Robot":
@@ -166,7 +169,7 @@ def _cmd_start(app):
         # No robot account found anywhere
         print(f"  {C.MUTED}Security Best Practice: Run the robot in an isolated child account{C.R}")
         print(f"  {C.MUTED}so your daily transactions don't disturb its target thresholds.{C.R}")
-        confirm = input(f"\n  Would you like to create a dedicated Child Account now? {C.MUTED}(y/N){C.R} ").strip().lower()
+        confirm = _safe_input(f"\n  Would you like to create a dedicated Child Account now? {C.MUTED}(y/N){C.R} ", default="n").strip().lower()
         
         if confirm in ["y", "yes"]:
             print(f"\n  {C.MUTED}Creating isolated sub-account...{C.R}")

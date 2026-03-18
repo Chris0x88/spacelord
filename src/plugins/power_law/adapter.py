@@ -42,11 +42,15 @@ class PortfolioState:
 class PacmanAdapter:
     """
     Adapts PacmanController for the Power Law rebalancer bot.
-    
+
     The bot calls adapter methods instead of talking to Web3 directly.
     This keeps one source of truth for all swap/balance/price logic.
+
+    If the robot has its own ROBOT_PRIVATE_KEY, the adapter creates a dedicated
+    executor so that swaps and balance queries target the correct robot account
+    (not the parent account's EVM alias).
     """
-    
+
     def __init__(self, controller):
         """
         Args:
@@ -55,6 +59,49 @@ class PacmanAdapter:
         self.controller = controller
         self._last_price_fetch = None
         self._cached_price = 0.0
+        self._robot_executor = None  # Lazy-init dedicated executor for robot account
+
+    @property
+    def robot_executor(self):
+        """
+        Get a dedicated executor for the robot account if ROBOT_PRIVATE_KEY is set.
+        This ensures swaps execute from the robot's own EVM address, not the parent's.
+        Falls back to the main controller's executor if no separate key exists.
+        """
+        if self._robot_executor is not None:
+            return self._robot_executor
+
+        robot_key = getattr(self.controller.config, 'robot_private_key', None)
+        robot_id = getattr(self.controller.config, 'robot_account_id', None)
+
+        if robot_key and robot_id:
+            try:
+                from src.config import PacmanConfig, SecureString
+                from src.executor import PacmanExecutor
+
+                # Build a config clone for the robot with its own key
+                robot_config = PacmanConfig(
+                    private_key=robot_key,
+                    network=self.controller.config.network,
+                    rpc_url=self.controller.config.rpc_url,
+                    simulate_mode=self.controller.config.simulate_mode,
+                    hedera_account_id=robot_id,
+                    max_swap_amount_usd=self.controller.config.max_swap_amount_usd,
+                    max_daily_volume_usd=self.controller.config.max_daily_volume_usd,
+                    max_slippage_percent=self.controller.config.max_slippage_percent,
+                    require_confirmation=False,  # Robot never needs human confirmation
+                )
+                self._robot_executor = PacmanExecutor(robot_config)
+                logger.info(f"[PowerLaw] Robot executor initialized for {robot_id} (own key)")
+            except Exception as e:
+                logger.warning(f"[PowerLaw] Could not init robot executor: {e}. Using main executor.")
+                self._robot_executor = self.controller.executor
+        else:
+            # No separate key — fall back to main executor (legacy sub-account mode)
+            logger.debug("[PowerLaw] No ROBOT_PRIVATE_KEY — using main executor for robot operations")
+            self._robot_executor = self.controller.executor
+
+        return self._robot_executor
     
     def get_btc_price(self) -> float:
         """Get current BTC price in USD from Pacman's price manager."""
@@ -86,20 +133,39 @@ class PacmanAdapter:
         return 0.0
     
     def get_portfolio_state(self) -> Optional[PortfolioState]:
-        """Get current portfolio balances and allocation percentages."""
+        """Get current portfolio balances and allocation percentages.
+
+        Uses the robot's own executor (if ROBOT_PRIVATE_KEY is set) to query
+        balances from the robot's EVM address directly. Falls back to Mirror Node
+        via account_id if using legacy shared-key sub-accounts.
+        """
         try:
-            # Get balances from controller — highlight essential tokens for rebalancer
-            highlights = [WBTC_TOKEN_ID, USDC_TOKEN_ID, "0.0.0"] # 0.0.0 is native HBAR
-            
-            # Use dedicated robot account if configured
+            # Get balances using the robot's dedicated executor
+            highlights = [WBTC_TOKEN_ID, USDC_TOKEN_ID, "0.0.0"]
             robot_id = getattr(self.controller.config, "robot_account_id", None)
-            balances = self.controller.get_balances(token_highlights=highlights, account_id=robot_id)
+
+            # If robot has its own executor (own key), use it directly
+            if self._robot_executor is not None or getattr(self.controller.config, 'robot_private_key', None):
+                executor = self.robot_executor
+                balances = executor.get_balances(token_highlights=highlights)
+            else:
+                # Legacy: shared key — query by account_id via Mirror Node
+                balances = self.controller.get_balances(token_highlights=highlights, account_id=robot_id)
+
             if not balances:
-                # Fallback: try alternate method name
-                try:
-                    balances = self.controller.get_all_balances()
-                except Exception:
-                    pass
+                # Fallback: try Mirror Node directly for robot account
+                if robot_id:
+                    from src.balances import _get_balances_mirror
+                    import json
+                    from pathlib import Path
+                    tokens_path = Path(__file__).resolve().parent.parent.parent.parent / "data" / "tokens.json"
+                    try:
+                        with open(tokens_path) as f:
+                            tokens_data = json.load(f)
+                        balances = _get_balances_mirror(robot_id, tokens_data, highlights, self.controller.config.network)
+                    except Exception:
+                        pass
+
             if not balances:
                 logger.error("[PowerLaw] Cannot fetch balances")
                 return None
@@ -183,15 +249,21 @@ class PacmanAdapter:
                 }
             
             # Live swap via controller
-            # Use dedicated robot account if configured
+            # Use robot's own executor if available (ensures correct EVM address for signing)
             robot_id = getattr(self.controller.config, "robot_account_id", None)
-            
+
             route = self.controller.get_route(from_token, to_token, amount)
             if not route or route.confidence == 0.0:
                 return {"success": False, "error": "No route found for rebalance"}
-            
-            # Pass account_id to swap if supported (I need to check controller.swap)
-            result = self.controller.swap(from_token, to_token, amount, account_id=robot_id)
+
+            # If robot has its own executor, execute swap directly through it
+            robot_key = getattr(self.controller.config, 'robot_private_key', None)
+            if robot_key and self.robot_executor != self.controller.executor:
+                logger.info(f"[PowerLaw] Executing swap via robot's own executor ({robot_id})")
+                result = self.robot_executor.execute_swap(route=route, raw_amount=amount, mode="exact_in")
+            else:
+                # Legacy: pass account_id hint to controller
+                result = self.controller.swap(from_token, to_token, amount, account_id=robot_id)
             
             # The controller returns an ExecutionResult object, not a dict.
             # Convert it to a dict first if it has a to_dict method, or access properties directly.

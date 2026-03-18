@@ -72,6 +72,7 @@ class PacmanConfig:
     # Hedera Accounts
     hedera_account_id: Optional[str] = None  # 0.0.xxx format
     robot_account_id: Optional[str] = None   # Dedicated robot account ID
+    robot_private_key: Optional[SecureString] = None  # Dedicated robot private key (if independent)
 
     @property
     def debug(self) -> bool:
@@ -131,6 +132,7 @@ class PacmanConfig:
         config.max_daily_volume_usd = min(max_daily, 10.00)  # Hard cap at $10
         
         # Slippage priority: ENV var > settings.json > default (2.0%)
+        max_slippage = 2.0  # Default fallback
         env_slippage = os.getenv("PACMAN_MAX_SLIPPAGE")
         if env_slippage:
             max_slippage = cls._safe_float(env_slippage, 2.0)
@@ -160,6 +162,12 @@ class PacmanConfig:
         # Hedera account ID (for transaction records)
         config.hedera_account_id = os.getenv("HEDERA_ACCOUNT_ID")
         config.robot_account_id = os.getenv("ROBOT_ACCOUNT_ID")
+
+        # Robot private key (for independent robot accounts with their own key)
+        robot_key = os.getenv("ROBOT_PRIVATE_KEY")
+        if robot_key:
+            config.robot_private_key = SecureString(robot_key)
+            del robot_key
         
         # Hands-free: Load robot_account_id from data if not in env
         if not config.robot_account_id:

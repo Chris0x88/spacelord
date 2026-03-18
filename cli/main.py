@@ -28,8 +28,10 @@ from cli.display import C, print_security_warning
 # Import command handlers from modules
 from cli.commands.wallet import (
     cmd_setup, cmd_account, cmd_balance, cmd_send, cmd_receive,
-    cmd_whitelist, cmd_associate, check_wallet_setup, check_saucerswap_api_key
+    cmd_whitelist, cmd_associate, cmd_status, cmd_fund,
+    check_wallet_setup, check_saucerswap_api_key
 )
+from cli.commands.nfts import cmd_nfts
 from cli.commands.trading import handle_natural_language, cmd_swap_v1, cmd_slippage, cmd_lp_padding
 from cli.commands.staking import cmd_stake, cmd_unstake
 from cli.commands.liquidity import cmd_pool_deposit, cmd_pool_withdraw, cmd_lp_positions
@@ -90,11 +92,33 @@ COMMANDS = {
     "robot": cmd_robot, "bot": cmd_robot,
     "refresh": cmd_refresh, "sync": cmd_refresh,
     "doctor": cmd_doctor,
+    "nfts": cmd_nfts, "nft": cmd_nfts,
+    "status": cmd_status, "whoami": cmd_status,
+    "fund": cmd_fund, "faucet": cmd_fund, "buy": cmd_fund,
     "install-service": cmd_install_service,
     "uninstall-service": cmd_uninstall_service,
     "status-service": cmd_service_status,
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
 }
+
+def _is_auto_yes(args: list) -> bool:
+    """Check if --yes flag is present or stdin is non-interactive (OpenClaw/pipe)."""
+    return "--yes" in args or "-y" in args or not sys.stdin.isatty()
+
+def _safe_input(prompt: str, args: list = None, default: str = "y") -> str:
+    """
+    Safe input() wrapper for AI agent compatibility.
+    If --yes is in args or stdin is non-interactive, returns default without prompting.
+    Prevents EOFError crashes when driven by OpenClaw exec or pipes.
+    """
+    if args and _is_auto_yes(args):
+        return default
+    if not sys.stdin.isatty():
+        return default
+    try:
+        return input(prompt).strip()
+    except (EOFError, KeyboardInterrupt):
+        return default
 
 def process_input(app, text):
     logger.info(f"User Input: {text}")
@@ -106,17 +130,21 @@ def process_input(app, text):
     parts = [p for p in parts if p not in ("--yes", "-y")]
     if not parts: return
 
+    # Auto-detect non-interactive mode (pipes, subprocess, OpenClaw exec)
+    if not sys.stdin.isatty():
+        yes_flag = True
+
     cmd = parts[0].lower()
     args = parts[1:]
 
+    # Inject --yes into args for ALL commands when yes_flag is set
+    # This lets individual command handlers check for it
+    if yes_flag and "--yes" not in args:
+        args = args + ["--yes"]
+
     if cmd in COMMANDS:
         try:
-            # Pass yes_flag to commands that support it
-            if yes_flag and cmd in ("swap", "swap-v1", "v1"):
-                # Trading commands get yes_flag injected into args
-                COMMANDS[cmd](app, args + ["--yes"])
-            else:
-                COMMANDS[cmd](app, args)
+            COMMANDS[cmd](app, args)
         except PacmanError as e:
             print(f"  {C.ERR}✗{C.R} {e}")
         except Exception as e:
