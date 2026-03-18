@@ -445,6 +445,35 @@ def get_powerlaw_chart():
         logger.error(f"[API] Error generating chart: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app_flask.route("/hedera-prices", methods=["GET"])
+@require_auth
+def get_hedera_prices():
+    """Return daily price history for Hedera ecosystem tokens.
+
+    Query params:
+        days: Number of days of history (default: 365, max: 365)
+        tokens: Comma-separated token symbols (default: all)
+
+    Response: { "HBAR": [{"date": "2024-03-18", "price": 0.107}, ...], ... }
+    """
+    try:
+        from src.plugins.power_law.hedera_charting import get_hedera_price_history
+        days = min(int(request.args.get("days", 365)), 365)
+
+        prices = get_hedera_price_history(days=days)
+
+        # Filter by requested tokens if specified
+        tokens_filter = request.args.get("tokens")
+        if tokens_filter:
+            requested = [t.strip().upper() for t in tokens_filter.split(",")]
+            prices = {k: v for k, v in prices.items() if k in requested}
+
+        return jsonify(prices)
+    except Exception as e:
+        logger.error(f"[API] Error fetching Hedera prices: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 def run_server(app, port=8088):
     """Entry point for the API thread."""
     global pacman_app
