@@ -343,15 +343,50 @@ def cmd_account(app, args):
     label = f" '{C.ACCENT}{nickname}{C.R}'" if nickname else ""
     print(f"  {C.OK}✅ Created Account{label}: {C.BOLD}{new_id}{C.R}")
 
-    # --- KEY BACKUP DISPLAY ---
+    # --- AUTOMATIC KEY BACKUP ---
+    # Keys are saved to local files automatically (~/Downloads + backups/).
+    # In agent mode, the key is NEVER printed to stdout (prevents API leakage).
     if new_private_key:
-        print(f"\n  {C.WARN}{'═' * 56}{C.R}")
-        print(f"  {C.WARN}⚠  PRIVATE KEY — SAVE THIS NOW. IT WILL NOT BE SHOWN AGAIN.{C.R}")
-        print(f"  {C.WARN}{'═' * 56}{C.R}")
-        print(f"  {C.ACCENT}{new_private_key}{C.R}")
-        print(f"  {C.WARN}{'═' * 56}{C.R}")
-        print(f"  {C.TEXT}Account ID: {new_id}{C.R}")
-        print(f"  {C.TEXT}Key Type:   ECDSA (secp256k1){C.R}")
+        # Derive EVM address for the backup file
+        evm_addr = ""
+        try:
+            from hiero_sdk_python.crypto.private_key import PrivateKey as _PK
+            _pk = _PK.from_bytes_ecdsa(bytes.fromhex(new_private_key.replace("0x", "")))
+            evm_addr = f"0x{_pk.public_key().to_evm_address()}"
+        except Exception:
+            pass
+
+        backup_result = _auto_backup_new_key(new_id, new_private_key, nickname, evm_addr)
+        saved_files = backup_result.get("files", [])
+
+        if sys.stdin.isatty() and not _is_auto_yes(args):
+            # Human at keyboard — show the key on screen
+            print(f"\n  {C.WARN}{'═' * 56}{C.R}")
+            print(f"  {C.WARN}⚠  PRIVATE KEY — BACKED UP AUTOMATICALLY{C.R}")
+            print(f"  {C.WARN}{'═' * 56}{C.R}")
+            print(f"  {C.ACCENT}{new_private_key}{C.R}")
+            print(f"  {C.WARN}{'═' * 56}{C.R}")
+            print(f"  {C.TEXT}Account ID: {new_id}{C.R}")
+            print(f"  {C.TEXT}Key Type:   ECDSA (secp256k1){C.R}")
+            if evm_addr:
+                print(f"  {C.TEXT}EVM Addr:   {evm_addr}{C.R}")
+        else:
+            # Agent mode — NEVER show the key, only the backup file paths
+            print(f"\n  {C.TEXT}Account ID: {new_id}{C.R}")
+            print(f"  {C.TEXT}Key Type:   ECDSA (secp256k1){C.R}")
+            if evm_addr:
+                print(f"  {C.TEXT}EVM Addr:   {evm_addr}{C.R}")
+
+        if saved_files:
+            for fp in saved_files:
+                print(f"  {C.OK}✅ Key saved:{C.R} {fp}")
+            # Try to open email draft locally
+            _try_open_email_draft(
+                f"Pacman Key Backup — {new_id}",
+                f"Account: {new_id}\nNickname: {nickname}\nKey Type: ECDSA\nPrivate Key: {new_private_key}\nEVM: {evm_addr}\n\nSave to a password manager."
+            )
+        else:
+            print(f"  {C.WARN}⚠  Could not auto-save key backup. Copy from .env manually.{C.R}")
 
     # If this is a robot account, store its key in .env
     if purpose == "rebalancer":
@@ -1000,6 +1035,102 @@ def cmd_fund(app, args):
 
 
 # ---------------------------------------------------------------------------
+# Key Backup Helpers
+# ---------------------------------------------------------------------------
+
+def _auto_backup_new_key(account_id, private_key, nickname="", evm_address=""):
+    """
+    Automatically save a new account's private key to TWO locations:
+    1. backups/ folder in the project (gitignored)
+    2. ~/Downloads/ so the user sees it immediately
+
+    Returns a dict with the file paths (no key content — safe for stdout).
+    """
+    from pathlib import Path
+    import time
+    import os
+
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    safe_id = account_id.replace(".", "_")
+    filename = f"pacman_key_{safe_id}_{timestamp}.txt"
+
+    content = (
+        f"PACMAN KEY BACKUP\n"
+        f"{'=' * 50}\n"
+        f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        f"Account ID:  {account_id}\n"
+        f"Nickname:    {nickname or '(none)'}\n"
+        f"Key Type:    ECDSA (secp256k1)\n"
+        f"Private Key: {private_key}\n"
+    )
+    if evm_address:
+        content += f"EVM Address: {evm_address}\n"
+    content += (
+        f"\n{'=' * 50}\n"
+        f"IMPORTANT: Save this to a password manager,\n"
+        f"then delete this file. This key controls real\n"
+        f"funds on Hedera. If lost, funds are gone forever.\n"
+    )
+
+    saved_paths = []
+
+    # 1. Save to backups/ in project
+    try:
+        backup_dir = Path(__file__).resolve().parent.parent.parent / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        path1 = backup_dir / filename
+        with open(path1, "w") as f:
+            f.write(content)
+        saved_paths.append(str(path1))
+    except Exception:
+        pass
+
+    # 2. Save to ~/Downloads (user will see it)
+    try:
+        downloads = Path.home() / "Downloads"
+        if downloads.exists() and downloads.is_dir():
+            path2 = downloads / filename
+            with open(path2, "w") as f:
+                f.write(content)
+            saved_paths.append(str(path2))
+    except Exception:
+        pass
+
+    return {"files": saved_paths, "filename": filename}
+
+
+def _try_open_email_draft(subject, body_text):
+    """
+    Try to open the user's local email client with a pre-filled draft.
+    Uses subprocess to call 'open' (macOS) or 'xdg-open' (Linux) on a
+    mailto: URI. This runs LOCALLY — the mailto content never touches
+    stdout or agent APIs.
+
+    Returns True if opened, False if not available.
+    """
+    import subprocess
+    import urllib.parse
+    import platform
+
+    mailto = f"mailto:?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body_text)}"
+
+    try:
+        system = platform.system()
+        if system == "Darwin":
+            subprocess.Popen(["open", mailto], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+        elif system == "Linux":
+            subprocess.Popen(["xdg-open", mailto], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+        elif system == "Windows":
+            subprocess.Popen(["start", mailto], shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+# ---------------------------------------------------------------------------
 # Key Backup Command
 # ---------------------------------------------------------------------------
 
@@ -1123,17 +1254,72 @@ def cmd_backup_keys(app, args):
 
         inventory.append(entry)
 
-    # 3. Output — keys are NEVER in stdout (security: prevents API leakage)
+    # 3. File export — handle --file first (can combine with --json)
+    backup_file_path = None
+    downloads_path = None
+    email_opened = False
+
+    if file_mode:
+        backup_dir = Path(__file__).resolve().parent.parent.parent / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        backup_file = backup_dir / f"key_backup_{timestamp}.txt"
+
+        file_content = (
+            f"PACMAN KEY BACKUP — {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"{'=' * 60}\n"
+            f"IMPORTANT: Save to a password manager, then delete this file.\n"
+            f"These keys control real funds on Hedera mainnet.\n"
+            f"{'=' * 60}\n\n"
+        )
+        for entry in inventory:
+            file_content += f"{'─' * 60}\n"
+            file_content += f"Name:        {entry['env_name']}\n"
+            file_content += f"Status:      {'ACTIVE' if entry['is_active'] else 'ARCHIVED'}\n"
+            file_content += f"Key Type:    {entry['key_type']}\n"
+            file_content += f"Private Key: {keys[entry['env_name']]}\n"
+            if entry.get("evm_address"):
+                file_content += f"EVM Address: {entry['evm_address']}\n"
+            if entry.get("account_id"):
+                acct_str = entry['account_id']
+                if entry.get("account_nickname"):
+                    acct_str += f" ({entry['account_nickname']})"
+                file_content += f"Account ID:  {acct_str}\n"
+            file_content += "\n"
+
+        # Write to backups/
+        with open(backup_file, "w") as f:
+            f.write(file_content)
+        backup_file_path = str(backup_file)
+
+        # Also write to ~/Downloads so user sees it immediately
+        try:
+            dl_dir = Path.home() / "Downloads"
+            if dl_dir.exists() and dl_dir.is_dir():
+                dl_file = dl_dir / f"key_backup_{timestamp}.txt"
+                with open(dl_file, "w") as f:
+                    f.write(file_content)
+                downloads_path = str(dl_file)
+        except Exception:
+            pass
+
+        # Try to open email client locally (keys never go through stdout)
+        email_subject = f"Pacman Key Backup — {time.strftime('%Y-%m-%d')}"
+        email_opened = _try_open_email_draft(email_subject, file_content)
+
+    # 4. Output
     if json_mode:
-        # Agent-safe: keys are REDACTED. Full keys only via --file.
-        print(_json.dumps({
+        result = {
             "count": len(inventory),
             "keys": inventory,
-            "security_note": "Private keys are redacted in all output. "
-                             "Keys never flow through agent APIs. "
-                             "Tell the user to run 'backup-keys --file' directly "
-                             "on their machine to export full keys.",
-        }, indent=2))
+            "security_note": "Private keys are redacted. Full keys saved to local files only.",
+        }
+        if backup_file_path:
+            result["backup_file"] = backup_file_path
+            result["downloads_file"] = downloads_path
+            result["email_draft_opened"] = email_opened
+            result["success"] = True
+        print(_json.dumps(result, indent=2))
         return
 
     # Pretty display (keys redacted on screen too)
@@ -1158,50 +1344,25 @@ def cmd_backup_keys(app, args):
             print(f"    Account: {C.WARN}No on-chain match found{C.R}")
         print()
 
-    # 4. File export — the ONLY way to get full keys out
-    if file_mode:
-        backup_dir = Path(__file__).resolve().parent.parent.parent / "backups"
-        backup_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        backup_file = backup_dir / f"key_backup_{timestamp}.txt"
-
-        with open(backup_file, "w") as f:
-            f.write(f"PACMAN KEY BACKUP — {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write("=" * 60 + "\n")
-            f.write("IMPORTANT: Store this file securely. Delete after\n")
-            f.write("saving to a password manager. These keys control\n")
-            f.write("real funds on Hedera mainnet.\n")
-            f.write("=" * 60 + "\n\n")
-            for entry in inventory:
-                f.write(f"{'─' * 60}\n")
-                f.write(f"Name:        {entry['env_name']}\n")
-                f.write(f"Status:      {'ACTIVE' if entry['is_active'] else 'ARCHIVED'}\n")
-                f.write(f"Key Type:    {entry['key_type']}\n")
-                f.write(f"Private Key: {keys[entry['env_name']]}\n")
-                if entry.get("evm_address"):
-                    f.write(f"EVM Address: {entry['evm_address']}\n")
-                if entry.get("account_id"):
-                    f.write(f"Account ID:  {entry['account_id']}")
-                    if entry.get("account_nickname"):
-                        f.write(f" ({entry['account_nickname']})")
-                    f.write("\n")
-                f.write("\n")
-
-        print(f"  {C.OK}✅ Full key backup written to:{C.R}")
-        print(f"  {C.ACCENT}{backup_file}{C.R}")
-        print(f"  {C.WARN}⚠  Move this file to a secure location immediately.{C.R}")
-        print(f"  {C.WARN}   Save to a password manager, then delete the file.{C.R}")
+    # Show file export results (file was already written above if --file)
+    if file_mode and backup_file_path:
+        print(f"  {C.OK}✅ Key backup saved:{C.R}")
+        print(f"    {C.ACCENT}{backup_file_path}{C.R}")
+        if downloads_path:
+            print(f"    {C.ACCENT}{downloads_path}{C.R}")
+        if email_opened:
+            print(f"  {C.OK}✓{C.R} Email draft opened in your mail client.")
+        print(f"\n  {C.WARN}⚠  Save to a password manager, then delete the files.{C.R}")
         return
 
-    # Default: show export instructions
-    print(f"  {C.BOLD}How to Back Up Your Keys:{C.R}")
+    # Default: show options
+    print(f"  {C.BOLD}Backup Options:{C.R}")
     print(f"  {C.CHROME}{'─' * 60}{C.R}")
-    print(f"  {C.ACCENT}backup-keys --file{C.R}   Save full backup to backups/ folder")
-    print(f"  {C.ACCENT}backup-keys --json{C.R}   Show inventory (keys redacted, safe for agents)")
+    print(f"  {C.ACCENT}backup-keys --file{C.R}   Save full backup to ~/Downloads + backups/")
+    print(f"  {C.ACCENT}backup-keys --json{C.R}   Key inventory (redacted, safe for agents)")
     print()
-    print(f"  {C.WARN}⚠  Security:{C.R} Full private keys are ONLY written to local files.")
-    print(f"  {C.WARN}   They never appear in command output, agent APIs, or logs.{C.R}")
-    print(f"  {C.WARN}   Your .env file is the primary key store — back it up.{C.R}")
+    print(f"  {C.MUTED}Keys are automatically backed up when new accounts are created.{C.R}")
+    print(f"  {C.WARN}⚠  Private keys never appear in agent output or API traffic.{C.R}")
     print()
 
 

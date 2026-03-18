@@ -133,20 +133,20 @@ Present the URL to the user — they click to purchase HBAR with credit/debit ca
 
 ### User says "Back up my keys" or "I want to save my keys"
 ```
-1. Run: ./launch.sh backup-keys --json
-   → Returns key inventory with REDACTED keys (agent never sees raw keys)
-2. Tell the user to run this command THEMSELVES on their local machine:
-   ./launch.sh backup-keys --file
-   → Writes full keys to backups/key_backup_<date>.txt
-3. Remind user to save the file to a password manager, then delete it
+./launch.sh backup-keys --file --json --yes
+→ Saves full key backup to ~/Downloads/ AND backups/ folder
+→ Tries to open the user's email client with a draft containing keys
+→ JSON output shows only file paths (keys REDACTED in stdout)
+→ Tell user: "Your keys have been saved to [file paths]. Save to a password manager."
 ```
 
-**SECURITY:** Private keys NEVER flow through agent output or LLM APIs.
-Full keys are ONLY accessible via `--file` on the user's local machine.
-The agent should NEVER attempt to read, display, or transmit private keys.
+**AUTOMATIC BACKUP:** When any new account is created, Pacman automatically saves the
+new key to ~/Downloads/ and backups/. The agent never needs to handle raw keys.
 
-**CRITICAL:** When a user creates a new account, ALWAYS suggest they run `backup-keys --file`.
-The .env file is the ONLY copy of their private keys. If lost, funds are gone forever.
+**SECURITY:** Private keys NEVER flow through agent output or LLM APIs.
+Full keys are written to LOCAL FILES ONLY (~/Downloads, backups/).
+On macOS/Linux, Pacman also tries to open the user's email client with a pre-filled draft.
+The agent should NEVER attempt to read, display, or transmit private keys.
 
 ### User says "What's the bot doing?" or "Check the rebalancer"
 ```
