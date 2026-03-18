@@ -251,5 +251,5 @@ cp .env.template .env    # Add your Hedera testnet key
 ```
 Pacman v1.0.0-beta | Hedera Apex Hackathon 2026
 License: MIT | Author: Christopher David Imgraben
-Disclaimer: Experimental software. Use disposable keys. Not financial advice.
+Disclaimer: Experimental software. Use disposable keys. Not a regulated service.
 ```
