@@ -1005,13 +1005,16 @@ def cmd_fund(app, args):
 
 def cmd_backup_keys(app, args):
     """
-    Display key inventory and optionally export to file or email link.
+    Display key inventory and export to a secure local file.
+
+    SECURITY MODEL: Private keys NEVER appear in stdout when --json is used.
+    This prevents keys from flowing through agent APIs (OpenClaw, LLM pipes).
+    Full keys are ONLY written to local files that the user accesses directly.
 
     Usage:
-      backup-keys                    → show key inventory (redacted on screen)
-      backup-keys --file             → export full keys to backups/key_backup_<date>.txt
-      backup-keys --email user@x.com → generate mailto: link with key inventory
-      backup-keys --json             → structured JSON output (keys REDACTED for agent safety)
+      backup-keys                → show key inventory (redacted on screen) + export options
+      backup-keys --file         → export full keys to backups/key_backup_<date>.txt
+      backup-keys --json         → structured JSON (keys REDACTED — safe for agents)
     """
     import json as _json
     import time
@@ -1020,13 +1023,6 @@ def cmd_backup_keys(app, args):
 
     json_mode = "--json" in args
     file_mode = "--file" in args
-    clean = _clean_args(args)
-
-    # Parse --email flag
-    email_addr = None
-    for i, a in enumerate(clean):
-        if a.lower() == "--email" and i + 1 < len(clean):
-            email_addr = clean[i + 1]
 
     env_path = Path(__file__).resolve().parent.parent.parent / ".env"
     if not env_path.exists():
@@ -1037,7 +1033,7 @@ def cmd_backup_keys(app, args):
             print(f"  {C.ERR}✗{C.R} {msg}")
         return
 
-    # 1. Read all keys from .env
+    # 1. Read all private keys from .env
     keys = {}
     with open(env_path) as f:
         for line in f:
@@ -1060,7 +1056,7 @@ def cmd_backup_keys(app, args):
             print(f"  {C.MUTED}No private keys found in .env{C.R}")
         return
 
-    # 2. Derive ECDSA public key and EVM address for each
+    # 2. Derive ECDSA public key and EVM address for each key
     inventory = []
     try:
         from hiero_sdk_python.crypto.private_key import PrivateKey as _PK
@@ -1094,7 +1090,7 @@ def cmd_backup_keys(app, args):
                 entry["ecdsa_pub"] = pub.to_string()
                 entry["evm_address"] = f"0x{evm}"
 
-                # Try to find matching account on-chain
+                # Try to find matching account on-chain via public key lookup
                 try:
                     r = requests.get(f"{mirror}/api/v1/accounts?account.publickey={pub.to_string()}&limit=1", timeout=5)
                     if r.status_code == 200:
@@ -1104,11 +1100,10 @@ def cmd_backup_keys(app, args):
                 except Exception:
                     pass
 
-                # Also check known accounts
+                # Fallback: check known accounts by matching on-chain key
                 if not entry["account_id"]:
                     try:
                         known = app.account_manager.get_known_accounts()
-                        # Match by checking if any known account's EVM matches
                         for acc in known:
                             acc_id = acc.get("id", "")
                             try:
@@ -1128,17 +1123,20 @@ def cmd_backup_keys(app, args):
 
         inventory.append(entry)
 
-    # 3. Output
+    # 3. Output — keys are NEVER in stdout (security: prevents API leakage)
     if json_mode:
-        # Agent-safe: keys are REDACTED
+        # Agent-safe: keys are REDACTED. Full keys only via --file.
         print(_json.dumps({
             "count": len(inventory),
             "keys": inventory,
-            "note": "Private keys are redacted. Use --file to export full keys securely.",
+            "security_note": "Private keys are redacted in all output. "
+                             "Keys never flow through agent APIs. "
+                             "Tell the user to run 'backup-keys --file' directly "
+                             "on their machine to export full keys.",
         }, indent=2))
         return
 
-    # Pretty display
+    # Pretty display (keys redacted on screen too)
     print(f"\n  {C.BOLD}Key Inventory{C.R}")
     print(f"  {C.CHROME}{'═' * 60}{C.R}")
     print(f"  {C.MUTED}Found {len(inventory)} key(s) in .env{C.R}")
@@ -1160,7 +1158,7 @@ def cmd_backup_keys(app, args):
             print(f"    Account: {C.WARN}No on-chain match found{C.R}")
         print()
 
-    # 4. Export options
+    # 4. File export — the ONLY way to get full keys out
     if file_mode:
         backup_dir = Path(__file__).resolve().parent.parent.parent / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
@@ -1170,15 +1168,15 @@ def cmd_backup_keys(app, args):
         with open(backup_file, "w") as f:
             f.write(f"PACMAN KEY BACKUP — {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("=" * 60 + "\n")
-            f.write("IMPORTANT: Store this file securely. Delete after saving\n")
-            f.write("to a password manager. These keys control real funds.\n")
+            f.write("IMPORTANT: Store this file securely. Delete after\n")
+            f.write("saving to a password manager. These keys control\n")
+            f.write("real funds on Hedera mainnet.\n")
             f.write("=" * 60 + "\n\n")
             for entry in inventory:
                 f.write(f"{'─' * 60}\n")
                 f.write(f"Name:        {entry['env_name']}\n")
                 f.write(f"Status:      {'ACTIVE' if entry['is_active'] else 'ARCHIVED'}\n")
                 f.write(f"Key Type:    {entry['key_type']}\n")
-                # Write FULL key for backup
                 f.write(f"Private Key: {keys[entry['env_name']]}\n")
                 if entry.get("evm_address"):
                     f.write(f"EVM Address: {entry['evm_address']}\n")
@@ -1192,57 +1190,18 @@ def cmd_backup_keys(app, args):
         print(f"  {C.OK}✅ Full key backup written to:{C.R}")
         print(f"  {C.ACCENT}{backup_file}{C.R}")
         print(f"  {C.WARN}⚠  Move this file to a secure location immediately.{C.R}")
+        print(f"  {C.WARN}   Save to a password manager, then delete the file.{C.R}")
         return
 
-    if email_addr:
-        # Generate mailto: link with key inventory
-        import urllib.parse
-        subject = f"Pacman Key Backup — {time.strftime('%Y-%m-%d')}"
-        body_lines = [
-            f"PACMAN KEY BACKUP",
-            f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}",
-            "",
-        ]
-        for entry in inventory:
-            body_lines.append(f"---")
-            body_lines.append(f"Name: {entry['env_name']}")
-            body_lines.append(f"Status: {'ACTIVE' if entry['is_active'] else 'ARCHIVED'}")
-            body_lines.append(f"Key Type: {entry['key_type']}")
-            body_lines.append(f"Private Key: {keys[entry['env_name']]}")
-            if entry.get("evm_address"):
-                body_lines.append(f"EVM Address: {entry['evm_address']}")
-            if entry.get("account_id"):
-                acct_str = entry['account_id']
-                if entry.get("account_nickname"):
-                    acct_str += f" ({entry['account_nickname']})"
-                body_lines.append(f"Account: {acct_str}")
-            body_lines.append("")
-
-        body_lines.append("IMPORTANT: Store securely. Delete after saving to a password manager.")
-        body = "\n".join(body_lines)
-
-        mailto = f"mailto:{email_addr}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body)}"
-
-        print(f"\n  {C.OK}✅ Email link generated.{C.R}")
-        print(f"  {C.MUTED}Open this link to send yourself the backup:{C.R}")
-        print(f"\n  {C.ACCENT}{mailto[:120]}...{C.R}")
-        print(f"\n  {C.WARN}⚠  The link contains your FULL private keys.{C.R}")
-        print(f"  {C.WARN}   Only open on a trusted device.{C.R}")
-
-        # Also try to open it
-        try:
-            import webbrowser
-            webbrowser.open(mailto)
-            print(f"  {C.OK}✓{C.R} Opened in default email client.")
-        except Exception:
-            print(f"  {C.MUTED}Could not auto-open. Copy the link above manually.{C.R}")
-        return
-
-    # Default: show export options
-    print(f"  {C.BOLD}Export Options:{C.R}")
-    print(f"  {C.ACCENT}backup-keys --file{C.R}               Save full backup to backups/ folder")
-    print(f"  {C.ACCENT}backup-keys --email you@mail.com{C.R}  Email keys to yourself")
-    print(f"  {C.ACCENT}backup-keys --json{C.R}               Structured output (keys redacted)")
+    # Default: show export instructions
+    print(f"  {C.BOLD}How to Back Up Your Keys:{C.R}")
+    print(f"  {C.CHROME}{'─' * 60}{C.R}")
+    print(f"  {C.ACCENT}backup-keys --file{C.R}   Save full backup to backups/ folder")
+    print(f"  {C.ACCENT}backup-keys --json{C.R}   Show inventory (keys redacted, safe for agents)")
+    print()
+    print(f"  {C.WARN}⚠  Security:{C.R} Full private keys are ONLY written to local files.")
+    print(f"  {C.WARN}   They never appear in command output, agent APIs, or logs.{C.R}")
+    print(f"  {C.WARN}   Your .env file is the primary key store — back it up.{C.R}")
     print()
 
 

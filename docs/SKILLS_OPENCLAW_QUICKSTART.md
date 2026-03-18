@@ -133,14 +133,19 @@ Present the URL to the user — they click to purchase HBAR with credit/debit ca
 
 ### User says "Back up my keys" or "I want to save my keys"
 ```
-1. Ask the user for their email address
-2. ./launch.sh backup-keys --email user@example.com --yes
-   → Generates mailto: link with full key inventory
-   → Keys are REDACTED in --json output — agent never sees raw keys
-   → Only the user's email contains the full private keys
+1. Run: ./launch.sh backup-keys --json
+   → Returns key inventory with REDACTED keys (agent never sees raw keys)
+2. Tell the user to run this command THEMSELVES on their local machine:
+   ./launch.sh backup-keys --file
+   → Writes full keys to backups/key_backup_<date>.txt
+3. Remind user to save the file to a password manager, then delete it
 ```
 
-**CRITICAL:** When a user creates a new account, ALWAYS suggest they run `backup-keys`.
+**SECURITY:** Private keys NEVER flow through agent output or LLM APIs.
+Full keys are ONLY accessible via `--file` on the user's local machine.
+The agent should NEVER attempt to read, display, or transmit private keys.
+
+**CRITICAL:** When a user creates a new account, ALWAYS suggest they run `backup-keys --file`.
 The .env file is the ONLY copy of their private keys. If lost, funds are gone forever.
 
 ### User says "What's the bot doing?" or "Check the rebalancer"
@@ -174,9 +179,8 @@ The .env file is the ONLY copy of their private keys. If lost, funds are gone fo
 | `associate [token]` | `associate USDC --json --yes` | Link token to account |
 | `whitelist` | — | View trusted transfer recipients |
 | `whitelist add [addr]` | — | Add address to whitelist |
-| `backup-keys` | `backup-keys --json` | Show key inventory (redacted for agents) |
-| `backup-keys --file` | — | Export full keys to backups/ folder |
-| `backup-keys --email [addr]` | — | Email key backup to user |
+| `backup-keys` | `backup-keys --json` | Key inventory (keys REDACTED — safe for agents) |
+| `backup-keys --file` | — | Export full keys to local backups/ folder (user runs directly) |
 
 ### NFTs
 | Command | AI Version | Description |
