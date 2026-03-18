@@ -22,11 +22,12 @@
 
 ## Why Pacman?
 
-- **True Self-Custody**: Your private key never leaves your machine. No exchange holds your funds. XOR-obfuscated in memory.
-- **AI-Native Design**: Every command returns structured JSON. Built for agents, not browsers. Natural language parsing ("swap 10 HBAR for USDC").
+- **True Self-Custody**: Private keys never leave your machine. XOR-obfuscated in memory. Auto-backed up to ~/Downloads on account creation.
+- **AI-Native Design**: Every command returns structured JSON. Natural language parsing ("swap 10 HBAR for USDC"). Agents drive it like a tool, not a website.
 - **Agent-Safe Guardrails**: $1 max per swap, $10 daily limit, transfer whitelists, mandatory simulation. Your agent can't accidentally drain your wallet.
-- **Fiat Onramp**: New users fund with credit card via MoonPay — one link, zero intermediary.
-- **Power Law Rebalancer**: Autonomous BTC allocation daemon based on Bitcoin's 4-year cycle model.
+- **Fiat Onramp**: New users fund with credit card via MoonPay — one link, zero intermediary, HBAR arrives direct.
+- **Power Law Rebalancer**: Autonomous BTC allocation daemon based on Bitcoin's 4-year cycle model (Heartbeat V3.2).
+- **Single-Instance Daemon**: One command starts everything — robot, API, dashboard. PID-locked, idempotent, no orphaned processes.
 
 ---
 
@@ -36,7 +37,8 @@
 git clone https://github.com/chris0x88/pacman.git && cd pacman
 cp .env.template .env                     # Add your private key
 ./launch.sh setup                         # Guided wallet configuration
-./launch.sh balance --json                # See your portfolio
+./launch.sh daemon-start                  # Start background services
+./launch.sh dashboard                     # Open web dashboard
 ```
 
 Zero-dependency install — `launch.sh` handles Python and all packages via [uv](https://docs.astral.sh/uv/).
@@ -44,11 +46,13 @@ Zero-dependency install — `launch.sh` handles Python and all packages via [uv]
 ### 30-Second Demo
 
 ```bash
+./launch.sh doctor                        # System health check (6 categories)
 ./launch.sh status --json                 # Full account + balance snapshot
 ./launch.sh swap 0.5 HBAR for USDC --yes  # Execute a swap
 ./launch.sh nfts --json                   # View your NFTs
-./launch.sh fund                          # Get MoonPay link to buy HBAR
-./launch.sh robot signal                  # Check BTC allocation model
+./launch.sh fund                          # Buy HBAR with credit card (MoonPay)
+./launch.sh robot signal                  # Bitcoin Power Law model signal
+./launch.sh backup-keys --file            # Auto-save keys to ~/Downloads + open email draft
 ```
 
 ### Platform Support
@@ -63,52 +67,62 @@ Zero-dependency install — `launch.sh` handles Python and all packages via [uv]
 
 | Feature | Status | Command |
 |---|---|---|
-| Natural language swaps | Done | `swap 10 HBAR for USDC` |
-| Exact output swaps | Done | `swap HBAR for 5 USDC` |
-| Token transfers | Done | `send 100 USDC to 0.0.xxx` |
-| NFT viewing + image download | Done | `nfts`, `nfts download` |
-| Portfolio dashboard | Done | `status --json`, `balance` |
-| Limit orders (background) | Done | `order buy HBAR at 0.08 size 100` |
-| HBAR staking | Done | `stake` |
-| Power Law rebalancer daemon | Done | `robot start` |
-| Fiat onramp (MoonPay) | Done | `fund` |
-| Testnet faucet | Done | `fund` (on testnet) |
-| HCS P2P messaging | Done | `hcs` |
-| System diagnostics | Done | `doctor` |
-| SaucerSwap V1 legacy | Done | `swap-v1` |
-| Liquidity pool management | Done | `pool-deposit`, `pool-withdraw` |
+| Natural language swaps | ✅ | `swap 10 HBAR for USDC` |
+| Exact output swaps | ✅ | `swap HBAR for 5 USDC` |
+| Token transfers | ✅ | `send 100 USDC to 0.0.xxx` |
+| NFT viewing + image download | ✅ | `nfts`, `nfts download` |
+| Portfolio snapshot | ✅ | `status --json` |
+| Key backup (~/Downloads + email) | ✅ | `backup-keys --file` |
+| Fiat onramp (MoonPay) | ✅ | `fund` |
+| Testnet faucet | ✅ | `fund` (on testnet) |
+| Power Law rebalancer daemon | ✅ | `robot start` |
+| Limit orders | ✅ | `order buy HBAR at 0.08 size 100` |
+| HBAR staking | ✅ | `stake` |
+| HCS P2P messaging | ✅ | `hcs` |
+| System diagnostics (6 checks) | ✅ | `doctor` |
+| Single-instance daemon | ✅ | `daemon-start` / `daemon-stop` |
+| SaucerSwap V1 + V2 | ✅ | `swap` / `swap-v1` |
+| Liquidity pool management | ✅ | `pool-deposit`, `pool-withdraw` |
+| AWS KMS key provider | ✅ PoC | `src/kms_provider.py` |
 
 ---
 
 ## OpenClaw Integration
 
-Pacman is designed as a skill for [OpenClaw](https://openclaw.ai/) agents. Your agent drives Pacman via subprocess — no special SDK needed.
+Pacman is designed as a conversational skill for [OpenClaw](https://openclaw.ai/) agents. The agent acts as a **Personal Hedera Operations Assistant** — it greets users, shows formatted portfolios, suggests actions, and handles all CLI interaction behind the scenes.
 
-### Setup
+### How It Works
 
-1. Add Pacman as a skill in your OpenClaw workspace
-2. Load [`SKILL.md`](SKILL.md) or [`docs/SKILLS_OPENCLAW_QUICKSTART.md`](docs/SKILLS_OPENCLAW_QUICKSTART.md) as the agent's system instructions
-3. Agent calls `./launch.sh <command> --json --yes` via exec
+1. Load [`SKILL.md`](SKILL.md) as the agent's system instructions in OpenClaw
+2. User talks naturally: *"what's my balance?"*, *"swap 5 bucks for bitcoin"*, *"show my NFTs"*
+3. Agent silently runs `./launch.sh <command> --json --yes` and presents results conversationally
+4. User never sees CLI commands — they interact through natural language
+
+### What the Agent Does on Startup
+
+When a user says "hi" or "open wallet", the agent automatically:
+1. Runs `doctor` — checks system health, daemons, gas, connectivity
+2. Runs `status --json` — gets full portfolio
+3. Runs `robot status --json` — checks rebalancer
+4. Presents a formatted greeting with portfolio table and action menu
 
 ### Agent Flags
 
 ```bash
 --json    # Structured JSON output (no ANSI codes)
---yes     # Auto-confirm all prompts (no EOFError)
+--yes     # Auto-confirm all prompts (no EOFError in subprocess)
 ```
 
-Non-interactive mode auto-detects when stdin is not a TTY — safe for pipes and subprocess.
+### Proactive Intelligence
 
-### Example Agent Workflow
+The agent doesn't just respond — it looks for issues to flag:
+- ⚠️ Low HBAR (gas reserve below 5)
+- 🤖 Robot daemon stopped
+- 📈 Bitcoin model signal changes (deep value / overvalued)
+- 🔐 No key backup detected
+- 🆕 New user with empty wallet
 
-```
-Agent: ./launch.sh status --json       → Gets account + balances
-Agent: ./launch.sh swap 5 USDC for WBTC --yes --json  → Executes swap
-Agent: ./launch.sh balance --json      → Verifies result
-Agent: Tells user "Swapped 5 USDC for 0.00006 WBTC"
-```
-
-See [`docs/SKILLS_OPENCLAW_QUICKSTART.md`](docs/SKILLS_OPENCLAW_QUICKSTART.md) for the complete skill reference including decision trees, output schemas, and error recovery.
+See [`SKILL.md`](SKILL.md) for the full conversation design and persona specification.
 
 ---
 
@@ -132,11 +146,26 @@ New users can purchase HBAR with a credit/debit card:
 
 ```bash
 ./launch.sh fund
-# Mainnet: generates a MoonPay buy link pre-filled with your account
-# Testnet: dispenses HBAR from the Hedera testnet faucet
+# Mainnet: MoonPay buy link pre-filled with your account
+# Testnet: Hedera testnet faucet (free HBAR)
 ```
 
-MoonPay is an official HBAR Foundation partner. No developer custody, no API key needed — just a direct link. Supports 100+ countries.
+MoonPay is an official HBAR Foundation partner. No custody, no API key, 100+ countries.
+
+---
+
+## Key Security
+
+| Feature | How |
+|---|---|
+| **Storage** | `.env` file, XOR-obfuscated in memory via `SecureString` |
+| **Auto-Backup** | New keys saved to `~/Downloads/` + `backups/` automatically |
+| **Email Draft** | macOS: Mail.app opens with backup file attached. User hits Send. |
+| **Never Lost** | `_update_env()` archives old keys before overwriting (timestamped) |
+| **Agent-Safe** | Private keys NEVER appear in `--json` output or agent API traffic |
+| **Key Isolation** | Robot account has independent ECDSA key (separate EVM address) |
+| **KMS Ready** | AWS KMS key provider PoC — keys can stay in HSM (FIPS 140-2 L3) |
+| **Inventory** | `backup-keys --json` shows all keys with accounts (redacted) |
 
 ---
 
@@ -145,98 +174,113 @@ MoonPay is an official HBAR Foundation partner. No developer custody, no API key
 ```
 ┌──────────────────────────────────────────────────┐
 │              OpenClaw / AI Agent                  │
-│         (calls ./launch.sh <cmd> --json)         │
+│   Reads SKILL.md → drives CLI conversationally   │
+└──────────────────┬───────────────────────────────┘
+                   │  ./launch.sh <cmd> --json --yes
+┌──────────────────▼───────────────────────────────┐
+│            Single-Instance Launcher               │
+│   PID lock → daemon management → one-shot cmds   │
 └──────────────────┬───────────────────────────────┘
                    │
 ┌──────────────────▼───────────────────────────────┐
 │              CLI Dispatcher (cli/main.py)         │
-│   Parses args → routes to command handlers       │
-│   --json / --yes flag injection for agents       │
+│   30+ commands → --json/--yes flag injection     │
 └──────────────────┬───────────────────────────────┘
                    │
 ┌──────────────────▼───────────────────────────────┐
 │           PacmanController (src/controller.py)    │
-│   Facade: config + router + executor             │
-└───┬──────────┬──────────┬────────────────────────┘
-    │          │          │
-┌───▼──┐  ┌───▼───┐  ┌───▼──────┐
-│Config│  │Router │  │Executor  │
-│ Keys │  │Paths  │  │Swaps,    │
-│Safety│  │Graphs │  │Transfers │
-└──────┘  └───────┘  └──────────┘
+│   Facade: config + router + executor + plugins   │
+└───┬──────────┬──────────┬──────────┬─────────────┘
+    │          │          │          │
+┌───▼──┐  ┌───▼───┐  ┌───▼──────┐  ┌▼──────────┐
+│Config│  │Router │  │Executor  │  │Plugins    │
+│ Keys │  │Paths  │  │Swaps,    │  │PowerLaw,  │
+│Safety│  │Graphs │  │Transfers │  │AcctMgr,   │
+│ KMS  │  │Prices │  │NFTs      │  │HCS, ...   │
+└──────┘  └───────┘  └──────────┘  └───────────┘
                          │
               ┌──────────▼──────────┐
               │  Hedera Hashgraph   │
-              │  RPC: hashio.io     │
-              │  Mirror Node        │
-              │  SaucerSwap V2      │
+              │  JSON-RPC (Hashio)  │
+              │  Mirror Node API    │
+              │  SaucerSwap V2 DEX  │
               └─────────────────────┘
 ```
 
 ### Repository Structure
 
 ```
-cli/              → Command dispatcher and handlers
-  commands/       → Modular sub-commands (wallet, trading, nfts, robot, etc.)
-src/              → Backend logic and Hedera action layer
-  router.py       → Cost-aware hub routing with graph pathfinding
-  executor.py     → Transaction broadcaster (swaps, approvals, transfers)
+launch.sh         → Single-instance launcher (daemon + one-shot + interactive)
+SKILL.md          → OpenClaw agent persona and conversation design
+cli/
+  main.py         → Command dispatcher (30+ commands)
+  commands/       → Modular handlers (wallet, trading, nfts, robot, doctor)
+src/
   controller.py   → SDK facade — the only thing CLI talks to
-  config.py       → Secure configuration with XOR-obfuscated keys
-  plugins/        → Extensible plugin system (Power Law bot, account manager)
+  executor.py     → Transaction broadcaster (swaps, approvals, transfers)
+  router.py       → Cost-aware graph pathfinding with hub routing
+  config.py       → Secure config with XOR-obfuscated SecureString
+  kms_provider.py → AWS KMS signing PoC (HSM-backed keys)
+  plugins/        → Extensible plugin system
+    power_law/    → Bitcoin Heartbeat rebalancer (V3.2 model)
+    account_manager.py → Multi-account with independent ECDSA keys
 lib/              → External API clients (SaucerSwap, prices, transfers)
-data/             → Local config caches (pools, tokens, accounts, orders)
-docs/             → Agent skills guides and architecture docs
-tests/            → Unit and integration tests
-launch.sh         → Zero-dependency launcher
-SKILL.md          → OpenClaw skill descriptor
+data/             → Local caches (pools, tokens, accounts, price history)
+dashboard/        → Web dashboard (served on :8088 by daemon)
+docs/             → Agent skill guides and architecture docs
 ```
 
 ---
 
-## Security Model
+## Daemon Management
 
-| Layer | Implementation |
-|---|---|
-| **Key Storage** | `.env` file, XOR-obfuscated in memory via `SecureString` class |
-| **Key Isolation** | Robot account has independent ECDSA key (cannot access main wallet) |
-| **Transaction Safety** | Mandatory `eth_call` simulation before every broadcast |
-| **Safety Caps** | $1 max per swap, $10 daily limit, 5% max slippage (hard-coded) |
-| **Transfer Gating** | Whitelist + known accounts registry. External sends blocked by default |
-| **Agent Guardrails** | Fiduciary persona in SKILL.md, auto-confirm detection, JSON-only output |
-| **Gas Protection** | Enforces >= 5 HBAR reserve to prevent stranding assets |
+```bash
+./launch.sh daemon-start     # Start (idempotent — won't create duplicates)
+./launch.sh daemon-stop      # Graceful shutdown
+./launch.sh daemon-restart   # Stop + start
+./launch.sh daemon-status    # Check PID + API health
+./launch.sh dashboard        # Opens browser (starts daemon if needed)
+```
+
+The daemon runs: Power Law rebalancer, limit order engine, API server (:8088), web dashboard, HCS listener, backup service.
 
 ---
 
 ## Roadmap
 
-### Done
-- Natural language swaps, transfers, limit orders
+### Shipped
+- Natural language swaps, transfers, limit orders, staking
 - NFT viewing and image download
-- Fiat onramp via MoonPay
-- Power Law Heartbeat rebalancer daemon
-- OpenClaw skill integration (SKILL.md)
+- Fiat onramp (MoonPay) + testnet faucet
+- Power Law Heartbeat V3.2 rebalancer daemon
+- OpenClaw conversational skill (SKILL.md)
+- Single-instance daemon with PID lock
+- Auto key backup (~/Downloads + email draft)
+- AWS KMS key provider architecture
+- Hedera ecosystem price tracking (HBAR, SAUCE)
+- System diagnostics (doctor — 6 categories)
 - Zero-dependency install via uv
-- Testnet faucet support
 
 ### Next
-- MCP server for Claude Desktop / Cursor integration
-- AWS KMS key management (keys never leave the HSM)
-- Hedera Agent Kit native plugin
-- HCS agent-to-agent P2P coordination
-- Interactive Canvas UI for wallet management
+- React + Tailwind dashboard rebuild
+- MCP server for Claude Desktop / Cursor
+- Hedera Agent Kit native plugin package
+- HCS agent-to-agent data trading
+- Canvas interactive UI for wallet management
+- Ecosystem plugins (Bonzo, Neuron, Sentx)
 
 ### Vision
 - P2P atomic swaps via HCS (no DEX fees beyond gas)
+- Agent micropayments via x402
+- On-chain supply chain data tracking
 - Self-deploying smart contracts (escrow, rebalancing)
-- x402 agent micropayments
-- Sentx NFT marketplace integration
+- Multi-agent coordination and data marketplace
 
 ---
 
 ## Contributing
 
-Pacman is open source under the [MIT License](LICENSE). Contributions welcome.
+Open source under the [MIT License](LICENSE). Contributions welcome.
 
 ```bash
 git clone https://github.com/chris0x88/pacman.git
@@ -249,7 +293,7 @@ cp .env.template .env    # Add your Hedera testnet key
 ---
 
 ```
-Pacman v1.0.0-beta | Hedera Apex Hackathon 2026
+Pacman v2.3 | Hedera Apex Hackathon 2026
 License: MIT | Author: Christopher David Imgraben
 Disclaimer: Experimental software. Use disposable keys. Not a regulated service.
 ```
