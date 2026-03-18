@@ -380,10 +380,11 @@ def cmd_account(app, args):
         if saved_files:
             for fp in saved_files:
                 print(f"  {C.OK}✅ Key saved:{C.R} {fp}")
-            # Try to open email draft (short summary, no raw keys in mailto:)
+            # Open email draft with backup file attached (macOS: auto-attaches via AppleScript)
             _try_open_email_draft(
                 f"Pacman Key Backup — {new_id}",
-                f"New Pacman account created.\n\nAccount: {new_id}\nNickname: {nickname or '(none)'}\nKey Type: ECDSA (secp256k1)\nEVM: {evm_addr}\n\nFull private key saved to:\n{saved_files[0]}\n\nAttach this file to the email for safekeeping."
+                f"New Pacman account created.\n\nAccount: {new_id}\nNickname: {nickname or '(none)'}\nKey Type: ECDSA (secp256k1)\nEVM: {evm_addr}\n\nKey backup file is attached.",
+                attachment_path=saved_files[0]
             )
         else:
             print(f"  {C.WARN}⚠  Could not auto-save key backup. Copy from .env manually.{C.R}")
@@ -1099,30 +1100,51 @@ def _auto_backup_new_key(account_id, private_key, nickname="", evm_address=""):
     return {"files": saved_paths, "filename": filename}
 
 
-def _try_open_email_draft(subject, body_text):
+def _try_open_email_draft(subject, body_text, attachment_path=None):
     """
-    Try to open the user's local email client with a pre-filled draft.
-    Uses subprocess to call 'open' (macOS) or 'xdg-open' (Linux) on a
-    mailto: URI. This runs LOCALLY — the mailto content never touches
-    stdout or agent APIs.
+    Open the user's local email client with a draft containing the backup.
 
-    NOTE: mailto: URIs have a ~2000 char limit. If body_text is too long,
-    we truncate and point the user to the local backup file instead.
+    On macOS: Uses AppleScript to create a Mail.app draft with the backup
+    file attached. User just hits Send.
+    On Linux/Windows: Falls back to mailto: URI (no attachment support).
+
+    All execution is LOCAL via subprocess — nothing touches stdout or APIs.
 
     Returns True if opened, False if not available.
     """
     import subprocess
-    import urllib.parse
     import platform
 
-    # Truncate body to stay within mailto: URI limits (~1500 chars safe)
-    if len(body_text) > 1500:
-        body_text = body_text[:1400] + "\n\n[TRUNCATED — Full backup saved to ~/Downloads and backups/ folder]"
+    system = platform.system()
 
-    mailto = f"mailto:?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body_text)}"
+    # macOS: Use AppleScript to create a Mail.app draft WITH attachment
+    if system == "Darwin" and attachment_path:
+        try:
+            import os
+            abs_path = os.path.abspath(attachment_path)
+            applescript = f'''
+            tell application "Mail"
+                set newMessage to make new outgoing message with properties {{subject:"{subject}", content:"{body_text.replace(chr(10), "\\n").replace('"', '\\"')}"}}
+                tell newMessage
+                    make new attachment with properties {{file name:POSIX file "{abs_path}"}} at after the last paragraph
+                    set visible to true
+                end tell
+                activate
+            end tell
+            '''
+            subprocess.Popen(["osascript", "-e", applescript],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+        except Exception:
+            pass
 
+    # Fallback: mailto: URI (no attachment, but includes body text)
     try:
-        system = platform.system()
+        import urllib.parse
+        if len(body_text) > 1500:
+            body_text = body_text[:1400] + "\n\n[Full backup in attached file or ~/Downloads]"
+        mailto = f"mailto:?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body_text)}"
+
         if system == "Darwin":
             subprocess.Popen(["open", mailto], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return True
@@ -1302,7 +1324,7 @@ def cmd_backup_keys(app, args):
         for e in active_keys:
             email_summary += f"- {e['env_name']}: {e.get('account_id', 'unknown')} ({e['key_hex_redacted']})\n"
         email_summary += "\nAttach the backup file from Downloads to this email for safekeeping."
-        email_opened = _try_open_email_draft(email_subject, email_summary)
+        email_opened = _try_open_email_draft(email_subject, email_summary, attachment_path=backup_file_path)
 
     # 4. Output
     if json_mode:
