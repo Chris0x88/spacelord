@@ -997,22 +997,57 @@ def cmd_fund(app, args):
                 print(f"  {C.ERR}✗{C.R} {msg}")
         return
 
-    # Mainnet — MoonPay buy link
+    # Mainnet — check if user has swappable tokens before suggesting fiat
+    # MoonPay should only be primary when wallet is nearly empty (< $1 total)
+    has_swappable = False
+    swappable_hint = ""
+    try:
+        balances = app.get_balances()
+        # Sum non-HBAR token values to find swappable assets
+        from lib.prices import PriceManager
+        pm = PriceManager.instance()
+        total_usd = 0.0
+        best_token = None
+        best_val = 0.0
+        for sym, bal in balances.items():
+            if bal > 0 and sym != "HBAR":
+                price = pm.get_price(sym) or 0.0
+                val = bal * price
+                total_usd += val
+                if val > best_val:
+                    best_val = val
+                    best_token = sym
+        # Also count HBAR value
+        hbar_bal = balances.get("HBAR", 0.0)
+        hbar_price = pm.get_price("HBAR") or 0.0
+        total_usd += hbar_bal * hbar_price
+
+        if total_usd >= 1.0 and best_token:
+            has_swappable = True
+            swappable_hint = f"You have ${total_usd:.2f} in tokens. Swap to HBAR: swap {best_token} for HBAR"
+    except Exception:
+        pass  # If balance check fails, just show MoonPay normally
+
     buy_url = f"https://www.moonpay.com/buy/hbar?walletAddress={account_id}"
 
     # Also offer Transak as alternative
     transak_url = f"https://global.transak.com/?cryptoCurrencyCode=HBAR&walletAddress={account_id}"
 
     if json_mode:
-        print(_json.dumps({
+        result = {
             "network": "mainnet",
             "account": account_id,
-            "buy_url": buy_url,
-            "alternative_url": transak_url,
-            "provider": "MoonPay",
-            "alternative_provider": "Transak",
-            "instructions": "Open the URL to purchase HBAR with credit/debit card. HBAR will be delivered directly to your account.",
-        }))
+            "has_swappable_tokens": has_swappable,
+        }
+        if has_swappable:
+            result["swap_suggestion"] = swappable_hint
+            result["note"] = "You already have tokens to swap. Use the swap command for HBAR. MoonPay is for purchasing with fiat when your wallet is empty."
+        result["buy_url"] = buy_url
+        result["alternative_url"] = transak_url
+        result["provider"] = "MoonPay"
+        result["alternative_provider"] = "Transak"
+        result["instructions"] = "Open the URL to purchase HBAR with credit/debit card." if not has_swappable else "Swap existing tokens first. Use MoonPay only if you need to add new fiat funds."
+        print(_json.dumps(result))
         return
 
     print(f"\n  {C.BOLD}Fund Your Account{C.R}")
@@ -1020,7 +1055,15 @@ def cmd_fund(app, args):
     print(f"  {C.TEXT}Account:{C.R}  {C.BOLD}{account_id}{C.R}")
     print(f"  {C.TEXT}Network:{C.R}  mainnet")
     print()
-    print(f"  {C.BOLD}Buy HBAR with Credit/Debit Card:{C.R}")
+
+    if has_swappable:
+        print(f"  {C.OK}You already have swappable tokens!{C.R}")
+        print(f"  {C.TEXT}{swappable_hint}{C.R}")
+        print()
+        print(f"  {C.MUTED}If you still want to buy HBAR with fiat:{C.R}")
+    else:
+        print(f"  {C.BOLD}Buy HBAR with Credit/Debit Card:{C.R}")
+
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
     print()
     print(f"  {C.OK}MoonPay{C.R} (Official HBAR Foundation partner):")
@@ -1029,7 +1072,6 @@ def cmd_fund(app, args):
     print(f"  {C.MUTED}Alternative — Transak:{C.R}")
     print(f"  {C.MUTED}{transak_url}{C.R}")
     print()
-    print(f"  {C.MUTED}Click the link above to purchase HBAR.{C.R}")
     print(f"  {C.MUTED}HBAR will be delivered directly to your account.{C.R}")
     print(f"  {C.MUTED}No intermediary — MoonPay handles KYC and payment.{C.R}")
     print()

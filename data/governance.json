@@ -1,0 +1,68 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-03-18",
+  "description": "Machine-readable governance rules. This is the single source of truth for safety limits and operational policy. config.py loads from this file at runtime.",
+
+  "safety_limits": {
+    "max_swap_usd": 100.00,
+    "max_daily_usd": 100.00,
+    "max_slippage_pct": 5.0,
+    "min_hbar_reserve": 5.0,
+    "notes": "Agents can adjust these ONLY on explicit user command. Hard caps in config.py are fallbacks."
+  },
+
+  "accounts": {
+    "main": {
+      "id": "0.0.10289160",
+      "purpose": "user_trading",
+      "default": true,
+      "notes": "All user operations use this account"
+    },
+    "robot": {
+      "id": "0.0.10379302",
+      "purpose": "rebalancer",
+      "funded": false,
+      "notes": "Power Law rebalancer daemon. Currently unfunded — do NOT suggest rebalancing until funded."
+    },
+    "robot_deprecated": {
+      "id": "0.0.10301803",
+      "purpose": "backup",
+      "active": false,
+      "notes": "Old robot with shared parent key. Kept as backup. Never delete."
+    }
+  },
+
+  "routing": {
+    "primary_protocol": "v2",
+    "v1_policy": "explicit_user_request_only",
+    "pool_files": {
+      "v2": "data/pools_v2.json",
+      "v1": "data/pools_v1.json"
+    },
+    "whbar_id": "0.0.1456986",
+    "whbar_policy": "internal_routing_only — never show to users, never suggest wrapping/unwrapping",
+    "hub_tokens": ["0.0.456858", "0.0.0"],
+    "blacklist_notes": "HBAR<->WBTC direct pool is broken/low liquidity. Route via USDC hub. NEVER modify the blacklist."
+  },
+
+  "fiat_onramp": {
+    "trigger": "total_portfolio_usd < 1.0 OR explicit_user_request",
+    "providers": ["moonpay", "transak"],
+    "notes": "If user has swappable tokens worth >= $1, suggest swapping first. Only show MoonPay as primary when wallet is nearly empty."
+  },
+
+  "agent_rules": {
+    "can_modify_on_user_command": ["safety_limits"],
+    "never_modify_autonomously": [".env", "data/accounts.json", "data/settings.json", "data/governance.json"],
+    "never_auto_execute": [
+      "create_accounts",
+      "switch_accounts",
+      "approve_pools",
+      "modify_code",
+      "modify_config_files",
+      "send_to_non_whitelisted"
+    ],
+    "simulation_policy": "NEVER simulate. We trade live. Simulation hides bugs and creates dysfunction.",
+    "transfer_policy": "Wallet whitelists are the most important safety feature. All transfers require whitelisted destination. Token and pool whitelists are operational, not safety-critical."
+  }
+}

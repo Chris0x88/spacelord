@@ -444,7 +444,7 @@ When a user needs HBAR to start using Hedera:
 | `.env` | Private keys, account IDs, simulate flags |
 | `data/accounts.json` | Known account registry |
 | `data/settings.json` | Slippage, whitelist, token preferences |
-| `data/pools.json` | Approved V2 routing pools |
+| `data/pools_v2.json` | Approved V2 routing pools |
 | `data/tokens.json` | Token metadata (ID, symbol, decimals) |
 | `data/robot_state.json` | Robot daemon state and activity log |
 | `execution_records/` | Transaction history (one JSON per tx) |

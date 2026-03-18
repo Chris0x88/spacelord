@@ -22,10 +22,10 @@
 
 ## Why Pacman?
 
-- **True Self-Custody**: Private keys never leave your machine. XOR-obfuscated in memory. Auto-backed up to ~/Downloads on account creation.
+- **Local-First Key Storage**: Private keys stay on your machine. XOR-obfuscated in memory. Auto-backed up to ~/Downloads on account creation. AWS KMS integration planned for institutional-grade security.
 - **AI-Native Design**: Every command returns structured JSON. Natural language parsing ("swap 10 HBAR for USDC"). Agents drive it like a tool, not a website.
-- **Agent-Safe Guardrails**: $1 max per swap, $10 daily limit, transfer whitelists, mandatory simulation. Your agent can't accidentally drain your wallet.
-- **Fiat Onramp**: New users fund with credit card via MoonPay — one link, zero intermediary, HBAR arrives direct.
+- **Agent-Safe Guardrails**: $100 max per swap, $100 daily limit, **transfer whitelists required** for all outbound transfers. Live execution only — no simulation mode. Your agent can't accidentally drain your wallet.
+- **Fiat Onramp**: New users fund with credit card via MoonPay — one link, zero intermediary, HBAR arrives direct. Only suggested when wallet is empty.
 - **Power Law Rebalancer**: Autonomous BTC allocation daemon based on Bitcoin's 4-year cycle model (Heartbeat V3.2).
 - **Single-Instance Daemon**: One command starts everything — robot, API, dashboard. PID-locked, idempotent, no orphaned processes.
 
@@ -48,10 +48,10 @@ Zero-dependency install — `launch.sh` handles Python and all packages via [uv]
 ```bash
 ./launch.sh doctor                        # System health check (6 categories)
 ./launch.sh status --json                 # Full account + balance snapshot
-./launch.sh swap 0.5 HBAR for USDC --yes  # Execute a swap
-./launch.sh nfts --json                   # View your NFTs
-./launch.sh fund                          # Buy HBAR with credit card (MoonPay)
+./launch.sh balance --json                # Token balances with USD values
+./launch.sh swap 5 USDC for HBAR --yes    # Execute a swap (live, no simulation)
 ./launch.sh robot signal                  # Bitcoin Power Law model signal
+./launch.sh nfts --json                   # View your NFTs
 ./launch.sh backup-keys --file            # Auto-save keys to ~/Downloads + open email draft
 ```
 
@@ -69,7 +69,8 @@ Zero-dependency install — `launch.sh` handles Python and all packages via [uv]
 |---|---|---|
 | Natural language swaps | ✅ | `swap 10 HBAR for USDC` |
 | Exact output swaps | ✅ | `swap HBAR for 5 USDC` |
-| Token transfers | ✅ | `send 100 USDC to 0.0.xxx` |
+| Transfer whitelists | ✅ | `whitelist add 0.0.xxx` |
+| Token transfers (whitelisted only) | ✅ | `send 10 HBAR to <whitelisted>` |
 | NFT viewing + image download | ✅ | `nfts`, `nfts download` |
 | Portfolio snapshot | ✅ | `status --json` |
 | Key backup (~/Downloads + email) | ✅ | `backup-keys --file` |
@@ -81,9 +82,10 @@ Zero-dependency install — `launch.sh` handles Python and all packages via [uv]
 | HCS P2P messaging | ✅ | `hcs` |
 | System diagnostics (6 checks) | ✅ | `doctor` |
 | Single-instance daemon | ✅ | `daemon-start` / `daemon-stop` |
-| SaucerSwap V1 + V2 | ✅ | `swap` / `swap-v1` |
+| SaucerSwap V2 (primary) | ✅ | `swap` |
+| SaucerSwap V1 (legacy) | ⚠️ | `swap-v1` (explicit only) |
 | Liquidity pool management | ✅ | `pool-deposit`, `pool-withdraw` |
-| AWS KMS key provider | ✅ PoC | `src/kms_provider.py` |
+| AWS KMS key provider | 🔧 PoC | `src/kms_provider.py` |
 
 ---
 
@@ -164,7 +166,7 @@ MoonPay is an official HBAR Foundation partner. No custody, no API key, 100+ cou
 | **Never Lost** | `_update_env()` archives old keys before overwriting (timestamped) |
 | **Agent-Safe** | Private keys NEVER appear in `--json` output or agent API traffic |
 | **Key Isolation** | Robot account has independent ECDSA key (separate EVM address) |
-| **KMS Ready** | AWS KMS key provider PoC — keys can stay in HSM (FIPS 140-2 L3) |
+| **KMS Planned** | AWS KMS key provider PoC — keys can stay in HSM (FIPS 140-2 L3) |
 | **Inventory** | `backup-keys --json` shows all keys with accounts (redacted) |
 
 ---

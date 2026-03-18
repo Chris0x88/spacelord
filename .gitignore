@@ -18,9 +18,10 @@ venv/
 .venv/
 env/
 
-# Data & Logs 
+# Data & Logs
 data/accounts.json
 data/pacman_data_raw.json
+data/knowledge/
 execution_records/
 logs/
 daemon_output.log

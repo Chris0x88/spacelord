@@ -578,7 +578,7 @@ class PacmanController:
         from pathlib import Path
         
         protocol = protocol.lower()
-        reg_file = "data/pools.json" if protocol == "v2" else "data/v1_pools_approved.json"
+        reg_file = "data/pools_v2.json" if protocol == "v2" else "data/pools_v1.json"
         reg_path = Path(reg_file)
         
         # 1. Load existing
@@ -694,7 +694,7 @@ class PacmanController:
         from pathlib import Path
         
         protocol = protocol.lower()
-        reg_file = "data/pools.json" if protocol == "v2" else "data/v1_pools_approved.json"
+        reg_file = "data/pools_v2.json" if protocol == "v2" else "data/pools_v1.json"
         reg_path = Path(reg_file)
         
         if not reg_path.exists():
@@ -727,7 +727,7 @@ class PacmanController:
         symbol_out = symbol_out.upper()
         
         # 1. Load V1
-        v1_reg_path = Path("data/v1_pools_approved.json")
+        v1_reg_path = Path("data/pools_v1.json")
         if not v1_reg_path.exists():
             return False
             
@@ -752,7 +752,7 @@ class PacmanController:
                symbol_out in ["HBAR", "0.0.0", "WHBAR", "USDC", "USDT"]:
                 return False # Top pairs always have V2
 
-            v2_reg_path = Path("data/pools.json")
+            v2_reg_path = Path("data/pools_v2.json")
             if not v2_reg_path.exists():
                 return True # No V2 registry means it's V1-only by default if it was in V1
                 

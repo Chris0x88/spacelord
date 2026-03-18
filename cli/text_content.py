@@ -197,7 +197,7 @@ the most efficient path between any two supported tokens.
   Range: 0.1% – 5.0%. Saved to data/settings.json.
 
 {C.ACCENT}Routing Engine:{C.R}
-  - Builds a weighted graph from approved pool registries (data/pools.json)
+  - Builds a weighted graph from approved pool registries (data/pools_v2.json)
   - Automatically multi-hops: WBTC → HBAR → USDC when no direct pool exists
   - Prefers lower-fee paths and higher-liquidity pools
   - WHBAR (0.0.1456986) is used internally; users never need to specify it
@@ -308,8 +308,8 @@ Manage which SaucerSwap liquidity pools Pacman uses for routing.
     {C.TEXT}pools approve 0.0.12345 --v1{C.R}
 
 {C.ACCENT}How the Registry Works:{C.R}
-  data/pools.json              = V2 routing registry
-  data/v1_pools_approved.json  = V1 routing registry
+  data/pools_v2.json              = V2 routing registry
+  data/pools_v1.json  = V1 routing registry
   Only approved pools are used in route calculation.
   The router re-builds its graph after every approve/delete.
 

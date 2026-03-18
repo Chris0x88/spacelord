@@ -17,7 +17,7 @@ from src.logger import logger
 BASE_DIR = Path(__file__).resolve().parent.parent # Root dir
 DATA_DIR = BASE_DIR / "data"
 VARIANTS_FILE = DATA_DIR / "variants.json"
-POOLS_REGISTRY_FILE = DATA_DIR / "pools.json"
+POOLS_REGISTRY_FILE = DATA_DIR / "pools_v2.json"
 
 @dataclass
 class RouteStep:

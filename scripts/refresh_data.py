@@ -37,7 +37,7 @@ POOLS_URL_V2 = "https://api.saucerswap.finance/v2/pools"
 POOLS_URL_V1 = "https://api.saucerswap.finance/pools"
 RAW_DATA_FILE = DATA_DIR / "pacman_data_raw.json"
 TOKENS_FILE   = DATA_DIR / "tokens.json"
-POOLS_FILE    = DATA_DIR / "pools.json"
+POOLS_FILE    = DATA_DIR / "pools_v2.json"
 
 PUBLIC_DEMO_KEY = "875e1017-87b8-4b12-8301-6aa1f1aa073b"
 
@@ -136,7 +136,7 @@ def refresh(force=False):
     # 1.5 Filter V1 pools against the approved registry
     v1_pools = []
     try:
-        approved_path = ROOT_DIR / "data/v1_pools_approved.json"
+        approved_path = ROOT_DIR / "data/pools_v1.json"
         if approved_path.exists():
             with open(approved_path) as f:
                 approved = json.load(f)
@@ -159,7 +159,7 @@ def refresh(force=False):
 
     all_pools = v2_pools + v1_pools
     # -------------------------------------------------------------------
-    # 2. Update pools.json: add any new pools (never remove existing)
+    # 2. Update pools_v2.json: add any new pools (never remove existing)
     # -------------------------------------------------------------------
     existing_pools = []
     if POOLS_FILE.exists():
@@ -190,7 +190,7 @@ def refresh(force=False):
 
     with open(POOLS_FILE, "w") as f:
         json.dump(existing_pools, f, indent=2)
-    print(f"  {C.OK}✓{C.R}  pools.json: {new_pool_count} new pools added ({len(existing_pools)} total)")
+    print(f"  {C.OK}✓{C.R}  pools_v2.json: {new_pool_count} new pools added ({len(existing_pools)} total)")
 
     # -------------------------------------------------------------------
     # 3. Save raw data (V2 + V1) — router uses this for pricing

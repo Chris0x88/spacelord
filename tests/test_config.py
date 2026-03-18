@@ -17,10 +17,11 @@ class TestPacmanConfig:
 
         assert config.network == "mainnet"
         assert config.rpc_url == "https://mainnet.hashio.io/api"
-        assert config.max_swap_amount_usd == 1.00
-        assert config.max_daily_volume_usd == 10.00
+        # Swap/daily limits come from governance.json; dataclass defaults are 100.00
+        assert config.max_swap_amount_usd == 100.00
+        assert config.max_daily_volume_usd == 100.00
         assert config.max_slippage_percent == 2.0
-        assert config.simulate_mode is True
+        assert config.simulate_mode is False
         assert config.require_confirmation is True
         assert config.verbose_mode is False
         assert config.private_key is None
@@ -28,10 +29,7 @@ class TestPacmanConfig:
 
     @patch("pathlib.Path.exists")
     @patch.dict(os.environ, {
-        "PACMAN_PRIVATE_KEY": "abc",
         "PACMAN_NETWORK": "testnet",
-        "PACMAN_MAX_SWAP": "0.5",
-        "PACMAN_MAX_DAILY": "5.0",
         "PACMAN_MAX_SLIPPAGE": "2.0",
         "PACMAN_SIMULATE": "false",
         "PACMAN_CONFIRM": "false",
@@ -44,11 +42,8 @@ class TestPacmanConfig:
 
         config = PacmanConfig.from_env()
 
-        assert config.private_key == "abc"
         assert config.network == "testnet"
         assert config.rpc_url == "https://testnet.hashio.io/api"
-        assert config.max_swap_amount_usd == 0.5
-        assert config.max_daily_volume_usd == 5.0
         assert config.max_slippage_percent == 2.0
         assert config.simulate_mode is False
         assert config.require_confirmation is False
@@ -57,18 +52,14 @@ class TestPacmanConfig:
 
     @patch("pathlib.Path.exists")
     @patch.dict(os.environ, {
-        "PACMAN_MAX_SWAP": "2.0",
-        "PACMAN_MAX_DAILY": "20.0",
         "PACMAN_MAX_SLIPPAGE": "10.0"
     }, clear=True)
-    def test_from_env_safety_caps(self, mock_exists):
-        """Test that hardcoded safety caps are enforced in from_env."""
+    def test_from_env_slippage_cap(self, mock_exists):
+        """Test that the 5% slippage hard cap is enforced."""
         mock_exists.return_value = False
 
         config = PacmanConfig.from_env()
 
-        assert config.max_swap_amount_usd == 1.00
-        assert config.max_daily_volume_usd == 10.00
         assert config.max_slippage_percent == 5.0
 
     def test_safe_float(self):
@@ -89,8 +80,8 @@ class TestPacmanConfig:
         config = PacmanConfig(
             private_key="a" * 64,
             simulate_mode=False,
-            max_swap_amount_usd=0.5,
-            max_daily_volume_usd=5.0,
+            max_swap_amount_usd=100.0,
+            max_daily_volume_usd=100.0,
             max_slippage_percent=2.0
         )
         # Should not raise
@@ -125,23 +116,18 @@ class TestPacmanConfig:
             config.validate()
 
     def test_validate_invalid_limits(self):
-        """Test validate method with out-of-bounds limits."""
-        # Max swap too high
-        config = PacmanConfig(max_swap_amount_usd=1.01)
-        with pytest.raises(ConfigurationError, match="Invalid max_swap_amount_usd"):
-            config.validate()
-
+        """Test validate method with invalid limits."""
         # Max swap negative
-        config.max_swap_amount_usd = -0.1
+        config = PacmanConfig(max_swap_amount_usd=-0.1)
         with pytest.raises(ConfigurationError, match="Invalid max_swap_amount_usd"):
             config.validate()
 
-        # Max daily too high
-        config = PacmanConfig(max_daily_volume_usd=10.01)
+        # Max daily negative
+        config = PacmanConfig(max_daily_volume_usd=-1.0)
         with pytest.raises(ConfigurationError, match="Invalid max_daily_volume_usd"):
             config.validate()
 
-        # Max slippage too high
+        # Max slippage too high (5% hard cap stays)
         config = PacmanConfig(max_slippage_percent=5.1)
         with pytest.raises(ConfigurationError, match="Invalid max_slippage_percent"):
             config.validate()

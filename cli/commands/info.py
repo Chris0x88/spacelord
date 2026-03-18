@@ -154,8 +154,8 @@ def cmd_pools(app, args):
 def _pools_list(app):
     """Show the currently approved pools from JSON files."""
     registries = [
-        ("V2 (Direct)", "data/pools.json"),
-        ("V1 (Legacy)", "data/v1_pools_approved.json")
+        ("V2 (Direct)", "data/pools_v2.json"),
+        ("V1 (Legacy)", "data/pools_v1.json")
     ]
     
     # Pre-load tokens metadata for symbol resolution

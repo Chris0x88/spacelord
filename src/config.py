@@ -57,14 +57,14 @@ class PacmanConfig:
     network: str = "mainnet"
     rpc_url: str = "https://mainnet.hashio.io/api"
     
-    # Safety Limits (HARD CODED MAXIMUMS)
-    max_swap_amount_usd: float = 1.00  # $1.00 maximum per swap
-    max_daily_volume_usd: float = 10.00  # $10.00 daily limit
+    # Safety Limits — loaded from data/governance.json at runtime (edit there to change)
+    max_swap_amount_usd: float = 100.00
+    max_daily_volume_usd: float = 100.00
     max_slippage_percent: float = 2.0  # 2% default slippage
     lp_padding_percent: float = 2.0  # +2% buffer for EVM math rounding on LP deposits
     
     # Execution Settings
-    simulate_mode: bool = True  # Start in simulation
+    simulate_mode: bool = False  # Live execution (we NEVER simulate)
     require_confirmation: bool = True  # Always ask before executing
     auto_record: bool = True  # Record all transactions
     verbose_mode: bool = False  # Detailed logging
@@ -124,12 +124,19 @@ class PacmanConfig:
         else:
             config.rpc_url = os.getenv("PACMAN_RPC_URL", "https://mainnet.hashio.io/api")
         
-        # Safety limits (cannot be overridden above hardcoded max)
-        max_swap = cls._safe_float(os.getenv("PACMAN_MAX_SWAP"), 1.00)
-        config.max_swap_amount_usd = min(max_swap, 1.00)  # Hard cap at $1
-        
-        max_daily = cls._safe_float(os.getenv("PACMAN_MAX_DAILY"), 10.00)
-        config.max_daily_volume_usd = min(max_daily, 10.00)  # Hard cap at $10
+        # Safety limits — data/governance.json is the ONLY place to change these.
+        # Edit that file, not this code and not .env.
+        try:
+            gov_path = Path(__file__).parent.parent / "data" / "governance.json"
+            if gov_path.exists():
+                import json as _gjson
+                with open(gov_path) as gf:
+                    gov = _gjson.load(gf)
+                limits = gov.get("safety_limits", {})
+                config.max_swap_amount_usd = cls._safe_float(str(limits.get("max_swap_usd", 100.00)), 100.00)
+                config.max_daily_volume_usd = cls._safe_float(str(limits.get("max_daily_usd", 100.00)), 100.00)
+        except Exception:
+            pass  # Keeps dataclass defaults (100.00) if governance.json is unreadable
         
         # Slippage priority: ENV var > settings.json > default (2.0%)
         max_slippage = 2.0  # Default fallback
@@ -155,7 +162,7 @@ class PacmanConfig:
         config.max_slippage_percent = min(max_slippage, 5.0)  # Hard cap at 5%
         
         # Execution mode
-        config.simulate_mode = os.getenv("PACMAN_SIMULATE", "true").lower() == "true"
+        config.simulate_mode = os.getenv("PACMAN_SIMULATE", "false").lower() == "true"
         config.require_confirmation = os.getenv("PACMAN_CONFIRM", "true").lower() == "true"
         config.verbose_mode = os.getenv("PACMAN_VERBOSE", "false").lower() == "true"
         
@@ -225,11 +232,11 @@ class PacmanConfig:
                 del clean_key # Ensure cleanup
         
         # Validate limits
-        if math.isnan(self.max_swap_amount_usd) or self.max_swap_amount_usd > 1.00 or self.max_swap_amount_usd < 0:
-            raise ConfigurationError(f"Invalid max_swap_amount_usd: ${self.max_swap_amount_usd} (Max permitted: $1.00)")
-        
-        if math.isnan(self.max_daily_volume_usd) or self.max_daily_volume_usd > 10.00 or self.max_daily_volume_usd < 0:
-            raise ConfigurationError(f"Invalid max_daily_volume_usd: ${self.max_daily_volume_usd} (Max permitted: $10.00)")
+        if math.isnan(self.max_swap_amount_usd) or self.max_swap_amount_usd < 0:
+            raise ConfigurationError(f"Invalid max_swap_amount_usd: ${self.max_swap_amount_usd} (must be a positive number — edit data/governance.json)")
+
+        if math.isnan(self.max_daily_volume_usd) or self.max_daily_volume_usd < 0:
+            raise ConfigurationError(f"Invalid max_daily_volume_usd: ${self.max_daily_volume_usd} (must be a positive number — edit data/governance.json)")
 
         if math.isnan(self.max_slippage_percent) or self.max_slippage_percent > 5.0 or self.max_slippage_percent < 0:
             raise ConfigurationError(f"Invalid max_slippage_percent: {self.max_slippage_percent}% (Max permitted: 5%)")
@@ -284,8 +291,8 @@ class PacmanConfig:
         print(f"Private Key: {'✅ Configured' if self.private_key else '❌ Not set'}")
         print()
         print("🛡️  Safety Limits (HARD CODED):")
-        print(f"   Max per swap: ${self.max_swap_amount_usd:.2f}")
-        print(f"   Max daily: ${self.max_daily_volume_usd:.2f}")
+        print(f"   Max per swap: ${self.max_swap_amount_usd:.2f} (edit data/governance.json)")
+        print(f"   Max daily: ${self.max_daily_volume_usd:.2f} (edit data/governance.json)")
         print(f"   Max slippage: {self.max_slippage_percent:.1f}%")
         print()
         print("⚙️  Execution Mode:")
@@ -312,9 +319,8 @@ HEDERA_ACCOUNT_ID=0.0.123456
 # Network (mainnet or testnet)
 PACMAN_NETWORK={_default_config.network}
 
-# Safety limits (max ${_default_config.max_swap_amount_usd:.2f} per swap, ${_default_config.max_daily_volume_usd:.2f} daily)
-PACMAN_MAX_SWAP={_default_config.max_swap_amount_usd:.2f}
-PACMAN_MAX_DAILY={_default_config.max_daily_volume_usd:.2f}
+# Safety limits — edit data/governance.json (NOT here)
+# Slippage only (swap/daily limits live in data/governance.json)
 PACMAN_MAX_SLIPPAGE={_default_config.max_slippage_percent:.1f}  # Or set in data/settings.json
 
 # Execution mode

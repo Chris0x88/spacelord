@@ -14,7 +14,7 @@ The `settings.json` file is your "Control Panel". It allows you to tune the UI a
 ### Refresh Rules (The "Limiting Factor")
 The `refresh_strategy` defines how `scripts/refresh_data.py` builds the local liquidity map:
 
-- **`curated`**: (Default) Only fetches data for pools where **BOTH** tokens are in your verified `tokens.json` or `pools.json`. This keeps the routing graph lean and avoids "garbage" or low-liquidity pools.
+- **`curated`**: (Default) Only fetches data for pools where **BOTH** tokens are in your verified `tokens.json` or `pools_v2.json`. This keeps the routing graph lean and avoids "garbage" or low-liquidity pools.
 - **`comprehensive`**: Fetches every single V2 pool available on SaucerSwap. Use this if you want to research new pools or want the app to discover every possible routing path on the network.
 
 ---
@@ -23,7 +23,7 @@ The `refresh_strategy` defines how `scripts/refresh_data.py` builds the local li
 
 - **[tokens.json](file:///Users/cdi/Documents/Github/pacman/data/tokens.json)**: Core metadata (Name, Symbol, Decimals) for officially supported tokens.
 - **[aliases.json](file:///Users/cdi/Documents/Github/pacman/data/aliases.json)**: Mapping of nicknames (e.g., "stables") to canonical symbols or IDs.
-- **[pools.json](file:///Users/cdi/Documents/Github/pacman/data/pools.json)**: Static registry of verified liquidity pool Contract IDs and fees.
+- **[pools_v2.json](file:///Users/cdi/Documents/Github/pacman/data/pools_v2.json)**: Static registry of verified liquidity pool Contract IDs and fees.
 - **[variants.json](file:///Users/cdi/Documents/Github/pacman/data/variants.json)**: Maps relationship between ERC20 bridged tokens and HTS native variants.
 
 ## 🛠 Variables Registry

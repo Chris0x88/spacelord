@@ -39,11 +39,11 @@ lib/staking.py       → HIP-406 native staking via hiero-sdk-python.
 lib/multicall.py     → Batch balanceOf calls via Multicall3.
 
 data/tokens.json     → Token registry: {symbol → {id, decimals, name}}
-data/pools.json      → Approved V2 pool registry: [{contractId, tokenA, tokenB, fee}]
+data/pools_v2.json      → Approved V2 pool registry: [{contractId, tokenA, tokenB, fee}]
 data/variants.json   → Token variant metadata: HTS vs ERC20 variants + wrap/unwrap info
 data/aliases.json    → NLP nicknames: {"btc": "WBTC_HTS", ...}
 data/settings.json   → User config: transfer_whitelist
-data/v1_pools_approved.json → Approved V1 pool registry
+data/pools_v1.json → Approved V1 pool registry
 
 ---
 

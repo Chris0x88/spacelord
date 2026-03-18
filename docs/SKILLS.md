@@ -295,7 +295,7 @@ but can fail for brand-new HTS tokens that haven't been interacted with before.
 |---|---|
 | `.env` | Config: private key, simulate flags, robot thresholds |
 | `data/settings.json` | Slippage, blacklists, whitelist, token sort order |
-| `data/pools.json` | Approved V2 routing pools |
+| `data/pools_v2.json` | Approved V2 routing pools |
 | `data/tokens.json` | Token metadata, IDs, and decimals |
 | `execution_records/` | Trade history (one JSON per tx) |
 | `docs/SKILLS.md` | This file |
