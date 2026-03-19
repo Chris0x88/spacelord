@@ -504,18 +504,30 @@ def cmd_balance(app, args):
             }
             total = hbar_bal * hbar_price
             
-            for sym, bal in balances.items():
-                if sym == "HBAR": continue
+            from cli.pacman_filter import ui_filter
+            tokens_data = ui_filter.get_token_metadata()
+
+            for token_key, bal in balances.items():
+                # Skip HBAR (already in result["hbar"])
+                if token_key in ("HBAR", "0.0.0"):
+                    continue
                 try:
-                    from cli.pacman_filter import ui_filter
-                    meta = ui_filter.get_token_metadata().get(sym, {})
-                    token_id = meta.get("id", "")
+                    meta = tokens_data.get(token_key, {})
+                    if not meta:
+                        for k, m in tokens_data.items():
+                            if m.get("symbol") == token_key:
+                                meta = m
+                                break
+                    token_id = meta.get("id", token_key)
+                    if ui_filter.is_blacklisted(token_id):
+                        continue
+                    display_name = meta.get("symbol", token_key)
                     price = price_manager.get_price(token_id) if token_id else 0
                     val = round(bal * price, 2)
-                    result["tokens"][sym] = {"balance": bal, "price_usd": price, "value_usd": val}
+                    result["tokens"][display_name] = {"balance": bal, "price_usd": price, "value_usd": val}
                     total += val
                 except Exception:
-                    result["tokens"][sym] = {"balance": bal, "price_usd": 0, "value_usd": 0}
+                    result["tokens"][token_key] = {"balance": bal, "price_usd": 0, "value_usd": 0}
             
             result["total_usd"] = round(total, 2)
             print(_json.dumps(result, indent=2))
@@ -596,7 +608,9 @@ def cmd_send(app, args):
     elif res["success"]:
         print_transfer_receipt(res)
     else:
-        print(f"\n  {C.ERR}✗{C.R} FAILED: {res.get('error')}")
+        err_msg = res.get('error', 'Unknown error')
+        print(f"\n  {C.ERR}✗{C.R} FAILED: {err_msg}")
+        raise RuntimeError(f"Transfer failed: {err_msg}")
 
 
 def cmd_receive(app, args):
@@ -866,19 +880,33 @@ def cmd_status(app, args):
         hbar_price = price_manager.get_hbar_price()
         total_usd = hbar_bal * hbar_price
 
-        for sym, bal in balances.items():
-            if sym == "HBAR":
+        from cli.pacman_filter import ui_filter
+        tokens_data = ui_filter.get_token_metadata()
+
+        for token_key, bal in balances.items():
+            # Skip HBAR variants (already handled above)
+            if token_key in ("HBAR", "0.0.0"):
                 continue
             try:
-                from cli.pacman_filter import ui_filter
-                meta = ui_filter.get_token_metadata().get(sym, {})
-                token_id = meta.get("id", "")
+                # Look up metadata: token_key is a token ID like "0.0.456858"
+                meta = tokens_data.get(token_key, {})
+                if not meta:
+                    # Fallback: search by symbol match
+                    for k, m in tokens_data.items():
+                        if m.get("symbol") == token_key:
+                            meta = m
+                            break
+                token_id = meta.get("id", token_key)
+                # Skip blacklisted tokens (e.g., WHBAR)
+                if ui_filter.is_blacklisted(token_id):
+                    continue
+                display_name = meta.get("symbol", token_key)
                 price = price_manager.get_price(token_id) if token_id else 0
                 val = round(bal * price, 2)
-                tokens_out[sym] = {"balance": bal, "price_usd": price, "value_usd": val}
+                tokens_out[display_name] = {"balance": bal, "price_usd": price, "value_usd": val}
                 total_usd += val
             except Exception:
-                tokens_out[sym] = {"balance": bal, "price_usd": 0, "value_usd": 0}
+                tokens_out[token_key] = {"balance": bal, "price_usd": 0, "value_usd": 0}
     except Exception as e:
         if json_mode:
             print(_json.dumps({"error": f"Balance fetch failed: {e}"}))

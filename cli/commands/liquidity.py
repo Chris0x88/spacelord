@@ -40,15 +40,159 @@ def _get_tick_spacing(fee: int) -> int:
     if fee == 10000: return 200
     return 60
 
+def _pool_deposit_agent(app, args, amount, dry_run, json_mode):
+    """
+    Agent-friendly pool deposit: pool-deposit <amount> <tokenA> <tokenB> [range <pct>]
+    Automatically finds the best pool, calculates ticks, and deposits.
+    """
+    import json as _json
+
+    token0_input = args[1].upper()
+    token1_input = args[2].upper()
+
+    # Parse optional range
+    range_pct = 5.0  # default 5%
+    for i, a in enumerate(args):
+        if a.lower() == "range" and i + 1 < len(args):
+            r = args[i + 1].lower()
+            if r == "full":
+                range_pct = 0  # signals full range
+            else:
+                try:
+                    range_pct = float(r)
+                except ValueError:
+                    pass
+
+    # Resolve token IDs
+    token0_id = app.executor._get_token_id(token0_input)
+    token1_id = app.executor._get_token_id(token1_input)
+    if not token0_id or not token1_id:
+        msg = f"Unknown token: {token0_input if not token0_id else token1_input}"
+        if json_mode:
+            print(_json.dumps({"error": msg}))
+        else:
+            print(f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    # Find the best matching pool from cached data
+    raw_path = Path("data/pacman_data_raw.json")
+    if not raw_path.exists():
+        msg = "Pool data not found. Run 'refresh' first."
+        if json_mode:
+            print(_json.dumps({"error": msg}))
+        else:
+            print(f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    with open(raw_path) as f:
+        pools = json.load(f)
+
+    # Match pool: look for pair in either order
+    best_pool = None
+    best_tvl = 0
+    for p in pools:
+        ta_id = p.get("tokenA", {}).get("id", "")
+        tb_id = p.get("tokenB", {}).get("id", "")
+        # Handle HBAR/WHBAR unification
+        ta_norm = "0.0.0" if ta_id == "0.0.1456986" else ta_id
+        tb_norm = "0.0.0" if tb_id == "0.0.1456986" else tb_id
+        t0_norm = "0.0.0" if token0_id == "0.0.1456986" else token0_id
+        t1_norm = "0.0.0" if token1_id == "0.0.1456986" else token1_id
+
+        if {ta_norm, tb_norm} == {t0_norm, t1_norm}:
+            tvl, _ = _calculate_pool_stats(p)
+            if tvl > best_tvl:
+                best_tvl = tvl
+                best_pool = p
+
+    if not best_pool:
+        msg = f"No pool found for {token0_input}/{token1_input}. Run 'pools search {token0_input}' to discover."
+        if json_mode:
+            print(_json.dumps({"error": msg}))
+        else:
+            print(f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    # Extract pool details
+    fee = best_pool.get("fee", 3000)
+    tick_current = best_pool.get("tickCurrent", 0)
+    tick_spacing = _get_tick_spacing(fee)
+    sym_a = best_pool.get("tokenA", {}).get("symbol", token0_input)
+    sym_b = best_pool.get("tokenB", {}).get("symbol", token1_input)
+
+    # Calculate tick range
+    if range_pct == 0:
+        tick_lower, tick_upper = -887220, 887220
+        range_desc = "Full Range"
+    else:
+        tick_delta = int(math.log(1 + range_pct / 100) / math.log(1.0001))
+        tick_lower = ((tick_current - tick_delta) // tick_spacing) * tick_spacing
+        tick_upper = ((tick_current + tick_delta) // tick_spacing) * tick_spacing
+        tick_lower = max(-887220, tick_lower)
+        tick_upper = min(887220, tick_upper)
+        range_desc = f"+/- {range_pct}%"
+
+    if not json_mode:
+        print(f"\n  {C.ACCENT}🌊{C.R} V2 Pool Deposit: {sym_a}/{sym_b} ({fee/10000:.2f}% fee)")
+        print(f"  {C.MUTED}Pool TVL: ${best_tvl:,.0f} | Range: {range_desc} | Ticks: [{tick_lower}, {tick_upper}]{C.R}")
+        print(f"  {C.MUTED}Depositing {amount} {token0_input} (second token auto-calculated){C.R}")
+
+    if dry_run:
+        if json_mode:
+            print(_json.dumps({
+                "dry_run": True, "pool": f"{sym_a}/{sym_b}", "fee": fee,
+                "tick_lower": tick_lower, "tick_upper": tick_upper,
+                "amount": amount, "token": token0_input, "range": range_desc
+            }))
+        else:
+            print(f"  {C.WARN}⚠  DRY RUN — no transaction will be sent{C.R}")
+        return
+
+    try:
+        tx_hash = app.add_liquidity(sym_a, sym_b, fee, tick_lower, tick_upper, amount, 0, dry_run=False)
+        if json_mode:
+            print(_json.dumps({"success": True, "tx_hash": tx_hash, "pool": f"{sym_a}/{sym_b}",
+                              "fee": fee, "tick_lower": tick_lower, "tick_upper": tick_upper}))
+        else:
+            print(f"\n  {C.OK}✅ Success!{C.R}")
+            print(f"  {C.MUTED}TxHash: {C.TEXT}{tx_hash}{C.R}")
+            print(f"  {C.MUTED}Explorer: {C.TEXT}https://hashscan.io/{app.network}/transaction/{tx_hash}{C.R}")
+    except Exception as e:
+        if json_mode:
+            print(_json.dumps({"success": False, "error": str(e)}))
+        else:
+            print(f"\n  {C.ERR}✗{C.R} FAILED: {str(e)}")
+
+
 def cmd_pool_deposit(app, args):
     """
     Deposit tokens into a V2 liquidity pool.
     Usage (Interactive): pool-deposit
-    Usage (Direct): pool-deposit <token0> <token1> <amount0> <amount1> <fee_tier> <tick_lower> <tick_upper> [--dry-run]
+    Usage (Agent/Direct): pool-deposit <amount> <tokenA> <tokenB> [range <pct>] [--dry-run]
+      e.g.: pool-deposit 5 USDC HBAR range 5
+      range: 2, 5, 10, or "full" (default: 5%)
+    Usage (Advanced): pool-deposit <token0> <token1> <amount0> <amount1> <fee_tier> <tick_lower> <tick_upper> [--dry-run]
     """
     dry_run = "--dry-run" in args
-    args = [a for a in args if a != "--dry-run"]
-    
+    json_mode = "--json" in args
+    args = [a for a in args if a not in ("--dry-run", "--json", "--yes", "-y")]
+
+    # Agent-friendly syntax: pool-deposit <amount> <tokenA> <tokenB> [range <pct>]
+    # Detect by checking if args[0] is a number and args[1] is NOT a number
+    if len(args) >= 3:
+        try:
+            test_amount = float(args[0])
+            try:
+                float(args[2])  # If 3rd arg is a number, it's the advanced syntax
+                is_agent_mode = False
+            except ValueError:
+                is_agent_mode = True  # 3rd arg is a token name — agent syntax
+        except ValueError:
+            is_agent_mode = False
+
+        if is_agent_mode:
+            return _pool_deposit_agent(app, args, test_amount, dry_run, json_mode)
+
     if len(args) == 0:
         # --- NEW POOL-CENTRIC INTERACTIVE WIZARD ---
         print(f"\n  {C.ACCENT}🌊{C.R} V2 Liquidity Setup (Pool Discovery)")
@@ -290,24 +434,89 @@ def cmd_pool_withdraw(app, args):
     """
     Withdraw liquidity from a V2 pool.
     Usage (Interactive): pool-withdraw
-    Usage (Direct):      pool-withdraw <nft_id> <liquidity_amount> [--dry-run]
+    Usage (Direct):      pool-withdraw <nft_id> <liquidity_amount|100%|50%|all> [--dry-run]
     """
     import math as _math, json as _json
 
     dry_run = "--dry-run" in args
-    clean_args = [a for a in args if a != "--dry-run"]
+    json_mode = "--json" in args
+    clean_args = [a for a in args if a not in ("--dry-run", "--json", "--yes", "-y")]
 
     nft_id = None
     liquidity = None
 
-    if len(clean_args) >= 2:
-        # Direct mode — args provided on command line
+    if len(clean_args) >= 1:
+        # Direct/agent mode
         try:
             nft_id = int(clean_args[0])
-            liquidity = int(clean_args[1])
         except ValueError:
-            print(f"  {C.ERR}✗{C.R} Invalid numeric arguments.")
+            if clean_args[0].lower() == "all":
+                # "pool-withdraw all" — withdraw all positions fully
+                try:
+                    positions = app.get_liquidity_positions()
+                except Exception as e:
+                    print(f"  {C.ERR}✗{C.R} Failed to fetch positions: {e}")
+                    return
+                if not positions:
+                    print(f"  {C.WARN}⚠{C.R} No active LP positions to withdraw.")
+                    return
+                for pos in positions:
+                    print(f"  {C.ACCENT}🌊{C.R} Withdrawing NFT #{pos['id']} (100% of {pos['liquidity']:,})...")
+                    try:
+                        tx_hashes = app.remove_liquidity(pos['id'], pos['liquidity'], dry_run=dry_run)
+                        print(f"  {C.OK}✅{C.R} NFT #{pos['id']} withdrawn. Tx: {tx_hashes[0][:16]}...")
+                    except Exception as e:
+                        print(f"  {C.ERR}✗{C.R} NFT #{pos['id']} failed: {e}")
+                return
+            print(f"  {C.ERR}✗{C.R} Invalid NFT ID: {clean_args[0]}")
             return
+
+        # Parse liquidity amount — support "100%", "50%", "all", or raw number
+        if len(clean_args) >= 2:
+            liq_arg = clean_args[1].lower().strip()
+            if liq_arg in ("all", "100%"):
+                # Need to look up the position's total liquidity
+                try:
+                    positions = app.get_liquidity_positions()
+                    pos = next((p for p in positions if p['id'] == nft_id), None)
+                    if not pos:
+                        print(f"  {C.ERR}✗{C.R} NFT #{nft_id} not found in active positions.")
+                        return
+                    liquidity = pos['liquidity']
+                except Exception as e:
+                    print(f"  {C.ERR}✗{C.R} Failed to look up position: {e}")
+                    return
+            elif liq_arg.endswith("%"):
+                try:
+                    pct = float(liq_arg.rstrip("%")) / 100
+                    positions = app.get_liquidity_positions()
+                    pos = next((p for p in positions if p['id'] == nft_id), None)
+                    if not pos:
+                        print(f"  {C.ERR}✗{C.R} NFT #{nft_id} not found.")
+                        return
+                    liquidity = int(pos['liquidity'] * pct)
+                except Exception as e:
+                    print(f"  {C.ERR}✗{C.R} Failed: {e}")
+                    return
+            else:
+                try:
+                    liquidity = int(liq_arg)
+                except ValueError:
+                    print(f"  {C.ERR}✗{C.R} Invalid liquidity amount: {liq_arg}")
+                    return
+        else:
+            # Only NFT ID given, no amount — default to 100%
+            try:
+                positions = app.get_liquidity_positions()
+                pos = next((p for p in positions if p['id'] == nft_id), None)
+                if not pos:
+                    print(f"  {C.ERR}✗{C.R} NFT #{nft_id} not found.")
+                    return
+                liquidity = pos['liquidity']
+                print(f"  {C.MUTED}No amount specified — withdrawing 100% ({liquidity:,} units){C.R}")
+            except Exception as e:
+                print(f"  {C.ERR}✗{C.R} Failed: {e}")
+                return
     else:
         # Interactive wizard — fetch live positions from chain
         print(f"\n  {C.ACCENT}🌊{C.R} V2 Pool Withdraw (Position Selector)")

@@ -270,36 +270,50 @@ class PacmanExecutor:
 
 
     def _get_token_id(self, symbol: str) -> Optional[str]:
-        """Convert symbol to token ID using tokens.json."""
+        """Convert symbol to token ID using aliases.json then tokens.json."""
         if symbol.startswith("0.0."):
             return symbol
         if symbol.upper() == "HBAR":
             return "0.0.0"
-            
+
+        root = Path(__file__).parent.parent
+
+        # 1. Check aliases.json first (handles "wbtc" → "0.0.10082597" etc.)
         try:
-            root = Path(__file__).parent.parent
+            aliases_path = root / "data" / "aliases.json"
+            if not aliases_path.exists():
+                aliases_path = Path("data/aliases.json")
+            if aliases_path.exists():
+                with open(aliases_path) as f:
+                    aliases = json.load(f)
+                resolved = aliases.get(symbol.lower())
+                if resolved:
+                    return resolved
+        except Exception:
+            pass
+
+        # 2. tokens.json key/symbol match
+        try:
             tokens_path = root / "data" / "tokens.json"
             if not tokens_path.exists():
                  tokens_path = Path("data/tokens.json")
 
             with open(tokens_path) as f:
                 tokens_data = json.load(f)
-            
-            # 1. Exact Key Match (Case-Insensitive)
+
             search_sym = symbol.upper()
             meta = None
             for key, data in tokens_data.items():
                 if key.upper() == search_sym:
                     meta = data
                     break
-            
-            # 2. Symbol Field Match (if key match failed)
+
             if not meta:
                 for key, data in tokens_data.items():
                     if data.get("symbol", "").upper() == search_sym:
                         meta = data
                         break
-            
+
             if meta:
                 return meta.get("id")
         except Exception:

@@ -346,8 +346,10 @@ def _cmd_status(app, json_mode=False):
         except (ProcessLookupError, ValueError):
             pass
 
+    min_portfolio = getattr(bot.config, 'min_portfolio_usd', 5.0)
+
     if json_mode:
-        # Emit clean structured output for AI parsing  
+        # Emit clean structured output for AI parsing
         out = {
             "running": is_running,
             "pid": pid if is_running else None,
@@ -358,6 +360,7 @@ def _cmd_status(app, json_mode=False):
             "trades_executed": status.get("trades_executed", 0),
             "last_check": status.get("last_check"),
             "last_rebalance": status.get("last_rebalance"),
+            "min_portfolio_usd": min_portfolio,
             "portfolio": None,
             "signal": None,
         }
@@ -413,13 +416,20 @@ def _cmd_status(app, json_mode=False):
         print(f"  {C.BOLD}Last trade:{C.R} {status['last_rebalance']}")
     
     portfolio = status.get("portfolio")
+    min_portfolio = getattr(bot.config, 'min_portfolio_usd', 5.0)
     if portfolio:
+        total_val = portfolio.get('total_value_usd', 0)
         print(f"\n  {C.BOLD}Portfolio:{C.R}")
         print(f"    WBTC: {portfolio['wbtc_balance']:.8f} ({portfolio['wbtc_percent']:.1f}%)")
         print(f"    USDC: {portfolio['usdc_balance']:.2f}")
         print(f"    HBAR: {portfolio['hbar_balance']:.2f} (gas)")
-        print(f"    Total: ${portfolio['total_value_usd']:,.2f}")
-    
+        print(f"    Total: ${total_val:,.2f}")
+        if total_val < min_portfolio:
+            print(f"\n  {C.WARN}⚠  Portfolio below ${min_portfolio:.0f} minimum for cost-effective rebalancing.{C.R}")
+            print(f"  {C.MUTED}   A 15% price move on ${total_val:.2f} = ${total_val * 0.15:.2f} trade.{C.R}")
+            print(f"  {C.MUTED}   EVM + gas costs ~$0.30/trade — would eat most of the rebalance.{C.R}")
+            print(f"  {C.MUTED}   Fund with USDC + WBTC to at least ${min_portfolio:.0f} to start.{C.R}")
+
     signal = status.get("signal")
     if signal:
         print(f"\n  {C.BOLD}Signal:{C.R}")

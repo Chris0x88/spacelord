@@ -140,7 +140,18 @@ class PowerLawBot(BasePlugin):
             }
             
             logger.info(f"   💰 Portfolio: ${state.total_value_usd:.2f} | HBAR: {state.hbar_balance:.2f}ℏ")
-            
+
+            # Check minimum portfolio balance for cost-effective rebalancing
+            # A 15% price move on the portfolio produces a trade of ~15% of total value.
+            # That trade must exceed fixed costs (EVM ~$0.30 + gas + LP fees) to be worth executing.
+            min_portfolio = getattr(self.config, 'min_portfolio_usd', 5.0)
+            if state.total_value_usd < min_portfolio:
+                reason = (f"Portfolio ${state.total_value_usd:.2f} below minimum "
+                          f"${min_portfolio:.2f} for cost-effective rebalancing")
+                logger.warning(f"   ⚠️ {reason}")
+                return {"success": False, "error": reason, "needs_funding": True,
+                        "total_usd": state.total_value_usd, "min_required": min_portfolio}
+
             # Check HBAR gas reserve
             if state.hbar_balance < self.config.hbar_reserve_min:
                 robot_id = getattr(self.app.config, "robot_account_id", None)

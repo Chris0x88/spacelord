@@ -38,30 +38,23 @@ def cmd_stake(app, args):
     # Initialize Manager
     try:
         manager = StakingManager(network=app.config.network)
-        # Validate and Force-Reload Account ID from .env
-        env_id = None
-        try:
-            env_path = Path(__file__).resolve().parent.parent.parent / ".env"
-            if env_path.exists():
-                with open(env_path) as f:
-                    for line in f:
-                        if line.strip().startswith("HEDERA_ACCOUNT_ID="):
-                            env_id = line.strip().split("=")[1].strip()
-                            break
-        except Exception:
-            pass
 
-        # Prefer .env value if found, otherwise stick to config
-        active_account_id = env_id if env_id else app.config.hedera_account_id
-        
+        active_account_id = app.executor.hedera_account_id
         if not active_account_id:
              print(f"  {C.ERR}✗{C.R} Account ID not configured.")
              return
 
-        # Set Operator
-        pk = app.config.private_key.reveal()
-        manager.set_operator(active_account_id, pk)
-        del pk  # Cleanup
+        # Staking uses AccountUpdateTransaction which requires the account's ADMIN key,
+        # not the EVM signing key. On Hedera these can be different keys.
+        # MAIN_OPERATOR_KEY is the admin key; PRIVATE_KEY is the EVM signing key.
+        admin_key = os.getenv("MAIN_OPERATOR_KEY", "").strip()
+        if admin_key:
+            manager.set_operator(active_account_id, admin_key)
+        else:
+            # Fallback to PRIVATE_KEY (works if admin key == signing key)
+            pk = app.config.private_key.reveal()
+            manager.set_operator(active_account_id, pk)
+            del pk
 
         if node_id == 5:
             print(f"\n  {C.ACCENT}⟳{C.R} Staking for Account {C.BOLD}{active_account_id}{C.R}...")
@@ -137,29 +130,20 @@ def cmd_unstake(app, args):
 
     try:
         manager = StakingManager(network=app.config.network)
-        
-        # Validate and Force-Reload Account ID from .env
-        env_id = None
-        try:
-            env_path = Path(__file__).resolve().parent.parent.parent / ".env"
-            if env_path.exists():
-                with open(env_path) as f:
-                    for line in f:
-                        if line.strip().startswith("HEDERA_ACCOUNT_ID="):
-                            env_id = line.strip().split("=")[1].strip()
-                            break
-        except Exception:
-            pass
-        
-        active_account_id = env_id if env_id else app.config.hedera_account_id
-        
+
+        active_account_id = app.executor.hedera_account_id
         if not active_account_id:
              print(f"  {C.ERR}✗{C.R} Account ID not configured.")
              return
 
-        pk = app.config.private_key.reveal()
-        manager.set_operator(active_account_id, pk)
-        del pk
+        # Use admin key (MAIN_OPERATOR_KEY) for AccountUpdate transactions
+        admin_key = os.getenv("MAIN_OPERATOR_KEY", "").strip()
+        if admin_key:
+            manager.set_operator(active_account_id, admin_key)
+        else:
+            pk = app.config.private_key.reveal()
+            manager.set_operator(active_account_id, pk)
+            del pk
 
         print(f"\n  {C.ACCENT}⟳{C.R} Unstaking for Account {C.BOLD}{active_account_id}{C.R}...")
         

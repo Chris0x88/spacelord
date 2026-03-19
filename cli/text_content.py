@@ -98,6 +98,12 @@ HELP_COMMANDS = [
 
     # System
     ("--- SYSTEM ---", ""),
+    ("status",                      "Account + portfolio snapshot (alias: whoami, info)"),
+    ("refresh",                     "Refresh pool & price data from SaucerSwap (alias: sync)"),
+    ("fund",                        "MoonPay/faucet link for funding (alias: faucet)"),
+    ("logs",                        "View recent agent interaction log"),
+    ("nfts",                        "View NFT inventory"),
+    ("backup-keys",                 "Export private key backup (alias: export-keys)"),
     ("verbose [on/off]",            "Toggle verbose / debug logging"),
     ("doctor",                      "Run system health & AI safety diagnostics"),
     ("help <topic>",                "In-depth help for a specific topic"),
@@ -634,8 +640,8 @@ when your BTC allocation deviates too far from the model's target.
   {C.MUTED}Use this in a helper function to instantly capture and return the image stream
   to the user over Telegram or web interfaces.{C.R}
 
-{C.WARN}Note:{C.R} Runs in SIMULATION mode by default to protect funds. Add
-ROBOT_SIMULATE=false to .env to execute real swaps.""",
+{C.WARN}Note:{C.R} The robot trades LIVE (no simulation). Minimum portfolio: $5 USD.
+Below $5, transaction costs (~$0.30/trade) exceed the rebalance benefit.""",
 
     "doctor": """{C.BOLD}PACMAN DOCTOR — SYSTEM DIAGNOSTICS{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}

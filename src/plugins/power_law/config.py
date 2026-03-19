@@ -39,6 +39,16 @@ class RobotConfig:
     hbar_reserve_min: float = field(default_factory=lambda: float(
         os.getenv("ROBOT_HBAR_RESERVE", "5.0")
     ))
+    # Minimum portfolio balance (USD) to justify rebalancing.
+    # A 15% price move on a $5 portfolio = $0.75 rebalance trade.
+    # Costs: ~$0.30 EVM execution + ~$0.01 HBAR gas + LP fee (0.3% of trade).
+    # At $5, costs eat ~42% of the trade — borderline but viable.
+    # Below $5, costs exceed the rebalance benefit.
+    min_portfolio_usd: float = field(default_factory=lambda: float(
+        os.getenv("ROBOT_MIN_PORTFOLIO_USD", "5.0")
+    ))
+    # Estimated fixed cost per rebalance trade (EVM execution + gas)
+    estimated_trade_cost_usd: float = 0.30
     
     # --- Model Selection ---
     model: str = field(default_factory=lambda:

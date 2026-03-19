@@ -21,8 +21,10 @@
     "robot": {
       "id": "0.0.10379302",
       "purpose": "rebalancer",
-      "funded": false,
-      "notes": "Power Law rebalancer daemon. Currently unfunded — do NOT suggest rebalancing until funded."
+      "funded": true,
+      "min_portfolio_usd": 5.00,
+      "min_portfolio_rationale": "A 15% price move on $5 = $0.75 trade. Costs: ~$0.30 EVM + gas + 0.3% LP fee. Below $5, costs exceed rebalance benefit.",
+      "notes": "Power Law rebalancer daemon. Currently unfunded — do NOT suggest rebalancing until funded with at least $5 in USDC + WBTC."
     },
     "robot_deprecated": {
       "id": "0.0.10301803",

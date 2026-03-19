@@ -15,35 +15,278 @@ from cli.display import (
 
 
 def cmd_help(app, args):
-    topic = args[0] if args else None
-    
+    import json as _json
+
+    json_mode = "--json" in args
+    clean = [a for a in args if a not in ("--json", "--yes", "-y")]
+    topic = clean[0] if clean else None
+
+    # Agent workflow search: help how <task>
+    if topic and topic.lower() == "how" and len(clean) > 1:
+        query = " ".join(clean[1:]).lower()
+        return _help_how(query, json_mode)
+
+    # JSON mode: structured command reference for agents
+    if json_mode:
+        return _help_json(topic)
+
     # Map Aliases
     aliases = {
-        "trade": "swap",
-        "buy":   "swap",
-        "get":   "swap",
-        "transfers": "send",
-        "transfer": "send",
-        "wallet": "balance",
-        "prices": "price",
-        "natural": "nlp",
-        "rules":   "nlp",
-        "grammar": "nlp",
+        "trade": "swap", "buy": "swap", "get": "swap",
+        "transfers": "send", "transfer": "send",
+        "wallet": "balance", "prices": "price",
+        "natural": "nlp", "rules": "nlp", "grammar": "nlp",
         "accounts": "account",
-        "pool-deposit": "liquidity",
-        "pool-withdraw": "liquidity",
-        "lp": "liquidity",
-        "assoc": "associate",
-        "association": "associate",
-        "token": "associate",
+        "pool-deposit": "liquidity", "pool-withdraw": "liquidity", "lp": "liquidity",
+        "assoc": "associate", "association": "associate", "token": "associate",
         "orders": "order",
-        "wallet": "setup",
     }
-    
+
     if topic and topic.lower() in aliases:
         topic = aliases[topic.lower()]
-        
+
     show_help(topic)
+
+
+# ---------------------------------------------------------------------------
+# Agent-facing help systems
+# ---------------------------------------------------------------------------
+
+AGENT_WORKFLOWS = {
+    "swap": {
+        "description": "Swap one token for another",
+        "steps": [
+            "balance                           # Check you have enough of the source token",
+            "swap <amount> <FROM> for <TO>      # Exact-in: spend exact amount",
+            "swap <FROM> for <amount> <TO>      # Exact-out: receive exact amount",
+        ],
+        "examples": ["swap 5 USDC for HBAR", "swap HBAR for 10 USDC", "swap 1 usdc[hts] for usdc"],
+        "notes": "V2 only. Max $100/swap. Aliases: bitcoin→WBTC, dollar→USDC, ethereum→WETH",
+    },
+    "send": {
+        "description": "Transfer tokens to another account",
+        "steps": [
+            "balance                           # Verify funds",
+            "whitelist                          # Check recipient is whitelisted",
+            "whitelist add <addr> [nickname]    # Add if needed",
+            "send <amount> <token> to <addr>    # Execute transfer",
+        ],
+        "examples": ["send 10 HBAR to 0.0.12345", "send 1 USDC to 0.0.12345 memo Payment"],
+        "notes": "Own accounts (accounts.json) are auto-whitelisted. EVM addresses blocked.",
+    },
+    "deposit": {
+        "description": "Add liquidity to a V2 pool",
+        "steps": [
+            "balance                           # Check token balances",
+            "pool-deposit <amount> <tokenA> <tokenB> range <pct>  # Agent-friendly",
+            "pool-deposit <t0> <t1> <a0> <a1> <fee> <tickLo> <tickHi>  # Advanced",
+        ],
+        "examples": ["pool-deposit 5 USDC HBAR range 5", "pool-deposit 1 USDC SAUCE range full"],
+        "notes": "range: 2, 5, 10, or 'full'. Default 5%. Auto-finds best pool by TVL.",
+    },
+    "withdraw": {
+        "description": "Remove liquidity from a V2 pool",
+        "steps": [
+            "lp                                # List active positions with NFT IDs",
+            "pool-withdraw <nft_id> [amount]   # Withdraw (default: 100%)",
+            "pool-withdraw all                 # Withdraw all positions",
+        ],
+        "examples": ["pool-withdraw 12345 100%", "pool-withdraw 12345 50%", "pool-withdraw all"],
+        "notes": "Amount can be: raw number, 50%, 100%, or 'all'.",
+    },
+    "stake": {
+        "description": "Stake HBAR to a consensus node for rewards",
+        "steps": [
+            "balance                           # Check HBAR balance",
+            "stake [node_id]                   # Stake (default: node 5 Google)",
+        ],
+        "examples": ["stake", "stake 5", "unstake"],
+        "notes": "Staking is non-custodial. Funds remain usable. Rewards accrue automatically.",
+    },
+    "associate": {
+        "description": "Link a token to your account (required before receiving it)",
+        "steps": [
+            "receive <token>                   # Check if already associated",
+            "associate <token>                 # Associate if needed",
+        ],
+        "examples": ["associate USDC", "associate 0.0.456858"],
+        "notes": "Auto-association happens during swaps. Manual only needed for receiving tokens.",
+    },
+    "buy-and-lp": {
+        "description": "Buy a token and provide liquidity in a V2 pool",
+        "steps": [
+            "balance                           # Check available funds",
+            "price <token>                     # Check token price",
+            "swap <amount> USDC for <token>    # Buy the token",
+            "balance <token>                   # Verify received amount",
+            "pool-deposit <amount> <token> HBAR range 5  # Deposit into LP",
+            "lp                                # Verify LP position created",
+            "nfts                              # View LP NFT",
+        ],
+        "examples": [
+            "swap 1 USDC for SAUCE",
+            "pool-deposit 44 SAUCE HBAR range 5",
+        ],
+        "notes": "Range options: 2 (tight), 5 (standard), 10 (wide), full. The second token amount is auto-calculated. LP creates an NFT.",
+    },
+    "fund-robot": {
+        "description": "Fund and start the robot rebalancer",
+        "steps": [
+            "robot status                      # Check if already funded",
+            "send <amount> USDC to 0.0.10379302  # Send USDC to robot",
+            "send <amount> WBTC to 0.0.10379302  # Send WBTC to robot",
+            "robot status                      # Verify portfolio > $5",
+            "robot start                       # Start the daemon",
+        ],
+        "examples": ["send 10 USDC to 0.0.10379302", "send 0.0003 WBTC to 0.0.10379302"],
+        "notes": "Robot needs >= $5 portfolio (USDC + WBTC). Threshold 15%. Min trade $1.",
+    },
+    "close-lp": {
+        "description": "Close an LP position and collect tokens",
+        "steps": [
+            "lp                                # List positions with NFT IDs",
+            "pool-withdraw <nft_id> 100%       # Withdraw all liquidity",
+            "balance                           # Verify tokens returned",
+        ],
+        "examples": ["pool-withdraw 73729 100%", "pool-withdraw all"],
+        "notes": "Can withdraw partial: 50%, or custom amount. 'pool-withdraw all' closes everything.",
+    },
+    "rebalance": {
+        "description": "Manage the Power Law BTC rebalancer robot",
+        "steps": [
+            "robot status                      # Check robot portfolio and signal",
+            "robot signal                      # View model signal (no trading)",
+            "robot start                       # Start daemon (needs $5+ portfolio)",
+            "robot stop                        # Stop daemon",
+        ],
+        "examples": ["robot status", "robot start"],
+        "notes": "Robot account: 0.0.10379302. Min portfolio $5. Threshold 15%.",
+    },
+    "order": {
+        "description": "Set limit orders that trigger automatically",
+        "steps": [
+            "order buy <token> at <price> size <n>   # Buy when price drops",
+            "order sell <token> at <price> size <n>   # Sell when price rises",
+            "order list                               # View open orders",
+            "order on                                 # Start monitoring daemon",
+            "order cancel <id>                        # Cancel an order",
+        ],
+        "examples": ["order buy HBAR at 0.08 size 10", "order sell HBAR at 0.15 size 50"],
+        "notes": "Daemon must be ON to auto-execute. 'order off' stops monitoring.",
+    },
+    "account": {
+        "description": "Manage accounts and switch between them",
+        "steps": [
+            "account                           # View active account + known accounts",
+            "account switch <id_or_name>       # Switch active account",
+            "account switch 0.0.10289160       # ALWAYS switch back to main after robot ops",
+        ],
+        "examples": ["account switch 0.0.10379302", "account rename 0.0.xxx MyLabel"],
+        "notes": "Main: 0.0.10289160. Robot: 0.0.10379302. Always switch back to main after robot ops.",
+    },
+    "whitelist": {
+        "description": "Manage trusted transfer destinations",
+        "steps": [
+            "whitelist                         # View current whitelist",
+            "whitelist add <addr> [nickname]   # Add address",
+            "whitelist remove <addr>           # Remove address",
+        ],
+        "examples": ["whitelist add 0.0.12345 Exchange"],
+        "notes": "Whitelist is the most critical safety feature. Own accounts auto-whitelisted.",
+    },
+}
+
+
+def _help_how(query, json_mode):
+    """Search workflows by keyword and return step-by-step instructions."""
+    import json as _json
+
+    matches = []
+    for key, wf in AGENT_WORKFLOWS.items():
+        score = 0
+        searchable = f"{key} {wf['description']} {' '.join(wf.get('examples', []))}".lower()
+        for word in query.split():
+            if word in searchable:
+                score += 1
+        if score > 0:
+            matches.append((score, key, wf))
+
+    matches.sort(key=lambda x: -x[0])
+
+    if json_mode:
+        results = []
+        for _, key, wf in matches[:3]:
+            results.append({"workflow": key, **wf})
+        print(_json.dumps({"query": query, "results": results}, indent=2))
+        return
+
+    if not matches:
+        print(f"  {C.WARN}⚠{C.R} No workflows found for '{query}'.")
+        print(f"  {C.MUTED}Available: {', '.join(AGENT_WORKFLOWS.keys())}{C.R}")
+        return
+
+    for _, key, wf in matches[:3]:
+        print(f"\n  {C.BOLD}{C.ACCENT}HOW TO: {wf['description']}{C.R}")
+        print(f"  {C.CHROME}{'─' * 60}{C.R}")
+        for step in wf["steps"]:
+            print(f"  {C.TEXT}{step}{C.R}")
+        if wf.get("examples"):
+            print(f"\n  {C.MUTED}Examples:{C.R}")
+            for ex in wf["examples"]:
+                print(f"    {C.ACCENT}{ex}{C.R}")
+        if wf.get("notes"):
+            print(f"  {C.MUTED}Note: {wf['notes']}{C.R}")
+    print()
+
+
+def _help_json(topic):
+    """Return structured command reference for agents."""
+    import json as _json
+
+    commands = {
+        "balance": {"syntax": "balance [token]", "description": "Token balances + USD values", "flags": ["--json"]},
+        "status": {"syntax": "status", "description": "Account + portfolio + robot snapshot", "flags": ["--json"], "aliases": ["whoami", "info"]},
+        "account": {"syntax": "account [switch <id>] [rename <id> <name>] [--new]", "description": "Account management", "flags": ["--json"]},
+        "swap": {"syntax": "swap <amt> <FROM> for <TO> | swap <FROM> for <amt> <TO>", "description": "DEX swap (V2)", "flags": ["--json"]},
+        "send": {"syntax": "send <amt> <token> to <addr> [memo <text>]", "description": "Transfer tokens", "flags": ["--json"]},
+        "receive": {"syntax": "receive [token]", "description": "Show deposit address + association check"},
+        "associate": {"syntax": "associate <token|id>", "description": "Link token to account", "flags": ["--json"]},
+        "whitelist": {"syntax": "whitelist [add <addr> [nick]] [remove <addr>]", "description": "Manage transfer whitelist"},
+        "price": {"syntax": "price [token]", "description": "Live token prices", "flags": ["--json"]},
+        "tokens": {"syntax": "tokens", "description": "Supported token list with aliases"},
+        "history": {"syntax": "history", "description": "Recent transaction history", "flags": ["--json"]},
+        "pools": {"syntax": "pools [list|search <q>|approve <id>]", "description": "Pool registry management"},
+        "pool-deposit": {"syntax": "pool-deposit <amt> <tokenA> <tokenB> [range <pct>]", "description": "Add V2 liquidity (agent-friendly)", "flags": ["--json", "--dry-run"]},
+        "pool-withdraw": {"syntax": "pool-withdraw <nft_id> [amount|pct|all]", "description": "Remove V2 liquidity", "flags": ["--json", "--dry-run"]},
+        "lp": {"syntax": "lp", "description": "View active LP positions"},
+        "stake": {"syntax": "stake [node_id]", "description": "Stake HBAR (default: node 5 Google)"},
+        "unstake": {"syntax": "unstake", "description": "Stop staking"},
+        "slippage": {"syntax": "slippage [percent]", "description": "View or set max slippage (0.1-5.0%)"},
+        "order": {"syntax": "order buy|sell <token> at <price> size <n> | order list|cancel <id>|on|off", "description": "Limit orders"},
+        "robot": {"syntax": "robot status|signal|start|stop", "description": "Power Law BTC rebalancer", "flags": ["--json"]},
+        "fund": {"syntax": "fund", "description": "Fiat onramp link (MoonPay)", "flags": ["--json"]},
+        "doctor": {"syntax": "doctor", "description": "System health diagnostics"},
+        "refresh": {"syntax": "refresh", "description": "Refresh pool & price data", "aliases": ["sync"]},
+        "logs": {"syntax": "logs [count]", "description": "Agent interaction log"},
+        "nfts": {"syntax": "nfts [view <token_id> <serial>]", "description": "NFT inventory"},
+        "backup-keys": {"syntax": "backup-keys [--file]", "description": "Key backup", "flags": ["--json"]},
+        "verbose": {"syntax": "verbose [on|off]", "description": "Toggle debug logging"},
+        "help": {"syntax": "help [topic] | help how <task> | help --json", "description": "Command reference"},
+    }
+
+    if topic:
+        topic_lower = topic.lower()
+        cmd = commands.get(topic_lower)
+        if cmd:
+            print(_json.dumps({topic_lower: cmd}, indent=2))
+        else:
+            # Search workflows
+            _help_how(topic_lower, json_mode=True)
+    else:
+        out = {"commands": commands, "workflows": list(AGENT_WORKFLOWS.keys()),
+               "usage": "help how <task> for step-by-step guides. help <command> --json for syntax."}
+        print(_json.dumps(out, indent=2))
+    return
 
 
 def cmd_tokens(app, args):

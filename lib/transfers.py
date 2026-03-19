@@ -19,27 +19,85 @@ from lib.saucerswap import hedera_id_to_evm, ERC20_ABI
 
 def resolve_evm_address(executor, hedera_id: str) -> str:
     """
-    Resolve the EVM address for a Hedera account ID by querying Mirror Node.
-    Falls back to numeric mapping if lookup fails.
+    Resolve the ECDSA alias EVM address for a Hedera account ID.
+
+    CRITICAL: On Hedera, HTS token transfers via ERC20 require the ECDSA alias
+    address (derived from the account's signing key), NOT the long-zero format
+    (0x000...00XXXX). The long-zero format causes reverts for token operations.
+
+    Resolution order:
+    1. Local accounts.json (has evm_alias for our own accounts)
+    2. Mirror Node public key → ECDSA derivation (for external ECDSA accounts)
+    3. Long-zero fallback (only for HBAR transfers — tokens WILL fail)
     """
+    # 1. Check local accounts.json first — fastest and most reliable
+    try:
+        from pathlib import Path
+        accounts_path = Path("data/accounts.json")
+        if accounts_path.exists():
+            with open(accounts_path) as f:
+                known_accounts = json.load(f)
+            for acct in known_accounts:
+                if acct.get("id") == hedera_id and acct.get("evm_alias"):
+                    alias = executor.w3.to_checksum_address(acct["evm_alias"])
+                    logger.debug(f"   Resolved {hedera_id} → {alias} (local accounts.json)")
+                    return alias
+    except Exception as e:
+        logger.debug(f"   accounts.json lookup failed: {e}")
+
+    # 2. Check transfer whitelist for evm_alias
+    try:
+        from pathlib import Path
+        settings_path = Path("data/settings.json")
+        if settings_path.exists():
+            with open(settings_path) as f:
+                settings = json.load(f)
+            for entry in settings.get("transfer_whitelist", []):
+                if entry.get("address") == hedera_id and entry.get("evm_alias"):
+                    alias = executor.w3.to_checksum_address(entry["evm_alias"])
+                    logger.debug(f"   Resolved {hedera_id} → {alias} (whitelist)")
+                    return alias
+    except Exception as e:
+        logger.debug(f"   Whitelist lookup failed: {e}")
+
+    # 3. Mirror Node: derive ECDSA alias from public key
     network = getattr(executor, 'network', 'mainnet')
-    # Determine Mirror Node base URL
     if network == 'mainnet':
         base_url = "https://mainnet-public.mirrornode.hedera.com"
     else:
-        base_url = f"https://{network}-mirrornode.hedera.com"
+        base_url = f"https://{network}.mirrornode.hedera.com"
     url = f"{base_url}/api/v1/accounts/{hedera_id}"
     try:
         resp = requests.get(url, timeout=5)
         if resp.status_code == 200:
             data = resp.json()
+            key_data = data.get("key", {})
+            key_type = key_data.get("_type", "")
+            pub_hex = key_data.get("key", "")
+
+            if key_type == "ECDSA_SECP256K1" and pub_hex:
+                try:
+                    from eth_keys import keys as eth_keys
+                    pub_bytes = bytes.fromhex(pub_hex)
+                    pub_key = eth_keys.PublicKey.from_compressed_bytes(pub_bytes)
+                    derived = pub_key.to_checksum_address()
+                    logger.info(f"   Resolved {hedera_id} → {derived} (Mirror Node ECDSA derivation)")
+                    return derived
+                except Exception as e:
+                    logger.warning(f"   ECDSA derivation failed for {hedera_id}: {e}")
+
+            # If not ECDSA or derivation failed, use evm_address from Mirror Node
             evm_addr = data.get("evm_address")
             if evm_addr:
-                return executor.w3.to_checksum_address(evm_addr)
+                addr = executor.w3.to_checksum_address(evm_addr)
+                logger.warning(f"   Using Mirror Node evm_address for {hedera_id}: {addr} "
+                             f"(long-zero format — token transfers may fail)")
+                return addr
     except Exception as e:
-        logger.warning(f"Mirror Node lookup failed for {hedera_id}: {e}")
-    # Fallback to numeric mapping (may cause revert)
-    logger.warning(f"Using numeric fallback for {hedera_id} (may fail).")
+        logger.warning(f"   Mirror Node lookup failed for {hedera_id}: {e}")
+
+    # 4. Last resort: numeric long-zero mapping
+    logger.warning(f"   ⚠️ Using numeric fallback for {hedera_id} — token transfers WILL likely fail!")
     return hedera_id_to_evm(hedera_id)
 
 def execute_transfer(executor, token_symbol: str, amount: float, recipient: str, memo: str = None) -> dict:

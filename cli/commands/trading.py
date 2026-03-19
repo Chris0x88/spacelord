@@ -200,7 +200,7 @@ def cmd_swap_v1(app, args):
     confirm = "y"
     if not simulate and not yes_flag:
         try:
-            confirm = input(f"\n  Execute V1 Swap? {C.MUTED}(y/n){C.R} ").strip().lower()
+            confirm = _safe_input(f"\n  Execute V1 Swap? {C.MUTED}(y/n){C.R} ", args, default="y")
         except (EOFError, KeyboardInterrupt):
             confirm = "y"  # Auto-confirm in non-interactive mode
     

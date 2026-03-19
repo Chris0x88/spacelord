@@ -385,13 +385,30 @@ def _show_single_balance(executor, token_name: str, price_manager):
         print(f"  {C.ERR}✗{C.R} Could not load tokens.json")
         return
 
-    # Find the token
+    # Find the token — check aliases first, then tokens_data keys/symbols
     meta = None
-    for sym, m in tokens_data.items():
-        if sym.upper() == token_name_upper or m.get("symbol", "").upper() == token_name_upper:
-            meta = m
-            meta["_sym"] = sym
-            break
+    resolved_id = None
+
+    # 1. Check aliases.json for human-friendly names → token ID
+    try:
+        aliases = ui_filter._load_aliases()
+        resolved_id = aliases.get(token_name.lower())
+    except Exception:
+        pass
+
+    if resolved_id:
+        # Look up metadata by resolved token ID
+        meta = tokens_data.get(resolved_id)
+        if meta:
+            meta["_sym"] = meta.get("symbol", token_name_upper)
+
+    # 2. Direct key/symbol match in tokens_data
+    if not meta:
+        for sym, m in tokens_data.items():
+            if sym.upper() == token_name_upper or m.get("symbol", "").upper() == token_name_upper:
+                meta = m
+                meta["_sym"] = sym
+                break
 
     if not meta:
         print(f"  {C.ERR}✗{C.R} Unknown token: {token_name}")

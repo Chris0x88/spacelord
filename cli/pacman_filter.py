@@ -100,8 +100,16 @@ class UIFilter:
         settings = self._load_settings()
         priority = settings.get("display_rules", {}).get("priority_symbols", [])
         priority_map = {sym.upper(): i for i, sym in enumerate(priority)}
-        
-        items = list(tokens.items())
+
+        # Deduplicate by token ID — multiple keys may map to the same token
+        seen_ids = set()
+        items = []
+        for key, meta in tokens.items():
+            tid = meta.get("id", key)
+            if tid in seen_ids:
+                continue
+            seen_ids.add(tid)
+            items.append((key, meta))
         
         def sort_key(pair):
             token_id, meta = pair

@@ -91,7 +91,7 @@ class AccountManager:
         except Exception:
             return []
 
-    def _save_account(self, account_id: str, type: str = "imported", nickname: str = "", purpose: Optional[str] = None):
+    def _save_account(self, account_id: str, type: str = "imported", nickname: str = "", purpose: Optional[str] = None, evm_alias: Optional[str] = None):
         """Save an account ID to the local registry."""
         import json
         from pathlib import Path
@@ -117,24 +117,36 @@ class AccountManager:
         accounts_path = Path("data/accounts.json")
         accounts = self.get_known_accounts()
 
-        # Check if already exists — update nickname if provided
+        # Check if already exists — update nickname/evm_alias if provided
         for a in accounts:
             if a.get("id") == account_id:
+                changed = False
                 if nickname and a.get("nickname") != nickname:
                     a["nickname"] = nickname
+                    changed = True
+                if evm_alias and not a.get("evm_alias"):
+                    a["evm_alias"] = evm_alias
+                    changed = True
+                if changed:
                     try:
                         with open(accounts_path, "w") as f:
                             json.dump(accounts, f, indent=4)
                     except Exception as e:
-                        logger.error(f"Failed to update nickname: {e}")
+                        logger.error(f"Failed to update account: {e}")
                 return
 
-        accounts.append({
+        entry = {
             "id": account_id,
             "type": type,
             "nickname": nickname,
             "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
-        })
+        }
+
+        # Auto-populate EVM alias if we have the private key (critical for token transfers)
+        if evm_alias:
+            entry["evm_alias"] = evm_alias
+
+        accounts.append(entry)
 
         try:
             accounts_path.parent.mkdir(parents=True, exist_ok=True)

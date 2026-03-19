@@ -122,7 +122,8 @@ def refresh(force=False):
     if not force and RAW_DATA_FILE.exists():
         age = time.time() - RAW_DATA_FILE.stat().st_mtime
         if age < 60:
-            print(f"  Using cached pool data ({int(age)}s old).")
+            import sys as _sys
+            print(f"  Using cached pool data ({int(age)}s old).", file=_sys.stderr)
             return
 
     print(f"{C.BOLD}📡 Fetching all V2 pools from SaucerSwap...{C.R}")

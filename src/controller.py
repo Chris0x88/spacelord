@@ -299,22 +299,25 @@ class PacmanController:
             from src.plugins.account_manager import AccountManager
             self._account_manager = AccountManager(network=self.network)
         
-        # Always sync operator if we have a key, preventing freezeWith desyncs
-        # after a user runs 'setup' and switches accounts in the same session.
-        if self.config.private_key:
-            pk = self.config.private_key.reveal()
-            clean_pk = pk.replace("0x", "")
+        # Sync operator key for SDK operations (TokenAssociate, AccountUpdate, etc.)
+        # These require the account's ADMIN key, not the EVM signing key.
+        # MAIN_OPERATOR_KEY is the admin key; PRIVATE_KEY is the EVM signing key.
+        import os
+        admin_key = os.getenv("MAIN_OPERATOR_KEY", "").strip()
+        op_key = admin_key if admin_key else (self.config.private_key.reveal() if self.config.private_key else None)
+        if op_key:
+            clean_pk = op_key.replace("0x", "")
             if len(clean_pk) == 64 and self.account_id and "." in str(self.account_id):
                 try:
-                    # Only update if the operator actually changed
                     if not hasattr(self._account_manager, 'operator_id') or self._account_manager.operator_id != self.account_id:
-                        self._account_manager.set_operator(self.account_id, pk)
+                        self._account_manager.set_operator(self.account_id, op_key)
                 except RuntimeError:
                     pass  # SDK not installed — basic operations still work
                 except Exception as e:
                     from src.logger import logger
                     logger.warning(f"Could not sync operator with ID '{self.account_id}': {e}")
-            del pk
+            if not admin_key:
+                del op_key
             
         return self._account_manager
 
@@ -898,7 +901,10 @@ class PacmanController:
         if not self.account_id or self.account_id.lower() in ["unknown", "none"]: return []
         network_prefix = "mainnet-public" if self.network == "mainnet" else "testnet"
         nft_token_id = "0.0.4054027"
-        url = f"https://{network_prefix}.mirrornode.hedera.com/api/v1/accounts/{self.account_id}/nfts?token.id={nft_token_id}"
+        # Query by EVM alias (ECDSA-derived address) — on Hedera, NFTs minted via EVM
+        # are associated with the EVM alias, not necessarily the Hedera native ID.
+        query_id = self.executor.eoa if self.executor and self.executor.eoa else self.account_id
+        url = f"https://{network_prefix}.mirrornode.hedera.com/api/v1/accounts/{query_id}/nfts?token.id={nft_token_id}"
         
         positions = []
         try:

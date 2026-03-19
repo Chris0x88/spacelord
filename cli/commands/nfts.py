@@ -39,7 +39,9 @@ def cmd_nfts(app, args):
     json_mode = "--json" in args
     clean = _clean_args(args)
 
-    account_id = getattr(app, 'account_id', None) or app.executor.hedera_account_id
+    # Use EVM alias for NFT queries — NFTs minted via EVM are associated
+    # with the ECDSA alias address, not the Hedera native account ID.
+    account_id = getattr(app.executor, 'eoa', None) or getattr(app, 'account_id', None) or app.executor.hedera_account_id
     network = getattr(app, 'network', 'mainnet')
     mirror = MIRROR_BASE if network == "mainnet" else MIRROR_TESTNET
 

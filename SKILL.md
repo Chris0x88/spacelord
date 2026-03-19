@@ -523,9 +523,10 @@ Pacman supports multiple accounts with different purposes:
 ### Robot Account: 0.0.10379302
 - **Purpose**: Power Law rebalancer daemon
 - **Key**: In `.env` as `ROBOT_PRIVATE_KEY` (independent ECDSA key)
-- **Status**: Currently UNFUNDED ($0 balance)
-- **Rule**: If balance is $0, say "needs funding" — never suggest starting the rebalancer
+- **Minimum portfolio**: $5 USD (below this, transaction costs exceed rebalance benefit — ~$0.30 EVM/gas per trade)
+- **Rule**: If balance < $5, say "needs funding" — never suggest starting the rebalancer
 - **Config discovery**: `config.py` finds this by nickname "Bitcoin Rebalancer Daemon" in `accounts.json`
+- **EVM alias**: Stored in `accounts.json` (`evm_alias` field) — critical for token transfers
 
 ### Deprecated Robot: 0.0.10301803
 - **Purpose**: Backup only
@@ -684,7 +685,30 @@ These are documented failures from real agent sessions. Each one has cost time, 
 
 ---
 
-# SECTION 11: COMMAND REFERENCE (Internal — Don't Show Users)
+# SECTION 11: WORKFLOW TEMPLATES & COMMAND REFERENCE
+
+## Workflow Guidance System
+
+Before starting any multi-step operation, query the built-in workflow templates:
+
+```
+./launch.sh help how <task>          # Step-by-step guide (human-readable)
+./launch.sh help how <task> --json   # Same, parseable by agents
+./launch.sh help --json              # Full command reference + all workflow topics
+```
+
+**Available workflows:** swap, send, deposit, withdraw, stake, associate, rebalance, order, account, whitelist, buy-and-lp, fund-robot, close-lp
+
+**How to use workflows:** These are playbooks, NOT rigid scripts. Execute each step as a separate command, check the result, and adapt. If a step fails, handle the error before continuing. The workflow tells you the ORDER and WHAT to check — you decide the specifics based on user context.
+
+**Example — user says "buy some SAUCE and put it in a pool":**
+1. Run `help how buy-and-lp` to get the step sequence
+2. Run `balance` to check funds → decide how much to swap
+3. Run `swap 1 USDC for SAUCE` → check output for amount received
+4. Run `pool-deposit 44 SAUCE HBAR range 5` → LP created
+5. Run `lp` → confirm position, report NFT ID to user
+
+Each step is a tool call. You make decisions between steps based on results.
 
 ## Entry Point
 `./launch.sh <command>`
@@ -737,17 +761,26 @@ Optional: `--yes` flag is accepted but unnecessary — auto-confirmed in agent/p
 | `nfts view <token_id> <serial>` | NFT metadata |
 | `fund` | Fiat onramp (balance-aware) |
 
+## Staking
+| Command | Purpose |
+|---|---|
+| `stake [node_id]` | Stake HBAR to consensus node (default: node 5 Google) |
+| `unstake` | Stop staking and clear node preference |
+
 ## Robot & System
 | Command | Purpose |
 |---|---|
 | `robot status` | Rebalancer state + signal |
 | `robot signal` | BTC model signal (read-only) |
-| `robot start` | Start rebalancer (must be funded!) |
+| `robot start` | Start rebalancer (must have >= $5 portfolio) |
 | `robot stop` | Stop rebalancer |
+| `refresh` / `sync` | Refresh pool & price data from SaucerSwap |
 | `backup-keys` | Key backup to ~/Downloads |
 | `tokens` | Supported token list |
 | `pools search <TOKEN>` | Discover pools on-chain |
 | `pools approve <POOL_ID>` | Add pool to V2 registry |
+| `receive [token]` | Show deposit address + association status |
+| `verbose [on/off]` | Toggle debug logging |
 
 ## Daemon Management
 | Command | Purpose |
@@ -789,7 +822,7 @@ Optional: `--yes` flag is accepted but unnecessary — auto-confirmed in agent/p
 {
   "running": false,
   "simulate": false,
-  "model": "HEARTBEAT",
+  "model": "POWER_LAW",
   "threshold_pct": 15.0,
   "portfolio": {
     "wbtc_balance": 0.000289,
