@@ -174,6 +174,12 @@ if [ $# -gt 0 ]; then
             exit 0
             ;;
 
+        openclaw-setup|agent-setup)
+            echo -e "${CYAN}[Pacman]${NC} Starting OpenClaw agent setup..."
+            uv run --project "$SCRIPT_DIR" python scripts/openclaw_setup.py
+            exit $?
+            ;;
+
         kill)
             echo -e "${CYAN}[Pacman]${NC} Killing ALL Pacman processes..."
             pkill -9 -f "cli.main" 2>/dev/null || true
