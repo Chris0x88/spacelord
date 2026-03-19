@@ -13,7 +13,7 @@ from pathlib import Path
 from src.logger import logger
 
 
-def get_balances(w3, eoa: str, client, token_highlights: list = None) -> Dict[str, float]:
+def get_balances(w3, eoa: str, client, token_highlights: list = None, hedera_account_id: str = None) -> Dict[str, float]:
     """
     Fetch all non-zero token balances using Multicall.
     This reduces 30+ RPC calls to 1-2 chunks.
@@ -44,7 +44,7 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None) -> Dict[st
                 tokens_data = json.load(f)
         except Exception:
             return balances
-        return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network)
+        return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network, hedera_account_id)
 
     # ... (rest of loading tokens_data)
     try:
@@ -99,33 +99,37 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None) -> Dict[st
     except Exception as e:
         # Hedera HTS balanceOf via multicall3 can return b'' for unassociated accounts — expected.
         logger.debug(f"   Multicall unavailable ({e}), using Mirror Node...")
-        return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network)
+        return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network, hedera_account_id)
 
     # For sub-accounts on Hedera, Mirror Node is the only reliable source for HTS balances
     # when multiple IDs share an ECDSA alias. We double-check if we found low token count.
     if len(balances) <= 1:
         logger.debug("   ⚠️ Low token count via RPC, checking with Mirror Node...")
-        mirror_bal = _get_balances_mirror(eoa, tokens_data, token_highlights, client.network)
+        mirror_bal = _get_balances_mirror(eoa, tokens_data, token_highlights, client.network, hedera_account_id)
         balances.update(mirror_bal)
 
     logger.debug(f"Fetched {len(balances)} non-zero balances.")
     return balances
 
 
-def _get_balances_mirror(eoa: str, tokens_data: dict, token_highlights: list = None, network: str = "mainnet") -> Dict[str, float]:
+def _get_balances_mirror(eoa: str, tokens_data: dict, token_highlights: list = None, network: str = "mainnet", hedera_account_id: str = None) -> Dict[str, float]:
     """
     Fallback: Fetch HTS balances directly from Mirror Node API.
     Required for sub-accounts where EVM long-zero or alias queries fail.
     """
     import requests
     balances = {}
-    
-    # Resolve Hedera ID if eoa is long-zero or alias
-    account_id = eoa
-    if eoa.startswith("0x0000000000000000000000000000000000"):
-        # Convert hex suffix to decimal ID
+
+    # Prefer the Hedera account ID (0.0.xxx) directly — avoids EVM alias
+    # resolution issues for independent-key accounts (e.g. robot).
+    if hedera_account_id and hedera_account_id.startswith("0.0."):
+        account_id = hedera_account_id
+    elif eoa.startswith("0x0000000000000000000000000000000000"):
+        # Convert long-zero hex suffix to decimal ID
         num = int(eoa[34:], 16)
         account_id = f"0.0.{num}"
+    else:
+        account_id = eoa
     
     base_url = "https://mainnet-public.mirrornode.hedera.com" if network == "mainnet" else "https://testnet.mirrornode.hedera.com"
     url = f"{base_url}/api/v1/accounts/{account_id}"

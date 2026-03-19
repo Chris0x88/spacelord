@@ -266,7 +266,7 @@ class PacmanExecutor:
     def get_balances(self, token_highlights: list = None, eoa_override: str = None) -> Dict[str, float]:
         """Fetch all non-zero token balances using Multicall (with priority fallback)."""
         target_eoa = eoa_override or self.eoa
-        return _get_balances_impl(self.w3, target_eoa, self.client, token_highlights=token_highlights)
+        return _get_balances_impl(self.w3, target_eoa, self.client, token_highlights=token_highlights, hedera_account_id=self.hedera_account_id)
 
 
     def _get_token_id(self, symbol: str) -> Optional[str]:
