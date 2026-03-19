@@ -45,6 +45,9 @@ REPO_MAP.md
 ARCHITECTURE_RULES.md
 BUGS.md
 CHANGELOG.md
+CLAUDE.md
+OPERATIONS.md
+
 !data/*.template.json
 
 # Private Documentation
@@ -66,3 +69,6 @@ dashboard/pacmate-dashboard.html
 
 # Backups
 backups/
+
+# Exported feedback (session transcripts, agent handoffs)
+FEEDBACK/
