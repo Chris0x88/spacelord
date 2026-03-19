@@ -616,15 +616,36 @@ def cmd_send(app, args):
 def cmd_receive(app, args):
     """
     Show wallet address and check token associations.
-    Usage: receive [token_symbol]
+    Usage: receive [token_symbol] [--json]
     """
+    import json as _json
+
+    json_mode = "--json" in args
+    clean = _clean_args(args)
+
     if not app.executor:
-        print(f"  {C.ERR}✗{C.R} Engine not initialized.")
+        if json_mode:
+            print(_json.dumps({"error": "Engine not initialized"}))
+        else:
+            print(f"  {C.ERR}✗{C.R} Engine not initialized.")
+        return
+
+    account_id = app.executor.hedera_account_id
+    eoa = app.executor.eoa
+
+    if json_mode:
+        result = {"account": account_id, "evm_address": eoa}
+        if clean:
+            token_symbol = clean[0].upper()
+            token_id = app.resolve_token_id(token_symbol) if token_symbol not in ["HBAR"] else "0.0.0"
+            is_associated = True if token_symbol == "HBAR" else app.executor.check_token_association(token_id) if token_id else False
+            result["token"] = token_symbol
+            result["token_id"] = token_id
+            result["associated"] = is_associated
+        print(_json.dumps(result, indent=2))
         return
 
     # 1. Show Address
-    account_id = app.executor.hedera_account_id
-    eoa = app.executor.eoa
     print(f"\n  {C.BOLD}{C.TEXT}RECEIVE HBAR / TOKENS{C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
     print(f"  {C.TEXT}Hedera Native ID:{C.R} {C.BOLD}{C.OK}{account_id}{C.R}")
@@ -697,7 +718,14 @@ def cmd_whitelist(app, args):
       whitelist add <0.0.xxx> [nickname] → add address with optional label
       whitelist remove <0.0.xxx>         → remove address
     """
-    action = args[0].lower() if args else "view"
+    import json as _json
+    json_mode = "--json" in args
+    clean = [a for a in args if a not in ("--json", "--yes", "-y")]
+    action = clean[0].lower() if clean else "view"
+
+    if json_mode and action in ["view", "list", "ls"]:
+        print(_json.dumps({"whitelist": app.get_whitelist()}, indent=2))
+        return
 
     if action in ["view", "list", "ls"]:
         whitelist = app.get_whitelist()

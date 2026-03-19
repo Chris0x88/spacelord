@@ -650,38 +650,37 @@ def cmd_pool_withdraw(app, args):
 
 def cmd_lp_positions(app, args):
     """
-    Dedicated command to view active V2 Liquidity positions.
-    Usage: lp
-    """
-    from cli.display import show_balance
-    print(f"\n  {C.ACCENT}🌊{C.R} Querying live LP positions...")
-    try:
-        positions = app.get_liquidity_positions()
-        # show_balance has the logic to render positions if passed
-        show_balance(app.executor, lp_positions=positions)
-    except Exception as e:
-        print(f"  {C.ERR}✗{C.R} Error fetching LP positions: {e}")
-
-def cmd_lp_positions(app, args):
-    """
     Dedicated command to view active V2 Liquidity positions (NFTs only).
-    Usage: lp  |  positions
+    Usage: lp [--json]  |  positions [--json]
     """
     import math as _math, json as _json
 
-    print(f"\n  {C.BOLD}{C.ACCENT}V2 LIQUIDITY POSITIONS{C.R}")
-    print(f"  {C.CHROME}{'─' * 72}{C.R}")
-    print(f"  {C.MUTED}Fetching active positions from chain...{C.R}")
+    json_mode = "--json" in args
+
+    if not json_mode:
+        print(f"\n  {C.BOLD}{C.ACCENT}V2 LIQUIDITY POSITIONS{C.R}")
+        print(f"  {C.CHROME}{'─' * 72}{C.R}")
+        print(f"  {C.MUTED}Fetching active positions from chain...{C.R}")
 
     try:
         positions = app.get_liquidity_positions()
     except Exception as e:
-        print(f"  {C.ERR}✗{C.R} Error: {e}")
+        if json_mode:
+            print(_json.dumps({"error": str(e), "positions": []}))
+        else:
+            print(f"  {C.ERR}✗{C.R} Error: {e}")
         return
 
     if not positions:
-        print(f"  {C.WARN}⚠  No active V2 LP positions found.{C.R}")
-        print(f"  {C.MUTED}Run 'pool-deposit' to create a position.{C.R}\n")
+        if json_mode:
+            print(_json.dumps({"positions": []}))
+        else:
+            print(f"  {C.WARN}⚠  No active V2 LP positions found.{C.R}")
+            print(f"  {C.MUTED}Run 'pool-deposit' to create a position.{C.R}\n")
+        return
+
+    if json_mode:
+        print(_json.dumps({"positions": positions}, indent=2, default=str))
         return
 
     # Load token names

@@ -16,99 +16,120 @@ PACMAN_BANNER_TEMPLATE = """{ACCENT}
 {ACCENT}     ᗧ{R}{MUTED}· · ·{R}{OK} 👾{R}  {TEXT}SaucerSwap V2 Swaps & Liquidity{R} {MUTED}on{R} {BRAND}Hedera{R}
 {CHROME}    ╰──────────────────────────────────────────────────────╯{R}"""
 
-HELP_COMMANDS = [
-    # Wallet
-    ("--- WALLET & SETUP ---", ""),
-    ("setup",                       "Create or import a wallet (guided wizard)"),
-    ("account",                     "Show active wallet + Hedera & EVM addresses"),
-    ("account switch <name>",       "Switch active wallet by nickname or ID"),
-    ("account --new",               "Create a sub-account funded from your current wallet"),
-    ("account rename <id> <name>",  "Label any known account for easy reference"),
-    ("balance",                     "All token balances + USD values"),
-    ("balance <token>",             "Single token balance"),
+# Structured command groups — used by both collapsed and expanded help views
+HELP_GROUPS = {
+    "trading": {
+        "title": "TRADING",
+        "summary": "swap, swap-v1, price, slippage",
+        "commands": [
+            ("swap <amt> <A> for <B>",      "Exact-in swap — spend exact amount, get best rate"),
+            ("swap <A> for <amt> <B>",      "Exact-out swap — receive exact amount, spend minimum"),
+            ("swap-v1 <amt> <A> <B>",       "SaucerSwap V1 (legacy AMM) swap"),
+            ("price [token]",               "Token prices from SaucerSwap V2"),
+            ("slippage [%]",                "View or set max slippage tolerance (default: 2%)"),
+        ],
+    },
+    "portfolio": {
+        "title": "PORTFOLIO",
+        "summary": "balance, status, history, tokens, nfts",
+        "commands": [
+            ("balance [token]",             "All token balances + USD values (or single token)"),
+            ("status",                      "Account + portfolio + robot snapshot"),
+            ("history",                     "Recent execution history (swaps, transfers, staking)"),
+            ("tokens",                      "Supported token list with Hedera IDs & aliases"),
+            ("nfts",                        "View NFT inventory"),
+            ("sources",                     "Price source breakdown (pool/contract IDs)"),
+        ],
+    },
+    "transfers": {
+        "title": "TRANSFERS",
+        "summary": "send, receive, whitelist",
+        "commands": [
+            ("send <amt> <tk> to <rcp>",    "Transfer HBAR or any HTS token to an account"),
+            ("receive [token]",             "Show your address + check token association"),
+            ("whitelist [add|remove]",      "Manage trusted recipient addresses"),
+        ],
+    },
+    "account": {
+        "title": "ACCOUNT",
+        "summary": "account, associate, setup, fund, backup-keys",
+        "commands": [
+            ("account",                     "Show active wallet + known accounts"),
+            ("account switch <name|id>",    "Switch active wallet"),
+            ("associate <token|id>",        "Link a token to your account"),
+            ("setup",                       "Create or import a wallet (guided wizard)"),
+            ("fund",                        "MoonPay/faucet link for funding"),
+            ("backup-keys",                 "Export private key backup"),
+        ],
+    },
+    "staking": {
+        "title": "STAKING",
+        "summary": "stake, unstake",
+        "commands": [
+            ("stake [node_id]",             "Stake HBAR to a consensus node (default: Google)"),
+            ("unstake",                     "Stop staking and clear node preference"),
+        ],
+    },
+    "liquidity": {
+        "title": "LIQUIDITY",
+        "summary": "lp, pool-deposit, pool-withdraw, pools",
+        "commands": [
+            ("lp",                          "View active LP positions (V2 NFTs)"),
+            ("pool-deposit <amt> <A> <B> range <pct>", "Add liquidity (agent-friendly)"),
+            ("pool-withdraw <nft> [amt|%|all]",        "Remove liquidity"),
+            ("pools [list|search|approve]", "Pool registry management"),
+        ],
+    },
+    "orders": {
+        "title": "LIMIT ORDERS",
+        "summary": "order buy/sell/list/cancel/on/off",
+        "commands": [
+            ("order buy <tk> at <$> size N",  "Buy when price drops to target"),
+            ("order sell <tk> at <$> size N", "Sell when price rises to target"),
+            ("order list",                    "View all open orders"),
+            ("order cancel <id>",             "Cancel an open order"),
+            ("order on / off",                "Start or stop the monitoring daemon"),
+        ],
+    },
+    "robot": {
+        "title": "ROBOT",
+        "summary": "robot signal/status/start/stop",
+        "commands": [
+            ("robot signal",                "Show today's BTC Power Law signal"),
+            ("robot status",                "Show bot status, portfolio, and signal"),
+            ("robot start",                 "Start the autonomous rebalancing daemon"),
+            ("robot stop",                  "Stop the daemon"),
+        ],
+    },
+    "messaging": {
+        "title": "MESSAGING (HCS)",
+        "summary": "hcs, hcs10",
+        "commands": [
+            ("hcs status",                  "Show active signal topic"),
+            ("hcs signals",                 "View recent investment signals"),
+            ("hcs10 setup",                 "Create public inbound topic"),
+            ("hcs10 connect <topic_id>",    "Connect to another agent"),
+            ("hcs10 send <id> <msg>",       "Send message to connected agent"),
+        ],
+    },
+    "system": {
+        "title": "SYSTEM",
+        "summary": "doctor, refresh, logs, verbose, help",
+        "commands": [
+            ("doctor",                      "Run system health diagnostics"),
+            ("refresh",                     "Refresh pool & price data"),
+            ("logs",                        "View agent interaction log"),
+            ("verbose [on/off]",            "Toggle debug logging"),
+            ("help [topic]",               "Command help (help how <task> for workflows)"),
+        ],
+    },
+}
 
-    # Swaps
-    ("--- SWAPPING ---", ""),
-    ("swap <amt> <A> for <B>",      "Exact-in swap  — spend exact amount, get best rate"),
-    ("swap <A> for <amt> <B>",      "Exact-out swap — receive exact amount, spend minimum"),
-    ("swap-v1 <amt> <A> <B>",       "SaucerSwap V1 (legacy AMM) swap"),
-    ("slippage [%]",                "View or set max slippage tolerance (default: 2%)"),
-
-    # Transfers
-    ("--- TRANSFERS & TOKENS ---", ""),
-    ("send <amt> <tk> to <rcp>",    "Transfer HBAR or any HTS token to an account"),
-    ("send ... memo <text>",        "Add an on-chain memo to the transfer"),
-    ("receive [<token>]",           "Show your address + check if a token is associated"),
-    ("associate <token|id>",        "Link a token to your account (needed to receive it)  alias: assoc"),
-    ("whitelist",                   "View trusted recipient addresses"),
-    ("whitelist add <addr> [nick]", "Add an address to your whitelist"),
-    ("whitelist remove <addr>",     "Remove an address from whitelist"),
-
-    # Staking
-    ("--- STAKING ---", ""),
-    ("stake [node_id]",             "Stake HBAR to a consensus node (default: node 5 Google)"),
-    ("unstake",                     "Stop staking and clear node preference"),
-
-    # Liquidity
-    ("--- LIQUIDITY (V2) ---", ""),
-    ("lp",                          "View active LP positions (V2 NFTs)"),
-    ("pool-deposit",                "Interactive V2 liquidity deployment wizard"),
-    ("pool-withdraw",               "Interactive withdrawal wizard — pick NFT from list"),
-    ("pool-withdraw <nft> <liq>",   "Withdraw specific V2 liquidity by NFT ID (direct)"),
-
-    # Market Data
-    ("--- MARKET DATA ---", ""),
-    ("price",                       "All token prices from SaucerSwap V2"),
-    ("price <token>",               "Single token price + data source"),
-    ("tokens",                      "Supported token list with Hedera IDs & aliases"),
-    ("pools",                       "Pool registry: list / search / approve / delete"),
-    ("sources",                     "Show where each price comes from (pool/contract IDs)"),
-    ("history",                     "Recent execution history (swaps, transfers, staking)"),
-
-    # Limit Orders
-    ("--- LIMIT ORDERS ---", ""),
-    ("order buy <tk> at <$> size N",  "Buy when price drops to target — triggers automatically"),
-    ("order sell <tk> at <$> size N", "Sell when price rises to target — triggers automatically"),
-    ("order list",                   "View all open orders"),
-    ("order cancel <id>",            "Cancel an open order"),
-    ("order on / off",               "Start or stop the limit-order daemon"),
-    ("order interval <time>",        "Set daemon polling frequency (e.g. 5m, 30m, 1h)"),
-
-    # Robot
-    ("--- POWER LAW ROBOT ---", ""),
-    ("robot signal",                "Show today's BTC Power Law signal (no trading)"),
-    ("robot start",                 "Start the autonomous BTC rebalancing daemon"),
-    ("robot stop",                  "Stop the daemon"),
-    ("robot status",                "Show bot status, portfolio, and last signal"),
-    
-    # HCS
-    ("--- HCS MESSAGING ---", ""),
-    ("hcs status",                  "Show active signal topic info"),
-    ("hcs topic create",            "Create a new signal topic (walled garden, your key only)"),
-    ("hcs signals",                 "View recent investment signals from the topic"),
-    ("hcs send <msg>",              "Submit a raw message to HCS"),
-    ("hcs signal <t> <d>",          "Broadcast a structured JSON signal"),
-    ("--- HCS-10 AGENT COMMS ---", ""),
-    ("hcs10 setup",                 "Create your public inbound topic (one-time)"),
-    ("hcs10 connect <topic_id>",    "Request a connection to another agent"),
-    ("hcs10 send <id> <msg>",       "Send a message to a connected agent"),
-    ("hcs10 connections",           "List all agent connections"),
-    ("hcs10 read <topic_id>",       "Read messages from any HCS topic"),
-    ("hcs10 start",                 "Start the HCS-10 background listener"),
-
-    # System
-    ("--- SYSTEM ---", ""),
-    ("status",                      "Account + portfolio snapshot (alias: whoami, info)"),
-    ("refresh",                     "Refresh pool & price data from SaucerSwap (alias: sync)"),
-    ("fund",                        "MoonPay/faucet link for funding (alias: faucet)"),
-    ("logs",                        "View recent agent interaction log"),
-    ("nfts",                        "View NFT inventory"),
-    ("backup-keys",                 "Export private key backup (alias: export-keys)"),
-    ("verbose [on/off]",            "Toggle verbose / debug logging"),
-    ("doctor",                      "Run system health & AI safety diagnostics"),
-    ("help <topic>",                "In-depth help for a specific topic"),
-    ("exit",                        "Quit Pacman"),
-]
+# Flat list for backwards compatibility (auto-generated from groups)
+HELP_COMMANDS = []
+for _key, _group in HELP_GROUPS.items():
+    HELP_COMMANDS.append((f"--- {_group['title']} ---", ""))
+    HELP_COMMANDS.extend(_group["commands"])
 
 HELP_EXAMPLES = [
     ("swap 100 HBAR for USDC",            "Exact-in: spend 100 HBAR, get best USDC rate"),

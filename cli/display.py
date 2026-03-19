@@ -126,44 +126,89 @@ def print_security_warning():
 # ---------------------------------------------------------------------------
 
 def show_help(topic: str = None):
-    """Display the command reference or a specific depth explainer."""
+    """
+    Display the command reference.
+
+    - No topic:        Collapsed view — just group headings with summary
+    - topic = "all":   Full expanded view — all commands
+    - topic = group:   Expand just that group (e.g. "help trading")
+    - topic = explainer: Deep dive on a command (e.g. "help swap")
+    """
+    from cli.text_content import HELP_GROUPS
+
     if topic:
         topic = topic.lower().strip()
+
+        # "help all" — show everything expanded
+        if topic == "all":
+            _show_help_expanded(HELP_GROUPS)
+            return
+
+        # Check if topic matches a group name
+        if topic in HELP_GROUPS:
+            _show_help_group(topic, HELP_GROUPS[topic])
+            return
+
+        # Check explainers (deep dive on specific commands)
         if topic in HELP_EXPLAINERS:
             explainer = HELP_EXPLAINERS[topic]
             print(f"\n  {C.BOLD}{C.ACCENT}Deep Dive: {topic.upper()}{C.R}")
             print(f"  {C.CHROME}{'─' * 56}{C.R}")
-            # Format the explainer if it uses placeholders
             print(f"  {explainer.replace('{C.', '{').format(**vars(C))}")
             print(f"  {C.CHROME}{'─' * 56}{C.R}")
-            print(f"  {C.MUTED}Type 'help' for all commands.{C.R}\n")
+            print(f"  {C.MUTED}Type 'help' for all groups.{C.R}\n")
             return
-        else:
-            print(f"  {C.WARN}⚠  No detailed help for '{topic}'.{C.R}")
 
-    # Auto-calculate column width from actual content (prevents future overflow)
-    cmd_col = max(30, max((len(c) for c, _ in HELP_COMMANDS if not c.startswith("---")), default=30)) + 2
-    ex_col  = max(30, max((len(e) for e, _ in HELP_EXAMPLES), default=30)) + 2
-    col     = max(cmd_col, ex_col)  # single consistent width for both sections
+        print(f"  {C.WARN}⚠  No help for '{topic}'. Try: {', '.join(HELP_GROUPS.keys())}{C.R}")
+        return
 
-    print(f"\n{C.BOLD}{C.TEXT}  COMMANDS{C.R}")
-    print(f"  {C.CHROME}{'─' * (col + 2)}{C.R}")
+    # Default: collapsed view — just group headings
+    _show_help_collapsed(HELP_GROUPS)
 
-    for cmd, desc in HELP_COMMANDS:
-        if cmd.startswith("---"):
-            print(f"\n  {C.BOLD}{C.MUTED}{cmd.strip('- ')}{C.R}")
-            continue
+
+def _show_help_collapsed(groups):
+    """Show compact help with just group headings and summaries."""
+    print(f"\n{C.BOLD}{C.TEXT}  PACMAN COMMANDS{C.R}")
+    print(f"  {C.CHROME}{'─' * 56}{C.R}")
+
+    for key, group in groups.items():
+        print(f"  {C.BOLD}{C.TEXT}{group['title']:<14}{C.R} {C.MUTED}{group['summary']}{C.R}")
+
+    print(f"  {C.CHROME}{'─' * 56}{C.R}")
+    print(f"  {C.MUTED}Expand a section:{C.R}  {C.TEXT}help <section>{C.R}  {C.MUTED}(e.g. help trading){C.R}")
+    print(f"  {C.MUTED}Show everything:{C.R}   {C.TEXT}help all{C.R}")
+    print(f"  {C.MUTED}Step-by-step:{C.R}      {C.TEXT}help how <task>{C.R}  {C.MUTED}(e.g. help how deposit){C.R}")
+    print(f"  {C.MUTED}Deep dive:{C.R}         {C.TEXT}help <command>{C.R}  {C.MUTED}(e.g. help swap){C.R}")
+    print()
+
+
+def _show_help_group(key, group):
+    """Show expanded commands for a single group."""
+    col = 38
+    print(f"\n  {C.BOLD}{C.TEXT}{group['title']}{C.R}")
+    print(f"  {C.CHROME}{'─' * 56}{C.R}")
+    for cmd, desc in group["commands"]:
         print(f"  {C.ACCENT}{cmd:<{col}s}{C.R} {C.MUTED}{desc}{C.R}")
+    print()
 
+
+def _show_help_expanded(groups):
+    """Show all commands across all groups."""
+    col = 38
+    print(f"\n{C.BOLD}{C.TEXT}  ALL COMMANDS{C.R}")
+    print(f"  {C.CHROME}{'─' * 56}{C.R}")
+
+    for key, group in groups.items():
+        print(f"\n  {C.BOLD}{C.MUTED}{group['title']}{C.R}")
+        for cmd, desc in group["commands"]:
+            print(f"  {C.ACCENT}{cmd:<{col}s}{C.R} {C.MUTED}{desc}{C.R}")
+
+    from cli.text_content import HELP_EXAMPLES
     print(f"\n{C.BOLD}  EXAMPLES{C.R}")
-    print(f"  {C.CHROME}{'─' * (col + 2)}{C.R}")
-
+    print(f"  {C.CHROME}{'─' * 56}{C.R}")
     for ex_cmd, ex_desc in HELP_EXAMPLES:
         print(f"  {C.ACCENT}{ex_cmd:<{col}s}{C.R} {C.MUTED}{ex_desc}{C.R}")
-
-    print(f"  {C.MUTED}For in-depth help, type: {C.R}{C.TEXT}help <topic>{C.R}")
-    print(f"  {C.MUTED}Topics: swap  swap-v1  send  associate  balance  price{C.R}")
-    print(f"          {C.MUTED}pools  account  whitelist  liquidity  stake  history  setup  nlp  order  robot  hcs{C.R}\n")
+    print()
 
 
 

@@ -43,7 +43,6 @@ from cli.commands.info import (
 from cli.commands.orders import cmd_order
 from cli.commands.hcs import cmd_hcs
 from cli.commands.hcs10 import cmd_hcs10
-from cli.commands.staking import cmd_stake, cmd_unstake
 from cli.commands.robot import cmd_robot
 from cli.commands.doctor import cmd_doctor
 
@@ -98,46 +97,59 @@ def cmd_logs(app, args):
 # Dispatcher
 # ---------------------------------------------------------------------------
 
+def _cmd_swap(app, args):
+    """Route swap commands through the NLP handler for natural language parsing."""
+    handle_natural_language(app, "swap " + " ".join(args))
+
 COMMANDS = {
-    "setup": cmd_setup,
-    "account": cmd_account,
-    "balance": cmd_balance,
-    "tokens": cmd_tokens, "t": cmd_tokens,
-    "pools": cmd_pools, "pool": cmd_pools,
-    "pool-deposit": cmd_pool_deposit,
-    "pool-withdraw": cmd_pool_withdraw,
-    "lp": cmd_lp_positions,
-    "positions": cmd_lp_positions,
+    # --- Trading ---
+    "swap": _cmd_swap, "buy": _cmd_swap, "sell": _cmd_swap, "trade": _cmd_swap,
+    "swap-v1": cmd_swap_v1, "v1": cmd_swap_v1,
+    "slippage": cmd_slippage,
     "price": cmd_price,
+    # --- Portfolio ---
+    "balance": cmd_balance,
+    "status": cmd_status, "whoami": cmd_status, "info": cmd_status,
     "history": cmd_history,
+    "tokens": cmd_tokens, "t": cmd_tokens,
+    "sources": cmd_sources,
+    "nfts": cmd_nfts,
+    # --- Transfers ---
     "send": cmd_send,
     "receive": cmd_receive,
-    "associate": cmd_associate, "assoc": cmd_associate,
-    "swap-v1": cmd_swap_v1,
-    "v1": cmd_swap_v1,
     "whitelist": cmd_whitelist,
-    "stake": cmd_stake,
-    "hcs": cmd_hcs,
-    "hcs10": cmd_hcs10,
-    "unstake": cmd_unstake,
-    "sources": cmd_sources, "source": cmd_sources,
-    "accounts": cmd_account,
-    "verbose": cmd_verbose,
-    "slippage": cmd_slippage,
-    "lp-padding": cmd_lp_padding,
-    "order": cmd_order, "orders": cmd_order,
-    "robot": cmd_robot, "bot": cmd_robot,
-    "refresh": cmd_refresh, "sync": cmd_refresh,
-    "doctor": cmd_doctor,
-    "nfts": cmd_nfts, "nft": cmd_nfts,
-    "status": cmd_status, "whoami": cmd_status, "info": cmd_status,
+    # --- Account ---
+    "account": cmd_account, "accounts": cmd_account,
+    "associate": cmd_associate, "assoc": cmd_associate,
+    "setup": cmd_setup,
     "fund": cmd_fund, "faucet": cmd_fund,
     "backup-keys": cmd_backup_keys, "export-keys": cmd_backup_keys,
+    # --- Staking ---
+    "stake": cmd_stake,
+    "unstake": cmd_unstake,
+    # --- Liquidity ---
+    "pool-deposit": cmd_pool_deposit,
+    "pool-withdraw": cmd_pool_withdraw,
+    "lp": cmd_lp_positions, "positions": cmd_lp_positions,
+    "pools": cmd_pools, "pool": cmd_pools,
+    "lp-padding": cmd_lp_padding,
+    # --- Orders ---
+    "order": cmd_order, "orders": cmd_order,
+    # --- Robot ---
+    "robot": cmd_robot, "bot": cmd_robot,
+    # --- Messaging ---
+    "hcs": cmd_hcs,
+    "hcs10": cmd_hcs10,
+    # --- System ---
+    "doctor": cmd_doctor,
+    "refresh": cmd_refresh, "sync": cmd_refresh,
+    "verbose": cmd_verbose,
+    "logs": cmd_logs, "log": cmd_logs,
+    "help": cmd_help, "?": cmd_help, "-h": cmd_help,
+    # --- Services ---
     "install-service": cmd_install_service,
     "uninstall-service": cmd_uninstall_service,
     "status-service": cmd_service_status,
-    "help": cmd_help, "?": cmd_help, "-h": cmd_help,
-    "logs": cmd_logs, "log": cmd_logs, "agent-log": cmd_logs,
 }
 
 def _is_auto_yes(args: list) -> bool:
