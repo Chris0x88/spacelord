@@ -178,36 +178,44 @@ def process_input(app, text):
     if explicit_yes and "--yes" not in args:
         args = args + ["--yes"]
 
-    # Agent interaction logging — capture every command's outcome
-    from src.agent_log import log_interaction
+    # Agent interaction logging — capture every command's input, output, errors
+    from src.agent_log import log_interaction, capture_output
+    import traceback as _tb
     _t0 = time.time()
     _result = "success"
     _error = None
+    _stack = None
     _source = "oneshot" if len(sys.argv) > 1 else "interactive"
+    _account_id = getattr(getattr(app, 'executor', None), 'hedera_account_id', None)
 
-    if cmd in COMMANDS:
-        try:
-            COMMANDS[cmd](app, args)
-        except PacmanError as e:
-            _result, _error = "error", str(e)
-            print(f"  {C.ERR}✗{C.R} {e}")
-        except Exception as e:
-            _result, _error = "error", str(e)
-            logger.error(f"Command Error ({cmd}): {e}", exc_info=True)
-            print(f"  {C.ERR}✗{C.R} Unexpected Error: {e}")
-    else:
-        # Fallback to NLP
-        try:
-            handle_natural_language(app, text)
-        except PacmanError as e:
-            _result, _error = "error", str(e)
-            print(f"  {C.ERR}✗{C.R} {e}")
-        except Exception as e:
-            _result, _error = "error", str(e)
+    with capture_output() as _cap:
+        if cmd in COMMANDS:
+            try:
+                COMMANDS[cmd](app, args)
+            except PacmanError as e:
+                _result, _error = "error", str(e)
+                print(f"  {C.ERR}✗{C.R} {e}")
+            except Exception as e:
+                _result, _error = "error", str(e)
+                _stack = _tb.format_exc()
+                logger.error(f"Command Error ({cmd}): {e}", exc_info=True)
+                print(f"  {C.ERR}✗{C.R} Unexpected Error: {e}")
+        else:
+            # Fallback to NLP
+            try:
+                handle_natural_language(app, text)
+            except PacmanError as e:
+                _result, _error = "error", str(e)
+                print(f"  {C.ERR}✗{C.R} {e}")
+            except Exception as e:
+                _result, _error = "error", str(e)
+                _stack = _tb.format_exc()
 
     _duration = (time.time() - _t0) * 1000
     log_interaction(command=text, result=_result, error=_error,
-                    duration_ms=_duration, source=_source)
+                    duration_ms=_duration, source=_source,
+                    output=_cap.get_output(), stack_trace=_stack,
+                    account_id=_account_id)
 
 # ---------------------------------------------------------------------------
 # Entry Point
