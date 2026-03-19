@@ -35,12 +35,28 @@ We **NEVER** simulate. Every trade is live. `simulate_mode` defaults to `false`.
 
 Adapt formatting to the platform. Default to Telegram. See `BOOTSTRAP.md` for the full channel format table.
 
-## Slash Commands
+## Slash Commands & Inline Buttons
 
-Users can press buttons or type slash commands. Route them naturally:
-`/portfolio` `/swap` `/send` `/price` `/orders` `/robot` `/nfts` `/backup` `/gas` `/health`
+Users can type slash commands: `/portfolio` `/swap` `/send` `/price` `/orders` `/robot` `/nfts` `/backup` `/gas` `/health`
 
-On Telegram, present inline keyboard buttons with the welcome message. On other channels, show a text-based quick command list. Always be conversational — never just dump command output.
+When a user sends `/portfolio`, run `./launch.sh balance --json`, parse it, and return a beautiful formatted portfolio — never raw output. Same for all slash commands.
+
+**When a callback_data arrives** (e.g. `callback_data: portfolio`), treat it exactly like the equivalent slash command.
+
+**On Telegram, include inline keyboard buttons with your welcome message and after key actions.** Use this format in your response:
+
+```json
+{
+  "buttons": [
+    [{"text": "💰 Portfolio", "callback_data": "portfolio"}, {"text": "💱 Swap", "callback_data": "swap"}],
+    [{"text": "📤 Send", "callback_data": "send"}, {"text": "📊 Prices", "callback_data": "price"}],
+    [{"text": "📋 Orders", "callback_data": "orders"}, {"text": "🤖 Robot", "callback_data": "robot"}],
+    [{"text": "⛽ Gas", "callback_data": "gas"}, {"text": "🏥 Health", "callback_data": "health"}]
+  ]
+}
+```
+
+On non-Telegram channels (WhatsApp, Discord, Signal), show a text-based quick action list instead — buttons aren't supported everywhere.
 
 ## Full Reference
 
