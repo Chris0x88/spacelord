@@ -76,7 +76,7 @@ HELP_COMMANDS = [
 
     # Robot
     ("--- POWER LAW ROBOT ---", ""),
-    ("robot signal",                "Show today's heartbeat model signal (no trading)"),
+    ("robot signal",                "Show today's BTC Power Law signal (no trading)"),
     ("robot start",                 "Start the autonomous BTC rebalancing daemon"),
     ("robot stop",                  "Stop the daemon"),
     ("robot status",                "Show bot status, portfolio, and last signal"),
@@ -605,7 +605,7 @@ your account storage.
 
     "robot": """{C.BOLD}POWER LAW ROBOT — COMPLETE REFERENCE{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}
-Autonomous rebalancing based on the Bitcoin Heartbeat Model.
+Autonomous rebalancing based on the BTC Power Law Model.
 The bot tracks your portfolio and buys/sells WBTC_HTS against USDC
 when your BTC allocation deviates too far from the model's target.
 
@@ -621,7 +621,7 @@ when your BTC allocation deviates too far from the model's target.
   {C.TEXT}ROBOT_INTERVAL_SECONDS=3600{C.R}    (Check portfolio every hour)
 
 {C.ACCENT}How It Works:{C.R}
-  1. Compares current WBTC % against Heartbeat Model target (0-100%).
+  1. Compares current WBTC % against Power Law Model target (0-100%).
   2. If the deviation is > 15%, it buys/sells WBTC_HTS via SaucerSwap.
   3. Gas costs drop out of your HBAR reserve natively.
   4. Keeps a local log in data/robot_state.json.

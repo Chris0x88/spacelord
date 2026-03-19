@@ -51,7 +51,7 @@ NEVER create new sub-accounts, rename accounts, or switch active accounts unless
 If the router says `No route found` or a pool is missing, do NOT attempt to bypass it by checking V1 pools, blindly approving random pools, or executing complex multi-hop trades without consent. Suggest the fix (e.g., "Should I search for a pool?") and wait. **V1 is NEVER a fallback for V2.**
 
 ### 5. Strict Balance Verification
-Before proposing or executing ANY swap or transfer, run `balance --json` to verify sufficient funds. Never assume balances from previous context or memory.
+Before proposing or executing ANY swap or transfer, run `balance` to verify sufficient funds. Never assume balances from previous context or memory.
 
 ### 6. Respect Gas Limits
 NEVER execute a trade that would drop the native HBAR balance below 5 HBAR. HBAR is required for gas; draining it strands all other assets.
@@ -75,10 +75,10 @@ Your primary troubleshooting tool is reporting the *exact error message* to the 
 When a user first interacts (or says "hi", "start", "open wallet"), run this sequence silently, then present results conversationally:
 
 ```
-1. ./launch.sh doctor --json       → Check system health
-2. ./launch.sh status --json       → Get portfolio (main account)
-3. ./launch.sh robot status --json → Get rebalancer state
-4. ./launch.sh history             → Recent transactions
+1. ./launch.sh doctor       → Check system health
+2. ./launch.sh status       → Get portfolio (main account)
+3. ./launch.sh robot status → Get rebalancer state
+4. ./launch.sh history      → Recent transactions
 ```
 
 Then present:
@@ -120,7 +120,7 @@ These are the operational playbooks for the most common and most error-prone sce
 ```
 User wants more HBAR
   │
-  ├─ Step 1: Run `balance --json`
+  ├─ Step 1: Run `balance`
   │
   ├─ Step 2: Check non-HBAR holdings
   │   ├─ Has USDC > $1?
@@ -210,6 +210,28 @@ Any operation
 
 **Why this matters**: Having two robot accounts confused our agent. It showed balances for the wrong one and asked about rebalancing a $0 account.
 
+## Tree 3B: "Account Switch for Operations" (Multi-Account Operations)
+
+```
+User asks to do something on the robot account (associate, send, etc.)
+  │
+  ├─ Step 1: Switch to robot account
+  │   `account switch 0.0.10379302` (or by nickname)
+  │   The app auto-resolves the robot's private key when switching.
+  │
+  ├─ Step 2: Perform the operation
+  │   e.g., `associate 0.0.456858` or `balance`
+  │   The app uses the robot's key for signing.
+  │
+  ├─ Step 3: ALWAYS switch back to main when done
+  │   `account switch 0.0.10289160`
+  │   If you forget, subsequent user operations will execute on the robot account!
+  │
+  └─ IMPORTANT: Each CLI invocation is a fresh process.
+      The app reads .env on startup and auto-resolves the correct key
+      for the active account. No need to pass keys manually.
+```
+
 ## Tree 4: "User Mentions Bitcoin/BTC" (Token Resolution)
 
 ```
@@ -234,7 +256,7 @@ User says "bitcoin", "btc", "wbtc"
 ```
 User wants to send tokens
   │
-  ├─ Step 1: Run `balance --json` to verify funds
+  ├─ Step 1: Run `balance` to verify funds
   │
   ├─ Step 2: Check recipient against whitelist
   │   ├─ Whitelisted → Proceed to confirmation
@@ -260,7 +282,7 @@ User wants to send tokens
 ```
 User asks about the robot, rebalancer, or Power Law model
   │
-  ├─ Step 1: Run `robot status --json`
+  ├─ Step 1: Run `robot status`
   │
   ├─ Check robot portfolio balance
   │   ├─ $0 or near-zero → "The robot account needs funding first.
@@ -544,9 +566,9 @@ Show the menu from the startup routine with current portfolio context. Highlight
 ✅ Do: "Want to swap tokens? Just tell me what and how much — like 'swap 5 USDC for HBAR'."
 
 ## "Swap" / "Buy" / "Trade"
-1. Run `status --json` silently
+1. Run `status` silently
 2. Confirm: "Swap 5 USDC → HBAR. You have 18.97 USDC. Proceed?"
-3. Execute: `./launch.sh --yes --json swap 5 USDC for HBAR`
+3. Execute: `./launch.sh swap 5 USDC for HBAR`
 4. Show: "✅ Swapped 5 USDC → 46.2 HBAR. New balance: 55.7 HBAR ($5.47)"
 
 **Anti-patterns**:
@@ -554,9 +576,8 @@ Show the menu from the startup routine with current portfolio context. Highlight
 - ❌ Not confirming with user before executing
 - ❌ Showing raw JSON output
 - ❌ Suggesting V1 when V2 swap fails
-- ❌ Putting flags AFTER the token names (`swap 5 USDC for HBAR --yes` — BREAKS PARSER)
 - ❌ Swapping full balance through a pool without checking if the pool has enough liquidity (route output now shows pool depth — check it)
-- ❌ Piping `printf 'y\n'` instead of using `--yes` flag
+- ❌ Adding unnecessary flags (`--yes`, `--json`) — the app auto-confirms in non-interactive/agent mode
 
 ## "Send" / "Transfer"
 1. Check balances + whitelist
@@ -573,7 +594,7 @@ Show the menu from the startup routine with current portfolio context. Highlight
 Run `robot signal` and present the Power Law model insight in plain language.
 
 ## "NFTs" / "Show my NFTs"
-Run `nfts --json`. Display names, collections, and offer to download images.
+Run `nfts`. Display names, collections, and offer to download images.
 
 ## "Fund" / "Buy HBAR" / "How do I get HBAR?"
 **Follow Tree 1 first!** Check if they have swappable tokens.
@@ -581,7 +602,7 @@ Run `nfts --json`. Display names, collections, and offer to download images.
 - Empty wallet? → Show MoonPay link
 
 ## "Backup" / "Keys" / "Secure"
-Run `backup-keys --file --json --yes`. Explain that backup goes to ~/Downloads and an email draft opens.
+Run `backup-keys`. Explain that backup goes to ~/Downloads and an email draft opens.
 
 ## Educational Questions
 "What is HBAR?", "How does SaucerSwap work?", "What is staking?" — Answer knowledgeably. Explain simply. You know Hedera, SaucerSwap V2, HCS, NFTs, staking, the Power Law model.
@@ -640,11 +661,11 @@ These are documented failures from real agent sessions. Each one has cost time, 
 **Root cause**: Old documentation mentioned "mandatory simulation."
 **The rule**: Every trade is live. There is no simulation mode in production.
 
-## AP-009: Flags After Token Names Break Parser
-**What happened**: Agent ran `./launch.sh swap 17.58 usdc[hts] for usdc --yes --json`. The parser captured `usdc --yes --json` as the destination token, causing IndexError.
-**What was wrong**: NLP commands are parsed by regex. Flags at the end get swallowed into the last capture group.
-**Root cause**: SKILL.md showed `swap <amt> <FROM> for <TO> --yes --json` — flags in the wrong position.
-**The rule**: Flags go BEFORE the NLP command: `./launch.sh --yes --json swap 17.58 usdc[hts] for usdc`. Non-NLP commands (balance, status) accept flags anywhere.
+## AP-009: Unnecessary Flags Pollute Commands
+**What happened**: Agent added `--yes --json` flags to every command, sometimes breaking the NLP parser when placed after token names.
+**What was wrong**: Flags are unnecessary. The app auto-confirms in non-interactive/agent mode via `isatty()` detection.
+**Root cause**: SKILL.md incorrectly instructed agents to always include `--yes --json`.
+**The rule**: Use clean commands: `./launch.sh swap 5 USDC for HBAR`. No flags needed. Agents and humans use identical syntax.
 
 ## AP-010: Misdiagnosing On-Chain Revert as "Token Not Associated"
 **What happened**: USDC[hts] → USDC swap reverted on-chain. Agent told user "your account is not associated with USDC" and suggested running `associate`. The account already held 1.39 USDC.
@@ -656,6 +677,11 @@ These are documented failures from real agent sessions. Each one has cost time, 
 3. Association = "can this account hold this token?" Approval = "can this contract spend this token on behalf of the account?" Don't confuse them.
 4. If a swap reverts and the user has sufficient balance, the most likely cause is approval, slippage, or pool depth — NOT association.
 
+## AP-011: Forgetting to Switch Back After Multi-Account Operation
+**What happened**: Agent switched to robot account to associate a token, then left the active account set to robot. Subsequent user trading commands executed on the robot account.
+**Root cause**: No "switch back" step after completing the robot operation.
+**The rule**: When switching accounts for a specific operation, ALWAYS switch back to the main account (0.0.10289160) when done. Follow the Tree 3B pattern.
+
 ---
 
 # SECTION 11: COMMAND REFERENCE (Internal — Don't Show Users)
@@ -663,39 +689,37 @@ These are documented failures from real agent sessions. Each one has cost time, 
 ## Entry Point
 `./launch.sh <command>`
 
-Always include `--json` and `--yes` flags. Logger output goes to stderr, so stdout is always clean for JSON parsing.
-
-**⚠️ CRITICAL: Flag Placement for NLP Commands (swap, send, buy, price)**
-NLP commands are parsed by a regex-based translator. Flags (`--yes`, `--json`, `-y`)
-**MUST go BEFORE the natural-language part** of the command — never after the token names.
-The translator strips flags before regex matching, but placing flags after destination
-tokens can still confuse shell escaping and older versions of the parser.
+**No special flags needed.** The app auto-detects non-interactive mode (pipes, agents) and auto-confirms. Agents and humans use the **exact same commands**.
 
 ```
-✅ CORRECT:  ./launch.sh --json --yes swap 5 USDC for HBAR
-✅ CORRECT:  ./launch.sh --yes --json swap 10 usdc[hts] for usdc
-❌ WRONG:    ./launch.sh swap 5 USDC for HBAR --yes --json
-❌ WRONG:    ./launch.sh swap 10 usdc[hts] for usdc --yes --json
+✅ ./launch.sh swap 5 USDC for HBAR
+✅ ./launch.sh swap 10 usdc[hts] for usdc
+✅ ./launch.sh balance
+✅ ./launch.sh price HBAR
 ```
 
-Non-NLP commands (balance, status, doctor, etc.) accept flags anywhere:
-`./launch.sh balance --json` ← fine.
+Optional: `--json` flag returns structured JSON output (useful for parsing).
+Optional: `--yes` flag is accepted but unnecessary — auto-confirmed in agent/pipe mode.
 
 ## Portfolio & Account
 | Command | Purpose |
 |---|---|
-| `status --json` | Everything in one call (account + balances + robot) |
-| `balance --json` | Token balances + USD values |
-| `account --json` | Account details |
-| `doctor --json` | System health (6 categories) |
+| `status` | Everything in one call (account + balances + robot) |
+| `balance` | Token balances + USD values |
+| `account` | Account details + list known accounts |
+| `account switch <name_or_id>` | Switch active account (key auto-resolves for robot) |
+| `associate <token_id\|symbol>` | Associate an HTS token with the active account |
+| `doctor` | System health (6 categories) |
 | `history` | Recent transactions |
+| `logs` | View recent agent interaction logs (last 20 entries) |
+| `logs failures` | View failure summary from recent interactions |
 
 ## Trading
 | Command | Purpose |
 |---|---|
-| `--yes --json swap <amt> <FROM> for <TO>` | Exact-in swap |
-| `--yes --json swap <FROM> for <amt> <TO>` | Exact-out swap |
-| `--yes --json send <amt> <TOKEN> to <ADDR>` | Transfer (whitelist enforced) |
+| `swap <amt> <FROM> for <TO>` | Exact-in swap |
+| `swap <FROM> for <amt> <TO>` | Exact-out swap |
+| `send <amt> <TOKEN> to <ADDR>` | Transfer (whitelist enforced) |
 | `price <token>` | Live price |
 | `slippage <percent>` | Set slippage tolerance (default 2.0, max 5.0) |
 
@@ -709,18 +733,18 @@ Non-NLP commands (balance, status, doctor, etc.) accept flags anywhere:
 ## NFTs & Funding
 | Command | Purpose |
 |---|---|
-| `nfts --json` | List NFTs |
+| `nfts` | List NFTs |
 | `nfts view <token_id> <serial>` | NFT metadata |
-| `fund --json` | Fiat onramp (balance-aware) |
+| `fund` | Fiat onramp (balance-aware) |
 
 ## Robot & System
 | Command | Purpose |
 |---|---|
-| `robot status --json` | Rebalancer state + signal |
+| `robot status` | Rebalancer state + signal |
 | `robot signal` | BTC model signal (read-only) |
 | `robot start` | Start rebalancer (must be funded!) |
 | `robot stop` | Stop rebalancer |
-| `backup-keys --file --json --yes` | Key backup to ~/Downloads |
+| `backup-keys` | Key backup to ~/Downloads |
 | `tokens` | Supported token list |
 | `pools search <TOKEN>` | Discover pools on-chain |
 | `pools approve <POOL_ID>` | Add pool to V2 registry |
@@ -800,6 +824,30 @@ Non-NLP commands (balance, status, doctor, etc.) accept flags anywhere:
 
 ---
 
+# SECTION 12B: AGENT INTERACTION LOGS
+
+Every command execution is logged to `logs/agent_interactions.jsonl`. This is your **feedback loop** — use it to understand what's happening.
+
+## Viewing Logs
+- `logs` — View the last 20 interactions (command, result, errors, duration)
+- `logs failures` — View aggregated failure summary (error types, counts, most recent)
+
+## What Gets Logged
+Each entry records: timestamp, the raw command, result status, any error message, duration in ms, and whether the invocation was oneshot or interactive.
+
+## Using Logs for Debugging
+When something goes wrong:
+1. Run `logs` to see recent commands and their results
+2. Look for `"error"` fields — they contain the exact failure reason
+3. Run `logs failures` to see persistent/repeating issues
+4. Use this information to report accurately to the user
+
+## Anti-Pattern: Guessing at Errors
+❌ "The token might not be associated" (guessing)
+✅ Run `logs`, read the actual error, report it accurately
+
+---
+
 # SECTION 13: SAFETY GUARDRAILS SUMMARY
 
 ## Safety Limits (from governance.json)
@@ -828,7 +876,7 @@ These limits are loaded from `data/governance.json` at runtime. They can be adju
 - ✅ Confirm with user before executing trades
 - ✅ Check whitelist before transfers
 - ✅ Show remaining balance after operations
-- ✅ Use `--json --yes` flags BEFORE the NLP command (e.g. `--yes --json swap ...`)
+- ✅ Use clean commands — no flags needed (e.g. `swap 5 USDC for HBAR`)
 - ✅ Report errors with exact messages
 - ✅ Check robot funding before suggesting rebalancer actions
 
@@ -847,4 +895,4 @@ When users ask "why should I use this?":
 
 ---
 
-*Pacman v3.0 | Hedera Apex Hackathon 2026 | Built for OpenClaw agents*
+*Pacman v3.1 | Hedera Apex Hackathon 2026 | Built for OpenClaw agents*

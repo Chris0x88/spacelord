@@ -209,14 +209,14 @@ def get_accounts():
         main_id = pacman_app.account_id
         robot_id = pacman_app.config.robot_account_id
         
-        # Load registry for nicknames
+        # Load registry for nicknames (skip explicitly inactive accounts)
         registry_map = {}
         try:
             with open("data/accounts.json") as f:
                 registry = json.load(f)
                 for acc in registry:
                     aid = acc.get("id")
-                    if aid:
+                    if aid and acc.get("active") != False:
                         registry_map[aid] = acc.get("nickname")
         except: pass
 
@@ -353,6 +353,10 @@ def get_history():
     try:
         limit = int(request.args.get("limit", 20))
         history = pacman_app.executor.get_execution_history(limit=limit)
+        # Inject type for swap records that lack one (executor stores "mode" not "type")
+        for rec in history:
+            if "type" not in rec:
+                rec["type"] = "SWAP"
         
         # Inject system logic events from bots (like PowerLaw)
         import json

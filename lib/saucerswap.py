@@ -354,21 +354,6 @@ class SaucerSwapV2:
         except Exception as e:
             raise RuntimeError(f"Multi-hop quote failed: {e}")
 
-    def get_allowance(self, token_id: str, spender: str | None = None) -> int:
-        """Get allowance for spender from self.eoa (Alias)."""
-        token_evm = hedera_id_to_evm(token_id)
-        spender_val = spender or CONTRACTS[self.network]["router"]
-        spender_evm = hedera_id_to_evm(spender_val)
-        
-        token = self.w3.eth.contract(address=token_evm, abi=ERC20_ABI)
-        try:
-            # Always query using self.eoa (Alias) as Hedera EVM prefers it for owner
-            return token.functions.allowance(self.eoa, spender_evm).call()
-        except Exception as e:
-            # Querying Long-Zero as owner can revert on certain HTS tokens
-            print(f"   ⚠️ Allowance check failed (might be 0): {e}")
-            return 0
-
     def ensure_approval(self, token_id: str, amount: int, spender: str | None = None) -> bool:
         """Only call approve_token_dual if current allowance is insufficient."""
         spender_val = spender or CONTRACTS[self.network]["router"]
@@ -490,10 +475,16 @@ class SaucerSwapV2:
         return token.functions.balanceOf(acct).call()
 
     def get_allowance(self, token_id: str, owner: str, spender: str) -> int:
-        """Get allowance."""
+        """Get allowance for owner/spender pair (accepts Hedera IDs or EVM addresses)."""
         token_address = hedera_id_to_evm(token_id)
+        owner_evm = owner if owner.startswith("0x") else hedera_id_to_evm(owner)
+        spender_evm = spender if spender.startswith("0x") else hedera_id_to_evm(spender)
         token = self.w3.eth.contract(address=token_address, abi=ERC20_ABI)
-        return token.functions.allowance(owner, spender).call()
+        try:
+            return token.functions.allowance(owner_evm, spender_evm).call()
+        except Exception as e:
+            print(f"   ⚠️ Allowance check failed (might be 0): {e}")
+            return 0
 
 
 # =============================================================================

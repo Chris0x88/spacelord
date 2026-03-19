@@ -83,7 +83,7 @@ def cmd_setup(app, args):
     print(f"  {C.ACCENT}[P]{C.R} Paste existing Private Key")
     print(f"  {C.ACCENT}[C]{C.R} Create completely fresh Account")
     
-    choice = input(f"\n  Choice {C.MUTED}(p/c){C.R}: ").strip().lower()
+    choice = _safe_input(f"\n  Choice {C.MUTED}(p/c){C.R}: ", default="p").strip().lower()
     if choice in ["x", "cancel"]:
         print(f"  {C.MUTED}Setup cancelled.{C.R}\n")
         return
@@ -112,7 +112,7 @@ def cmd_setup(app, args):
         if sponsor_id:
              print(f"\n  {C.BOLD}Instant Activation?{C.R}")
              print(f"  Pacman can sponsor this new account from {C.BOLD}{sponsor_id}{C.R}.")
-             do_sponsor = input(f"  Sponsor now? {C.MUTED}(y/n){C.R} ").strip().lower()
+             do_sponsor = _safe_input(f"  Sponsor now? {C.MUTED}(y/n){C.R} ").strip().lower()
              if do_sponsor in ['y', 'yes']:
                  new_id, _ = app.create_new_account(initial_balance=1.0, alias_key=raw_key)
                  if new_id:
@@ -136,7 +136,7 @@ def cmd_setup(app, args):
         
         if not hedera_id:
             print(f"\n  {C.WARN}⚠  Account Not Found{C.R}")
-            hedera_id = input(f"  Enter Account ID manually (0.0.xxx): ").strip()
+            hedera_id = _safe_input(f"  Enter Account ID manually (0.0.xxx): ", default="").strip()
 
     if not raw_key or not hedera_id:
         print(f"  {C.ERR}✗{C.R} Setup incomplete.")
@@ -151,7 +151,7 @@ def cmd_setup(app, args):
     print(f"  {C.TEXT}Pacman recommends using a dedicated sub-account for AI agents{C.R}")
     print(f"  {C.TEXT}to keep your main funds and rebalancer logic separate.{C.R}")
     
-    do_robot = input(f"\n  Create dedicated rebalancer account? {C.MUTED}(y/n){C.R} ").strip().lower()
+    do_robot = _safe_input(f"\n  Create dedicated rebalancer account? {C.MUTED}(y/n){C.R} ", default="n").strip().lower()
     if do_robot in ['y', 'yes']:
         print(f"  {C.MUTED}Creating sub-account 'Bitcoin Rebalancer Daemon'...{C.R}")
         robot_id = app.create_sub_account(initial_balance=2.0, purpose="rebalancer")
@@ -165,7 +165,7 @@ def cmd_setup(app, args):
     print(f"\n  {C.BOLD}[3/3] HCS MESSAGING & SIGNALS{C.R}")
     print(f"  {C.TEXT}Broadcast signals to other Pacman instances via HCS.{C.R}")
     
-    do_hcs = input(f"\n  Create a new HCS signal topic now? {C.MUTED}(y/n){C.R} ").strip().lower()
+    do_hcs = _safe_input(f"\n  Create a new HCS signal topic now? {C.MUTED}(y/n){C.R} ", default="n").strip().lower()
     if do_hcs in ['y', 'yes']:
         print(f"  {C.MUTED}Creating HCS topic...{C.R}")
         topic_id = app.hcs_manager.create_topic(memo="Pacman Signals")
@@ -254,15 +254,8 @@ def cmd_account(app, args):
                 print(f"  {C.OK}✅ Already using account {C.ACCENT}{match_name}{C.R}")
             return
 
-        # Perform switch — also swap private key if account has its own key
+        # Perform switch — update account ID, then reload (key resolution in controller)
         _update_env("HEDERA_ACCOUNT_ID", match_id, force=True)
-
-        # Check if this account has a dedicated private key stored
-        for acc in known:
-            if acc.get("id") == match_id and acc.get("has_private_key"):
-                # Stored as ROBOT_PRIVATE_KEY or similar — handled by config reload
-                pass
-
         app.reload_wallet()
         if json_mode:
             print(_json.dumps({"success": True, "account": match_id, "nickname": match_name}))
@@ -774,7 +767,7 @@ def check_wallet_setup(app):
         print()
         
         try:
-            choice = input(f"  Configure now? {C.MUTED}(y/n){C.R} ").strip().lower()
+            choice = _safe_input(f"  Configure now? {C.MUTED}(y/n){C.R} ", default="n").strip().lower()
             if choice in ["y", "yes"]:
                 cmd_setup(app, [])
         except (KeyboardInterrupt, EOFError):
@@ -798,9 +791,9 @@ def check_saucerswap_api_key(app):
     print(f"  {C.TEXT}It is recommended to set your own SaucerSwap API key for better accuracy.{C.R}")
     
     try:
-        choice = input(f"  Set Key now? {C.MUTED}(y/n) [n]{C.R} ").strip().lower()
+        choice = _safe_input(f"  Set Key now? {C.MUTED}(y/n) [n]{C.R} ", default="n").strip().lower()
         if choice in ["y", "yes"]:
-            new_key = input(f"  Enter Your API Key: ").strip()
+            new_key = _safe_input(f"  Enter Your API Key: ", default="").strip()
             if new_key:
                 _update_env("SAUCERSWAP_API_KEY_MAINNET", new_key)
                 os.environ["SAUCERSWAP_API_KEY_MAINNET"] = new_key
@@ -1164,9 +1157,10 @@ def _try_open_email_draft(subject, body_text, attachment_path=None):
         try:
             import os
             abs_path = os.path.abspath(attachment_path)
+            escaped_body = body_text.replace(chr(10), "\\n").replace('"', '\\"')
             applescript = f'''
             tell application "Mail"
-                set newMessage to make new outgoing message with properties {{subject:"{subject}", content:"{body_text.replace(chr(10), "\\n").replace('"', '\\"')}"}}
+                set newMessage to make new outgoing message with properties {{subject:"{subject}", content:"{escaped_body}"}}
                 tell newMessage
                     make new attachment with properties {{file name:POSIX file "{abs_path}"}} at after the last paragraph
                     set visible to true

@@ -55,14 +55,55 @@ def cmd_sources(app, args):
 
 
 def cmd_price(app, args):
-    if len(args) >= 1:
-        show_price(args[0])
+    json_mode = "--json" in args
+    clean = [a for a in args if a not in ("--json", "--yes", "-y")]
+    if json_mode:
+        import json as _json
+        from lib.prices import price_manager
+        try:
+            from scripts import refresh_data
+        except ImportError:
+            import refresh_data
+        refresh_data.refresh()
+        price_manager.reload()
+        if clean:
+            from cli.display import _resolve_token_id
+            token_id = _resolve_token_id(clean[0])
+            if token_id:
+                price = price_manager.get_price(token_id)
+                print(_json.dumps({"token": clean[0].upper(), "token_id": token_id, "price_usd": price}))
+            else:
+                print(_json.dumps({"error": f"Unknown token: {clean[0]}"}))
+        else:
+            all_prices = {}
+            for tid, p in price_manager.prices.items():
+                all_prices[tid] = p
+            all_prices["hbar"] = price_manager.get_hbar_price()
+            print(_json.dumps({"prices": all_prices}))
+        return
+    if len(clean) >= 1:
+        show_price(clean[0])
     else:
         from cli.display import show_all_prices
         show_all_prices()
 
 
 def cmd_history(app, args):
+    if "--json" in args:
+        import json as _json
+        from pathlib import Path
+        records_dir = Path("execution_records")
+        if not records_dir.exists():
+            print(_json.dumps({"records": []}))
+            return
+        records = []
+        for f in sorted(records_dir.glob("*.json"), reverse=True)[:20]:
+            try:
+                records.append(_json.loads(f.read_text()))
+            except Exception:
+                pass
+        print(_json.dumps({"records": records}, indent=2, default=str))
+        return
     show_history(app.executor)
 
 
@@ -122,7 +163,7 @@ def cmd_pools(app, args):
     protocol = "v1" if v1_flag else "v2"
 
     if action == "list":
-        _pools_list(app)
+        _pools_list(app, json_mode="--json" in args)
     elif action == "search":
         if not sub_args:
             print(f"  {C.ERR}✗{C.R} Missing search query.")
@@ -151,13 +192,24 @@ def cmd_pools(app, args):
         print(f"  {C.ERR}✗{C.R} Unknown action: {action}")
 
 
-def _pools_list(app):
+def _pools_list(app, json_mode=False):
     """Show the currently approved pools from JSON files."""
     registries = [
         ("V2 (Direct)", "data/pools_v2.json"),
         ("V1 (Legacy)", "data/pools_v1.json")
     ]
-    
+
+    if json_mode:
+        import json as _json
+        result = {}
+        for label, path_str in registries:
+            p = Path(path_str)
+            if p.exists():
+                with open(p) as f:
+                    result[label] = _json.load(f)
+        print(_json.dumps(result, indent=2))
+        return
+
     # Pre-load tokens metadata for symbol resolution
     tokens = {}
     tokens_path = Path("data/tokens.json")
@@ -347,13 +399,13 @@ def cmd_service_status(app, args):
             with open(status_file) as f:
                 data = json.load(f)
             
-            print(f"\n  {C.BOLD}🤖 Daemon Heartbeat{C.R}")
+            print(f"\n  {C.BOLD}🤖 Daemon Status{C.R}")
             print(f"  {'─' * 45}")
             print(f"  PID:    {data.get('pid')}")
             print(f"  Uptime: {data.get('uptime_sec')}s")
             print(f"  Last:   {data.get('last_heartbeat')}")
             print(f"  Sync:   {data.get('last_pool_sync')}")
-            
+
             plugins = data.get("plugins", [])
             if plugins:
                 print(f"\n  {C.BOLD}🧩 Active Plugins{C.R}")
@@ -364,7 +416,7 @@ def cmd_service_status(app, args):
                     err_str = f" ({C.ERR}{errs} errs{C.R})" if errs > 0 else ""
                     print(f"  [{status}] {p_name:<12} {p.get('last_heartbeat')}{err_str}")
         except Exception as e:
-            print(f"  {C.WARN}⚠ Error reading heartbeat: {e}{C.R}")
+            print(f"  {C.WARN}⚠ Error reading daemon status: {e}{C.R}")
     else:
-        print(f"\n  {C.WARN}⚠ No daemon heartbeat found at data/status.json{C.R}")
+        print(f"\n  {C.WARN}⚠ No daemon status found at data/status.json{C.R}")
 

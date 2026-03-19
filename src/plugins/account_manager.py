@@ -10,12 +10,19 @@ Features:
 
 import os
 from typing import Optional, Tuple
-from hiero_sdk_python.client.client import Client
-from hiero_sdk_python.account.account_create_transaction import AccountCreateTransaction
-from hiero_sdk_python.account.account_id import AccountId
-from hiero_sdk_python.tokens.token_associate_transaction import TokenAssociateTransaction
-from hiero_sdk_python.crypto.private_key import PrivateKey
-from hiero_sdk_python.hbar import Hbar
+
+# Hedera SDK imports — optional dependency. Account creation/management
+# requires it, but basic operations (get_known_accounts, etc.) work without.
+try:
+    from hiero_sdk_python.client.client import Client
+    from hiero_sdk_python.account.account_create_transaction import AccountCreateTransaction
+    from hiero_sdk_python.account.account_id import AccountId
+    from hiero_sdk_python.tokens.token_associate_transaction import TokenAssociateTransaction
+    from hiero_sdk_python.crypto.private_key import PrivateKey
+    from hiero_sdk_python.hbar import Hbar
+    _HAS_HIERO_SDK = True
+except ImportError:
+    _HAS_HIERO_SDK = False
 
 class AccountManager:
     """
@@ -31,17 +38,23 @@ class AccountManager:
 
     def __init__(self, network: str = "mainnet"):
         self.network = network.lower()
-        self.client = self._init_client()
+        self.client = self._init_client() if _HAS_HIERO_SDK else None
 
-    def _init_client(self) -> Client:
+    def _init_client(self) -> "Client":
         """Initialize Hiero SDK Client."""
         if self.network == "mainnet":
             return Client.for_mainnet()
         else:
             return Client.for_testnet()
 
+    def _require_sdk(self):
+        """Raise clear error if SDK-dependent operation is called without the package."""
+        if not _HAS_HIERO_SDK:
+            raise RuntimeError("hiero-sdk-python is required for this operation. Install with: pip install hiero-sdk-python")
+
     def set_operator(self, account_id: str, private_key: str):
         """Set the account that pays for transaction fees."""
+        self._require_sdk()
         # Clean private key
         clean_key = private_key.replace("0x", "")
         
@@ -135,14 +148,15 @@ class AccountManager:
                        initial_balance_hbar: float = 1.0, 
                        alias_key: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
         """
-        Create a new Hedera account.
+        Create a new Hedera account. Requires hiero-sdk-python.
         If alias_key is provided, it creates a sub-account using that key.
         Otherwise, it generates a new key pair.
 
         Returns: (account_id, private_key)
         """
+        self._require_sdk()
         is_sub_account = (alias_key is not None)
-        
+
         try:
             # 1. Prepare Key
             if is_sub_account:
@@ -251,6 +265,7 @@ class AccountManager:
         """
         Associate a token with the current operator account.
         """
+        self._require_sdk()
         try:
             from hiero_sdk_python.tokens.token_id import TokenId
             

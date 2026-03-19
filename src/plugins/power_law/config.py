@@ -41,9 +41,8 @@ class RobotConfig:
     ))
     
     # --- Model Selection ---
-    # "HEARTBEAT" (full cycle model) or "POWER_LAW" (basic floor only)
-    model: str = field(default_factory=lambda: 
-        os.getenv("ROBOT_MODEL", "HEARTBEAT")
+    model: str = field(default_factory=lambda:
+        os.getenv("ROBOT_MODEL", "POWER_LAW")
     )
     
     # --- Simulation Mode ---

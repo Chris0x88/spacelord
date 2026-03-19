@@ -224,7 +224,7 @@ def generate_powerlaw_png() -> bytes:
 
     # Legends & Titles
     ax.legend(loc='upper left', frameon=False, labelcolor='#cbd5e1', fontsize=9, ncol=2)
-    ax.set_title("Bitcoin Power Law: Heartbeat Transform", color='white', pad=20, fontsize=14, fontweight='bold', loc='left')
+    ax.set_title("Bitcoin Power Law Model", color='white', pad=20, fontsize=14, fontweight='bold', loc='left')
 
     out = io.BytesIO()
     plt.tight_layout()

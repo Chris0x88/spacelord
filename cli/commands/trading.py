@@ -23,7 +23,11 @@ def handle_natural_language(app, text):
     """
     req = translate(text)
     if not req:
-        print(f"  {C.ERR}✗{C.R} Unknown command. Type {C.TEXT}help{C.R} for options.")
+        print(f"  {C.ERR}✗{C.R} Could not parse command. Examples:")
+        print(f"  {C.MUTED}  swap 10 USDC for HBAR{C.R}")
+        print(f"  {C.MUTED}  buy 5 HBAR{C.R}")
+        print(f"  {C.MUTED}  sell 10 HBAR{C.R}")
+        print(f"  {C.MUTED}  swap all USDC for HBAR{C.R}")
         return
 
     intent = req.get("intent")
@@ -32,8 +36,9 @@ def handle_natural_language(app, text):
     
     if intent == "swap":
         req_flags = req.get("flags", {})
-        yes = req_flags.get("yes", False) or req_flags.get("y", False)
-        _do_swap(app, req, yes=yes)
+        yes = req_flags.get("yes", False) or req_flags.get("y", False) or not sys.stdin.isatty()
+        json_mode = req_flags.get("json", False)
+        _do_swap(app, req, yes=yes, json_mode=json_mode)
     elif intent == "balance":
         from cli.commands.wallet import cmd_balance
         cmd_balance(app, [])
@@ -41,14 +46,37 @@ def handle_natural_language(app, text):
         from cli.commands.info import cmd_help
         cmd_help(app, [])
     else:
-        print(f"  {C.ERR}✗{C.R} Unhandled intent: {intent}")
+        print(f"  {C.ERR}✗{C.R} Unrecognized: '{intent}'. Try: swap, balance, price, send, help")
 
 
-def _do_swap(app, req, yes=False):
+def _do_swap(app, req, yes=False, json_mode=False):
     from_token = req["from_token"]
     to_token = req["to_token"]
     amount = req["amount"]
     mode = req["mode"]
+
+    # Resolve "all"/"max" (amount=-1) to actual balance
+    if amount == -1:
+        try:
+            bal_data = app.executor.get_balances()
+            if from_token in ["0.0.0", "HBAR"]:
+                hbar_bal = bal_data.get("hbar", {}).get("balance", 0)
+                gas_reserve = getattr(app.config, 'min_hbar_reserve', 5)
+                amount = max(0, hbar_bal - gas_reserve)
+            else:
+                for _sym, info in bal_data.get("tokens", {}).items():
+                    if info.get("token_id") == from_token or _sym == from_token:
+                        amount = info.get("balance", 0)
+                        break
+                else:
+                    amount = 0
+            if amount <= 0:
+                print(f"  {C.ERR}✗{C.R} No balance available for {from_token}")
+                return
+            print(f"  {C.MUTED}Resolved 'all' to {amount} {from_token}{C.R}")
+        except Exception as e:
+            print(f"  {C.ERR}✗{C.R} Could not resolve balance: {e}")
+            return
 
     # --- V1 POOL CHECK ---
     if app.is_v1_only(from_token, to_token):
@@ -87,17 +115,47 @@ def _do_swap(app, req, yes=False):
 
         res = app.executor.execute_swap(route, raw_amount=amount, mode=mode)
 
-        if res.success:
+        if json_mode:
+            import json as _json
+            from_dec = app.executor._get_token_decimals(from_token)
+            to_dec = app.executor._get_token_decimals(to_token)
+            result = {
+                "success": res.success,
+                "tx_hash": res.tx_hash,
+                "from_token": from_token,
+                "to_token": to_token,
+                "amount_in": res.amount_in_raw / (10**from_dec) if res.amount_in_raw else 0,
+                "amount_out": res.amount_out_raw / (10**to_dec) if res.amount_out_raw else 0,
+                "gas_cost_hbar": res.gas_cost_hbar,
+                "gas_cost_usd": res.gas_cost_usd,
+                "lp_fee": res.lp_fee_amount,
+                "account": res.account_id or app.executor.hedera_account_id,
+                "mode": mode,
+                "error": res.error if not res.success else None,
+            }
+            print(_json.dumps(result, indent=2))
+        elif res.success:
             print_receipt(res, route, route.from_variant, route.to_variant, amount, mode, app.executor)
         else:
             print(f"\n  {C.ERR}✗{C.R} FAILED: {res.error}")
+            print(f"  {C.MUTED}Recovery: Try a smaller amount, increase slippage with 'slippage 3.0', or run 'doctor' to diagnose.{C.R}")
 
     except PacmanError as e:
-        print(f"  {C.ERR}✗{C.R} Error: {e}")
+        if json_mode:
+            import json as _json
+            print(_json.dumps({"success": False, "error": str(e)}))
+        else:
+            print(f"  {C.ERR}✗{C.R} Error: {e}")
+            print(f"  {C.MUTED}Try 'balance' to verify funds, or 'help' for command syntax.{C.R}")
     except Exception as e:
-        print(f"\n  {C.ERR}✗{C.R} Critical System Error: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+        if json_mode:
+            import json as _json
+            print(_json.dumps({"success": False, "error": str(e)}))
+        else:
+            print(f"\n  {C.ERR}✗{C.R} Critical System Error: {e}")
+            print(f"  {C.MUTED}Run 'doctor' to check system health.{C.R}")
+            import traceback
+            logger.error(traceback.format_exc())
 
 
 def cmd_swap_v1(app, args):
@@ -138,7 +196,7 @@ def cmd_swap_v1(app, args):
         return
 
     simulate = getattr(app.config, "simulate_mode", True)
-    yes_flag = "--yes" in args or "-y" in args or not sys.stdin.isatty()
+    yes_flag = "--yes" in args or "-y" in args or not sys.stdin.isatty()  # Non-TTY = auto-confirm
     confirm = "y"
     if not simulate and not yes_flag:
         try:

@@ -31,6 +31,16 @@ class PacmanController:
         self._ensure_data_templates()
         try:
             self.config = PacmanConfig.from_env()
+
+            # Key resolution: if active account is the robot, use robot's key
+            # This is critical for oneshot mode where each CLI invocation is a
+            # fresh process — reload_wallet() only runs for interactive switches.
+            if (self.config.hedera_account_id
+                    and self.config.hedera_account_id == self.config.robot_account_id
+                    and self.config.robot_private_key):
+                logger.info(f"[Init] Using robot key for {self.config.robot_account_id}")
+                self.config.private_key = self.config.robot_private_key
+
             self.executor = PacmanExecutor(self.config)
             self.router = PacmanVariantRouter(price_manager=price_manager)
             self.router.load_pools() # Build routing graph from cached data
@@ -95,6 +105,13 @@ class PacmanController:
 
         # 3. Rebuild core components
         self.config = PacmanConfig.from_env()
+
+        # Key resolution: if the active account is the robot, use robot's key
+        if (self.config.hedera_account_id == self.config.robot_account_id
+                and self.config.robot_private_key):
+            logger.info(f"[Reload] Switching to robot key for {self.config.robot_account_id}")
+            self.config.private_key = self.config.robot_private_key
+
         self.executor = PacmanExecutor(self.config)
         self.account_id = self.config.hedera_account_id
         self.network = self.config.network
@@ -294,6 +311,8 @@ class PacmanController:
                     # Only update if the operator actually changed
                     if not hasattr(self._account_manager, 'operator_id') or self._account_manager.operator_id != self.account_id:
                         self._account_manager.set_operator(self.account_id, pk)
+                except RuntimeError:
+                    pass  # SDK not installed — basic operations still work
                 except Exception as e:
                     from src.logger import logger
                     logger.warning(f"Could not sync operator with ID '{self.account_id}': {e}")

@@ -4,7 +4,7 @@ CLI Commands: Robot (Power Law Rebalancer)
 ==========================================
 
 Commands:
-    robot signal  → Show today's heartbeat model signal (no trading)
+    robot signal  → Show today's BTC Power Law signal (no trading)
     robot start   → Start the rebalancer daemon (background)
     robot stop    → Stop the daemon
     robot status  → Show bot status, portfolio, and last signal
@@ -61,8 +61,8 @@ def cmd_robot(app, args):
 
 
 def _cmd_signal(app):
-    """Show today's heartbeat model signal without trading."""
-    print(f"\n  {C.BOLD}🧠 Bitcoin Heartbeat Model Signal{C.R}")
+    """Show today's power law model signal without trading."""
+    print(f"\n  {C.BOLD}🧠 BTC Power Law Model Signal{C.R}")
     print(f"  {'─' * 45}")
     
     bot = _get_or_create_bot(app)
@@ -352,7 +352,7 @@ def _cmd_status(app, json_mode=False):
             "running": is_running,
             "pid": pid if is_running else None,
             "simulate": status.get("simulate", True),
-            "model": status.get("model", "HEARTBEAT"),
+            "model": status.get("model", "POWER_LAW"),
             "threshold_pct": status.get("threshold", 15.0),
             "interval_seconds": status.get("interval_seconds", 3600),
             "trades_executed": status.get("trades_executed", 0),
@@ -441,7 +441,7 @@ def _print_robot_help():
     """Print robot command help."""
     print(f"\n  {C.BOLD}🤖 Power Law Robot Commands{C.R}")
     print(f"  {'─' * 45}")
-    print(f"  {C.ACCENT}robot signal{C.R}   Show today's heartbeat model signal")
+    print(f"  {C.ACCENT}robot signal{C.R}   Show today's BTC Power Law signal")
     print(f"  {C.ACCENT}robot start{C.R}    Start rebalancer daemon (background)")
     print(f"  {C.ACCENT}robot stop{C.R}     Stop the daemon")
     print(f"  {C.ACCENT}robot status{C.R}   Show bot status and portfolio")

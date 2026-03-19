@@ -545,7 +545,7 @@ class PacmanExecutor:
 
     
     def _get_token_decimals(self, token_id_or_sym: str) -> int:
-        """Look up token decimals by Hedera ID first, then fallback to API."""
+        """Look up token decimals by Hedera ID or symbol, then fallback to API."""
         import json as _json
         # Try to look up by Hedera token ID from tokens.json
         if token_id_or_sym.startswith("0.0."):
@@ -557,13 +557,23 @@ class PacmanExecutor:
                         return m.get("decimals", 8)
             except Exception:
                 pass
+        else:
+            # Symbol-based lookup for wrap/unwrap steps that pass symbols
+            try:
+                with open("data/tokens.json") as f:
+                    tdata = _json.load(f)
+                for _tid, m in tdata.items():
+                    if m.get("symbol", "").upper() == token_id_or_sym.upper():
+                        return m.get("decimals", 8)
+            except Exception:
+                pass
 
         # Fallback: exact ID match
         tid = token_id_or_sym
         if tid in ["0.0.456858", "0.0.1055459", "0.0.731861", "0.0.1460200", "0.0.4794920"]: return 6
         if tid in ["0.0.10082597", "0.0.9470869", "0.0.4568584"]: return 8
         if tid in ["0.0.0", "0.0.1456986"]: return 8 # HBAR / WHBAR
-        
+
         # Last resort: Mirror Node lookup
         if token_id_or_sym.startswith("0.0."):
             try:
@@ -572,7 +582,7 @@ class PacmanExecutor:
                 if r.status_code == 200:
                     return int(r.json().get('decimals', 8))
             except: pass
-            
+
         return 8  # Default for HBAR and unknowns
 
 

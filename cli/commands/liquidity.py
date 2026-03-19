@@ -2,6 +2,7 @@ import json
 import math
 from pathlib import Path
 from cli.display import C
+from cli.commands.wallet import _safe_input
 
 def _calculate_pool_stats(pool: dict) -> tuple[float, float]:
     """Calculate TVL (USD) and instantaneous Price (TokenB / TokenA) from pool data."""
@@ -53,7 +54,7 @@ def cmd_pool_deposit(app, args):
         print(f"\n  {C.ACCENT}🌊{C.R} V2 Liquidity Setup (Pool Discovery)")
         print(f"  {C.CHROME}{'─' * 80}{C.R}")
         
-        query = input(f"  Search Pool by Token Symbol (e.g., HBAR, USDC): ").strip().upper()
+        query = _safe_input(f"  Search Pool by Token Symbol (e.g., HBAR, USDC): ", args, default="").strip().upper()
         if not query:
             return
 
@@ -117,7 +118,7 @@ def cmd_pool_deposit(app, args):
             pair_str = f"{m['sym_a']}/{m['sym_b']}"
             print(f"  [{i+1:<2}] | {pair_str:<15} | {fee_pct:<6} | {tvl_str:<12} | {price_str:<17} | {usd_str:<10}")
             
-        choice = input(f"\n  Select Pool (1-{min(10, len(matches))}) or 'q' to quit: ").strip()
+        choice = _safe_input(f"\n  Select Pool (1-{min(10, len(matches))}) or 'q' to quit: ", args, default="").strip()
         if choice.lower() == 'q' or not choice.isdigit(): return
         
         idx = int(choice) - 1
@@ -149,7 +150,7 @@ def cmd_pool_deposit(app, args):
             print(f"  [4] Full Range (-887220 to 887220)")
             print(f"  [5] Custom Ticks")
             
-            range_choice = input(f"  Range Choice (1-5): ").strip()
+            range_choice = _safe_input(f"  Range Choice (1-5): ", args, default="").strip()
             
             if range_choice == "4":
                 tick_lower, tick_upper = -887220, 887220
@@ -163,8 +164,8 @@ def cmd_pool_deposit(app, args):
                 tick_lower = max(-887220, tick_lower)
                 tick_upper = min(887220, tick_upper)
             elif range_choice == "5":
-                tick_lower = int(input(f"  Tick Lower (multiple of {tick_spacing}): ").strip())
-                tick_upper = int(input(f"  Tick Upper (multiple of {tick_spacing}): ").strip())
+                tick_lower = int(_safe_input(f"  Tick Lower (multiple of {tick_spacing}): ", args, default="").strip())
+                tick_upper = int(_safe_input(f"  Tick Upper (multiple of {tick_spacing}): ", args, default="").strip())
             else:
                 print(f"  {C.ERR}✗{C.R} Invalid choice.")
                 return
@@ -183,16 +184,16 @@ def cmd_pool_deposit(app, args):
 
             if is_below_range:
                 print(f"  {C.MUTED}Current price is below your range → Single-sided {token0_sym} only.{C.R}")
-                amount0 = float(input(f"  Amount of {token0_sym:<10}: ").strip())
+                amount0 = float(_safe_input(f"  Amount of {token0_sym:<10}: ", args, default="").strip())
                 amount1 = 0.0
             elif is_above_range:
                 print(f"  {C.MUTED}Current price is above your range → Single-sided {token1_sym} only.{C.R}")
                 amount0 = 0.0
-                amount1 = float(input(f"  Amount of {token1_sym:<10}: ").strip())
+                amount1 = float(_safe_input(f"  Amount of {token1_sym:<10}: ", args, default="").strip())
             else:
                 # In-range: ask for the first token only, derive the second
                 print(f"  {C.MUTED}Enter your anchor amount; the other token is auto-calculated from the range.{C.R}")
-                anchor_input = input(f"  Amount of {token0_sym:<10} (anchor): ").strip()
+                anchor_input = _safe_input(f"  Amount of {token0_sym:<10} (anchor): ", args, default="").strip()
                 amount0 = float(anchor_input)
                 amount1 = 0.0  # Will be derived
             
@@ -270,7 +271,7 @@ def cmd_pool_deposit(app, args):
         print(f"  {C.WARN}⚠  SIMULATION MODE{C.R}")
 
     if app.config.require_confirmation and not dry_run:
-        confirm = input(f"  Confirm? {C.MUTED}(y/n){C.R} ").strip().lower()
+        confirm = _safe_input(f"  Confirm? {C.MUTED}(y/n){C.R} ", args, default="y").strip().lower()
         if confirm not in ["y", "yes"]:
             print(f"  {C.MUTED}Cancelled.{C.R}")
             return
@@ -382,7 +383,7 @@ def cmd_pool_withdraw(app, args):
             print(f"      Est. Holdings: {C.TEXT}{holdings}{C.R}   Liquidity: {liq:,}")
             print()
 
-        choice = input(f"  Select Position (1-{len(positions)}) or 'q' to quit: ").strip()
+        choice = _safe_input(f"  Select Position (1-{len(positions)}) or 'q' to quit: ", args, default="").strip()
         if choice.lower() == 'q' or not choice.isdigit():
             return
 
@@ -400,7 +401,7 @@ def cmd_pool_withdraw(app, args):
         print(f"  [1] 100%  (full withdrawal)")
         print(f"  [2]  50%")
         print(f"  [3] Custom amount")
-        pct = input("  Choice (1-3): ").strip()
+        pct = _safe_input("  Choice (1-3): ", args, default="").strip()
 
         if pct == "1":
             liquidity = total_liq
@@ -408,7 +409,7 @@ def cmd_pool_withdraw(app, args):
             liquidity = total_liq // 2
         elif pct == "3":
             try:
-                liquidity = int(input(f"  Amount (max {total_liq:,}): ").strip())
+                liquidity = int(_safe_input(f"  Amount (max {total_liq:,}): ", args, default="").strip())
             except ValueError:
                 print(f"  {C.ERR}✗{C.R} Invalid amount.")
                 return
@@ -423,7 +424,7 @@ def cmd_pool_withdraw(app, args):
         print(f"  {C.WARN}⚠  SIMULATION MODE{C.R}")
 
     if app.config.require_confirmation and not dry_run:
-        confirm = input(f"  Confirm? {C.MUTED}(y/n){C.R} ").strip().lower()
+        confirm = _safe_input(f"  Confirm? {C.MUTED}(y/n){C.R} ", args, default="y").strip().lower()
         if confirm not in ["y", "yes"]:
             print(f"  {C.MUTED}Cancelled.{C.R}")
             return

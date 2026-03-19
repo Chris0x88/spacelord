@@ -6,7 +6,7 @@ Power Law Rebalancer Bot — Pacman Integration
 Adapted from the standalone Bitcoin Power Law rebalancer.
 Uses Pacman's controller via adapter.py instead of direct Web3 calls.
 
-Core logic: get heartbeat signal → compare to portfolio → rebalance if deviation > threshold.
+Core logic: get power law signal → compare to portfolio → rebalance if deviation > threshold.
 """
 
 import logging
@@ -28,7 +28,7 @@ STATE_FILE = Path(__file__).resolve().parent.parent.parent.parent / "data" / "ro
 
 class PowerLawBot(BasePlugin):
     """
-    Rebalancer bot that uses the Bitcoin Heartbeat Model to determine
+    Rebalancer bot that uses the Bitcoin Power Law Model to determine
     optimal BTC allocation and rebalances via Pacman's swap engine.
     """
     
@@ -90,7 +90,7 @@ class PowerLawBot(BasePlugin):
     
     def get_signal(self) -> Optional[dict]:
         """
-        Get today's heartbeat model signal.
+        Get today's power law model signal.
         
         Returns dict with allocation_pct, floor, ceiling, model_price,
         position_in_band_pct, valuation, stance, tagline, etc.
@@ -114,7 +114,7 @@ class PowerLawBot(BasePlugin):
         Main rebalancing loop iteration.
         
         1. Get portfolio state
-        2. Get heartbeat signal (target allocation)
+        2. Get power law signal (target allocation)
         3. Check if deviation exceeds threshold
         4. Execute rebalance swap if needed
         
@@ -182,7 +182,7 @@ class PowerLawBot(BasePlugin):
             
             signal = self.get_signal()
             if not signal:
-                return {"success": False, "error": "Could not fetch heartbeat signal"}
+                return {"success": False, "error": "Could not fetch power law signal"}
                 
             self._last_signal = signal
             
@@ -305,8 +305,14 @@ class PowerLawBot(BasePlugin):
         
         sleep_interval = self.config.interval_seconds
         if not success or not has_data:
-            sleep_interval = 60
-            logger.info(f"   ⏳ {self.plugin_name} in retry mode: checking again in 60s")
+            error_msg = result.get("error", "")
+            if "HBAR too low for gas" in error_msg:
+                # Structural: bot account is unfunded. No point retrying for an hour.
+                sleep_interval = 3600
+                logger.info(f"   ⏳ {self.plugin_name} HBAR insufficient — next check in 1h")
+            else:
+                sleep_interval = 60
+                logger.info(f"   ⏳ {self.plugin_name} in retry mode: checking again in 60s")
             
         # Sleep in small segments to allow quick exit
         for _ in range(sleep_interval):

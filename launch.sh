@@ -157,7 +157,7 @@ if [ $# -gt 0 ]; then
             exit 0
             ;;
 
-        daemon-status)
+        daemon-status|status)
             if is_daemon_running; then
                 pid=$(get_daemon_pid)
                 echo -e "${GREEN}[Pacman]${NC} Daemon running (PID: $pid)"
@@ -169,7 +169,22 @@ if [ $# -gt 0 ]; then
                 fi
             else
                 echo -e "${CYAN}[Pacman]${NC} Daemon not running."
-                echo -e "${CYAN}[Pacman]${NC} Start: ./launch.sh daemon-start"
+                echo -e "${CYAN}[Pacman]${NC} Start: ./launch.sh start"
+            fi
+            exit 0
+            ;;
+
+        kill)
+            echo -e "${CYAN}[Pacman]${NC} Killing ALL Pacman processes..."
+            pkill -9 -f "cli.main" 2>/dev/null || true
+            lsof -ti:8088 | xargs kill -9 2>/dev/null || true
+            rm -f "$PID_FILE" "$SCRIPT_DIR/data/robot.pid"
+            sleep 1
+            remaining=$(pgrep -f "cli.main" 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$remaining" -eq 0 ]; then
+                echo -e "${GREEN}[Pacman]${NC} All clear. No Pacman processes running."
+            else
+                echo -e "${YELLOW}[Pacman]${NC} $remaining process(es) still running — try again."
             fi
             exit 0
             ;;

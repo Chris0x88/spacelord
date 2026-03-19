@@ -58,5 +58,11 @@ power_law_model_import/
 power_law_model_import*/
 *desktop_chart.png
 
+# Dev Tools & Runtime Artifacts
+data/daemon.pid
+data/robot.pid
+dashboard/bundle.html
+dashboard/pacmate-dashboard.html
+
 # Backups
 backups/

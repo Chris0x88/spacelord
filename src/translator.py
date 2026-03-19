@@ -31,7 +31,7 @@ def load_static_aliases():
         "BITCOIN": "0.0.10082597", "BTC": "0.0.10082597",
         "ETHEREUM": "0.0.9470869", "ETH": "0.0.9470869",
         "DOLLAR": "0.0.456858", "USD": "0.0.456858", "STABLECOIN": "0.0.456858",
-        "HEDERA": "0.0.0", "HBAR": "0.0.1456986",
+        "HEDERA": "0.0.0", "HBAR": "0.0.0",
     }
     ALIASES.update(CANONICAL)
     
@@ -118,6 +118,14 @@ def translate_command(text: str) -> Optional[dict]:
         token = resolve_token(m.group(1))
         return {"intent": "price", "token": token}
 
+    # Pattern 1b: "swap all/max TOKEN to TOKEN" (Exact In, amount=-1 signals "use full balance")
+    # e.g. "swap all USDC for HBAR", "sell max hbar for usdc"
+    m = re.match(r"(?:swap|trade|exchange|convert|sell)\s+(?:all|max)\s+(.+?)\s+(?:for|to|into)\s+(.+)", t)
+    if m:
+        from_token = resolve_token(m.group(1))
+        to_token = resolve_token(m.group(2))
+        return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": -1, "mode": "exact_in", "flags": flags}
+
     # Pattern 2: "swap AMOUNT TOKEN to TOKEN" (Exact In)
     # e.g. "swap 100 hbar for usdc"
     m = re.match(r"(?:swap|trade|exchange|convert)\s+([\d\.]+)\s+(.+?)\s+(?:for|to|into)\s+(.+)", t)
@@ -136,7 +144,7 @@ def translate_command(text: str) -> Optional[dict]:
         to_token = resolve_token(m.group(3))
         return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_out", "flags": flags}
 
-    # Pattern 4: "buy AMOUNT TOKEN with TOKEN" (Exact Out)
+    # Pattern 4a: "buy AMOUNT TOKEN with TOKEN" (Exact Out)
     # e.g. "buy 1 wbtc with usdc"
     m = re.match(r"(?:buy|get|receive)\s+([\d\.]+)\s+(.+?)\s+with\s+(.+)", t)
     if m:
@@ -144,6 +152,33 @@ def translate_command(text: str) -> Optional[dict]:
         to_token = resolve_token(m.group(2))
         from_token = resolve_token(m.group(3))
         return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_out", "flags": flags}
+
+    # Pattern 4b: "buy AMOUNT TOKEN" (no source — default from USDC)
+    # e.g. "buy 5 HBAR", "buy 0.001 BTC"
+    m = re.match(r"(?:buy|get)\s+([\d\.]+)\s+(.+)", t)
+    if m:
+        amount = float(m.group(1))
+        to_token = resolve_token(m.group(2))
+        from_token = resolve_token("USDC")
+        return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_out", "flags": flags}
+
+    # Pattern 4c: "sell AMOUNT TOKEN for TOKEN" (Exact In)
+    # e.g. "sell 10 USDC for HBAR"
+    m = re.match(r"sell\s+([\d\.]+)\s+(.+?)\s+(?:for|to|into)\s+(.+)", t)
+    if m:
+        amount = float(m.group(1))
+        from_token = resolve_token(m.group(2))
+        to_token = resolve_token(m.group(3))
+        return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_in", "flags": flags}
+
+    # Pattern 4d: "sell AMOUNT TOKEN" (no destination — default to USDC)
+    # e.g. "sell 10 HBAR", "sell 0.001 BTC"
+    m = re.match(r"sell\s+([\d\.]+)\s+(.+)", t)
+    if m:
+        amount = float(m.group(1))
+        from_token = resolve_token(m.group(2))
+        to_token = resolve_token("USDC")
+        return {"intent": "swap", "from_token": from_token, "to_token": to_token, "amount": amount, "mode": "exact_in", "flags": flags}
 
     # Pattern 5: "swap TOKEN to TOKEN" (No amount -> Default 1.0)
     # e.g. "swap hbar for usdc"

@@ -32,6 +32,19 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None) -> Dict[st
     hbar_readable = hbar_bal / (10**18)
     if hbar_readable > 0:
         balances["0.0.0"] = hbar_readable
+    else:
+        # Unfunded account — no HBAR means no associated tokens on Hedera.
+        # Skip multicall entirely and go straight to Mirror Node to confirm.
+        try:
+            root = Path(__file__).parent.parent
+            tokens_path = root / "data" / "tokens.json"
+            if not tokens_path.exists():
+                tokens_path = Path("data/tokens.json")
+            with open(tokens_path) as f:
+                tokens_data = json.load(f)
+        except Exception:
+            return balances
+        return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network)
 
     # ... (rest of loading tokens_data)
     try:
@@ -84,7 +97,8 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None) -> Dict[st
                     token_id, decimals = token_meta_map[i]
                     balances[token_id] = val / (10**decimals)
     except Exception as e:
-        logger.warning(f"   ⚠️ Multicall failed ({e}), falling back to Mirror Node...")
+        # Hedera HTS balanceOf via multicall3 can return b'' for unassociated accounts — expected.
+        logger.debug(f"   Multicall unavailable ({e}), using Mirror Node...")
         return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network)
 
     # For sub-accounts on Hedera, Mirror Node is the only reliable source for HTS balances

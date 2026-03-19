@@ -59,6 +59,41 @@ try:
 except Exception:
     PACMAN_BANNER = f"{C.ACCENT}╔══════════════════════════════════════════╗{C.R}\n{C.ACCENT}║           PACMAN TRADING CLI           ║{C.R}\n{C.ACCENT}╚══════════════════════════════════════════╝{C.R}"
 
+def cmd_logs(app, args):
+    """Show recent agent interaction logs and failure summary."""
+    import json as _json
+    from src.agent_log import get_recent, get_failure_summary
+    clean = [a for a in args if a not in ("--yes", "-y", "--json")]
+    n = int(clean[0]) if clean and clean[0].isdigit() else 20
+
+    if "--json" in args:
+        print(_json.dumps({"recent": get_recent(n), "failures": get_failure_summary()}, indent=2, default=str))
+        return
+
+    entries = get_recent(n)
+    if not entries:
+        print(f"  {C.MUTED}No interactions logged yet.{C.R}")
+        return
+
+    failures = get_failure_summary()
+    if failures:
+        print(f"\n  {C.ERR}Recurring Failures:{C.R}")
+        for err, info in failures.items():
+            print(f"  {C.WARN}{info['count']}x{C.R} {err}")
+            print(f"      {C.MUTED}Last: {info['last_ts']} | Example: {info['example_command']}{C.R}")
+        print()
+
+    print(f"  {C.BOLD}Last {len(entries)} Interactions:{C.R}")
+    for e in entries:
+        status = f"{C.OK}OK{C.R}" if e.get("result") == "success" else f"{C.ERR}FAIL{C.R}"
+        ts = e.get("ts", "")[:19]
+        cmd = e.get("command", "?")[:60]
+        ms = e.get("duration_ms", 0)
+        print(f"  {C.MUTED}{ts}{C.R} [{status}] {cmd} {C.MUTED}({ms:.0f}ms){C.R}")
+        if e.get("error"):
+            print(f"           {C.ERR}{e['error'][:80]}{C.R}")
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -95,13 +130,14 @@ COMMANDS = {
     "refresh": cmd_refresh, "sync": cmd_refresh,
     "doctor": cmd_doctor,
     "nfts": cmd_nfts, "nft": cmd_nfts,
-    "status": cmd_status, "whoami": cmd_status,
-    "fund": cmd_fund, "faucet": cmd_fund, "buy": cmd_fund,
+    "status": cmd_status, "whoami": cmd_status, "info": cmd_status,
+    "fund": cmd_fund, "faucet": cmd_fund,
     "backup-keys": cmd_backup_keys, "export-keys": cmd_backup_keys,
     "install-service": cmd_install_service,
     "uninstall-service": cmd_uninstall_service,
     "status-service": cmd_service_status,
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
+    "logs": cmd_logs, "log": cmd_logs, "agent-log": cmd_logs,
 }
 
 def _is_auto_yes(args: list) -> bool:
@@ -142,12 +178,21 @@ def process_input(app, text):
     if explicit_yes and "--yes" not in args:
         args = args + ["--yes"]
 
+    # Agent interaction logging — capture every command's outcome
+    from src.agent_log import log_interaction
+    _t0 = time.time()
+    _result = "success"
+    _error = None
+    _source = "oneshot" if len(sys.argv) > 1 else "interactive"
+
     if cmd in COMMANDS:
         try:
             COMMANDS[cmd](app, args)
         except PacmanError as e:
+            _result, _error = "error", str(e)
             print(f"  {C.ERR}✗{C.R} {e}")
         except Exception as e:
+            _result, _error = "error", str(e)
             logger.error(f"Command Error ({cmd}): {e}", exc_info=True)
             print(f"  {C.ERR}✗{C.R} Unexpected Error: {e}")
     else:
@@ -155,7 +200,14 @@ def process_input(app, text):
         try:
             handle_natural_language(app, text)
         except PacmanError as e:
+            _result, _error = "error", str(e)
             print(f"  {C.ERR}✗{C.R} {e}")
+        except Exception as e:
+            _result, _error = "error", str(e)
+
+    _duration = (time.time() - _t0) * 1000
+    log_interaction(command=text, result=_result, error=_error,
+                    duration_ms=_duration, source=_source)
 
 # ---------------------------------------------------------------------------
 # Entry Point
