@@ -355,12 +355,20 @@ def setup_telegram(is_multi_agent):
         existing_allow = telegram_conf.get("allowFrom", [])
 
     if existing_allow:
-        print(f"  {C.MUTED}Found your Telegram ID from existing config: {C.BOLD}{existing_allow[0]}{C.R}")
         your_tg_id = existing_allow[0]
+        # Validate it's numeric
+        if not str(your_tg_id).lstrip("-").isdigit():
+            print(f"  {C.WARN}⚠{C.R} Existing config has non-numeric ID: {C.BOLD}{your_tg_id}{C.R}")
+            your_tg_id = _resolve_telegram_username(token, str(your_tg_id))
+        else:
+            print(f"  {C.MUTED}Found your Telegram ID from existing config: {C.BOLD}{your_tg_id}{C.R}")
     else:
         print(f"  {C.WARN}IMPORTANT:{C.R} Telegram requires a {C.BOLD}numeric{C.R} user ID (not your @username).")
-        print(f"  {C.MUTED}To find yours: message @userinfobot on Telegram, or check your existing config.{C.R}")
-        your_tg_id = safe_input(f"  {C.ACCENT}Numeric Telegram ID{C.R} {C.MUTED}(or Enter to skip){C.R}: ")
+        print(f"  {C.MUTED}To find yours: message @userinfobot on Telegram.{C.R}")
+        your_tg_id = safe_input(f"  {C.ACCENT}Telegram ID{C.R} {C.MUTED}(numeric, or Enter to skip){C.R}: ")
+        # Catch @username input
+        if your_tg_id and not your_tg_id.lstrip("-").isdigit():
+            your_tg_id = _resolve_telegram_username(token, your_tg_id)
 
     # Add multi-account telegram config
     telegram_conf = config.get("channels", {}).get("telegram", {})
@@ -415,7 +423,60 @@ def setup_telegram(is_multi_agent):
     print(f"  {C.OK}✓{C.R} Telegram bot added for Pacman agent!")
     if your_tg_id:
         print(f"  {C.MUTED}Restricted to user ID: {your_tg_id}{C.R}")
+
+    # Register slash commands with BotFather API
+    _register_bot_commands(token)
+
     return True
+
+
+def _resolve_telegram_username(bot_token, username):
+    """Try to resolve a @username to a numeric Telegram ID.
+
+    Unfortunately the Telegram Bot API doesn't support username→ID lookup
+    directly. We guide the user to @userinfobot instead.
+    Returns the username as-is if resolution fails.
+    """
+    clean = username.lstrip("@")
+    print(f"  {C.WARN}⚠  '{clean}' looks like a username, not a numeric ID.{C.R}")
+    print(f"  {C.MUTED}Telegram requires numeric IDs for allowlists.{C.R}")
+    print(f"  {C.MUTED}To find yours: message @userinfobot on Telegram — it replies with your numeric ID.{C.R}")
+    print(f"  {C.MUTED}Or run: openclaw doctor --fix  (auto-resolves usernames){C.R}")
+    numeric = safe_input(f"  {C.ACCENT}Numeric ID{C.R} {C.MUTED}(or Enter to keep '{clean}' for now){C.R}: ")
+    return numeric if numeric and numeric.isdigit() else clean
+
+
+def _register_bot_commands(bot_token):
+    """Register Pacman slash commands with BotFather via Telegram Bot API."""
+    import urllib.request
+
+    commands = [
+        {"command": "portfolio", "description": "View your portfolio and balances"},
+        {"command": "swap", "description": "Swap tokens (e.g. 5 USDC for HBAR)"},
+        {"command": "send", "description": "Send tokens to an address"},
+        {"command": "price", "description": "Check live token prices"},
+        {"command": "orders", "description": "View and manage limit orders"},
+        {"command": "robot", "description": "Power Law rebalancer status"},
+        {"command": "nfts", "description": "Browse your NFT collection"},
+        {"command": "gas", "description": "Check HBAR gas reserve"},
+        {"command": "health", "description": "System health check"},
+        {"command": "backup", "description": "Backup your wallet keys"},
+    ]
+
+    try:
+        url = f"https://api.telegram.org/bot{bot_token}/setMyCommands"
+        payload = json.dumps({"commands": commands}).encode()
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read())
+            if result.get("ok"):
+                print(f"  {C.OK}✓{C.R} Registered {len(commands)} slash commands with BotFather")
+                print(f"  {C.MUTED}  Users see: /portfolio /swap /send /price /orders /robot ...{C.R}")
+            else:
+                print(f"  {C.WARN}⚠{C.R} Command registration failed: {result.get('description', 'unknown')}")
+    except Exception as e:
+        print(f"  {C.WARN}⚠{C.R} Could not register commands: {e}")
+        print(f"  {C.MUTED}  You can set them manually via @BotFather → /setcommands{C.R}")
 
 
 def _backup_and_write_config(config):
@@ -438,10 +499,24 @@ def finish(hedera_id, is_multi_agent):
     print(f"  {C.BOLD}Agent Workspace:{C.R} {OPENCLAW_DIR}")
     print(f"  {C.BOLD}Config Updated:{C.R}  {OPENCLAW_CONFIG}")
 
+    # Auto-restart gateway
+    print(f"\n  {C.MUTED}Restarting OpenClaw gateway...{C.R}")
+    import subprocess
+    try:
+        subprocess.run(["openclaw", "gateway", "restart"], capture_output=True, timeout=15)
+        print(f"  {C.OK}✓{C.R} Gateway restarted")
+    except Exception:
+        print(f"  {C.WARN}⚠{C.R} Could not restart gateway — run: {C.BOLD}openclaw gateway restart{C.R}")
+
+    # Auto-fix doctor warnings (resolves @usernames → numeric IDs)
+    try:
+        subprocess.run(["openclaw", "doctor", "--fix"], capture_output=True, timeout=30)
+    except Exception:
+        pass
+
     print(f"\n  {C.ACCENT}Next steps:{C.R}")
-    print(f"  {C.MUTED}  1.{C.R} Restart the gateway:  {C.BOLD}openclaw gateway restart{C.R}")
-    print(f"  {C.MUTED}  2.{C.R} Start Pacman daemons: {C.BOLD}./launch.sh daemon-start{C.R}")
-    print(f"  {C.MUTED}  3.{C.R} Open Telegram and message your Pacman bot!")
+    print(f"  {C.MUTED}  1.{C.R} Start Pacman daemons: {C.BOLD}./launch.sh daemon-start{C.R}")
+    print(f"  {C.MUTED}  2.{C.R} Open Telegram and message your Pacman bot!")
 
     if is_multi_agent:
         print(f"\n  {C.MUTED}Agent routing:{C.R}")

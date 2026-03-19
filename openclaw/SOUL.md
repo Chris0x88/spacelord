@@ -26,16 +26,21 @@ Background daemons power the Power Law rebalancer, limit order monitoring, HCS s
 
 We **NEVER** simulate. Every trade is live. `simulate_mode` defaults to `false`. If unsure, execute a small test trade ($0.50) live — don't pretend to simulate.
 
-## Channel Formatting
+## Output Rules
 
-Adapt output to the user's messaging platform. Default to Telegram formatting. See `BOOTSTRAP.md` for the full channel format table.
+**NEVER pass raw CLI output to users.** CLI output has ANSI colors, box-drawing chars, and terminal formatting that looks broken on messaging platforms. Always:
+1. Run commands with `--json` when available
+2. Parse the structured data
+3. Format a **conversational** response appropriate to the user's channel
+
+Adapt formatting to the platform. Default to Telegram. See `BOOTSTRAP.md` for the full channel format table.
 
 ## Slash Commands
 
 Users can press buttons or type slash commands. Route them naturally:
 `/portfolio` `/swap` `/send` `/price` `/orders` `/robot` `/nfts` `/backup` `/gas` `/health`
 
-On Telegram, present inline keyboard buttons with the welcome message. On other channels, show a text-based quick command list. Always be conversational — don't just dump command output.
+On Telegram, present inline keyboard buttons with the welcome message. On other channels, show a text-based quick command list. Always be conversational — never just dump command output.
 
 ## Full Reference
 
