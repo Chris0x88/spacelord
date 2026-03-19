@@ -177,6 +177,11 @@ async def _dispatch(update: Dict[str, Any]) -> None:
             await _execute_swap_async(callback_data, chat_id, callback_query_id)
             return
 
+        # confirm_send:* — same async pattern for blocking transfer RPC calls
+        if callback_data.startswith("confirm_send:"):
+            await _execute_send_async(callback_data, chat_id, callback_query_id)
+            return
+
         response = _router.handle_callback(callback_data, user_id)
         # Acknowledge the button press first (removes loading spinner)
         await _answer_callback(callback_query_id)
@@ -236,6 +241,51 @@ async def _execute_swap_async(
         }
 
     # 4. Send receipt or error
+    await _send(
+        chat_id,
+        response["text"],
+        reply_markup=response.get("reply_markup"),
+        parse_mode=response.get("parse_mode", "HTML"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Async send execution (Phase 3)
+# ---------------------------------------------------------------------------
+
+async def _execute_send_async(
+    callback_data: str,
+    chat_id: int,
+    callback_query_id: str,
+) -> None:
+    """
+    Handle a confirm_send:* callback without blocking Telegram's webhook timeout.
+
+    Flow:
+      1. ACK the button press immediately.
+      2. Send "⏳ Sending…" message.
+      3. Run the blocking controller.transfer() call in a thread pool.
+      4. Send the receipt (or error message) when done.
+    """
+    await _answer_callback(callback_query_id)
+    await _send(
+        chat_id,
+        "\u23f3 <b>Sending\u2026</b>\n\n<i>Submitting transfer to Hedera. Please wait.</i>",
+        reply_markup=None,
+    )
+
+    try:
+        response = await asyncio.to_thread(
+            _router.execute_send_callback, callback_data
+        )
+    except Exception as exc:
+        logger.error(f"[Telegram] execute_send_callback raised: {exc}", exc_info=True)
+        response = {
+            "text": formatters.format_send_error(f"Unexpected error: {exc}"),
+            "reply_markup": formatters.format_buttons(),
+            "parse_mode": "HTML",
+        }
+
     await _send(
         chat_id,
         response["text"],

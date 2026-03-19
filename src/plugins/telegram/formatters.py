@@ -125,8 +125,12 @@ def format_welcome() -> str:
         "Your self-custody Hedera wallet assistant.\n\n"
         "Use the buttons below or type a slash command:\n"
         "/balance \u2014 portfolio overview\n"
-        "/price \u2014 token prices\n"
-        "/status \u2014 system status\n"
+        "/price [TOKEN] \u2014 token prices\n"
+        "/status \u2014 full dashboard\n"
+        "/history \u2014 recent transactions\n"
+        "/send \u2014 transfer tokens\n"
+        "/tokens \u2014 supported tokens\n"
+        "/gas \u2014 HBAR gas reserve\n"
         "/health \u2014 connectivity check"
     )
 
@@ -274,6 +278,226 @@ def format_swap_error(
 
     text += "\n\n<i>\U0001f4a1 " + " | ".join(hints) + "</i>"
     return text
+
+
+# ---------------------------------------------------------------------------
+# Price
+# ---------------------------------------------------------------------------
+
+def format_prices(prices: Dict[str, float]) -> str:
+    """Render a dict of {symbol: usd_price} as an HTML price list."""
+    lines = ["\U0001f4ca <b>Token Prices</b>", ""]
+    for sym, price in prices.items():
+        if price and price > 0:
+            if price >= 1000:
+                formatted = f"${price:,.2f}"
+            elif price >= 1:
+                formatted = f"${price:.4f}"
+            elif price >= 0.0001:
+                formatted = f"${price:.6f}"
+            else:
+                formatted = f"${price:.8f}"
+            lines.append(f"  <b>{_escape(sym)}</b>: <code>{formatted}</code>")
+        else:
+            lines.append(f"  <b>{_escape(sym)}</b>: <i>unavailable</i>")
+    lines.append("")
+    lines.append("<i>Prices from SaucerSwap V2 pools.</i>")
+    return "\n".join(lines)
+
+
+def format_price(token: str, price_usd: float) -> str:
+    """Render a single token price."""
+    if price_usd and price_usd > 0:
+        if price_usd >= 1000:
+            formatted = f"${price_usd:,.2f}"
+        elif price_usd >= 1:
+            formatted = f"${price_usd:.4f}"
+        else:
+            formatted = f"${price_usd:.6f}"
+        return f"\U0001f4ca <b>{_escape(token)}</b>: <code>{formatted}</code>"
+    return f"\U0001f4ca <b>{_escape(token)}</b>: <i>price unavailable</i>"
+
+
+# ---------------------------------------------------------------------------
+# Status dashboard
+# ---------------------------------------------------------------------------
+
+def format_status(balances: Dict[str, float], account_id: str, network: str) -> str:
+    """Full dashboard: account info + portfolio summary."""
+    lines = [
+        "\U0001f7e2 <b>System Status</b>",
+        "",
+        f"Account: <code>{_escape(account_id)}</code>",
+        f"Network: <code>{_escape(network)}</code>",
+        f"Controller: <code>online</code>",
+        "",
+        "<b>Portfolio</b>",
+    ]
+    if not balances:
+        lines.append("  <i>No balances found.</i>")
+    else:
+        def sort_key(sym):
+            return (0 if sym == "HBAR" else 1, sym)
+        for sym in sorted(balances.keys(), key=sort_key):
+            amount = balances[sym]
+            if amount <= 0:
+                continue
+            if amount >= 1_000:
+                formatted = f"{amount:,.2f}"
+            elif amount >= 1:
+                formatted = f"{amount:.4f}"
+            else:
+                formatted = f"{amount:.8f}"
+            lines.append(f"  <b>{_escape(sym)}</b>: <code>{formatted}</code>")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# History
+# ---------------------------------------------------------------------------
+
+def format_history(records: List[Dict[str, Any]]) -> str:
+    """Render recent execution records as a compact list."""
+    if not records:
+        return (
+            "\U0001f4dc <b>Transaction History</b>\n\n"
+            "<i>No recent transactions found.</i>"
+        )
+    lines = ["\U0001f4dc <b>Recent Transactions</b>", ""]
+    for r in records:
+        ts = r.get("timestamp", r.get("time", ""))[:16] if r.get("timestamp") or r.get("time") else "?"
+        from_tok = r.get("from_token", r.get("token_in", "?"))
+        to_tok = r.get("to_token", r.get("token_out", ""))
+        amount = r.get("amount_in", r.get("amount", 0))
+        success = r.get("success", True)
+        status_icon = "\u2705" if success else "\u274c"
+        if to_tok:
+            desc = f"{_fmt_amount(amount)} {_escape(from_tok)} \u2192 {_escape(to_tok)}"
+        else:
+            desc = f"{_fmt_amount(amount)} {_escape(from_tok)}"
+        lines.append(f"{status_icon} <code>{_escape(ts)}</code> {desc}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Send flow
+# ---------------------------------------------------------------------------
+
+def format_send_prompt() -> str:
+    return (
+        "\U0001f4e4 <b>Send Tokens</b>\n\n"
+        "Type your send command:\n\n"
+        "<code>send 5 USDC to 0.0.7949179</code>\n"
+        "<code>send 100 HBAR to 0.0.7949179</code>\n\n"
+        "\u26a0\ufe0f Only whitelisted recipients are allowed."
+    )
+
+
+def format_send_confirm(
+    amount: float,
+    token: str,
+    recipient: str,
+    remaining_balance: Optional[float] = None,
+) -> Dict[str, Any]:
+    """Build a send confirmation message with Confirm/Cancel inline keyboard."""
+    callback_confirm = f"confirm_send:{amount}:{token}:{recipient}"
+    lines = [
+        "\U0001f4e4 <b>Confirm Send</b>",
+        "",
+        f"Amount: <b>{_fmt_amount(amount)} {_escape(token)}</b>",
+        f"To: <code>{_escape(recipient)}</code>",
+    ]
+    if remaining_balance is not None:
+        lines.append(f"Remaining balance: <code>{_fmt_amount(remaining_balance)} {_escape(token)}</code>")
+    lines += [
+        "",
+        "\u26a0\ufe0f <i>Real transfer. No simulation. Tap Confirm to proceed.</i>",
+    ]
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "\u2705 Confirm", "callback_data": callback_confirm},
+                {"text": "\u274c Cancel",  "callback_data": "cancel:send"},
+            ]
+        ]
+    }
+    return {"text": "\n".join(lines), "reply_markup": keyboard}
+
+
+def format_send_receipt(amount: float, token: str, recipient: str, tx_hash: str = "") -> str:
+    lines = [
+        "\u2705 <b>Send Successful!</b>",
+        "",
+        f"<b>{_fmt_amount(amount)} {_escape(token)}</b> \u2192 <code>{_escape(recipient)}</code>",
+    ]
+    if tx_hash:
+        lines.append(f"Tx: <code>{_escape(tx_hash)}</code>")
+    return "\n".join(lines)
+
+
+def format_send_error(error_msg: str, amount: float = 0, token: str = "", recipient: str = "") -> str:
+    text = f"\u274c <b>Send Failed</b>\n\n{_escape(error_msg)}"
+    if amount and token:
+        text += f"\n\nAmount: <code>{_fmt_amount(amount)} {_escape(token)}</code>"
+    if recipient:
+        text += f"\nTo: <code>{_escape(recipient)}</code>"
+    if "whitelist" in error_msg.lower() or "safety" in error_msg.lower():
+        text += "\n\n<i>\U0001f4a1 Add the recipient to your whitelist first: <code>./launch.sh whitelist add 0.0.xxx</code></i>"
+    return text
+
+
+# ---------------------------------------------------------------------------
+# Tokens list
+# ---------------------------------------------------------------------------
+
+def format_tokens(tokens_data: Dict[str, Any]) -> str:
+    """Render supported tokens as a list."""
+    lines = ["\U0001f4cb <b>Supported Tokens</b>", ""]
+    # Priority symbols first
+    priority = ["HBAR", "USDC", "WBTC", "WETH", "SAUCE", "HBARX"]
+    shown = set()
+    for sym in priority:
+        # Find by symbol or key
+        meta = tokens_data.get(sym)
+        if meta is None:
+            for tid, m in tokens_data.items():
+                if isinstance(m, dict) and m.get("symbol") == sym:
+                    meta = m
+                    break
+        if meta and isinstance(meta, dict):
+            tid = meta.get("id", sym)
+            name = meta.get("name", sym)
+            lines.append(f"  <b>{_escape(sym)}</b> — <code>{_escape(tid)}</code>")
+            shown.add(sym)
+    # Add HBAR manually if not in tokens.json
+    if "HBAR" not in shown:
+        lines.insert(2, "  <b>HBAR</b> — <code>0.0.0</code> (native)")
+    lines.append("")
+    lines.append("<i>Use symbols in swap commands, e.g. <code>swap 5 USDC for HBAR</code></i>")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Gas status
+# ---------------------------------------------------------------------------
+
+def format_gas_status(hbar_balance: float, min_reserve: float = 5.0) -> str:
+    """Show HBAR balance and gas reserve status."""
+    if hbar_balance >= min_reserve * 3:
+        icon = "\u26fd"
+        status = "Healthy"
+    elif hbar_balance >= min_reserve:
+        icon = "\u26a0\ufe0f"
+        status = "Adequate"
+    else:
+        icon = "\U0001f534"
+        status = f"LOW — minimum {min_reserve} HBAR required"
+    return (
+        f"{icon} <b>Gas Status</b>\n\n"
+        f"HBAR balance: <code>{_fmt_amount(hbar_balance)}</code>\n"
+        f"Min reserve: <code>{min_reserve} HBAR</code>\n"
+        f"Status: <b>{status}</b>"
+    )
 
 
 # ---------------------------------------------------------------------------
