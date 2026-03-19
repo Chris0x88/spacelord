@@ -11,12 +11,19 @@ Handles Hedera Consensus Service (HCS) operations:
 
 import json
 from typing import Optional, List, Dict
-from hiero_sdk_python.consensus.topic_create_transaction import TopicCreateTransaction
-from hiero_sdk_python.consensus.topic_message_submit_transaction import TopicMessageSubmitTransaction
-from hiero_sdk_python.consensus.topic_id import TopicId
-from hiero_sdk_python.account.account_id import AccountId
 from src.logger import logger
 from src.core.base_plugin import BasePlugin
+
+# Optional dependency — HCS operations require hiero-sdk-python.
+# Basic plugin load still works without it; operations fail gracefully.
+try:
+    from hiero_sdk_python.consensus.topic_create_transaction import TopicCreateTransaction
+    from hiero_sdk_python.consensus.topic_message_submit_transaction import TopicMessageSubmitTransaction
+    from hiero_sdk_python.consensus.topic_id import TopicId
+    from hiero_sdk_python.account.account_id import AccountId
+    _HAS_HIERO_SDK = True
+except ImportError:
+    _HAS_HIERO_SDK = False
 
 class HcsManager(BasePlugin):
     """

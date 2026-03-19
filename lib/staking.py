@@ -12,10 +12,18 @@ Usage:
 """
 
 from typing import Optional
-from hiero_sdk_python.client.client import Client
-from hiero_sdk_python.account.account_update_transaction import AccountUpdateTransaction
-from hiero_sdk_python.account.account_id import AccountId
-from hiero_sdk_python.crypto.private_key import PrivateKey
+
+# Optional dependency — staking requires hiero-sdk-python.
+# The CLI cmd_stake already guards against ImportError when lazily importing
+# this module; this try/except prevents crash if imported from other paths.
+try:
+    from hiero_sdk_python.client.client import Client
+    from hiero_sdk_python.account.account_update_transaction import AccountUpdateTransaction
+    from hiero_sdk_python.account.account_id import AccountId
+    from hiero_sdk_python.crypto.private_key import PrivateKey
+    _HAS_HIERO_SDK = True
+except ImportError:
+    _HAS_HIERO_SDK = False
 
 class StakingManager:
     """
@@ -23,10 +31,12 @@ class StakingManager:
     """
 
     def __init__(self, network: str = "mainnet"):
+        if not _HAS_HIERO_SDK:
+            raise RuntimeError("hiero-sdk-python is required for staking. Install with: pip install hiero-sdk-python")
         self.network = network.lower()
         self.client = self._init_client()
 
-    def _init_client(self) -> Client:
+    def _init_client(self):
         """Initialize Hiero SDK Client."""
         if self.network == "mainnet":
             return Client.for_mainnet()
