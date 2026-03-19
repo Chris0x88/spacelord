@@ -180,6 +180,82 @@ if [ $# -gt 0 ]; then
             exit $?
             ;;
 
+        telegram-start)
+            TGPID_FILE="$SCRIPT_DIR/data/telegram.pid"
+            if [ -f "$TGPID_FILE" ]; then
+                tgpid=$(cat "$TGPID_FILE" 2>/dev/null)
+                if [ -n "$tgpid" ] && kill -0 "$tgpid" 2>/dev/null; then
+                    echo -e "${GREEN}[Pacman]${NC} Telegram interceptor already running (PID: $tgpid)"
+                    exit 0
+                fi
+                rm -f "$TGPID_FILE"
+            fi
+            TG_PORT="${TELEGRAM_PORT:-8443}"
+            echo -e "${GREEN}[Pacman]${NC} Starting Telegram interceptor on port $TG_PORT..."
+            mkdir -p "$SCRIPT_DIR/data"
+            PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
+            nohup "$PYTHON_EXEC" -m uvicorn src.plugins.telegram.interceptor:app \
+                --host 0.0.0.0 --port "$TG_PORT" \
+                > "$SCRIPT_DIR/data/telegram.log" 2>&1 &
+            tgpid=$!
+            echo "$tgpid" > "$TGPID_FILE"
+            disown
+            sleep 2
+            if kill -0 "$tgpid" 2>/dev/null; then
+                echo -e "${GREEN}[Pacman]${NC} Telegram interceptor started (PID: $tgpid)"
+                echo -e "${CYAN}[Pacman]${NC} Health: http://127.0.0.1:$TG_PORT/health"
+                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f data/telegram.log"
+            else
+                echo -e "${RED}[Pacman]${NC} Telegram interceptor failed to start. Check data/telegram.log"
+                rm -f "$TGPID_FILE"
+                exit 1
+            fi
+            exit 0
+            ;;
+
+        telegram-stop)
+            TGPID_FILE="$SCRIPT_DIR/data/telegram.pid"
+            if [ -f "$TGPID_FILE" ]; then
+                tgpid=$(cat "$TGPID_FILE" 2>/dev/null)
+                if [ -n "$tgpid" ] && kill -0 "$tgpid" 2>/dev/null; then
+                    echo -e "${CYAN}[Pacman]${NC} Stopping Telegram interceptor (PID: $tgpid)..."
+                    kill "$tgpid" 2>/dev/null || true
+                    sleep 1
+                    kill -0 "$tgpid" 2>/dev/null && kill -9 "$tgpid" 2>/dev/null || true
+                    echo -e "${GREEN}[Pacman]${NC} Telegram interceptor stopped."
+                else
+                    echo -e "${CYAN}[Pacman]${NC} No Telegram interceptor running."
+                fi
+                rm -f "$TGPID_FILE"
+            else
+                # Fallback: kill by pattern
+                pkill -f "uvicorn src.plugins.telegram.interceptor" 2>/dev/null || true
+                echo -e "${CYAN}[Pacman]${NC} No Telegram interceptor running."
+            fi
+            exit 0
+            ;;
+
+        telegram-status)
+            TGPID_FILE="$SCRIPT_DIR/data/telegram.pid"
+            TG_PORT="${TELEGRAM_PORT:-8443}"
+            tgpid=""
+            if [ -f "$TGPID_FILE" ]; then
+                tgpid=$(cat "$TGPID_FILE" 2>/dev/null)
+            fi
+            if [ -n "$tgpid" ] && kill -0 "$tgpid" 2>/dev/null; then
+                echo -e "${GREEN}[Pacman]${NC} Telegram interceptor running (PID: $tgpid)"
+                if curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$TG_PORT/health" 2>/dev/null | grep -q "200"; then
+                    echo -e "${GREEN}[Pacman]${NC} Health: OK"
+                else
+                    echo -e "${YELLOW}[Pacman]${NC} Health: not responding yet"
+                fi
+            else
+                echo -e "${CYAN}[Pacman]${NC} Telegram interceptor not running."
+                echo -e "${CYAN}[Pacman]${NC} Start: ./launch.sh telegram-start"
+            fi
+            exit 0
+            ;;
+
         kill)
             echo -e "${CYAN}[Pacman]${NC} Killing ALL Pacman processes..."
             pkill -9 -f "cli.main" 2>/dev/null || true
