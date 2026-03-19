@@ -501,6 +501,32 @@ def format_gas_status(hbar_balance: float, min_reserve: float = 5.0) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Ghost Tunnel — Phase 4
+# ---------------------------------------------------------------------------
+
+def format_setup_prompt() -> str:
+    """Prompt shown when user runs /setup — opens the Ghost Tunnel Mini App."""
+    return (
+        "\U0001f510 <b>Secure Key Setup</b>\n\n"
+        "Tap the button below to open the secure input panel.\n\n"
+        "Your key is sent directly to your server over HTTPS and written "
+        "to <code>.env</code>. It is <b>never</b> stored in Telegram chat history.\n\n"
+        "<i>\U0001f512 The tunnel validates your Telegram identity before accepting any value.</i>"
+    )
+
+
+def format_key_saved(field: str) -> str:
+    """Confirmation message after a key is successfully saved via Ghost Tunnel."""
+    safe_field = _escape(field)
+    return (
+        f"\u2705 <b>{safe_field} saved</b>\n\n"
+        "Your key has been written to <code>.env</code>.\n\n"
+        "<i>Restart the bot for the new key to take effect: "
+        "<code>./launch.sh telegram-start</code></i>"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 

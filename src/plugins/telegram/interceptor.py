@@ -32,12 +32,15 @@ import hmac
 import json
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
+from fastapi.responses import FileResponse, JSONResponse
 
 from src.plugins.telegram import config as tg_config
 from src.plugins.telegram import formatters
+from src.plugins.telegram.ghost import GhostRequest, handle_ghost, make_webapp_button
 from src.plugins.telegram.router import InboundRouter
 
 logger = logging.getLogger("pacman.telegram")
@@ -130,6 +133,49 @@ async def health() -> Dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
+# Ghost Tunnel — Phase 4
+# ---------------------------------------------------------------------------
+
+_MINI_APP_HTML = Path(__file__).resolve().parent / "mini_app" / "secure_input.html"
+
+
+@app.post("/ghost")
+async def ghost(request: Request, body: GhostRequest) -> JSONResponse:
+    """
+    Receive a sensitive field value from the Telegram Mini App.
+    Validates initData, rate-limits by user, writes to .env atomically.
+    The actual value is NEVER logged or echoed back.
+    """
+    return await handle_ghost(request, body, _bot_token)
+
+
+@app.get("/mini-app/secure-input")
+async def mini_app_secure_input() -> FileResponse:
+    """Serve the Ghost Tunnel Mini App HTML page."""
+    if not _MINI_APP_HTML.exists():
+        raise HTTPException(status_code=404, detail="Mini App not found")
+    return FileResponse(_MINI_APP_HTML, media_type="text/html")
+
+
+def build_webapp_button(field: str = "PRIVATE_KEY") -> Optional[Dict]:
+    """
+    Return a Telegram InlineKeyboardMarkup with a WebApp button for secure key input.
+    Returns None if TELEGRAM_WEBHOOK_URL is not configured.
+
+    Usage in a sendMessage payload:
+        {"reply_markup": build_webapp_button("PRIVATE_KEY")}
+    """
+    try:
+        base_url = tg_config.get_webhook_url()
+        # Derive server base URL from webhook URL (strip /webhook path if present)
+        if base_url.endswith("/webhook"):
+            base_url = base_url[: -len("/webhook")]
+        return make_webapp_button(base_url, field)
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Dispatch logic
 # ---------------------------------------------------------------------------
 
@@ -146,6 +192,18 @@ async def _dispatch(update: Dict[str, Any]) -> None:
 
         if not _is_authorized(user_id):
             await _send(chat_id, formatters.format_unauthorized(), reply_markup=None)
+            return
+
+        # web_app_data — sent by Mini App via Telegram.WebApp.sendData()
+        if "web_app_data" in msg:
+            wad = msg["web_app_data"].get("data", "")
+            response = _router.handle_web_app_data(wad, user_id)
+            await _send(
+                chat_id,
+                response["text"],
+                reply_markup=response.get("reply_markup"),
+                parse_mode=response.get("parse_mode", "HTML"),
+            )
             return
 
         if not text:

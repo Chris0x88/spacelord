@@ -49,6 +49,7 @@ FAST_LANE_COMMANDS = {
     "/gas",
     "/history",
     "/send",
+    "/setup",
 }
 
 # callback_data values → treated as equivalent slash command
@@ -62,6 +63,7 @@ CALLBACK_MAP = {
     "tokens":    "/tokens",
     "history":   "/history",
     "send":      "/send",
+    "setup":     "/setup",
     # Phase 2+ — handled explicitly below
     "swap":      "/swap",
     "orders":    "/orders",
@@ -106,6 +108,26 @@ class InboundRouter:
 
         # AI lane placeholder
         return self._ai_lane_placeholder(text)
+
+    def handle_web_app_data(self, data: str, user_id: int) -> Dict[str, Any]:
+        """
+        Handle web_app_data sent back by Telegram after Mini App submission.
+        Telegram delivers this as a special message type when the Mini App calls
+        Telegram.WebApp.sendData(). We treat it as a confirmation receipt.
+
+        Note: Ghost Tunnel uses a direct POST /ghost instead of sendData(),
+        so this is a belt-and-suspenders handler for future use.
+        """
+        try:
+            import json as _json
+            payload = _json.loads(data)
+            field = payload.get("field", "")
+            if field:
+                text = formatters.format_key_saved(field)
+                return _reply(text, with_buttons=True)
+        except Exception:
+            pass
+        return _reply("\U0001f510 Key received.", with_buttons=True)
 
     def handle_callback(self, callback_data: str, user_id: int) -> Dict[str, Any]:
         """Route a callback_query (inline button press)."""
@@ -224,6 +246,8 @@ class InboundRouter:
                 return self._cmd_history()
             elif cmd == "/send":
                 return self._cmd_send_prompt()
+            elif cmd == "/setup":
+                return self._cmd_setup(arg)
             else:
                 return _not_implemented(cmd)
         except Exception as exc:
@@ -472,6 +496,18 @@ class InboundRouter:
     # ------------------------------------------------------------------
     # Send lane — Phase 3
     # ------------------------------------------------------------------
+
+    def _cmd_setup(self, field: str = "") -> Dict[str, Any]:
+        """Return a WebApp button for secure key entry via the Ghost Tunnel."""
+        # Import here to avoid circular dependency at module load time
+        try:
+            from src.plugins.telegram.interceptor import build_webapp_button
+            field = field.upper() if field else "PRIVATE_KEY"
+            markup = build_webapp_button(field)
+        except Exception:
+            markup = None
+        text = formatters.format_setup_prompt()
+        return {"text": text, "reply_markup": markup, "parse_mode": "HTML"}
 
     def _cmd_send_prompt(self) -> Dict[str, Any]:
         return {"text": formatters.format_send_prompt(), "reply_markup": None, "parse_mode": "HTML"}
