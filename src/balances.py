@@ -32,35 +32,9 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None, account_id
 
     balances = {}
 
-    # If we have an explicit account_id, use Mirror Node for exact segregated balances
-    # This prevents sub-accounts sharing an ECDSA key from showing combined balances.
-    if account_id:
-        try:
-            network_prefix = "mainnet-public" if client.network == "mainnet" else "testnet"
-            base_url = f"https://{network_prefix}.mirrornode.hedera.com"
-
-            # 1. Fetch HBAR Balance
-            hbar_url = f"{base_url}/api/v1/accounts/{account_id}"
-            hbar_res = requests.get(hbar_url, timeout=5)
-            if hbar_res.status_code == 200:
-                hbar_bal_tinybars = hbar_res.json().get("balance", {}).get("balance", 0)
-                hbar_readable = hbar_bal_tinybars / (10**8) # Mirror Node HBAR balance is in tinybars (8 decimals)
-                if hbar_readable > 0:
-                    balances["0.0.0"] = hbar_readable
-
-            # 2. Fetch Token Balances
-            tokens_url = f"{base_url}/api/v1/accounts/{account_id}/tokens"
-            tokens_res = requests.get(tokens_url, params={"limit": 100}, timeout=5)
-            if tokens_res.status_code == 200:
-                for token in tokens_res.json().get("tokens", []):
-                    bal = token.get("balance", 0)
-                    if bal > 0:
-                        tid = token.get("token_id")
-                        decimals = token.get("decimals", 8) # The Mirror Node /tokens endpoint includes 'decimals'
-                        balances[tid] = bal / (10**decimals)
-                return balances
-        except Exception as e:
-            logger.warning(f"   ⚠️ Mirror Node balance lookup failed for {account_id}: {e}. Falling back to EVM.")
+    # Mirror Node requires the EVM alias address for token lookups — the Hedera native ID
+    # (0.0.xxx) returns empty token lists. We use eoa (the ECDSA alias) as the primary
+    # identifier and only fall back to the Hedera ID for unfunded/new accounts.
 
     # 1. Fallback HBAR Balance (Native via EVM)
     hbar_bal = w3.eth.get_balance(eoa)
@@ -79,7 +53,7 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None, account_id
                 tokens_data = json.load(f)
         except Exception:
             return balances
-        return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network, hedera_account_id)
+        return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network, account_id)
 
     # Load tokens_data
     try:
@@ -134,13 +108,13 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None, account_id
     except Exception as e:
         # Hedera HTS balanceOf via multicall3 can return b'' for unassociated accounts — expected.
         logger.debug(f"   Multicall unavailable ({e}), using Mirror Node...")
-        return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network, hedera_account_id)
+        return _get_balances_mirror(eoa, tokens_data, token_highlights, client.network, account_id)
 
     # For sub-accounts on Hedera, Mirror Node is the only reliable source for HTS balances
     # when multiple IDs share an ECDSA alias. We double-check if we found low token count.
     if len(balances) <= 1:
         logger.debug("   ⚠️ Low token count via RPC, checking with Mirror Node...")
-        mirror_bal = _get_balances_mirror(eoa, tokens_data, token_highlights, client.network, hedera_account_id)
+        mirror_bal = _get_balances_mirror(eoa, tokens_data, token_highlights, client.network, account_id)
         balances.update(mirror_bal)
 
     logger.debug(f"Fetched {len(balances)} non-zero balances.")
@@ -155,16 +129,15 @@ def _get_balances_mirror(eoa: str, tokens_data: dict, token_highlights: list = N
     import requests
     balances = {}
 
-    # Prefer the Hedera account ID (0.0.xxx) directly — avoids EVM alias
-    # resolution issues for independent-key accounts (e.g. robot).
-    if hedera_account_id and hedera_account_id.startswith("0.0."):
-        account_id = hedera_account_id
-    elif eoa.startswith("0x0000000000000000000000000000000000"):
-        # Convert long-zero hex suffix to decimal ID
-        num = int(eoa[34:], 16)
-        account_id = f"0.0.{num}"
-    else:
+    # Mirror Node returns token balances when queried by the EVM alias address.
+    # Querying by Hedera native ID (0.0.xxx) returns empty token lists.
+    # Use EVM address first; fall back to Hedera ID only if EVM is unavailable.
+    if eoa and eoa.startswith("0x"):
         account_id = eoa
+    elif hedera_account_id and hedera_account_id.startswith("0.0."):
+        account_id = hedera_account_id
+    else:
+        return balances  # No usable identifier
     
     base_url = "https://mainnet-public.mirrornode.hedera.com" if network == "mainnet" else "https://testnet.mirrornode.hedera.com"
     url = f"{base_url}/api/v1/accounts/{account_id}"
@@ -175,6 +148,10 @@ def _get_balances_mirror(eoa: str, tokens_data: dict, token_highlights: list = N
         if resp.status_code == 200:
             data = resp.json()
             balance_data = data.get("balance", {})
+            # HBAR balance is in tinybars (8 decimals) in the account endpoint
+            hbar_tinybars = balance_data.get("balance", 0)
+            if hbar_tinybars > 0:
+                balances["0.0.0"] = hbar_tinybars / (10**8)
             for t_entry in balance_data.get("tokens", []):
                 tid = t_entry.get("token_id")
                 raw_bal = t_entry.get("balance", 0)
