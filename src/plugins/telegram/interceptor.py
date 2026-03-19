@@ -26,6 +26,7 @@ Architecture:
         → Bot.send_message() with HTML + inline keyboard
 """
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -170,6 +171,12 @@ async def _dispatch(update: Dict[str, Any]) -> None:
             await _answer_callback(callback_query_id, text="Access denied.")
             return
 
+        # confirm_swap:* — execute asynchronously so we don't block Telegram's
+        # 5-second webhook timeout and so the user sees an immediate response.
+        if callback_data.startswith("confirm_swap:"):
+            await _execute_swap_async(callback_data, chat_id, callback_query_id)
+            return
+
         response = _router.handle_callback(callback_data, user_id)
         # Acknowledge the button press first (removes loading spinner)
         await _answer_callback(callback_query_id)
@@ -183,6 +190,58 @@ async def _dispatch(update: Dict[str, Any]) -> None:
     else:
         # Edited messages, channel posts, etc. — silently ignore
         pass
+
+
+# ---------------------------------------------------------------------------
+# Async swap execution (Phase 2)
+# ---------------------------------------------------------------------------
+
+async def _execute_swap_async(
+    callback_data: str,
+    chat_id: int,
+    callback_query_id: str,
+) -> None:
+    """
+    Handle a confirm_swap:* callback without blocking Telegram's webhook timeout.
+
+    Flow:
+      1. ACK the button press immediately (clears Telegram's loading spinner).
+      2. Send "⏳ Executing…" so the user knows work is in progress.
+      3. Run the blocking controller.swap() call in a thread pool.
+      4. Send the receipt (or error message) when done.
+    """
+    # 1. Acknowledge immediately
+    await _answer_callback(callback_query_id)
+
+    # 2. Notify user swap is in progress
+    await _send(
+        chat_id,
+        "\u23f3 <b>Executing swap\u2026</b>\n\n<i>Submitting to Hedera. Please wait.</i>",
+        reply_markup=None,
+    )
+
+    # 3. Run blocking swap in a thread pool
+    try:
+        response = await asyncio.to_thread(
+            _router.execute_swap_callback, callback_data
+        )
+    except Exception as exc:
+        logger.error(f"[Telegram] execute_swap_callback raised: {exc}", exc_info=True)
+        response = {
+            "text": formatters.format_swap_error(
+                f"Unexpected error: {exc}"
+            ),
+            "reply_markup": formatters.format_buttons(),
+            "parse_mode": "HTML",
+        }
+
+    # 4. Send receipt or error
+    await _send(
+        chat_id,
+        response["text"],
+        reply_markup=response.get("reply_markup"),
+        parse_mode=response.get("parse_mode", "HTML"),
+    )
 
 
 # ---------------------------------------------------------------------------
