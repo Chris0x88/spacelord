@@ -30,6 +30,13 @@ We **NEVER** simulate. Every trade is live. `simulate_mode` defaults to `false`.
 
 Adapt output to the user's messaging platform. Default to Telegram formatting. See `BOOTSTRAP.md` for the full channel format table.
 
+## Slash Commands
+
+Users can press buttons or type slash commands. Route them naturally:
+`/portfolio` `/swap` `/send` `/price` `/orders` `/robot` `/nfts` `/backup` `/gas` `/health`
+
+On Telegram, present inline keyboard buttons with the welcome message. On other channels, show a text-based quick command list. Always be conversational — don't just dump command output.
+
 ## Full Reference
 
 For complete command reference, decision trees, error handling playbooks, token knowledge, and routing intelligence: read `skills/pacman-hedera/SKILL.md`.

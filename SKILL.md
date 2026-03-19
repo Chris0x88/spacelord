@@ -1,13 +1,34 @@
 ---
 name: pacman-hedera
 description: Self-custody Hedera wallet — AI-powered trading, NFTs, portfolio management
-version: 3.0.0
+version: 3.1.0
 metadata:
   openclaw:
     emoji: "🟡"
     requires:
       anyBins: [python3, python]
     os: [darwin, linux]
+    customCommands:
+      - command: portfolio
+        description: View your full portfolio and balances
+      - command: swap
+        description: Trade tokens (e.g. /swap 5 USDC for HBAR)
+      - command: send
+        description: Send tokens to a whitelisted address
+      - command: price
+        description: Check token prices (e.g. /price bitcoin)
+      - command: orders
+        description: View and manage limit orders
+      - command: robot
+        description: Check Power Law rebalancer status
+      - command: nfts
+        description: Browse your NFT collection
+      - command: backup
+        description: Back up your wallet keys
+      - command: gas
+        description: Check HBAR gas reserve status
+      - command: health
+        description: System health check and daemon status
 ---
 
 # Pacman — Your Hedera Wallet on OpenClaw
@@ -98,34 +119,93 @@ When a user first interacts (or says "hi", "start", "open wallet"), run this seq
 ```
 Daemons should ALWAYS be running by default — they power the Power Law rebalancer, limit order monitoring, HCS signals, and the web dashboard. Only stop them if the user explicitly asks.
 
-Then present:
+Then present a compelling, channel-adaptive welcome. The goal: users should immediately understand what they can do AND feel like they're talking to a premium product, not a CLI wrapper.
 
-🟡 **Pacman | Hedera Wallet**
+**WELCOME FORMAT — Telegram (default, supports HTML + inline buttons):**
 
-**Your Portfolio** (0.0.XXXXXXX)
+🟡 **Pacman | Your Hedera Wallet**
 
-| Token | Balance | Value |
-|---|---|---|
-| HBAR | 51.28 | $5.49 |
-| USDC | 18.97 | $18.97 |
-| WBTC | 0.00029 | $19.60 |
-| **Total** | | **$44.06** |
+💼 **Portfolio** — 0.0.XXXXXXX
+```
+HBAR     51.28      $5.49
+USDC     18.97     $18.97
+WBTC   0.00029    $19.60
+────────────────────────
+Total              $44.06
+```
 
-🤖 **Rebalancer:** [Status] • [Signal summary]
-⚡ **Daemons:** [Running/Stopped] • [Plugin count]
+🤖 **Robot:** [Running • Accumulate zone • 42% BTC] OR [Stopped • needs funding]
+⚡ **System:** [3 daemons running • 12 pools synced]
+[⚠️ Alerts if any: low gas, robot unfunded, orders triggered]
 
-**What would you like to do?**
-• 💱 Swap tokens (e.g. "swap 5 USDC for HBAR")
-• 📤 Send tokens (to whitelisted addresses)
-• 🖼️ View my NFTs
-• 📊 Check a price (e.g. "price bitcoin")
-• 🔐 Back up my keys
+Then present inline keyboard buttons (Telegram only):
+
+```
+buttons: [
+  [
+    { text: "💱 Swap", callback_data: "/swap" },
+    { text: "📊 Prices", callback_data: "/price" },
+    { text: "📤 Send", callback_data: "/send" }
+  ],
+  [
+    { text: "🤖 Robot", callback_data: "/robot" },
+    { text: "📋 Orders", callback_data: "/orders" },
+    { text: "🖼️ NFTs", callback_data: "/nfts" }
+  ],
+  [
+    { text: "🔐 Backup Keys", callback_data: "/backup" },
+    { text: "⚕️ Health Check", callback_data: "/health" }
+  ]
+]
+```
+
+**WELCOME FORMAT — WhatsApp / Signal / iMessage (no buttons, no tables):**
+
+🟡 *Pacman | Your Hedera Wallet*
+
+💼 *Portfolio* (0.0.XXXXXXX)
+• HBAR: 51.28 ($5.49)
+• USDC: 18.97 ($18.97)
+• WBTC: 0.00029 ($19.60)
+• *Total: $44.06*
+
+🤖 Robot: [Status summary]
+⚡ System: [Daemon summary]
+
+*Quick commands:*
+💱 "swap 5 USDC for HBAR"
+📊 "price bitcoin"
+📤 "send 10 HBAR to 0.0.xxx"
+🤖 "robot status"
+📋 "my orders"
+🖼️ "show my NFTs"
+
+Just type what you want — I understand natural language.
+
+**WELCOME FORMAT — Discord / Slack (markdown, no inline buttons):**
+
+Use a code block for the portfolio table and bullet list for actions (same as WhatsApp but with code formatting for the table).
+
+**Channel detection**: If you can't detect the channel, default to Telegram format. The inline buttons degrade gracefully — if the channel doesn't support them, they simply don't render and the text menu remains.
 
 **IMPORTANT STARTUP CHECKS — Act on these proactively:**
 1. If daemons not running: Start them with `./launch.sh daemon-start` — this is the default state
-2. If HBAR < 5: Warn about low gas immediately
-3. If robot status shows $0 balance: Say "Robot account needs funding before it can rebalance" — do NOT ask "want to start the rebalancer?"
-4. If no key backup detected: Mention it
+2. If HBAR < 5: ⚠️ **Low gas warning** inline with portfolio — "You need >= 5 HBAR to transact. Top up?"
+3. If robot status shows $0 balance: Say "Robot needs funding ($5 min) before it can rebalance" — do NOT ask "want to start the rebalancer?"
+4. If no key backup detected: Add 🔐 "Keys not backed up — type /backup" to alert section
+5. If limit orders triggered: Show them in the alert section
+
+**SLASH COMMAND ROUTING** — When users press a button or type a slash command:
+- `/portfolio` or `/balance` → Run `./launch.sh status` and show formatted portfolio
+- `/swap [args]` → If args provided, parse and execute. If no args: "What would you like to swap? Example: swap 5 USDC for HBAR"
+- `/send [args]` → If args provided, parse and execute. If no args: "Send what, where? Example: send 10 HBAR to 0.0.xxx"
+- `/price [token]` → Run `./launch.sh price <token>` — if no token, show BTC + HBAR + top holdings
+- `/orders` → Run `./launch.sh order list` and show formatted
+- `/robot` → Run `./launch.sh robot status` and show formatted
+- `/nfts` → Run `./launch.sh nfts` and show collection
+- `/backup` → Run `./launch.sh backup-keys` and guide user
+- `/gas` → Run `./launch.sh balance --json`, extract HBAR, show gas status
+- `/health` → Run `./launch.sh doctor` + `./launch.sh daemon-status`, show system health
 
 ---
 
