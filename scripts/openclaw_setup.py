@@ -346,7 +346,21 @@ def setup_telegram(is_multi_agent):
         print(f"  {C.ERR}✗{C.R} Invalid token format")
         return False
 
-    your_tg_id = safe_input(f"  {C.ACCENT}Your Telegram user ID{C.R} {C.MUTED}(number, or press Enter to skip){C.R}: ")
+    # Get existing allowFrom from the default account if available
+    existing_allow = []
+    telegram_conf = config.get("channels", {}).get("telegram", {})
+    if "accounts" in telegram_conf:
+        existing_allow = telegram_conf.get("accounts", {}).get("default", {}).get("allowFrom", [])
+    else:
+        existing_allow = telegram_conf.get("allowFrom", [])
+
+    if existing_allow:
+        print(f"  {C.MUTED}Found your Telegram ID from existing config: {C.BOLD}{existing_allow[0]}{C.R}")
+        your_tg_id = existing_allow[0]
+    else:
+        print(f"  {C.WARN}IMPORTANT:{C.R} Telegram requires a {C.BOLD}numeric{C.R} user ID (not your @username).")
+        print(f"  {C.MUTED}To find yours: message @userinfobot on Telegram, or check your existing config.{C.R}")
+        your_tg_id = safe_input(f"  {C.ACCENT}Numeric Telegram ID{C.R} {C.MUTED}(or Enter to skip){C.R}: ")
 
     # Add multi-account telegram config
     telegram_conf = config.get("channels", {}).get("telegram", {})
@@ -387,11 +401,14 @@ def setup_telegram(is_multi_agent):
 
     config["channels"]["telegram"] = new_telegram
 
-    # Add binding: pacman account → pacman agent
+    # Add bindings: each bot token → its agent
     bindings = config.get("bindings", [])
     pacman_binding = {"agentId": "pacman", "match": {"channel": "telegram", "accountId": "pacman"}}
+    default_binding = {"agentId": "default", "match": {"channel": "telegram", "accountId": "default"}}
     if not any(b.get("agentId") == "pacman" for b in bindings):
         bindings.append(pacman_binding)
+    if not any(b.get("agentId") == "default" and b.get("match", {}).get("accountId") == "default" for b in bindings):
+        bindings.append(default_binding)
     config["bindings"] = bindings
 
     _backup_and_write_config(config)
