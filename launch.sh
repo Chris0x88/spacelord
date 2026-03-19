@@ -157,7 +157,7 @@ if [ $# -gt 0 ]; then
             exit 0
             ;;
 
-        daemon-status|status)
+        daemon-status)
             if is_daemon_running; then
                 pid=$(get_daemon_pid)
                 echo -e "${GREEN}[Pacman]${NC} Daemon running (PID: $pid)"
