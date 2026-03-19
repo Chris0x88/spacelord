@@ -114,11 +114,12 @@ HELP_GROUPS = {
     },
     "system": {
         "title": "SYSTEM",
-        "summary": "doctor, refresh, logs, verbose, help",
+        "summary": "doctor, refresh, logs, docs, help",
         "commands": [
             ("doctor",                      "Run system health diagnostics"),
             ("refresh",                     "Refresh pool & price data"),
             ("logs",                        "View agent interaction log"),
+            ("docs [name]",                 "Read reference docs (security, limits, readme, changelog)"),
             ("verbose [on/off]",            "Toggle debug logging"),
             ("help [topic]",               "Command help (help how <task> for workflows)"),
         ],

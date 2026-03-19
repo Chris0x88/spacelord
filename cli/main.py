@@ -38,7 +38,8 @@ from cli.commands.liquidity import cmd_pool_deposit, cmd_pool_withdraw, cmd_lp_p
 from cli.commands.info import (
     cmd_help, cmd_tokens, cmd_sources, cmd_price,
     cmd_pools, cmd_history, cmd_verbose, cmd_refresh,
-    cmd_install_service, cmd_uninstall_service, cmd_service_status
+    cmd_install_service, cmd_uninstall_service, cmd_service_status,
+    cmd_docs
 )
 from cli.commands.orders import cmd_order
 from cli.commands.hcs import cmd_hcs
@@ -145,6 +146,7 @@ COMMANDS = {
     "refresh": cmd_refresh, "sync": cmd_refresh,
     "verbose": cmd_verbose,
     "logs": cmd_logs, "log": cmd_logs,
+    "docs": cmd_docs, "doc": cmd_docs,
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
     # --- Services ---
     "install-service": cmd_install_service,

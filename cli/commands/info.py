@@ -663,3 +663,109 @@ def cmd_service_status(app, args):
     else:
         print(f"\n  {C.WARN}⚠ No daemon status found at data/status.json{C.R}")
 
+
+# ---------------------------------------------------------------------------
+# docs — User-facing document reader
+# ---------------------------------------------------------------------------
+
+# Documents available to users/agents (NOT developer docs like CLAUDE.md, OPERATIONS.md)
+_DOCS_REGISTRY = {
+    "security": {
+        "file": "SECURITY.md",
+        "title": "Security Best Practices",
+        "description": "Private keys, whitelists, safety limits, agent safety rules",
+    },
+    "readme": {
+        "file": "README.md",
+        "title": "README",
+        "description": "What Pacman is, features, quickstart, architecture overview",
+    },
+    "changelog": {
+        "file": "CHANGELOG.md",
+        "title": "Changelog",
+        "description": "Version history and recent changes",
+    },
+    "limits": {
+        "file": "data/governance.json",
+        "title": "Safety Limits & Governance",
+        "description": "Max swap, daily limit, slippage, gas reserve, account roles",
+    },
+}
+
+
+def cmd_docs(app, args):
+    """
+    Read user-facing reference documents.
+    Usage:
+      docs                  → list available documents
+      docs <name>           → display a document
+      docs <name> --json    → return document content as JSON
+    """
+    import json as _json
+
+    json_mode = "--json" in args
+    clean = [a for a in args if a not in ("--json", "--yes", "-y")]
+    topic = clean[0].lower() if clean else None
+
+    root = Path(__file__).resolve().parent.parent.parent
+
+    if not topic:
+        # List available docs
+        if json_mode:
+            print(_json.dumps({k: {"title": v["title"], "description": v["description"]}
+                              for k, v in _DOCS_REGISTRY.items()}, indent=2))
+            return
+
+        print(f"\n  {C.BOLD}{C.TEXT}DOCUMENTS{C.R}")
+        print(f"  {C.CHROME}{'─' * 56}{C.R}")
+        for key, doc in _DOCS_REGISTRY.items():
+            print(f"  {C.ACCENT}{key:<14}{C.R} {C.MUTED}{doc['description']}{C.R}")
+        print(f"  {C.CHROME}{'─' * 56}{C.R}")
+        print(f"  {C.MUTED}Read a document:{C.R} {C.TEXT}docs <name>{C.R}")
+        print()
+        return
+
+    doc = _DOCS_REGISTRY.get(topic)
+    if not doc:
+        if json_mode:
+            print(_json.dumps({"error": f"Unknown document: {topic}",
+                              "available": list(_DOCS_REGISTRY.keys())}))
+        else:
+            print(f"  {C.ERR}✗{C.R} Unknown document: {topic}")
+            print(f"  {C.MUTED}Available: {', '.join(_DOCS_REGISTRY.keys())}{C.R}")
+        return
+
+    filepath = root / doc["file"]
+    if not filepath.exists():
+        if json_mode:
+            print(_json.dumps({"error": f"File not found: {doc['file']}"}))
+        else:
+            print(f"  {C.ERR}✗{C.R} File not found: {doc['file']}")
+        return
+
+    content = filepath.read_text()
+
+    if json_mode:
+        print(_json.dumps({"document": topic, "title": doc["title"],
+                          "content": content}, indent=2))
+        return
+
+    # Pretty print with header
+    print(f"\n  {C.BOLD}{C.TEXT}{doc['title']}{C.R}")
+    print(f"  {C.CHROME}{'─' * 56}{C.R}")
+    # Render markdown content with basic formatting
+    for line in content.split("\n"):
+        if line.startswith("# "):
+            print(f"\n  {C.BOLD}{C.TEXT}{line[2:]}{C.R}")
+        elif line.startswith("## "):
+            print(f"\n  {C.BOLD}{line[3:]}{C.R}")
+        elif line.startswith("### "):
+            print(f"  {C.ACCENT}{line[4:]}{C.R}")
+        elif line.startswith("- "):
+            print(f"  {C.MUTED}  {line}{C.R}")
+        elif line.startswith("|"):
+            print(f"  {C.TEXT}{line}{C.R}")
+        elif line.strip():
+            print(f"  {C.MUTED}{line}{C.R}")
+    print()
+
