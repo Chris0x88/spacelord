@@ -824,16 +824,24 @@ Optional: `--yes` flag is accepted but unnecessary — auto-confirmed in agent/p
 
 ---
 
-# SECTION 12B: AGENT INTERACTION LOGS
+# SECTION 12B: AGENT INTERACTION LOGS & TRAINING DATA
 
-Every command execution is logged to `logs/agent_interactions.jsonl`. This is your **feedback loop** — use it to understand what's happening.
+Every command execution is logged to `logs/agent_interactions.jsonl`. This is your **feedback loop** — use it to understand what's happening and self-improve.
 
 ## Viewing Logs
 - `logs` — View the last 20 interactions (command, result, errors, duration)
 - `logs failures` — View aggregated failure summary (error types, counts, most recent)
 
-## What Gets Logged
-Each entry records: timestamp, the raw command, result status, any error message, duration in ms, and whether the invocation was oneshot or interactive.
+## What Gets Logged (Enhanced)
+Each entry records:
+- **command**: The raw input (e.g., "swap 10 USDC for HBAR")
+- **output**: Full captured stdout from the app (what the user saw)
+- **result**: "success" or "error"
+- **error**: The exact error message (if any)
+- **stack_trace**: Python traceback for unexpected errors
+- **account_id**: Which Hedera account was active
+- **duration_ms**: How long the command took
+- **source**: "oneshot" (agent/subprocess) or "interactive" (REPL)
 
 ## Using Logs for Debugging
 When something goes wrong:
@@ -845,6 +853,15 @@ When something goes wrong:
 ## Anti-Pattern: Guessing at Errors
 ❌ "The token might not be associated" (guessing)
 ✅ Run `logs`, read the actual error, report it accurately
+
+## Training Data Maintenance
+Interaction data is automatically collected for LLM fine-tuning. Periodically run the knowledge harvester to convert incidents and execution history into structured training pairs:
+
+```
+python3 scripts/harvest_knowledge.py --backfill --stats
+```
+
+This generates DPO preference pairs from `data/knowledge/incidents/` and SFT instruction pairs from `execution_records/`. Run it after major debugging sessions or before a fine-tuning run. The `--stats` flag shows current training data counts.
 
 ---
 

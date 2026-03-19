@@ -57,6 +57,31 @@ Pacman is a Python CLI for Hedera Hashgraph trading (~10K LOC), designed for AI 
 | `src/config.py` | Loads from governance.json. Hard-coded values are fallbacks. |
 | `SKILL.md` | OpenClaw agent brain — THE most important file for agent behavior |
 | `.agent/agents.md` | Architecture guide for AI agents working in the repo |
+| `FEEDBACK/` | Exported chat transcripts and handoff notes from OpenClaw sessions (gitignored). Look here for recent context when picking up mid‑session. |
+
+## Training Data Pipeline
+We collect structured data for fine-tuning an LLM to drive and eventually BE the app.
+
+### Auto-collected (every command):
+- `logs/agent_interactions.jsonl` — Raw operational log: command, output, errors, timing, account
+- `training_data/instruction_pairs.jsonl` — SFT format (system→user→assistant) for fine-tuning
+- `training_data/live_executions.jsonl` — Detailed tx telemetry (gas, rates, tx hashes)
+
+### Manually harvested (run periodically):
+```bash
+python3 scripts/harvest_knowledge.py --backfill --stats
+```
+This converts `data/knowledge/incidents/`, `antipatterns/`, `patterns/`, and `execution_records/` into:
+- `training_data/preference_pairs.jsonl` — DPO format (chosen vs rejected behavior)
+- `training_data/error_fix_pairs.jsonl` — Error diagnosis training data
+
+### When to harvest:
+- After adding new incidents to `data/knowledge/incidents/`
+- After a session with significant debugging or new edge cases
+- Before any model fine-tuning run
+
+### All data is gitignored:
+- `training_data/`, `logs/`, `FEEDBACK/`, `data/knowledge/`, `execution_records/`
 
 ## Before Any Code Change
 1. Check if it affects safety limits → edit governance.json, not config.py hard-codes
