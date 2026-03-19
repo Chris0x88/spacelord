@@ -77,6 +77,19 @@ def cmd_setup(app, args):
     print(f"  {C.MUTED}This wizard will set up your keys, accounts, and HCS signals.{C.R}")
     print(f"  {C.MUTED}{'─' * 56}{C.R}")
 
+    # Guard: warn if wallet already configured
+    existing_key = os.getenv("PRIVATE_KEY")
+    existing_id = os.getenv("HEDERA_ACCOUNT_ID")
+    if existing_key and existing_id:
+        print(f"\n  {C.WARN}⚠  Wallet Already Configured{C.R}")
+        print(f"  {C.TEXT}Active account: {C.BOLD}{existing_id}{C.R}")
+        print(f"  {C.MUTED}Running setup again will replace your current credentials.{C.R}")
+        print(f"  {C.MUTED}Your existing key will be automatically backed up in .env.{C.R}")
+        confirm = _safe_input(f"  Continue with new setup? {C.MUTED}(y/n){C.R} ", default="n").strip().lower()
+        if confirm not in ["y", "yes"]:
+            print(f"  {C.MUTED}Setup cancelled. Existing wallet unchanged.{C.R}\n")
+            return
+
     # 1. Credentials
     print(f"\n  {C.BOLD}[1/3] IDENTITY & SECURITY{C.R}")
     print(f"  {C.MUTED}How would you like to provide your main private key?{C.R}")

@@ -195,7 +195,26 @@ fi
 cd "$SCRIPT_DIR"
 
 if [ $# -eq 0 ]; then
-    # Interactive mode
+    # Interactive mode — ensure daemons are running
+    if ! is_daemon_running; then
+        echo -e "${CYAN}[Pacman]${NC} Starting background daemons..."
+        PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
+        mkdir -p "$SCRIPT_DIR/data"
+        nohup "$PYTHON_EXEC" -m cli.main daemon > "$SCRIPT_DIR/daemon_output.log" 2>&1 &
+        daemon_pid=$!
+        echo "$daemon_pid" > "$PID_FILE"
+        disown
+        sleep 2
+        if kill -0 "$daemon_pid" 2>/dev/null; then
+            echo -e "${GREEN}[Pacman]${NC} Daemons started (PID: $daemon_pid)"
+        else
+            echo -e "${YELLOW}[Pacman]${NC} Daemon start failed — check daemon_output.log"
+            rm -f "$PID_FILE"
+        fi
+    else
+        pid=$(get_daemon_pid)
+        echo -e "${GREEN}[Pacman]${NC} Daemons running (PID: $pid)"
+    fi
     uv run --project "$SCRIPT_DIR" python -m cli.main
 else
     # One-shot mode

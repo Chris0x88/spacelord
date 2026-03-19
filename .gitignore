@@ -76,3 +76,7 @@ backups/
 
 # Exported feedback (session transcripts, agent handoffs)
 FEEDBACK/
+
+# OpenClaw agent memory (user-specific runtime state)
+openclaw/memory/*.md
+!openclaw/memory/.gitkeep
