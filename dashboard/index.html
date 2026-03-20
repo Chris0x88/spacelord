@@ -271,8 +271,8 @@
                                 <div class="text-sm text-white" x-text="formatTimeAgo(data.hcs.lastBroadcast)"></div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-400 mb-2">SUBSCRIBERS</div>
-                                <div class="text-2xl font-bold text-cyan-400 font-mono" x-text="data.hcs.subscribers"></div>
+                                <div class="text-xs text-gray-400 mb-2">MESSAGES</div>
+                                <div class="text-2xl font-bold text-cyan-400 font-mono" x-text="data.hcs.messageCount"></div>
                             </div>
                         </div>
                     </div>
@@ -405,14 +405,17 @@
                         <h3 class="text-sm font-bold tracking-wider text-gray-300 mb-4">SIGNAL FORMAT</h3>
                         <div class="space-y-4 text-xs text-gray-400 font-mono">
                             <div class="p-3 bg-gray-900/40 rounded-lg border border-white/[0.06]">
-                                <div class="text-cyan-400 mb-2">Topic Message Example:</div>
+                                <div class="text-cyan-400 mb-2">HCS Topic <span class="text-gray-500">0.0.10371598</span> — Signal v1.1:</div>
                                 <pre class="overflow-x-auto text-xs">{
-  "timestamp": "2026-03-21T14:32:00Z",
-  "stance": "ACCUMULATE",
-  "allocation": 85,
-  "phase": "Expansion",
-  "price": 94250.50,
-  "confidence": 0.92
+  "type": "SIGNAL",
+  "signal": "BTC_REBALANCER",
+  "sender": "0.0.10301803",
+  "data": {
+    "allocation_pct": 58,
+    "stance": "balanced",
+    "valuation": "deep_value",
+    "tagline": "Cycle 5 | 47% complete | Late Cycle Peak Zone"
+  }
 }</pre>
                             </div>
                         </div>
@@ -545,54 +548,40 @@
                 data: {
                     status: 'online',
                     portfolio: {
-                        totalUSD: 487350.25,
-                        wbtc: 0.51234567,
-                        wbtcUSD: 482931.25,
-                        wbtcPercent: 99,
-                        usdc: 5419.00,
-                        usdcPercent: 1,
-                        hbar: 15000,
-                        hbarUSD: 3500,
-                        hbarPercent: 1
+                        totalUSD: 0,
+                        wbtc: 0,
+                        wbtcUSD: 0,
+                        wbtcPercent: 0,
+                        usdc: 0,
+                        usdcPercent: 0,
+                        hbar: 0,
+                        hbarUSD: 0,
+                        hbarPercent: 0
                     },
                     signal: {
-                        allocation: 85,
-                        stance: 'ACCUMULATE',
-                        phase: 'Expansion Phase'
+                        allocation: 0,
+                        stance: '—',
+                        phase: 'Loading...'
                     },
                     lastRebalance: {
-                        date: new Date(Date.now() - 3600000),
-                        direction: 'BUY',
-                        amount: 12500
+                        date: new Date(),
+                        direction: '—',
+                        amount: 0
                     },
                     hcs: {
-                        topicId: '0.0.47893',
-                        lastBroadcast: new Date(Date.now() - 180000),
-                        subscribers: 247
+                        topicId: '—',
+                        lastBroadcast: new Date(),
+                        messageCount: 0
                     },
                     allocation: {
-                        wbtcCurrent: 99,
-                        wbtcTarget: 85,
-                        usdcCurrent: 1,
-                        usdcTarget: 15
+                        wbtcCurrent: 0,
+                        wbtcTarget: 50,
+                        usdcCurrent: 0,
+                        usdcTarget: 50
                     },
-                    rebalanceHistory: [
-                        { id: 1, date: new Date(Date.now() - 86400000), action: 'BUY', wbtc: 0.05, usdc: -5000, price: 94250, status: 'CONFIRMED' },
-                        { id: 2, date: new Date(Date.now() - 172800000), action: 'SELL', wbtc: -0.03, usdc: 2850, price: 95000, status: 'CONFIRMED' },
-                        { id: 3, date: new Date(Date.now() - 259200000), action: 'BUY', wbtc: 0.08, usdc: -7500, price: 93750, status: 'CONFIRMED' }
-                    ],
-                    signals: [
-                        { id: 1, date: new Date(), stance: 'ACCUMULATE', allocation: 85, phase: 'Expansion', confidence: 0.92 },
-                        { id: 2, date: new Date(Date.now() - 86400000), stance: 'ACCUMULATE', allocation: 85, phase: 'Expansion', confidence: 0.89 },
-                        { id: 3, date: new Date(Date.now() - 172800000), stance: 'HOLD', allocation: 65, phase: 'Cooling', confidence: 0.76 },
-                        { id: 4, date: new Date(Date.now() - 259200000), stance: 'ACCUMULATE', allocation: 80, phase: 'Recovery', confidence: 0.84 },
-                        { id: 5, date: new Date(Date.now() - 345600000), stance: 'DISTRIBUTE', allocation: 45, phase: 'Peak', confidence: 0.88 }
-                    ],
-                    recentSwaps: [
-                        { id: 1, date: new Date(Date.now() - 3600000), from: 'USDC', amount: 5000, to: 'WBTC', received: 0.053, status: 'CONFIRMED' },
-                        { id: 2, date: new Date(Date.now() - 86400000), from: 'WBTC', amount: 0.02, to: 'USDC', received: 1885, status: 'CONFIRMED' },
-                        { id: 3, date: new Date(Date.now() - 172800000), from: 'USDC', amount: 2500, to: 'HBAR', received: 29412, status: 'CONFIRMED' }
-                    ]
+                    rebalanceHistory: [],
+                    signals: [],
+                    recentSwaps: []
                 },
 
                 swap: {
@@ -632,51 +621,63 @@
                     // Since we don't have the secret, we'll attempt without it and let the backend decide.
 
                     try {
-                        // Fetch portfolio data
-                        const portfolioResp = await fetch('http://127.0.0.1:8088/portfolio', {
+                        // Fetch holdings (rich per-token data with prices)
+                        const holdingsResp = await fetch('http://127.0.0.1:8088/holdings', {
                             mode: 'cors',
                             signal: AbortSignal.timeout(5000)
                         });
 
-                        if (portfolioResp.status === 401) {
+                        if (holdingsResp.status === 401) {
                             throw new Error('Unauthorized - API secret required');
                         }
 
-                        if (!portfolioResp.ok) {
-                            throw new Error(`Portfolio API error: ${portfolioResp.status}`);
-                        }
+                        if (holdingsResp.ok) {
+                            const holdingsData = await holdingsResp.json();
+                            if (holdingsData && holdingsData.holdings) {
+                                const totalUSD = holdingsData.total_usd || 0;
+                                // Known token IDs on Hedera
+                                const KNOWN = {
+                                    HBAR: ['0.0.0'],
+                                    USDC: ['0.0.456858', '0.0.1055459'],
+                                    WBTC: ['0.0.834116', '0.0.1460300']
+                                };
+                                // Match holdings by token ID or symbol heuristics
+                                let wbtcUSD = 0, wbtcBal = 0;
+                                let usdcUSD = 0, usdcBal = 0;
+                                let hbarUSD = 0, hbarBal = 0;
 
-                        const portfolioData = await portfolioResp.json();
+                                for (const h of holdingsData.holdings) {
+                                    const sym = (h.symbol || '').toUpperCase();
+                                    const id = h.token_id || h.symbol || '';
+                                    if (KNOWN.WBTC.includes(id) || sym.includes('WBTC') || sym.includes('BTC')) {
+                                        wbtcBal += h.balance; wbtcUSD += h.value_usd;
+                                    } else if (KNOWN.USDC.includes(id) || sym.includes('USDC') || sym === 'USD') {
+                                        usdcBal += h.balance; usdcUSD += h.value_usd;
+                                    } else if (KNOWN.HBAR.includes(id) || sym === 'HBAR' || sym.includes('WHBAR')) {
+                                        hbarBal += h.balance; hbarUSD += h.value_usd;
+                                    } else {
+                                        // Unknown tokens — group with HBAR for "other"
+                                        hbarBal += 0; hbarUSD += h.value_usd;
+                                    }
+                                }
 
-                        // Map API response to dashboard data model
-                        // The API returns the PowerLaw plugin's last_portfolio
-                        // Format: { wbtc_balance, usdc_balance, hbar_balance, total_value_usd, wbtc_percent }
-                        if (portfolioData && typeof portfolioData === 'object') {
-                            const totalUSD = portfolioData.total_value_usd || 0;
-                            const wbtcBal = portfolioData.wbtc_balance || 0;
-                            const usdcBal = portfolioData.usdc_balance || 0;
-                            const hbarBal = portfolioData.hbar_balance || 0;
-                            const wbtcPct = portfolioData.wbtc_percent || 0;
+                                const wbtcPct = totalUSD > 0 ? (wbtcUSD / totalUSD * 100) : 0;
+                                const usdcPct = totalUSD > 0 ? (usdcUSD / totalUSD * 100) : 0;
+                                const hbarPct = totalUSD > 0 ? (hbarUSD / totalUSD * 100) : 0;
 
-                            // Calculate prices from balances and total USD value
-                            const wbtcPrice = wbtcBal > 0 ? ((totalUSD * wbtcPct / 100) / wbtcBal) : 0;
-                            const usdcPct = totalUSD > 0 ? ((totalUSD - (wbtcBal * wbtcPrice)) / totalUSD * 100) : 0;
-                            const hbarPct = totalUSD > 0 ? ((totalUSD - (wbtcBal * wbtcPrice) - usdcBal) / totalUSD * 100) : 0;
+                                this.data.portfolio.totalUSD = totalUSD;
+                                this.data.portfolio.wbtc = wbtcBal;
+                                this.data.portfolio.wbtcUSD = wbtcUSD;
+                                this.data.portfolio.wbtcPercent = Math.round(wbtcPct);
+                                this.data.portfolio.usdc = usdcBal;
+                                this.data.portfolio.usdcPercent = Math.round(usdcPct);
+                                this.data.portfolio.hbar = hbarBal;
+                                this.data.portfolio.hbarUSD = hbarUSD;
+                                this.data.portfolio.hbarPercent = Math.round(hbarPct);
 
-                            // Update portfolio
-                            this.data.portfolio.totalUSD = totalUSD;
-                            this.data.portfolio.wbtc = wbtcBal;
-                            this.data.portfolio.wbtcUSD = wbtcBal * wbtcPrice;
-                            this.data.portfolio.wbtcPercent = Math.round(wbtcPct);
-                            this.data.portfolio.usdc = usdcBal;
-                            this.data.portfolio.usdcPercent = Math.round(usdcPct);
-                            this.data.portfolio.hbar = hbarBal;
-                            this.data.portfolio.hbarUSD = totalUSD - (wbtcBal * wbtcPrice) - usdcBal;
-                            this.data.portfolio.hbarPercent = Math.round(hbarPct);
-
-                            // Update allocation status
-                            this.data.allocation.wbtcCurrent = Math.round(wbtcPct);
-                            this.data.allocation.usdcCurrent = Math.round(usdcPct);
+                                this.data.allocation.wbtcCurrent = Math.round(wbtcPct);
+                                this.data.allocation.usdcCurrent = Math.round(usdcPct);
+                            }
                         }
 
                         // Fetch status data
@@ -692,7 +693,24 @@
                                 // Update HCS info if available
                                 if (statusData.hcs && statusData.hcs.topic_id) {
                                     this.data.hcs.topicId = statusData.hcs.topic_id;
-                                    this.data.hcs.lastBroadcast = new Date();
+                                }
+                                // Extract PowerLaw plugin signal for Overview card
+                                const pl = (statusData.plugins || []).find(p => p.name === 'PowerLaw');
+                                if (pl && pl.signal) {
+                                    const sig = pl.signal;
+                                    this.data.signal.allocation = sig.allocation_pct || this.data.signal.allocation;
+                                    this.data.signal.stance = (sig.stance || 'HOLD').toUpperCase();
+                                    // Parse phase from tagline or phase field
+                                    let phase = sig.phase || '';
+                                    phase = phase.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                                    if (sig.tagline) {
+                                        const parts = sig.tagline.split('|').map(s => s.trim());
+                                        if (parts[2]) phase = parts[2];
+                                    }
+                                    this.data.signal.phase = phase;
+                                    // Update allocation targets from signal
+                                    this.data.allocation.wbtcTarget = sig.allocation_pct || 60;
+                                    this.data.allocation.usdcTarget = 100 - (sig.allocation_pct || 60);
                                 }
                             }
                         }
@@ -705,29 +723,50 @@
 
                         if (hcsResp.ok) {
                             const messages = await hcsResp.json();
-                            if (Array.isArray(messages) && messages.length > 0) {
+                            if (Array.isArray(messages)) {
+                                // Update HCS message count and last broadcast time
+                                this.data.hcs.messageCount = messages.length;
+                                if (messages.length > 0 && messages[0].timestamp) {
+                                    const secs = parseFloat(messages[0].timestamp);
+                                    if (secs > 1e9) this.data.hcs.lastBroadcast = new Date(secs * 1000);
+                                }
                                 // Map messages to signals for the dashboard
-                                // HCS messages may have data nested or flat depending on the format
                                 this.data.signals = messages.slice(0, 5).map((msg, idx) => {
-                                    // Extract signal data - it may be nested in msg.data or at root level
-                                    const signalData = msg.data || msg;
+                                    const d = msg.data || msg;
+                                    // Hedera timestamp is "seconds.nanoseconds" string
+                                    let date = new Date();
+                                    if (msg.timestamp) {
+                                        const secs = parseFloat(msg.timestamp);
+                                        if (secs > 1e9) date = new Date(secs * 1000);
+                                        else date = new Date(msg.timestamp.replace(' ', 'T'));
+                                    }
+                                    // Parse phase from tagline: "Cycle 5 | 47% complete | Late Cycle Peak Zone | ..."
+                                    let phase = d.valuation || 'Unknown';
+                                    if (d.tagline) {
+                                        const parts = d.tagline.split('|').map(s => s.trim());
+                                        phase = parts[2] || parts[0] || phase;
+                                    }
                                     return {
                                         id: idx + 1,
-                                        date: msg.timestamp ? new Date(msg.timestamp) : new Date(),
-                                        stance: signalData.stance || signalData.allocation_stance || 'HOLD',
-                                        allocation: signalData.allocation || signalData.allocation_pct || 50,
-                                        phase: signalData.phase || signalData.cycle_phase || 'Unknown',
-                                        confidence: signalData.confidence || 0.5
+                                        date,
+                                        stance: (d.stance || 'HOLD').toUpperCase(),
+                                        allocation: d.allocation_pct || d.allocation || 50,
+                                        phase,
+                                        confidence: d.confidence || (d.valuation === 'deep_value' ? 0.85 : 0.7)
                                     };
                                 });
 
                                 // Update the primary signal from the latest message
                                 if (messages.length > 0) {
-                                    const latestMsg = messages[0];
-                                    const latestData = latestMsg.data || latestMsg;
-                                    this.data.signal.stance = latestData.stance || latestData.allocation_stance || 'HOLD';
-                                    this.data.signal.allocation = latestData.allocation || latestData.allocation_pct || 50;
-                                    this.data.signal.phase = latestData.phase || latestData.cycle_phase || 'Unknown';
+                                    const latest = messages[0].data || messages[0];
+                                    this.data.signal.stance = (latest.stance || 'HOLD').toUpperCase();
+                                    this.data.signal.allocation = latest.allocation_pct || latest.allocation || 50;
+                                    let phase = latest.valuation || 'Unknown';
+                                    if (latest.tagline) {
+                                        const parts = latest.tagline.split('|').map(s => s.trim());
+                                        phase = parts[2] || parts[0] || phase;
+                                    }
+                                    this.data.signal.phase = phase;
                                 }
                             }
                         }
@@ -747,36 +786,64 @@
                                     .filter(h => !h.type || h.type === 'SWAP' || h.type === 'POWERLAW')
                                     .slice(0, 10)
                                     .map((h, idx) => {
-                                        // Determine action type based on the routes
                                         let action = 'HOLD';
-                                        if (h.route) {
-                                            const from = h.route.from || '';
-                                            const to = h.route.to || '';
-                                            // Check if swapping from HBAR to a token (BUY) or vice versa (SELL)
-                                            if (from === '0.0.0' || from === 'HBAR') action = 'BUY';
-                                            else if (to === '0.0.0' || to === 'HBAR') action = 'SELL';
-                                        } else if (h.mode) {
-                                            action = h.mode.toUpperCase() === 'BUY' ? 'BUY' : h.mode.toUpperCase() === 'SELL' ? 'SELL' : 'HOLD';
+                                        let amount = 0;
+
+                                        if (h.type === 'SWAP') {
+                                            // Actual swap — check direction from route or token info
+                                            const route = h.route || {};
+                                            if (h.side === 'BUY' || (route.from_token || '').includes('USDC')) action = 'BUY';
+                                            else if (h.side === 'SELL' || (route.to_token || '').includes('USDC')) action = 'SELL';
+                                            else action = 'SELL';
+                                            amount = h.amount_usd || h.amount_token || 0;
+                                        } else if (h.type === 'POWERLAW') {
+                                            // Check reason — "Deviation X% < Y%" means skip (HOLD)
+                                            const err = h.error || '';
+                                            if (err.includes('Deviation') && err.includes('<')) {
+                                                action = 'HOLD';
+                                            } else if (err.includes('BUY') || err.includes('buy')) {
+                                                action = 'BUY';
+                                            } else if (err.includes('SELL') || err.includes('sell')) {
+                                                action = 'SELL';
+                                            }
+                                            amount = h.amount_usd || 0;
                                         }
 
                                         return {
                                             id: idx + 1,
                                             date: h.timestamp ? new Date(h.timestamp.replace(' ', 'T')) : new Date(),
-                                            action: action,
-                                            wbtc: 0,
-                                            usdc: h.amount_usd || 0,
-                                            price: h.amount_usd || 0,
+                                            action,
+                                            wbtc: h.wbtc_amount || 0,
+                                            usdc: amount,
+                                            price: amount,
                                             status: h.success ? 'CONFIRMED' : 'PENDING'
                                         };
                                     });
 
-                                // Update last rebalance
-                                if (this.data.rebalanceHistory.length > 0) {
-                                    const lastTrade = this.data.rebalanceHistory[0];
+                                // Update last rebalance from most recent non-HOLD entry
+                                const lastTrade = this.data.rebalanceHistory.find(h => h.action !== 'HOLD') || this.data.rebalanceHistory[0];
+                                if (lastTrade) {
                                     this.data.lastRebalance.date = lastTrade.date;
                                     this.data.lastRebalance.direction = lastTrade.action;
                                     this.data.lastRebalance.amount = lastTrade.usdc || 0;
                                 }
+
+                                // Populate recent swaps from SWAP-type history entries
+                                this.data.recentSwaps = history
+                                    .filter(h => h.type === 'SWAP')
+                                    .slice(0, 5)
+                                    .map((h, idx) => {
+                                        const route = h.route || {};
+                                        return {
+                                            id: idx + 1,
+                                            date: h.timestamp ? new Date(h.timestamp.replace(' ', 'T')) : new Date(),
+                                            from: route.from_token || '?',
+                                            amount: h.amount_usd || h.amount_token || 0,
+                                            to: route.to_token || '?',
+                                            received: h.received_amount || 0,
+                                            status: h.success ? 'CONFIRMED' : 'FAILED'
+                                        };
+                                    });
                             }
                         }
 
@@ -812,9 +879,11 @@
                 },
 
                 getStanceColor(stance) {
-                    if (stance === 'ACCUMULATE') return 'bg-emerald-400/10 text-emerald-400';
-                    if (stance === 'DISTRIBUTE') return 'bg-red-400/10 text-red-400';
-                    return 'bg-amber-400/10 text-amber-400';
+                    const s = (stance || '').toUpperCase();
+                    if (s === 'ACCUMULATE') return 'bg-emerald-400/10 text-emerald-400';
+                    if (s === 'DISTRIBUTE' || s === 'SELL') return 'bg-red-400/10 text-red-400';
+                    if (s === 'BALANCED' || s === 'HOLD') return 'bg-amber-400/10 text-amber-400';
+                    return 'bg-cyan-400/10 text-cyan-400';
                 },
 
                 getCountdown() {
