@@ -46,6 +46,7 @@ from cli.commands.hcs import cmd_hcs
 from cli.commands.hcs10 import cmd_hcs10
 from cli.commands.robot import cmd_robot
 from cli.commands.doctor import cmd_doctor
+from cli.commands.telegram import cmd_telegram
 
 # Load banner from cli.text_content
 try:
@@ -141,6 +142,8 @@ COMMANDS = {
     # --- Messaging ---
     "hcs": cmd_hcs,
     "hcs10": cmd_hcs10,
+    # --- Telegram Fast Lane ---
+    "tg": cmd_telegram, "telegram": cmd_telegram,
     # --- System ---
     "doctor": cmd_doctor,
     "refresh": cmd_refresh, "sync": cmd_refresh,

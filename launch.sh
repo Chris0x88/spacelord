@@ -177,7 +177,7 @@ if [ $# -gt 0 ]; then
         telegram-start|tg-start)
             TG_PID_FILE="$SCRIPT_DIR/data/telegram.pid"
             if [ -f "$TG_PID_FILE" ] && kill -0 "$(cat "$TG_PID_FILE")" 2>/dev/null; then
-                echo -e "${GREEN}[Pacman]${NC} Telegram interceptor already running (PID: $(cat "$TG_PID_FILE"))"
+                echo -e "${GREEN}[Pacman]${NC} Telegram bot already running (PID: $(cat "$TG_PID_FILE"))"
                 exit 0
             fi
             # Load .env so TELEGRAM_BOT_TOKEN is available
@@ -191,22 +191,19 @@ if [ $# -gt 0 ]; then
                 echo -e "${RED}[Pacman]${NC} TELEGRAM_BOT_TOKEN not set. Add it to .env first."
                 exit 1
             fi
-            PORT="${TELEGRAM_PORT:-8443}"
-            echo -e "${GREEN}[Pacman]${NC} Starting Telegram interceptor on port $PORT..."
+            echo -e "${GREEN}[Pacman]${NC} Starting Telegram bot (long-polling)..."
             mkdir -p "$SCRIPT_DIR/logs"
             PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
-            nohup "$PYTHON_EXEC" -m uvicorn src.plugins.telegram.interceptor:app \
-                --host 0.0.0.0 --port "$PORT" \
+            nohup "$PYTHON_EXEC" -m src.plugins.telegram.poller \
                 > "$SCRIPT_DIR/logs/telegram.log" 2>&1 &
             tg_pid=$!
             echo "$tg_pid" > "$TG_PID_FILE"
             disown
-            sleep 2
+            sleep 3
             if kill -0 "$tg_pid" 2>/dev/null; then
-                echo -e "${GREEN}[Pacman]${NC} Telegram interceptor started (PID: $tg_pid)"
-                echo -e "${CYAN}[Pacman]${NC} Health: http://localhost:$PORT/health"
-                echo -e "${CYAN}[Pacman]${NC} Logs:   tail -f logs/telegram.log"
-                echo -e "${CYAN}[Pacman]${NC} Next:   ./launch.sh telegram-webhook"
+                echo -e "${GREEN}[Pacman]${NC} Telegram bot started (PID: $tg_pid)"
+                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/telegram.log"
+                echo -e "${CYAN}[Pacman]${NC} No tunnel needed — direct connection to Telegram API"
             else
                 echo -e "${RED}[Pacman]${NC} Failed to start. Check logs/telegram.log"
                 rm -f "$TG_PID_FILE"
