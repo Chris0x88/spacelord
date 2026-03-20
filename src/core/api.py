@@ -24,13 +24,21 @@ pacman_app = None
 api_secret = os.getenv("PACMAN_API_SECRET")
 
 def require_auth(f):
-    """Decorator to enforce shared secret authentication. 
-    Accepts via X-Pacman-Secret header OR ?secret= query param (for images/links)."""
+    """Decorator to enforce shared secret authentication.
+    Accepts via X-Pacman-Secret header OR ?secret= query param (for images/links).
+
+    Localhost (127.0.0.1) requests bypass auth to allow the dashboard to work
+    when served by the daemon without passing secrets via headers.
+    """
     def decorated_function(*args, **kwargs):
+        # Allow localhost requests without auth (safe since API is localhost-only)
+        if request.remote_addr == "127.0.0.1" or request.remote_addr == "localhost":
+            return f(*args, **kwargs)
+
         header_secret = request.headers.get("X-Pacman-Secret")
         query_secret = request.args.get("secret")
         provided = header_secret or query_secret
-        
+
         if not api_secret or provided != api_secret:
             logger.warning(f"Unauthorized API access attempt from {request.remote_addr}")
             abort(401, description="Unauthorized")

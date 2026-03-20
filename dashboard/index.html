@@ -283,12 +283,19 @@
             <template x-if="activeTab === 'Rebalancer'">
                 <div class="animate-slide-in space-y-6">
                     <!-- Power Law Chart -->
-                    <div class="chart-placeholder rounded-2xl p-8 border border-white/[0.06] flex flex-col items-center justify-center min-h-96">
-                        <svg class="w-16 h-16 text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                        </svg>
-                        <p class="text-center text-gray-400 font-mono text-sm">Connect daemon to view power law chart</p>
-                        <p class="text-center text-gray-500 text-xs mt-2">http://127.0.0.1:8088</p>
+                    <div class="chart-placeholder rounded-2xl p-8 border border-white/[0.06] flex flex-col items-center justify-center min-h-96 overflow-hidden">
+                        <template x-if="!demoMode">
+                            <img :src="chartImageUrl" alt="Power Law Model Chart" class="max-w-full max-h-full object-contain" @error="handleChartError()" />
+                        </template>
+                        <template x-if="demoMode">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-16 h-16 text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                                <p class="text-center text-gray-400 font-mono text-sm">Connect daemon to view power law chart</p>
+                                <p class="text-center text-gray-500 text-xs mt-2">http://127.0.0.1:8088</p>
+                            </div>
+                        </template>
                     </div>
 
                     <!-- Allocation Status -->
@@ -532,6 +539,7 @@
                 activeTab: 'Overview',
                 demoMode: true,
                 mobileMenuOpen: false,
+                chartImageUrl: 'http://127.0.0.1:8088/chart.png',
                 tabs: ['Overview', 'Rebalancer', 'HCS Signals', 'Swap'],
 
                 data: {
@@ -601,12 +609,181 @@
 
                 async fetchData() {
                     try {
-                        const response = await fetch('http://127.0.0.1:8088/api/status', { mode: 'cors', timeout: 5000 });
-                        if (response.ok) {
-                            this.demoMode = false;
-                        }
+                        // First, try to reach the health endpoint (no auth required)
+                        const healthResp = await fetch('http://127.0.0.1:8088/health', {
+                            mode: 'cors',
+                            signal: AbortSignal.timeout(5000)
+                        });
+
+                        if (!healthResp.ok) throw new Error('Health check failed');
+
+                        // Daemon is running - try to fetch live data
+                        // We'll attempt without auth first; if 401, stay in demo mode
+                        await this.fetchLiveData();
+                        this.demoMode = false;
                     } catch (e) {
                         this.demoMode = true;
+                    }
+                },
+
+                async fetchLiveData() {
+                    // Try to fetch all endpoints. If any fail with 401, we'll stay in demo mode.
+                    // These endpoints require the PACMAN_API_SECRET header or ?secret= query param.
+                    // Since we don't have the secret, we'll attempt without it and let the backend decide.
+
+                    try {
+                        // Fetch portfolio data
+                        const portfolioResp = await fetch('http://127.0.0.1:8088/portfolio', {
+                            mode: 'cors',
+                            signal: AbortSignal.timeout(5000)
+                        });
+
+                        if (portfolioResp.status === 401) {
+                            throw new Error('Unauthorized - API secret required');
+                        }
+
+                        if (!portfolioResp.ok) {
+                            throw new Error(`Portfolio API error: ${portfolioResp.status}`);
+                        }
+
+                        const portfolioData = await portfolioResp.json();
+
+                        // Map API response to dashboard data model
+                        // The API returns the PowerLaw plugin's last_portfolio
+                        // Format: { wbtc_balance, usdc_balance, hbar_balance, total_value_usd, wbtc_percent }
+                        if (portfolioData && typeof portfolioData === 'object') {
+                            const totalUSD = portfolioData.total_value_usd || 0;
+                            const wbtcBal = portfolioData.wbtc_balance || 0;
+                            const usdcBal = portfolioData.usdc_balance || 0;
+                            const hbarBal = portfolioData.hbar_balance || 0;
+                            const wbtcPct = portfolioData.wbtc_percent || 0;
+
+                            // Calculate prices from balances and total USD value
+                            const wbtcPrice = wbtcBal > 0 ? ((totalUSD * wbtcPct / 100) / wbtcBal) : 0;
+                            const usdcPct = totalUSD > 0 ? ((totalUSD - (wbtcBal * wbtcPrice)) / totalUSD * 100) : 0;
+                            const hbarPct = totalUSD > 0 ? ((totalUSD - (wbtcBal * wbtcPrice) - usdcBal) / totalUSD * 100) : 0;
+
+                            // Update portfolio
+                            this.data.portfolio.totalUSD = totalUSD;
+                            this.data.portfolio.wbtc = wbtcBal;
+                            this.data.portfolio.wbtcUSD = wbtcBal * wbtcPrice;
+                            this.data.portfolio.wbtcPercent = Math.round(wbtcPct);
+                            this.data.portfolio.usdc = usdcBal;
+                            this.data.portfolio.usdcPercent = Math.round(usdcPct);
+                            this.data.portfolio.hbar = hbarBal;
+                            this.data.portfolio.hbarUSD = totalUSD - (wbtcBal * wbtcPrice) - usdcBal;
+                            this.data.portfolio.hbarPercent = Math.round(hbarPct);
+
+                            // Update allocation status
+                            this.data.allocation.wbtcCurrent = Math.round(wbtcPct);
+                            this.data.allocation.usdcCurrent = Math.round(usdcPct);
+                        }
+
+                        // Fetch status data
+                        const statusResp = await fetch('http://127.0.0.1:8088/status', {
+                            mode: 'cors',
+                            signal: AbortSignal.timeout(5000)
+                        });
+
+                        if (statusResp.ok) {
+                            const statusData = await statusResp.json();
+                            if (statusData) {
+                                this.data.status = 'online';
+                                // Update HCS info if available
+                                if (statusData.hcs && statusData.hcs.topic_id) {
+                                    this.data.hcs.topicId = statusData.hcs.topic_id;
+                                    this.data.hcs.lastBroadcast = new Date();
+                                }
+                            }
+                        }
+
+                        // Fetch HCS messages
+                        const hcsResp = await fetch('http://127.0.0.1:8088/hcs/messages?limit=10', {
+                            mode: 'cors',
+                            signal: AbortSignal.timeout(5000)
+                        });
+
+                        if (hcsResp.ok) {
+                            const messages = await hcsResp.json();
+                            if (Array.isArray(messages) && messages.length > 0) {
+                                // Map messages to signals for the dashboard
+                                // HCS messages may have data nested or flat depending on the format
+                                this.data.signals = messages.slice(0, 5).map((msg, idx) => {
+                                    // Extract signal data - it may be nested in msg.data or at root level
+                                    const signalData = msg.data || msg;
+                                    return {
+                                        id: idx + 1,
+                                        date: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+                                        stance: signalData.stance || signalData.allocation_stance || 'HOLD',
+                                        allocation: signalData.allocation || signalData.allocation_pct || 50,
+                                        phase: signalData.phase || signalData.cycle_phase || 'Unknown',
+                                        confidence: signalData.confidence || 0.5
+                                    };
+                                });
+
+                                // Update the primary signal from the latest message
+                                if (messages.length > 0) {
+                                    const latestMsg = messages[0];
+                                    const latestData = latestMsg.data || latestMsg;
+                                    this.data.signal.stance = latestData.stance || latestData.allocation_stance || 'HOLD';
+                                    this.data.signal.allocation = latestData.allocation || latestData.allocation_pct || 50;
+                                    this.data.signal.phase = latestData.phase || latestData.cycle_phase || 'Unknown';
+                                }
+                            }
+                        }
+
+                        // Fetch execution history
+                        const historyResp = await fetch('http://127.0.0.1:8088/history?limit=20', {
+                            mode: 'cors',
+                            signal: AbortSignal.timeout(5000)
+                        });
+
+                        if (historyResp.ok) {
+                            const history = await historyResp.json();
+                            if (Array.isArray(history)) {
+                                // Map execution history to rebalance history
+                                // Filter to only SWAP and POWERLAW type records
+                                this.data.rebalanceHistory = history
+                                    .filter(h => !h.type || h.type === 'SWAP' || h.type === 'POWERLAW')
+                                    .slice(0, 10)
+                                    .map((h, idx) => {
+                                        // Determine action type based on the routes
+                                        let action = 'HOLD';
+                                        if (h.route) {
+                                            const from = h.route.from || '';
+                                            const to = h.route.to || '';
+                                            // Check if swapping from HBAR to a token (BUY) or vice versa (SELL)
+                                            if (from === '0.0.0' || from === 'HBAR') action = 'BUY';
+                                            else if (to === '0.0.0' || to === 'HBAR') action = 'SELL';
+                                        } else if (h.mode) {
+                                            action = h.mode.toUpperCase() === 'BUY' ? 'BUY' : h.mode.toUpperCase() === 'SELL' ? 'SELL' : 'HOLD';
+                                        }
+
+                                        return {
+                                            id: idx + 1,
+                                            date: h.timestamp ? new Date(h.timestamp.replace(' ', 'T')) : new Date(),
+                                            action: action,
+                                            wbtc: 0,
+                                            usdc: h.amount_usd || 0,
+                                            price: h.amount_usd || 0,
+                                            status: h.success ? 'CONFIRMED' : 'PENDING'
+                                        };
+                                    });
+
+                                // Update last rebalance
+                                if (this.data.rebalanceHistory.length > 0) {
+                                    const lastTrade = this.data.rebalanceHistory[0];
+                                    this.data.lastRebalance.date = lastTrade.date;
+                                    this.data.lastRebalance.direction = lastTrade.action;
+                                    this.data.lastRebalance.amount = lastTrade.usdc || 0;
+                                }
+                            }
+                        }
+
+                    } catch (e) {
+                        // If any live data fetch fails, fall back to demo mode
+                        console.error('Error fetching live data:', e);
+                        throw e;
                     }
                 },
 
@@ -646,6 +823,12 @@
                     const minutes = Math.floor((nextCheck - now) / 60000);
                     const seconds = Math.floor(((nextCheck - now) % 60000) / 1000);
                     return minutes + 'm ' + seconds + 's';
+                },
+
+                handleChartError() {
+                    // If chart fails to load, fall back to placeholder
+                    console.warn('Failed to load power law chart');
+                    this.demoMode = true;
                 }
             }
         }
