@@ -652,9 +652,9 @@ function addSubtitle(s, text, y = 1.15) {
   });
 
   const links = [
-    { label: 'AI Agent:', val: '@Chris0x88hederabot' },
     { label: 'GitHub:', val: 'github.com/chris0x88/pacman' },
     { label: 'HCS Topic:', val: '0.0.10371598' },
+    { label: 'Dashboard:', val: 'http://127.0.0.1:8088' },
   ];
 
   let y = 3.65;

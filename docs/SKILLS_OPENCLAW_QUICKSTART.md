@@ -1,6 +1,6 @@
 # Pacman Complete Agent Skill Reference
 
-**App:** Pacman v2.3 — Self-custody Hedera trading CLI
+**App:** Pacman v4.0.0 — Autonomous AI Agent for Hedera DeFi
 **Entry point:** `./launch.sh <command>` — ONLY this works. `./pacman` is deprecated.
 **Mode:** One-shot subprocess (agent) or interactive TTY (human)
 
@@ -222,6 +222,7 @@ The agent should NEVER attempt to read, display, or transmit private keys.
 | `nfts [collection_id]` | `nfts 0.0.xxx --json` | Filter NFTs by collection |
 | `nfts view [token_id] [serial]` | `nfts view 0.0.xxx 1 --json` | View NFT metadata |
 | `nfts download [token_id] [serial]` | `nfts download 0.0.xxx 1 --json` | Download NFT image |
+| `nfts photo [token_id] [serial]` | `nfts photo 0.0.xxx 1` | Show NFT as inline photo (Telegram) |
 
 ### Robot (Power Law Rebalancer)
 | Command | AI Version | Description |
@@ -233,6 +234,12 @@ The agent should NEVER attempt to read, display, or transmit private keys.
 | `daemon-start` | — | Background-persistent daemon |
 | `daemon-stop` | — | Stop background daemon |
 
+### HCS (Hedera Consensus Service)
+| Command | AI Version | Description |
+|---|---|---|
+| `hcs status` | `hcs status --json` | HCS topic status and signal info |
+| `hcs send [msg]` | — | Publish a message to the HCS topic |
+
 ### System
 | Command | Description |
 |---|---|
@@ -242,6 +249,7 @@ The agent should NEVER attempt to read, display, or transmit private keys.
 | `pools approve [ID]` | Add pool to routing graph |
 | `history` | Recent transaction history |
 | `slippage [pct]` | View/set slippage tolerance (0.1-5.0%) |
+| `daemon-status` | Check if background daemons are running |
 
 ---
 

@@ -1,40 +1,36 @@
-# TOOLS.md - Local Notes
+# Pacman Tools — Environment-Specific Configuration
 
-Skills define _how_ tools work. This file is for _your_ specifics — the stuff that's unique to your setup.
+## Entry Point
+All CLI commands: `./launch.sh <command>`
+Working directory: The pacman repository root (where launch.sh lives)
 
-## What Goes Here
+## Accounts
+- **Main**: `HEDERA_ACCOUNT_ID` — user trading wallet
+- **Robot**: `ROBOT_ACCOUNT_ID` — autonomous rebalancer (nickname: "Bitcoin Rebalancer Daemon")
+- Switch with: `./launch.sh account switch <id_or_nickname>`
 
-Things like:
+## Daemons
+- Start: `./launch.sh daemon-start`
+- Stop: `./launch.sh daemon-stop`
+- Status: `./launch.sh daemon-status`
+- Dashboard: http://127.0.0.1:8088
 
-- Camera names and locations
-- SSH hosts and aliases
-- Preferred voices for TTS
-- Speaker/room names
-- Device nicknames
-- Anything environment-specific
+## HCS Topic
+- Signal topic: `0.0.10371598`
+- Check: `./launch.sh hcs status`
 
-## Examples
+## Network
+- Network: Hedera Mainnet
+- DEX: SaucerSwap V2
+- RPC: https://mainnet.hashio.io/v1
 
-```markdown
-### Cameras
-
-- living-room → Main area, 180° wide angle
-- front-door → Entrance, motion-triggered
-
-### SSH
-
-- home-server → 192.168.1.100, user: admin
-
-### TTS
-
-- Preferred voice: "Nova" (warm, slightly British)
-- Default speaker: Kitchen HomePod
+## Key Commands for Quick Reference
 ```
-
-## Why Separate?
-
-Skills are shared. Your setup is yours. Keeping them apart means you can update skills without losing your notes, and share skills without leaking your infrastructure.
-
----
-
-Add whatever helps you do your job. This is your cheat sheet.
+./launch.sh status --json         # Full portfolio + account info
+./launch.sh balance --json        # Token balances with USD
+./launch.sh robot status --json   # Rebalancer state
+./launch.sh doctor                # System health check
+./launch.sh account --json        # All known accounts
+./launch.sh history               # Recent transactions
+./launch.sh price bitcoin         # Live BTC price + model
+```
