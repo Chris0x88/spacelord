@@ -174,6 +174,102 @@ if [ $# -gt 0 ]; then
             exit 0
             ;;
 
+        telegram-start|tg-start)
+            TG_PID_FILE="$SCRIPT_DIR/data/telegram.pid"
+            if [ -f "$TG_PID_FILE" ] && kill -0 "$(cat $TG_PID_FILE)" 2>/dev/null; then
+                echo -e "${GREEN}[Pacman]${NC} Telegram interceptor already running (PID: $(cat $TG_PID_FILE))"
+                exit 0
+            fi
+            if [ -z "$TELEGRAM_BOT_TOKEN" ] && [ ! -f "$SCRIPT_DIR/.env" ]; then
+                echo -e "${RED}[Pacman]${NC} TELEGRAM_BOT_TOKEN not set. Add it to .env first."
+                exit 1
+            fi
+            PORT="${TELEGRAM_PORT:-8443}"
+            echo -e "${GREEN}[Pacman]${NC} Starting Telegram interceptor on port $PORT..."
+            PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
+            nohup "$PYTHON_EXEC" -m uvicorn src.plugins.telegram.interceptor:app \
+                --host 0.0.0.0 --port "$PORT" \
+                > "$SCRIPT_DIR/logs/telegram.log" 2>&1 &
+            tg_pid=$!
+            echo "$tg_pid" > "$TG_PID_FILE"
+            disown
+            sleep 2
+            if kill -0 "$tg_pid" 2>/dev/null; then
+                echo -e "${GREEN}[Pacman]${NC} Telegram interceptor started (PID: $tg_pid)"
+                echo -e "${CYAN}[Pacman]${NC} Health: http://localhost:$PORT/health"
+                echo -e "${CYAN}[Pacman]${NC} Logs:   tail -f logs/telegram.log"
+                echo -e "${CYAN}[Pacman]${NC} Next:   ./launch.sh telegram-webhook"
+            else
+                echo -e "${RED}[Pacman]${NC} Failed to start. Check logs/telegram.log"
+                rm -f "$TG_PID_FILE"
+                exit 1
+            fi
+            exit 0
+            ;;
+
+        telegram-stop|tg-stop)
+            TG_PID_FILE="$SCRIPT_DIR/data/telegram.pid"
+            if [ -f "$TG_PID_FILE" ]; then
+                tg_pid=$(cat "$TG_PID_FILE")
+                kill "$tg_pid" 2>/dev/null && echo -e "${GREEN}[Pacman]${NC} Telegram interceptor stopped."
+                rm -f "$TG_PID_FILE"
+            else
+                echo -e "${CYAN}[Pacman]${NC} No Telegram interceptor running."
+                lsof -ti:${TELEGRAM_PORT:-8443} | xargs kill -9 2>/dev/null || true
+            fi
+            exit 0
+            ;;
+
+        telegram-status|tg-status)
+            TG_PID_FILE="$SCRIPT_DIR/data/telegram.pid"
+            PORT="${TELEGRAM_PORT:-8443}"
+            if [ -f "$TG_PID_FILE" ] && kill -0 "$(cat $TG_PID_FILE)" 2>/dev/null; then
+                echo -e "${GREEN}[Pacman]${NC} Telegram interceptor running (PID: $(cat $TG_PID_FILE))"
+                curl -s "http://localhost:$PORT/health" 2>/dev/null && echo ""
+            else
+                echo -e "${CYAN}[Pacman]${NC} Telegram interceptor not running."
+                echo -e "${CYAN}[Pacman]${NC} Start: ./launch.sh telegram-start"
+            fi
+            exit 0
+            ;;
+
+        telegram-webhook|tg-webhook)
+            # Set/inspect Telegram webhook via setup_webhook.py
+            action="${2:-info}"
+            uv run --project "$SCRIPT_DIR" python -m src.plugins.telegram.setup_webhook "$action"
+            exit $?
+            ;;
+
+        telegram-ngrok|tg-ngrok)
+            # Start ngrok tunnel and auto-configure webhook
+            PORT="${TELEGRAM_PORT:-8443}"
+            echo -e "${GREEN}[Pacman]${NC} Starting ngrok tunnel on port $PORT..."
+            NGROK_LOG="$SCRIPT_DIR/logs/ngrok.log"
+            nohup ngrok http "$PORT" --log "$NGROK_LOG" --log-format json > /dev/null 2>&1 &
+            echo $! > "$SCRIPT_DIR/data/ngrok.pid"
+            disown
+            sleep 3
+            # Fetch public URL from ngrok API
+            NGROK_URL=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null \
+                | python3 -c "import sys,json; t=json.load(sys.stdin).get('tunnels',[]); print(next((x['public_url'] for x in t if x['proto']=='https'),''))" 2>/dev/null)
+            if [ -z "$NGROK_URL" ]; then
+                echo -e "${RED}[Pacman]${NC} Could not get ngrok URL. Check logs/ngrok.log"
+                exit 1
+            fi
+            echo -e "${GREEN}[Pacman]${NC} ngrok URL: $NGROK_URL"
+            # Write to .env
+            if grep -q "TELEGRAM_WEBHOOK_URL" "$SCRIPT_DIR/.env" 2>/dev/null; then
+                sed -i.bak "s|TELEGRAM_WEBHOOK_URL=.*|TELEGRAM_WEBHOOK_URL=$NGROK_URL|" "$SCRIPT_DIR/.env"
+            else
+                echo "TELEGRAM_WEBHOOK_URL=$NGROK_URL" >> "$SCRIPT_DIR/.env"
+            fi
+            echo -e "${GREEN}[Pacman]${NC} TELEGRAM_WEBHOOK_URL set in .env"
+            # Set the webhook
+            TELEGRAM_WEBHOOK_URL="$NGROK_URL" uv run --project "$SCRIPT_DIR" \
+                python -m src.plugins.telegram.setup_webhook set
+            exit $?
+            ;;
+
         openclaw-setup|agent-setup)
             echo -e "${CYAN}[Pacman]${NC} Starting OpenClaw agent setup..."
             uv run --project "$SCRIPT_DIR" python scripts/openclaw_setup.py

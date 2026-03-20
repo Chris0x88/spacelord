@@ -4,25 +4,20 @@ Telegram Inbound Router
 Traffic cop: decides whether an incoming update goes to the fast lane
 (direct PacmanController call) or the AI lane (LLM round-trip, future).
 
-Fast-lane commands (Phase 1–3):
-  /balance, /portfolio → get_balances() + prices
-  /price               → price lookups
-  /status, /health     → system status
-  /tokens, /gas        → token info, gas reserve
-  /history             → recent tx records
-  /send                → transfer flow
-  /robot               → rebalancer status
-  /setup               → Ghost Tunnel
-  /menu, /start, /help → main menu
+ALL standard commands are fast-lane (pure code, no LLM). The AI lane is
+a future placeholder for natural-language conversation.
 
-Swap lane (Phase 2):
-  Free-text swap commands → parse → confirm keyboard
-  confirm_swap:* callback → execute_swap_callback() (async thread)
-  cancel:swap callback    → cancel message
+Interactive flows (all button-driven, zero typing required):
 
-Send lane (Phase 3):
-  send/transfer commands  → parse → confirm keyboard
-  confirm_send:* callback → execute_send_callback() (async thread)
+  Swap flow:
+    [Swap] → pick From token → pick To token → pick Amount → Confirm → Execute
+    Callback chain: swap → sf:{from_id} → st:{from_id}:{to_id}
+                   → sa:{from_id}:{to_id}:{amount} → confirm_swap:...
+
+  Send flow:
+    [Send] → pick Token → pick Recipient (whitelist) → pick Amount → Confirm → Execute
+    Callback chain: send → send_tok:{token_id} → send_to:{token_id}:{recipient}
+                   → send_amt:{token_id}:{recipient}:{amount} → confirm_send:...
 
 Returns a response dict:
   {
@@ -55,6 +50,7 @@ FAST_LANE_COMMANDS = {
     "/gas",
     "/history",
     "/send",
+    "/swap",
     "/setup",
     "/robot",
     "/orders",
@@ -70,13 +66,10 @@ CALLBACK_MAP = {
     "status":    "/status",
     "tokens":    "/tokens",
     "history":   "/history",
-    "send":      "/send",
     "setup":     "/setup",
     "robot":     "/robot",
     "orders":    "/orders",
     "menu":      "/menu",
-    # Phase 2+ — handled explicitly below
-    "swap":      "/swap",
 }
 
 # Words that indicate a swap intent in free-text messages
@@ -88,10 +81,6 @@ SEND_TRIGGER_WORDS = frozenset({"send", "transfer"})
 
 class InboundRouter:
     def __init__(self, controller):
-        """
-        Args:
-            controller: PacmanController instance (shared, already initialised)
-        """
         self._ctrl = controller
 
     # ------------------------------------------------------------------
@@ -118,13 +107,8 @@ class InboundRouter:
         return self._ai_lane_placeholder(text)
 
     def handle_web_app_data(self, data: str, user_id: int) -> Dict[str, Any]:
-        """
-        Handle web_app_data sent back by Telegram after Mini App submission.
-        Ghost Tunnel uses direct POST /ghost instead, so this is belt-and-suspenders.
-        """
         try:
-            import json as _json
-            payload = _json.loads(data)
+            payload = json.loads(data)
             field = payload.get("field", "")
             if field:
                 text = formatters.format_key_saved(field)
@@ -135,6 +119,8 @@ class InboundRouter:
 
     def handle_callback(self, callback_data: str, user_id: int) -> Dict[str, Any]:
         """Route a callback_query (inline button press)."""
+
+        # ── Swap flow (interactive) ──────────────────────────
         # confirm_swap:* — handled by interceptor async path
         if callback_data.startswith("confirm_swap:"):
             return _reply("⏳ Processing swap…", with_buttons=False)
@@ -147,19 +133,39 @@ class InboundRouter:
         if callback_data in ("cancel:swap", "cancel:send"):
             return _reply("🚫 Cancelled.", with_buttons=True)
 
-        # "swap" button in the main menu → show prompt
+        # "swap" button → show token picker (From)
         if callback_data == "swap":
-            return self._cmd_swap_prompt()
+            return self._cmd_swap_interactive()
 
-        if callback_data == "swap_select_from":
-            return self._cmd_swap_select_from()
+        # sf:{from_id} — user picked "From" token → show "To" picker
+        if callback_data.startswith("sf:"):
+            return self._cmd_swap_pick_to(callback_data)
 
-        if callback_data == "swap_select_to":
-            return self._cmd_swap_select_to()
+        # st:{from_id}:{to_id} — user picked "To" token → show amount picker
+        if callback_data.startswith("st:"):
+            return self._cmd_swap_pick_amount(callback_data)
 
-        if callback_data == "swap_select_amount":
-            return self._cmd_swap_select_amount()
+        # sa:{from_id}:{to_id}:{amount} — user picked amount → show confirm
+        if callback_data.startswith("sa:"):
+            return self._cmd_swap_confirm_from_callback(callback_data)
 
+        # ── Send flow (interactive) ──────────────────────────
+        if callback_data == "send":
+            return self._cmd_send_interactive()
+
+        # send_tok:{token_id} — user picked token → show recipient picker
+        if callback_data.startswith("send_tok:"):
+            return self._cmd_send_pick_recipient(callback_data)
+
+        # send_to:{token_id}:{recipient} — user picked recipient → show amount picker
+        if callback_data.startswith("send_to:"):
+            return self._cmd_send_pick_amount(callback_data)
+
+        # send_amt:{token_id}:{recipient}:{amount} — user picked amount → show confirm
+        if callback_data.startswith("send_amt:"):
+            return self._cmd_send_confirm_from_callback(callback_data)
+
+        # ── Standard commands ────────────────────────────────
         cmd = CALLBACK_MAP.get(callback_data)
         if cmd and cmd in FAST_LANE_COMMANDS:
             return self._fast_lane(cmd, user_id)
@@ -227,6 +233,47 @@ class InboundRouter:
         )
         return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
+    def execute_send_callback(self, callback_data: str) -> Dict[str, Any]:
+        """Execute a confirmed send. Called from async thread pool."""
+        try:
+            parts = callback_data.split(":")
+            if len(parts) != 4:
+                return _error("Malformed send callback — please try again.")
+            _, amount_str, token, recipient = parts
+            amount = float(amount_str)
+        except Exception as exc:
+            return _error(f"Could not parse send request: {exc}")
+
+        whitelist_err = self._check_send_whitelist(recipient)
+        if whitelist_err:
+            return {
+                "text": formatters.format_send_error(whitelist_err, amount, token, recipient),
+                "reply_markup": formatters.format_buttons(),
+                "parse_mode": "HTML",
+            }
+
+        try:
+            result = self._ctrl.transfer(token, amount, recipient)
+        except Exception as exc:
+            logger.error(f"[Telegram] transfer() raised: {exc}", exc_info=True)
+            return {
+                "text": formatters.format_send_error(str(exc), amount, token, recipient),
+                "reply_markup": formatters.format_buttons(),
+                "parse_mode": "HTML",
+            }
+
+        if not result.get("success"):
+            err = result.get("error", "Unknown error")
+            return {
+                "text": formatters.format_send_error(err, amount, token, recipient),
+                "reply_markup": formatters.format_buttons(),
+                "parse_mode": "HTML",
+            }
+
+        tx_hash = result.get("tx_hash", "")
+        text, reply_markup = formatters.format_send_receipt(amount, token, recipient, tx_hash)
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
+
     # ------------------------------------------------------------------
     # Fast lane
     # ------------------------------------------------------------------
@@ -250,8 +297,14 @@ class InboundRouter:
                 return self._cmd_tokens()
             elif cmd == "/history":
                 return self._cmd_history()
+            elif cmd == "/swap":
+                if arg:
+                    return self._cmd_swap_parse(f"swap {arg}")
+                return self._cmd_swap_interactive()
             elif cmd == "/send":
-                return self._cmd_send_prompt()
+                if arg:
+                    return self._cmd_send_parse(f"send {arg}")
+                return self._cmd_send_interactive()
             elif cmd == "/setup":
                 return self._cmd_setup(arg)
             elif cmd == "/robot":
@@ -268,7 +321,6 @@ class InboundRouter:
     # ------------------------------------------------------------------
 
     def _get_prices(self) -> Dict[str, float]:
-        """Fetch USD prices for major tokens. Non-fatal on failure."""
         try:
             from lib.prices import price_manager
             MAJOR = {
@@ -283,12 +335,28 @@ class InboundRouter:
                 if sym == "HBAR":
                     prices[sym] = price_manager.get_hbar_price()
                 elif sym == "USDC":
-                    prices[sym] = 1.0  # Stablecoin
+                    prices[sym] = 1.0
                 else:
                     prices[sym] = price_manager.get_price(tid)
             return prices
         except Exception:
             return {}
+
+    def _get_token_balance(self, sym: str) -> float:
+        """Get balance for a specific token symbol."""
+        try:
+            balances = self._ctrl.get_balances()
+            bal = balances.get(sym, 0.0)
+            if isinstance(bal, dict):
+                bal = bal.get("balance", 0.0)
+            return float(bal)
+        except Exception:
+            return 0.0
+
+    def _get_token_price(self, sym: str) -> float:
+        """Get USD price for a token symbol."""
+        prices = self._get_prices()
+        return prices.get(sym, 0.0)
 
     def _cmd_balance(self) -> Dict[str, Any]:
         balances = self._ctrl.get_balances()
@@ -412,7 +480,6 @@ class InboundRouter:
         return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _cmd_robot(self) -> Dict[str, Any]:
-        """Show BTC rebalancer daemon status."""
         try:
             gov_path = _DATA_DIR / "governance.json"
             robot_account = ""
@@ -424,7 +491,6 @@ class InboundRouter:
                 robot_account = robot_info.get("id", "")
                 funded = robot_info.get("funded", False)
 
-            # Try to read robot state
             portfolio_usd = 0.0
             btc_pct = 0.0
             target_pct = 50.0
@@ -444,13 +510,12 @@ class InboundRouter:
                 except Exception:
                     pass
 
-            # Check if daemon PID is alive
             pid_path = _DATA_DIR / "robot.pid"
             if pid_path.exists():
                 try:
                     import os
                     pid = int(pid_path.read_text().strip())
-                    os.kill(pid, 0)  # Check if process exists
+                    os.kill(pid, 0)
                     status = "running"
                 except (ValueError, ProcessLookupError, PermissionError):
                     status = "stopped"
@@ -470,45 +535,143 @@ class InboundRouter:
         return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _cmd_orders(self) -> Dict[str, Any]:
-        """Pending orders — placeholder for now."""
         text = formatters.format_not_implemented("Pending Orders")
         return _reply(text, with_buttons=True)
 
     # ------------------------------------------------------------------
-    # Swap lane — Phase 2
+    # Interactive Swap flow (button-driven, no typing)
     # ------------------------------------------------------------------
 
-    def _cmd_swap_prompt(self) -> Dict[str, Any]:
-        """Return the 'What do you want to swap?' prompt."""
-        keyboard = {
-            "inline_keyboard": [
-                [
-                    {"text": "1️⃣ From token", "callback_data": "swap_select_from"},
-                    {"text": "2️⃣ To token", "callback_data": "swap_select_to"},
-                ],
-                [
-                    {"text": "3️⃣ Amount", "callback_data": "swap_select_amount"},
-                ],
-                [
-                    {"text": "⬅️ Menu", "callback_data": "menu"},
-                ],
-            ]
-        }
-        return {"text": formatters.format_swap_prompt(), "reply_markup": keyboard, "parse_mode": "HTML"}
+    def _cmd_swap_interactive(self) -> Dict[str, Any]:
+        """Entry point: show 'From' token picker."""
+        text, reply_markup = formatters.format_swap_entry()
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
-    def _cmd_swap_select_from(self) -> Dict[str, Any]:
-        return _reply("💱 <b>Choose the token to swap from</b>\n\nUse a typed swap command for now:\n<code>swap 5 USDC for HBAR</code>", with_buttons=True)
+    def _cmd_swap_pick_to(self, callback_data: str) -> Dict[str, Any]:
+        """sf:{from_id} → show 'To' token picker."""
+        from_id = callback_data[3:]  # strip "sf:"
+        from_sym = self._id_to_symbol(from_id)
+        text, reply_markup = formatters.format_swap_pick_to(from_sym, from_id)
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
-    def _cmd_swap_select_to(self) -> Dict[str, Any]:
-        return _reply("💱 <b>Choose the token to swap to</b>\n\nUse a typed swap command for now:\n<code>swap 5 USDC for HBAR</code>", with_buttons=True)
+    def _cmd_swap_pick_amount(self, callback_data: str) -> Dict[str, Any]:
+        """st:{from_id}:{to_id} → show amount picker with balance and presets."""
+        parts = callback_data[3:].split(":", 1)  # strip "st:"
+        if len(parts) != 2:
+            return _error("Invalid swap selection.")
+        from_id, to_id = parts
+        from_sym = self._id_to_symbol(from_id)
+        to_sym = self._id_to_symbol(to_id)
+        from_balance = self._get_token_balance(from_sym)
+        from_price = self._get_token_price(from_sym)
 
-    def _cmd_swap_select_amount(self) -> Dict[str, Any]:
-        return _reply("💱 <b>Choose an amount</b>\n\nUse a typed swap command for now:\n<code>swap 5 USDC for HBAR</code>", with_buttons=True)
+        text, reply_markup = formatters.format_swap_pick_amount(
+            from_sym, to_sym, from_id, to_id,
+            from_balance=from_balance, from_price=from_price,
+        )
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
+
+    def _cmd_swap_confirm_from_callback(self, callback_data: str) -> Dict[str, Any]:
+        """sa:{from_id}:{to_id}:{amount} → route, check limits, show confirm."""
+        parts = callback_data[3:].split(":", 2)  # strip "sa:"
+        if len(parts) != 3:
+            return _error("Invalid swap parameters.")
+        from_id, to_id, amount_str = parts
+        try:
+            amount = float(amount_str)
+        except ValueError:
+            return _error("Invalid amount.")
+
+        from_sym = self._id_to_symbol(from_id)
+        to_sym = self._id_to_symbol(to_id)
+        mode = "exact_in"
+
+        # Balance check
+        try:
+            from_balance = self._get_token_balance(from_sym)
+            if from_balance < amount:
+                return {
+                    "text": formatters.format_swap_error(
+                        f"Insufficient balance: have {formatters._fmt_amount(from_balance)}"
+                        f" {from_sym}, need {formatters._fmt_amount(amount)}.",
+                        from_sym, to_sym, amount,
+                    ),
+                    "reply_markup": formatters.format_buttons(),
+                    "parse_mode": "HTML",
+                }
+        except Exception as exc:
+            logger.warning(f"[Telegram] balance pre-check failed: {exc}")
+
+        # Governance limits
+        limit_err = self._check_swap_limits(from_id, to_id, amount, mode)
+        if limit_err:
+            return {
+                "text": formatters.format_swap_error(limit_err, from_sym, to_sym, amount),
+                "reply_markup": formatters.format_buttons(),
+                "parse_mode": "HTML",
+            }
+
+        # Route
+        try:
+            route = self._ctrl.get_route(from_id, to_id, amount, mode=mode)
+        except Exception as exc:
+            return {
+                "text": formatters.format_swap_error(
+                    f"Routing failed: {exc}", from_sym, to_sym, amount
+                ),
+                "reply_markup": formatters.format_buttons(),
+                "parse_mode": "HTML",
+            }
+
+        if not route or route.output_format == "ERROR" or not route.steps:
+            return {
+                "text": formatters.format_swap_error(
+                    "No liquidity route found for this pair.",
+                    from_sym, to_sym, amount,
+                ),
+                "reply_markup": formatters.format_buttons(),
+                "parse_mode": "HTML",
+            }
+
+        # Build step list
+        steps: List[Dict[str, Any]] = []
+        for step in route.steps:
+            if step.step_type == "swap":
+                steps.append({
+                    "type": "swap",
+                    "from": step.from_token,
+                    "to":   step.to_token,
+                    "fee_pct": step.fee_percent * 100,
+                })
+
+        # Estimated output
+        estimated_out = 0.0
+        try:
+            if hasattr(route, 'estimated_output'):
+                estimated_out = route.estimated_output
+            elif hasattr(route, 'amount_out'):
+                estimated_out = route.amount_out
+        except Exception:
+            pass
+
+        confirm = formatters.format_swap_confirm(
+            amount=amount,
+            from_symbol=from_sym,
+            to_symbol=to_sym,
+            from_id=from_id,
+            to_id=to_id,
+            mode=mode,
+            fee_pct=route.total_fee_percent,
+            gas_hbar=route.total_gas_hbar,
+            route_steps=steps,
+            estimated_out=estimated_out,
+        )
+        return {**confirm, "parse_mode": "HTML"}
 
     def _cmd_swap_parse(self, text: str) -> Dict[str, Any]:
         """
-        Parse a free-text swap command, check governance limits, get route,
-        and return a confirmation keyboard for the user to review before executing.
+        Parse a free-text swap command (typed by user), check governance limits,
+        get route, and return a confirmation keyboard.
         """
         from src.translator import translate_command
 
@@ -587,7 +750,6 @@ class InboundRouter:
                 "parse_mode": "HTML",
             }
 
-        # Build step list for display
         steps: List[Dict[str, Any]] = []
         for step in route.steps:
             if step.step_type == "swap":
@@ -612,27 +774,106 @@ class InboundRouter:
         return {**confirm, "parse_mode": "HTML"}
 
     # ------------------------------------------------------------------
-    # Send lane — Phase 3
+    # Interactive Send flow (button-driven, no typing)
     # ------------------------------------------------------------------
 
-    def _cmd_setup(self, field: str = "") -> Dict[str, Any]:
-        """Return a WebApp button for secure key entry via the Ghost Tunnel."""
-        try:
-            from src.plugins.telegram.interceptor import build_webapp_button
-            field = field.upper() if field else "PRIVATE_KEY"
-            markup = build_webapp_button(field)
-        except Exception:
-            markup = None
-        text = formatters.format_setup_prompt()
-        return {"text": text, "reply_markup": markup, "parse_mode": "HTML"}
+    def _cmd_send_interactive(self) -> Dict[str, Any]:
+        """Entry point: show token picker for send."""
+        text, reply_markup = formatters.format_send_entry()
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
-    def _cmd_send_prompt(self) -> Dict[str, Any]:
-        keyboard = {
-            "inline_keyboard": [
-                [{"text": "⬅️ Menu", "callback_data": "menu"}],
-            ]
-        }
-        return {"text": formatters.format_send_prompt(), "reply_markup": keyboard, "parse_mode": "HTML"}
+    def _cmd_send_pick_recipient(self, callback_data: str) -> Dict[str, Any]:
+        """send_tok:{token_id} → show recipient picker from whitelist."""
+        token_id = callback_data[len("send_tok:"):]
+        token_sym = self._id_to_symbol(token_id)
+        balance = self._get_token_balance(token_sym)
+
+        # Load whitelist + own accounts
+        whitelist = self._get_send_whitelist()
+
+        text, reply_markup = formatters.format_send_pick_recipient(
+            token_sym, token_id, whitelist, balance=balance,
+        )
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
+
+    def _cmd_send_pick_amount(self, callback_data: str) -> Dict[str, Any]:
+        """send_to:{token_id}:{recipient} → show amount picker."""
+        rest = callback_data[len("send_to:"):]
+        parts = rest.split(":", 1)
+        if len(parts) != 2:
+            return _error("Invalid send selection.")
+        token_id, recipient = parts
+        token_sym = self._id_to_symbol(token_id)
+        balance = self._get_token_balance(token_sym)
+        price = self._get_token_price(token_sym)
+
+        # Try to find recipient name
+        whitelist = self._get_send_whitelist()
+        recipient_name = ""
+        for entry in whitelist:
+            if entry.get("address") == recipient:
+                recipient_name = entry.get("name", entry.get("nickname", ""))
+                break
+
+        text, reply_markup = formatters.format_send_pick_amount(
+            token_sym, token_id, recipient,
+            recipient_name=recipient_name,
+            balance=balance, price=price,
+        )
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
+
+    def _cmd_send_confirm_from_callback(self, callback_data: str) -> Dict[str, Any]:
+        """send_amt:{token_id}:{recipient}:{amount} → show confirm card."""
+        rest = callback_data[len("send_amt:"):]
+        parts = rest.split(":", 2)
+        if len(parts) != 3:
+            return _error("Invalid send parameters.")
+        token_id, recipient, amount_str = parts
+        try:
+            amount = float(amount_str)
+        except ValueError:
+            return _error("Invalid amount.")
+
+        token_sym = self._id_to_symbol(token_id)
+
+        # Balance check
+        balance = self._get_token_balance(token_sym)
+        if balance < amount:
+            return {
+                "text": formatters.format_send_error(
+                    f"Insufficient balance: have {formatters._fmt_amount(balance)} {token_sym},"
+                    f" need {formatters._fmt_amount(amount)}.",
+                    amount, token_sym, recipient,
+                ),
+                "reply_markup": formatters.format_buttons(),
+                "parse_mode": "HTML",
+            }
+
+        # Whitelist check
+        whitelist_err = self._check_send_whitelist(recipient)
+        if whitelist_err:
+            return {
+                "text": formatters.format_send_error(whitelist_err, amount, token_sym, recipient),
+                "reply_markup": formatters.format_buttons(),
+                "parse_mode": "HTML",
+            }
+
+        remaining = balance - amount
+
+        # Find recipient name
+        whitelist = self._get_send_whitelist()
+        recipient_name = ""
+        for entry in whitelist:
+            if entry.get("address") == recipient:
+                recipient_name = entry.get("name", entry.get("nickname", ""))
+                break
+
+        confirm = formatters.format_send_confirm(
+            amount, token_sym, recipient,
+            remaining_balance=remaining,
+            recipient_name=recipient_name,
+        )
+        return {**confirm, "parse_mode": "HTML"}
 
     def _cmd_send_parse(self, text: str) -> Dict[str, Any]:
         """Parse a free-text send command, check whitelist and balance."""
@@ -644,7 +885,8 @@ class InboundRouter:
         if not m:
             return _reply(
                 "❓ <b>Couldn't parse that.</b>\n\n"
-                "Format: <code>send 5 USDC to 0.0.7949179</code>",
+                "Format: <code>send 5 USDC to 0.0.7949179</code>\n\n"
+                "Or tap 📤 <b>Send</b> below for the guided flow.",
                 with_buttons=True,
             )
 
@@ -658,7 +900,6 @@ class InboundRouter:
                 with_buttons=True,
             )
 
-        # Whitelist check
         whitelist_err = self._check_send_whitelist(recipient)
         if whitelist_err:
             return {
@@ -667,7 +908,6 @@ class InboundRouter:
                 "parse_mode": "HTML",
             }
 
-        # Balance check
         try:
             balances = self._ctrl.get_balances()
             bal = balances.get(token, 0.0)
@@ -689,49 +929,54 @@ class InboundRouter:
         confirm = formatters.format_send_confirm(amount, token, recipient, remaining)
         return {**confirm, "parse_mode": "HTML"}
 
-    def execute_send_callback(self, callback_data: str) -> Dict[str, Any]:
-        """Execute a confirmed send. Called from async thread pool."""
+    def _cmd_setup(self, field: str = "") -> Dict[str, Any]:
         try:
-            parts = callback_data.split(":")
-            if len(parts) != 4:
-                return _error("Malformed send callback — please try again.")
-            _, amount_str, token, recipient = parts
-            amount = float(amount_str)
-        except Exception as exc:
-            return _error(f"Could not parse send request: {exc}")
+            from src.plugins.telegram.interceptor import build_webapp_button
+            field = field.upper() if field else "PRIVATE_KEY"
+            markup = build_webapp_button(field)
+        except Exception:
+            markup = None
+        text = formatters.format_setup_prompt()
+        return {"text": text, "reply_markup": markup, "parse_mode": "HTML"}
 
-        whitelist_err = self._check_send_whitelist(recipient)
-        if whitelist_err:
-            return {
-                "text": formatters.format_send_error(whitelist_err, amount, token, recipient),
-                "reply_markup": formatters.format_buttons(),
-                "parse_mode": "HTML",
-            }
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
 
+    def _get_send_whitelist(self) -> List[Dict[str, str]]:
+        """Load transfer whitelist + own accounts as send targets."""
+        targets = []
         try:
-            result = self._ctrl.transfer(token, amount, recipient)
-        except Exception as exc:
-            logger.error(f"[Telegram] transfer() raised: {exc}", exc_info=True)
-            return {
-                "text": formatters.format_send_error(str(exc), amount, token, recipient),
-                "reply_markup": formatters.format_buttons(),
-                "parse_mode": "HTML",
-            }
+            settings_path = _DATA_DIR / "settings.json"
+            if settings_path.exists():
+                with open(settings_path) as f:
+                    settings = json.load(f)
+                for entry in settings.get("transfer_whitelist", []):
+                    addr = entry.get("address", "")
+                    name = entry.get("name", entry.get("nickname", ""))
+                    if addr:
+                        targets.append({"address": addr, "name": name or addr[:12]})
+        except Exception:
+            pass
 
-        if not result.get("success"):
-            err = result.get("error", "Unknown error")
-            return {
-                "text": formatters.format_send_error(err, amount, token, recipient),
-                "reply_markup": formatters.format_buttons(),
-                "parse_mode": "HTML",
-            }
+        # Also include own accounts from accounts.json
+        try:
+            accounts_path = _DATA_DIR / "accounts.json"
+            if accounts_path.exists():
+                with open(accounts_path) as f:
+                    accounts = json.load(f)
+                existing = {t["address"] for t in targets}
+                for acct in accounts:
+                    aid = acct.get("id", "")
+                    if aid and aid not in existing:
+                        name = acct.get("nickname", acct.get("name", aid[:12]))
+                        targets.append({"address": aid, "name": name})
+        except Exception:
+            pass
 
-        tx_hash = result.get("tx_hash", "")
-        text, reply_markup = formatters.format_send_receipt(amount, token, recipient, tx_hash)
-        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
+        return targets
 
     def _check_send_whitelist(self, recipient: str) -> Optional[str]:
-        """Check transfer whitelist. Returns error string if blocked, None if OK."""
         try:
             settings_path = _DATA_DIR / "settings.json"
             if settings_path.exists():
@@ -745,20 +990,15 @@ class InboundRouter:
                         with open(accounts_path) as f:
                             accounts = json.load(f)
                         if any(a.get("id") == recipient for a in accounts):
-                            return None  # Own account — allowed
+                            return None
                     return f"SAFETY: Recipient {recipient} is not in your transfer whitelist."
         except Exception as exc:
             return f"SAFETY: Whitelist check failed: {exc}"
         return None
 
-    # ------------------------------------------------------------------
-    # Governance limit enforcement
-    # ------------------------------------------------------------------
-
     def _check_swap_limits(
         self, from_id: str, to_id: str, amount: float, mode: str
     ) -> Optional[str]:
-        """Validate against governance.json safety limits."""
         max_swap_usd     = getattr(self._ctrl.config, "max_swap_amount_usd", 100.0)
         min_hbar_reserve = 5.0
 
@@ -771,7 +1011,6 @@ class InboundRouter:
         except Exception:
             pass
 
-        # USD value check
         try:
             from lib.prices import price_manager
             if mode == "exact_in":
@@ -794,7 +1033,6 @@ class InboundRouter:
         except Exception:
             pass
 
-        # HBAR gas reserve check (only when selling HBAR exact_in)
         if from_id in ("0.0.0", "HBAR") and mode == "exact_in":
             try:
                 balances = self._ctrl.get_balances()
@@ -813,10 +1051,6 @@ class InboundRouter:
 
         return None
 
-    # ------------------------------------------------------------------
-    # AI lane placeholder
-    # ------------------------------------------------------------------
-
     def _ai_lane_placeholder(self, text: str) -> Dict[str, Any]:
         reply = (
             "🤖 <b>AI Mode</b>\n\n"
@@ -825,16 +1059,15 @@ class InboundRouter:
         )
         return _reply(reply, with_buttons=True)
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     def _id_to_symbol(self, token_id: str) -> str:
-        """Reverse-lookup a token ID to its display symbol."""
         if not token_id:
             return "???"
         if token_id in ("0.0.0", "HBAR"):
             return "HBAR"
+        # Check against our tradeable tokens first (fast)
+        for t in formatters.TRADEABLE_TOKENS:
+            if t["id"] == token_id:
+                return t["sym"]
         try:
             tokens_path = _DATA_DIR / "tokens.json"
             if tokens_path.exists():
@@ -851,7 +1084,6 @@ class InboundRouter:
 
     @staticmethod
     def _extract_command(text: str) -> Optional[str]:
-        """Extract /command from message text (strips @BotName suffix)."""
         if not text or not text.startswith("/"):
             return None
         word = text.split()[0].lower()

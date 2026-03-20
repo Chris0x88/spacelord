@@ -10,6 +10,7 @@ Design principles:
   - USD values alongside token amounts everywhere
   - Compact monospace blocks for data-heavy views
   - Consistent emoji vocabulary for status at a glance
+  - App-like navigation: buttons drive everything, typing is optional
 """
 
 from typing import Dict, Any, List, Optional, Tuple
@@ -19,12 +20,34 @@ from typing import Dict, Any, List, Optional, Tuple
 # Line drawing characters for card-style formatting
 # ═══════════════════════════════════════════════════════════════════
 
-_THIN_SEP = "─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─"
 _DIVIDER = "━━━━━━━━━━━━━━━━━━━━━━━━"
+_THIN_SEP = "─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─"
+
+# Tradeable tokens available for swap/send (order matters for display)
+TRADEABLE_TOKENS = [
+    {"sym": "HBAR",     "id": "0.0.0",         "emoji": "⟐"},
+    {"sym": "USDC",     "id": "0.0.456858",     "emoji": "💵"},
+    {"sym": "USDC[hts]","id": "0.0.1055459",    "emoji": "💲"},
+    {"sym": "SAUCE",    "id": "0.0.731861",     "emoji": "🍕"},
+    {"sym": "WBTC",     "id": "0.0.10082597",   "emoji": "₿"},
+    {"sym": "WETH",     "id": "0.0.9470869",    "emoji": "Ξ"},
+    {"sym": "HBARX",    "id": "0.0.834116",     "emoji": "🔷"},
+]
+
+# Amount presets per token (common trade sizes)
+AMOUNT_PRESETS: Dict[str, List[str]] = {
+    "HBAR":      ["10", "25", "50", "100"],
+    "USDC":      ["1", "5", "10", "25"],
+    "USDC[hts]": ["1", "5", "10", "25"],
+    "SAUCE":     ["10", "50", "100", "500"],
+    "WBTC":      ["0.0001", "0.0005", "0.001", "0.005"],
+    "WETH":      ["0.001", "0.005", "0.01", "0.05"],
+    "HBARX":     ["10", "50", "100", "500"],
+}
 
 
 # ═══════════════════════════════════════════════════════════════════
-# Main menu — 4×2 action grid (persistent keyboard)
+# Main menu — 4×2 action grid
 # ═══════════════════════════════════════════════════════════════════
 
 def format_buttons() -> Dict[str, Any]:
@@ -52,11 +75,10 @@ def format_buttons() -> Dict[str, Any]:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# Contextual keyboards — shown INSTEAD of main menu where relevant
+# Contextual keyboards
 # ═══════════════════════════════════════════════════════════════════
 
 def _portfolio_actions() -> Dict[str, Any]:
-    """Actions relevant after viewing portfolio."""
     return {
         "inline_keyboard": [
             [
@@ -67,32 +89,27 @@ def _portfolio_actions() -> Dict[str, Any]:
                 {"text": "📊 Prices", "callback_data": "price"},
                 {"text": "🔄 Refresh", "callback_data": "portfolio"},
             ],
-            [
-                {"text": "⬅️ Menu", "callback_data": "menu"},
-            ],
+            [{"text": "⬅️ Main Menu", "callback_data": "menu"}],
         ]
     }
 
 
 def _price_actions(token: str = "") -> Dict[str, Any]:
-    """Actions after viewing prices."""
-    rows = [
-        [
-            {"text": "💱 Swap Tokens", "callback_data": "swap"},
-            {"text": "💰 Portfolio", "callback_data": "portfolio"},
-        ],
-        [
-            {"text": "🔄 Refresh Prices", "callback_data": "price"},
-        ],
-        [
-            {"text": "⬅️ Menu", "callback_data": "menu"},
-        ],
-    ]
-    return {"inline_keyboard": rows}
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "💱 Swap Tokens", "callback_data": "swap"},
+                {"text": "💰 Portfolio", "callback_data": "portfolio"},
+            ],
+            [
+                {"text": "🔄 Refresh", "callback_data": "price"},
+                {"text": "⬅️ Main Menu", "callback_data": "menu"},
+            ],
+        ]
+    }
 
 
 def _post_swap_actions() -> Dict[str, Any]:
-    """After a swap completes."""
     return {
         "inline_keyboard": [
             [
@@ -101,14 +118,13 @@ def _post_swap_actions() -> Dict[str, Any]:
             ],
             [
                 {"text": "📋 History", "callback_data": "history"},
-                {"text": "⬅️ Menu", "callback_data": "menu"},
+                {"text": "⬅️ Main Menu", "callback_data": "menu"},
             ],
         ]
     }
 
 
 def _post_send_actions() -> Dict[str, Any]:
-    """After a send completes."""
     return {
         "inline_keyboard": [
             [
@@ -117,19 +133,14 @@ def _post_send_actions() -> Dict[str, Any]:
             ],
             [
                 {"text": "📋 History", "callback_data": "history"},
-                {"text": "⬅️ Menu", "callback_data": "menu"},
+                {"text": "⬅️ Main Menu", "callback_data": "menu"},
             ],
         ]
     }
 
 
 def _back_to_menu() -> Dict[str, Any]:
-    """Simple back button."""
-    return {
-        "inline_keyboard": [
-            [{"text": "⬅️ Menu", "callback_data": "menu"}],
-        ]
-    }
+    return {"inline_keyboard": [[{"text": "⬅️ Main Menu", "callback_data": "menu"}]]}
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -141,17 +152,19 @@ def format_welcome() -> str:
         "🟢 <b>Pacman Wallet</b>\n"
         f"{_DIVIDER}\n\n"
         "Self-custody Hedera wallet.\n"
-        "Live trades. No simulation.\n\n"
+        "Live trades · No simulation · SaucerSwap V2\n\n"
         "<b>Quick Actions</b>\n"
-        "├ 💰 <b>Portfolio</b> — balances + USD values\n"
-        "├ 💱 <b>Swap</b> — trade tokens instantly\n"
-        "├ 📤 <b>Send</b> — transfer to whitelisted wallets\n"
-        "├ 📊 <b>Prices</b> — live token prices\n"
-        "├ 🤖 <b>Robot</b> — BTC rebalancer status\n"
-        "├ ⛽ <b>Gas</b> — HBAR reserve check\n"
-        "├ 📋 <b>History</b> — recent transactions\n"
-        "└ 🏥 <b>Status</b> — system health\n\n"
-        "<i>Tap a button below or type a command.</i>"
+        "┌─────────────────────────┐\n"
+        "│ 💰 <b>Portfolio</b>  balances + USD    │\n"
+        "│ 💱 <b>Swap</b>       trade instantly    │\n"
+        "│ 📤 <b>Send</b>       whitelisted only   │\n"
+        "│ 📊 <b>Prices</b>     live token prices  │\n"
+        "│ 🤖 <b>Robot</b>      BTC rebalancer     │\n"
+        "│ ⛽ <b>Gas</b>        HBAR reserve       │\n"
+        "│ 📋 <b>History</b>    recent txns        │\n"
+        "│ 🏥 <b>Status</b>     system health      │\n"
+        "└─────────────────────────┘\n\n"
+        "<i>Tap a button below to get started.</i>"
     )
 
 
@@ -164,12 +177,6 @@ def format_balance(
     account_id: str = "",
     prices: Optional[Dict[str, float]] = None,
 ) -> Tuple[str, Dict[str, Any]]:
-    """
-    Render portfolio with USD values.
-
-    Returns:
-        (html_text, reply_markup) tuple
-    """
     if not balances:
         text = (
             "💰 <b>Portfolio</b>\n"
@@ -185,7 +192,6 @@ def format_balance(
     lines.append(_DIVIDER)
     lines.append("")
 
-    # Sort: HBAR first, USDC second, then alphabetical
     def sort_key(sym):
         if sym == "HBAR": return (0, sym)
         if sym == "USDC": return (1, sym)
@@ -223,7 +229,6 @@ def format_balance(
 # ═══════════════════════════════════════════════════════════════════
 
 def format_prices(prices: Dict[str, float]) -> Tuple[str, Dict[str, Any]]:
-    """Render multiple token prices. Returns (text, reply_markup)."""
     lines = [
         "📊 <b>Live Prices</b>",
         _DIVIDER,
@@ -240,7 +245,6 @@ def format_prices(prices: Dict[str, float]) -> Tuple[str, Dict[str, Any]]:
 
 
 def format_price(token: str, price_usd: float) -> Tuple[str, Dict[str, Any]]:
-    """Single token price. Returns (text, reply_markup)."""
     if price_usd and price_usd > 0:
         text = (
             f"📊 <b>{_escape(token)}</b>\n"
@@ -253,23 +257,108 @@ def format_price(token: str, price_usd: float) -> Tuple[str, Dict[str, Any]]:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# Swap flow
+# Swap flow — Interactive button-driven
 # ═══════════════════════════════════════════════════════════════════
 
-def format_swap_prompt() -> str:
-    """Prompt the user to type their swap command."""
-    return (
+def format_swap_entry() -> Tuple[str, Dict[str, Any]]:
+    """Top-level swap screen: pick 'From' token."""
+    text = (
         "💱 <b>Swap Tokens</b>\n"
         f"{_DIVIDER}\n\n"
-        "Type your swap:\n\n"
-        "  <code>swap 5 USDC for HBAR</code>\n"
-        "  <code>swap 100 HBAR for USDC</code>\n"
-        "  <code>buy 5 HBAR</code>\n"
-        "  <code>sell 10 HBAR</code>\n\n"
-        f"{_THIN_SEP}\n"
-        "⚡ Trades execute on Hedera mainnet.\n"
-        f"📏 Max ${'{:.0f}'.format(100)} per swap  •  Max 5% slippage"
+        "Select the token you want to <b>sell</b>:"
     )
+    rows = []
+    row = []
+    for t in TRADEABLE_TOKENS:
+        row.append({"text": f"{t['emoji']} {t['sym']}", "callback_data": f"sf:{t['id']}"})
+        if len(row) == 3:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([{"text": "⬅️ Main Menu", "callback_data": "menu"}])
+    return text, {"inline_keyboard": rows}
+
+
+def format_swap_pick_to(from_sym: str, from_id: str) -> Tuple[str, Dict[str, Any]]:
+    """After picking 'From', pick 'To' token."""
+    text = (
+        "💱 <b>Swap Tokens</b>\n"
+        f"{_DIVIDER}\n\n"
+        f"  Selling: <b>{_escape(from_sym)}</b>\n\n"
+        "Select the token you want to <b>buy</b>:"
+    )
+    rows = []
+    row = []
+    for t in TRADEABLE_TOKENS:
+        if t["id"] == from_id:
+            continue  # Can't swap to same token
+        row.append({"text": f"{t['emoji']} {t['sym']}", "callback_data": f"st:{from_id}:{t['id']}"})
+        if len(row) == 3:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([
+        {"text": "⬅️ Change From", "callback_data": "swap"},
+        {"text": "⬅️ Main Menu", "callback_data": "menu"},
+    ])
+    return text, {"inline_keyboard": rows}
+
+
+def format_swap_pick_amount(
+    from_sym: str, to_sym: str, from_id: str, to_id: str,
+    from_balance: float = 0.0, from_price: float = 0.0,
+) -> Tuple[str, Dict[str, Any]]:
+    """After picking both tokens, pick an amount."""
+    text = (
+        "💱 <b>Swap Tokens</b>\n"
+        f"{_DIVIDER}\n\n"
+        f"  {_escape(from_sym)}  →  {_escape(to_sym)}\n"
+    )
+    if from_balance > 0:
+        bal_str = _fmt_amount(from_balance)
+        text += f"  Balance: <code>{bal_str} {_escape(from_sym)}</code>"
+        if from_price > 0:
+            text += f" ≈ ${from_balance * from_price:,.2f}"
+        text += "\n"
+    text += "\nSelect amount to sell:"
+
+    presets = AMOUNT_PRESETS.get(from_sym, ["1", "5", "10", "50"])
+
+    rows = []
+    row = []
+    for amt in presets:
+        label = f"{amt} {from_sym}"
+        # Show USD estimate if we have price
+        if from_price > 0:
+            usd = float(amt) * from_price
+            if usd >= 1:
+                label = f"{amt} ≈${usd:.0f}"
+            else:
+                label = f"{amt} ≈${usd:.2f}"
+        row.append({"text": label, "callback_data": f"sa:{from_id}:{to_id}:{amt}"})
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+
+    # Max button (use full balance minus gas reserve if HBAR)
+    if from_balance > 0:
+        if from_sym == "HBAR":
+            max_amt = max(from_balance - 5.0, 0)  # Keep 5 HBAR gas reserve
+        else:
+            max_amt = from_balance
+        if max_amt > 0:
+            max_label = f"MAX ({_fmt_amount(max_amt)})"
+            rows.append([{"text": max_label, "callback_data": f"sa:{from_id}:{to_id}:{max_amt:.8f}"}])
+
+    rows.append([
+        {"text": "⬅️ Change Pair", "callback_data": "swap"},
+        {"text": "⬅️ Main Menu", "callback_data": "menu"},
+    ])
+    return text, {"inline_keyboard": rows}
 
 
 def format_swap_confirm(
@@ -282,32 +371,26 @@ def format_swap_confirm(
     fee_pct: float,
     gas_hbar: float,
     route_steps: List[Dict[str, Any]],
+    estimated_out: float = 0.0,
 ) -> Dict[str, Any]:
-    """
-    Build a swap confirmation card with Confirm/Cancel.
-
-    Returns a dict: {text, reply_markup}
-    """
+    """Build a swap confirmation card with Confirm/Cancel."""
     callback_confirm = f"confirm_swap:{amount}:{from_id}:{to_id}:{mode}"
-
-    if mode == "exact_in":
-        direction = (
-            f"<b>{_fmt_amount(amount)} {_escape(from_symbol)}</b>"
-            f"  →  {_escape(to_symbol)}"
-        )
-    else:
-        direction = (
-            f"{_escape(from_symbol)}  →  "
-            f"<b>{_fmt_amount(amount)} {_escape(to_symbol)}</b>"
-        )
 
     lines = [
         "💱 <b>Confirm Swap</b>",
         _DIVIDER,
         "",
-        f"  {direction}",
+        f"  <b>{_fmt_amount(amount)} {_escape(from_symbol)}</b>  →  <b>{_escape(to_symbol)}</b>",
         "",
     ]
+
+    # Estimated output
+    if estimated_out > 0:
+        lines.append(f"  Est. receive: <code>~{_fmt_amount(estimated_out)} {_escape(to_symbol)}</code>")
+        if amount > 0:
+            rate = estimated_out / amount
+            lines.append(f"  Rate: <code>1 {_escape(from_symbol)} ≈ {_fmt_amount(rate)} {_escape(to_symbol)}</code>")
+        lines.append("")
 
     # Route path
     if route_steps:
@@ -348,7 +431,6 @@ def format_swap_receipt(
     gas_cost_usd: float = 0.0,
     lp_fee: float = 0.0,
 ) -> Tuple[str, Dict[str, Any]]:
-    """HTML receipt after a successful swap. Returns (text, reply_markup)."""
     lines = [
         "✅ <b>Swap Complete</b>",
         _DIVIDER,
@@ -358,7 +440,6 @@ def format_swap_receipt(
         "",
     ]
 
-    # Rate
     if amount_in > 0 and amount_out > 0:
         rate = amount_out / amount_in
         lines.append(f"  Rate: <code>1 {_escape(from_symbol)} = {_fmt_amount(rate)} {_escape(to_symbol)}</code>")
@@ -387,7 +468,6 @@ def format_swap_error(
     to_symbol: str = "",
     amount: float = 0.0,
 ) -> str:
-    """Swap error message with contextual recovery hints."""
     lines = [
         "❌ <b>Swap Failed</b>",
         _DIVIDER,
@@ -421,21 +501,128 @@ def format_swap_error(
     return "\n".join(lines)
 
 
+def format_swap_prompt() -> str:
+    """Fallback text-based swap prompt (for typed commands)."""
+    return (
+        "💱 <b>Swap Tokens</b>\n"
+        f"{_DIVIDER}\n\n"
+        "Or type your swap:\n\n"
+        "  <code>swap 5 USDC for HBAR</code>\n"
+        "  <code>buy 100 HBAR</code>\n"
+        "  <code>sell 10 HBAR</code>\n\n"
+        f"{_THIN_SEP}\n"
+        f"📏 Max $100 per swap  •  Max 5% slippage"
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════
-# Send flow
+# Send flow — Interactive button-driven
 # ═══════════════════════════════════════════════════════════════════
 
-def format_send_prompt() -> str:
-    return (
+def format_send_entry() -> Tuple[str, Dict[str, Any]]:
+    """Top-level send screen: pick token to send."""
+    text = (
         "📤 <b>Send Tokens</b>\n"
         f"{_DIVIDER}\n\n"
-        "Type your transfer:\n\n"
-        "  <code>send 5 USDC to 0.0.XXXXXXX</code>\n"
-        "  <code>send 100 HBAR to 0.0.XXXXXXX</code>\n\n"
-        f"{_THIN_SEP}\n"
-        "🔒 Only whitelisted recipients allowed.\n"
-        "📏 Hedera IDs only (0.0.xxx) — no EVM."
+        "Select the token to send:"
     )
+    rows = []
+    row = []
+    for t in TRADEABLE_TOKENS:
+        row.append({"text": f"{t['emoji']} {t['sym']}", "callback_data": f"send_tok:{t['id']}"})
+        if len(row) == 3:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([{"text": "⬅️ Main Menu", "callback_data": "menu"}])
+    return text, {"inline_keyboard": rows}
+
+
+def format_send_pick_recipient(
+    token_sym: str, token_id: str,
+    whitelist: List[Dict[str, str]],
+    balance: float = 0.0,
+) -> Tuple[str, Dict[str, Any]]:
+    """After picking token, pick recipient from whitelist."""
+    text = (
+        "📤 <b>Send Tokens</b>\n"
+        f"{_DIVIDER}\n\n"
+        f"  Token: <b>{_escape(token_sym)}</b>\n"
+    )
+    if balance > 0:
+        text += f"  Balance: <code>{_fmt_amount(balance)}</code>\n"
+    text += "\nSelect recipient:"
+
+    rows = []
+    if whitelist:
+        for entry in whitelist:
+            addr = entry.get("address", "")
+            name = entry.get("name", entry.get("nickname", addr[:12]))
+            rows.append([{"text": f"👤 {name}  ({addr[-8:]})", "callback_data": f"send_to:{token_id}:{addr}"}])
+    else:
+        text += "\n\n⚠️ <i>No whitelisted recipients found.</i>\n<i>Add recipients via CLI first.</i>"
+
+    rows.append([
+        {"text": "⬅️ Change Token", "callback_data": "send"},
+        {"text": "⬅️ Main Menu", "callback_data": "menu"},
+    ])
+    return text, {"inline_keyboard": rows}
+
+
+def format_send_pick_amount(
+    token_sym: str, token_id: str, recipient: str,
+    recipient_name: str = "",
+    balance: float = 0.0, price: float = 0.0,
+) -> Tuple[str, Dict[str, Any]]:
+    """After picking recipient, pick amount."""
+    display_to = recipient_name or recipient
+    text = (
+        "📤 <b>Send Tokens</b>\n"
+        f"{_DIVIDER}\n\n"
+        f"  Token: <b>{_escape(token_sym)}</b>\n"
+        f"  To: <b>{_escape(display_to)}</b>\n"
+        f"       <code>{_escape(recipient)}</code>\n"
+    )
+    if balance > 0:
+        bal_str = _fmt_amount(balance)
+        text += f"  Balance: <code>{bal_str}</code>"
+        if price > 0:
+            text += f" ≈ ${balance * price:,.2f}"
+        text += "\n"
+    text += "\nSelect amount:"
+
+    presets = AMOUNT_PRESETS.get(token_sym, ["1", "5", "10", "50"])
+    rows = []
+    row = []
+    for amt in presets:
+        label = f"{amt} {token_sym}"
+        if price > 0:
+            usd = float(amt) * price
+            if usd >= 1:
+                label = f"{amt} ≈${usd:.0f}"
+            else:
+                label = f"{amt} ≈${usd:.2f}"
+        row.append({"text": label, "callback_data": f"send_amt:{token_id}:{recipient}:{amt}"})
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+
+    # Max button
+    if balance > 0:
+        max_amt = balance
+        if token_sym == "HBAR":
+            max_amt = max(balance - 5.0, 0)
+        if max_amt > 0:
+            rows.append([{"text": f"MAX ({_fmt_amount(max_amt)})", "callback_data": f"send_amt:{token_id}:{recipient}:{max_amt:.8f}"}])
+
+    rows.append([
+        {"text": "⬅️ Change Recipient", "callback_data": f"send_tok:{token_id}"},
+        {"text": "⬅️ Main Menu", "callback_data": "menu"},
+    ])
+    return text, {"inline_keyboard": rows}
 
 
 def format_send_confirm(
@@ -443,21 +630,24 @@ def format_send_confirm(
     token: str,
     recipient: str,
     remaining_balance: Optional[float] = None,
+    recipient_name: str = "",
 ) -> Dict[str, Any]:
-    """Build a send confirmation card."""
     callback_confirm = f"confirm_send:{amount}:{token}:{recipient}"
+    display_to = recipient_name or recipient
     lines = [
         "📤 <b>Confirm Transfer</b>",
         _DIVIDER,
         "",
         f"  Amount: <b>{_fmt_amount(amount)} {_escape(token)}</b>",
-        f"  To: <code>{_escape(recipient)}</code>",
+        f"  To: <b>{_escape(display_to)}</b>",
+        f"       <code>{_escape(recipient)}</code>",
     ]
     if remaining_balance is not None:
         lines.append(f"  Remaining: <code>{_fmt_amount(remaining_balance)} {_escape(token)}</code>")
     lines += [
         "",
         f"{_THIN_SEP}",
+        "🔒 Whitelisted recipient",
         "⚡ <i>Live transfer on Hedera mainnet.</i>",
     ]
     keyboard = {
@@ -474,7 +664,6 @@ def format_send_confirm(
 def format_send_receipt(
     amount: float, token: str, recipient: str, tx_hash: str = ""
 ) -> Tuple[str, Dict[str, Any]]:
-    """Returns (text, reply_markup)."""
     lines = [
         "✅ <b>Transfer Complete</b>",
         _DIVIDER,
@@ -509,6 +698,19 @@ def format_send_error(
     return "\n".join(lines)
 
 
+def format_send_prompt() -> str:
+    return (
+        "📤 <b>Send Tokens</b>\n"
+        f"{_DIVIDER}\n\n"
+        "Or type your transfer:\n\n"
+        "  <code>send 5 USDC to 0.0.XXXXXXX</code>\n"
+        "  <code>send 100 HBAR to 0.0.XXXXXXX</code>\n\n"
+        f"{_THIN_SEP}\n"
+        "🔒 Only whitelisted recipients allowed.\n"
+        "📏 Hedera IDs only (0.0.xxx) — no EVM."
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════
 # Status / Health
 # ═══════════════════════════════════════════════════════════════════
@@ -519,7 +721,6 @@ def format_status(
     network: str,
     prices: Optional[Dict[str, float]] = None,
 ) -> Tuple[str, Dict[str, Any]]:
-    """Full system dashboard. Returns (text, reply_markup)."""
     lines = [
         "🏥 <b>System Status</b>",
         _DIVIDER,
@@ -557,7 +758,7 @@ def format_status(
             ],
             [
                 {"text": "🤖 Robot", "callback_data": "robot"},
-                {"text": "⬅️ Menu", "callback_data": "menu"},
+                {"text": "⬅️ Main Menu", "callback_data": "menu"},
             ],
         ]
     }
@@ -569,22 +770,17 @@ def format_status(
 # ═══════════════════════════════════════════════════════════════════
 
 def format_gas_status(hbar_balance: float, min_reserve: float = 5.0) -> Tuple[str, Dict[str, Any]]:
-    """Gas reserve card. Returns (text, reply_markup)."""
     if hbar_balance >= min_reserve * 3:
-        icon = "🟢"
-        status = "Healthy"
+        icon, status = "🟢", "Healthy"
         bar = "█████████░"
     elif hbar_balance >= min_reserve * 1.5:
-        icon = "🟡"
-        status = "Adequate"
+        icon, status = "🟡", "Adequate"
         bar = "██████░░░░"
     elif hbar_balance >= min_reserve:
-        icon = "🟠"
-        status = "Low"
+        icon, status = "🟠", "Low"
         bar = "███░░░░░░░"
     else:
-        icon = "🔴"
-        status = "CRITICAL"
+        icon, status = "🔴", "CRITICAL"
         bar = "█░░░░░░░░░"
 
     text = (
@@ -605,7 +801,7 @@ def format_gas_status(hbar_balance: float, min_reserve: float = 5.0) -> Tuple[st
                 {"text": "💰 Portfolio", "callback_data": "portfolio"},
                 {"text": "💱 Buy HBAR", "callback_data": "swap"},
             ],
-            [{"text": "⬅️ Menu", "callback_data": "menu"}],
+            [{"text": "⬅️ Main Menu", "callback_data": "menu"}],
         ]
     }
     return text, keyboard
@@ -616,7 +812,6 @@ def format_gas_status(hbar_balance: float, min_reserve: float = 5.0) -> Tuple[st
 # ═══════════════════════════════════════════════════════════════════
 
 def format_history(records: List[Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
-    """Render recent transactions. Returns (text, reply_markup)."""
     if not records:
         text = (
             "📋 <b>Transaction History</b>\n"
@@ -651,7 +846,7 @@ def format_history(records: List[Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
                 {"text": "💰 Portfolio", "callback_data": "portfolio"},
                 {"text": "💱 Swap", "callback_data": "swap"},
             ],
-            [{"text": "⬅️ Menu", "callback_data": "menu"}],
+            [{"text": "⬅️ Main Menu", "callback_data": "menu"}],
         ]
     }
     return "\n".join(lines), keyboard
@@ -662,7 +857,6 @@ def format_history(records: List[Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
 # ═══════════════════════════════════════════════════════════════════
 
 def format_tokens(tokens_data: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
-    """Supported tokens card. Returns (text, reply_markup)."""
     lines = [
         "📋 <b>Supported Tokens</b>",
         _DIVIDER,
@@ -685,7 +879,7 @@ def format_tokens(tokens_data: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
         lines.insert(3, "  <b>HBAR</b>  <code>0.0.0</code>  (native)")
     lines.append("")
     lines.append(f"{_THIN_SEP}")
-    lines.append("<i>Use symbols in commands:</i> <code>swap 5 USDC for HBAR</code>")
+    lines.append("<i>Tap Swap to trade any of these tokens.</i>")
 
     keyboard = {
         "inline_keyboard": [
@@ -693,7 +887,7 @@ def format_tokens(tokens_data: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
                 {"text": "💱 Swap", "callback_data": "swap"},
                 {"text": "📊 Prices", "callback_data": "price"},
             ],
-            [{"text": "⬅️ Menu", "callback_data": "menu"}],
+            [{"text": "⬅️ Main Menu", "callback_data": "menu"}],
         ]
     }
     return "\n".join(lines), keyboard
@@ -712,7 +906,6 @@ def format_robot_status(
     last_rebalance: str = "",
     status: str = "unknown",
 ) -> Tuple[str, Dict[str, Any]]:
-    """Robot/rebalancer status card. Returns (text, reply_markup)."""
     if status == "running":
         icon = "🟢"
     elif status == "idle":
@@ -748,7 +941,7 @@ def format_robot_status(
                 {"text": "💰 Portfolio", "callback_data": "portfolio"},
                 {"text": "🏥 Status", "callback_data": "health"},
             ],
-            [{"text": "⬅️ Menu", "callback_data": "menu"}],
+            [{"text": "⬅️ Main Menu", "callback_data": "menu"}],
         ]
     }
     return "\n".join(lines), keyboard
@@ -814,7 +1007,6 @@ def format_unauthorized() -> str:
 # ═══════════════════════════════════════════════════════════════════
 
 def _escape(text: str) -> str:
-    """Minimal HTML escaping for user-facing strings."""
     return (
         str(text)
         .replace("&", "&amp;")
@@ -824,7 +1016,6 @@ def _escape(text: str) -> str:
 
 
 def _fmt_amount(amount: float) -> str:
-    """Format a token amount for compact display."""
     if amount >= 1_000:
         return f"{amount:,.2f}"
     elif amount >= 1:
@@ -836,7 +1027,6 @@ def _fmt_amount(amount: float) -> str:
 
 
 def _fmt_price(price: float) -> str:
-    """Format a USD price."""
     if price >= 1000:
         return f"${price:,.2f}"
     elif price >= 1:
