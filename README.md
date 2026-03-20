@@ -14,20 +14,134 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-ghostwhite.svg)](LICENSE)
 [![Python: 3.10+](https://img.shields.io/badge/Python-3.10+-green.svg)](https://python.org)
 
-> **AI-native self-custody middleware for Hedera Hashgraph.** Your OpenClaw agent becomes a Hedera power user — swaps, transfers, NFTs, portfolio management, and autonomous rebalancing. No exchange, no browser, no intermediary.
+> **The first fully autonomous AI wallet agent for Hedera.** Natural language wallet control, real mainnet trading on SaucerSwap V2, HCS signal marketplace, and plugin architecture for custom strategies. Conversational interface powered by OpenClaw or Telegram.
 
-**Hedera Apex Hackathon 2026** | Built for OpenClaw agents | Compatible with Hedera Agent Kit
+## Hackathon Submission
+
+**Event**: Hedera Hackathon 2026
+**Deadline**: March 24, 2026 11:59 PM ET
+
+| Track | Prize | Submitted |
+|-------|-------|-----------|
+| AI & Agents | $18,500 | ✅ |
+| OpenClaw Bounty | $4,000 | ✅ |
+
+**Links**:
+- **Demo Video**: [YouTube - TBD]
+- **GitHub Repo**: [this repo](https://github.com/chris0x88/pacman)
+- **Pitch Deck**: [`Pacman_Pitch_Deck.pdf`](Pacman_Pitch_Deck.pdf)
+- **HCS Signal Topic**: `0.0.10371598`
+- **AI Agent (Telegram)**: [@Chris0x88hederabot](https://t.me/Chris0x88hederabot)
 
 ---
 
+## New in This Version
+
+- **NFT photo display** via `nfts photo <token_id> <serial>` — SVG→PNG conversion with full metadata
+- **Daily HCS heartbeat** — Power Law signal broadcast every day (trade or no trade)
+- **OpenClaw agent improvements** — Enhanced SKILL.md with full NFT photo workflow
+- **Wallet bot fast-lane** — `/nfts` command with inline photo buttons for quick trading decisions
+
+---
+
+## What Makes This Different
+
+- **Built SaucerSwap V2 CLI from scratch** — The existing documentation was incomplete and EVM contract interactions were undocumented. Pacman is the first working multi-hop swap implementation available to the Hedera community.
+- **First V2 multi-hop swap implementation** — Enables complex routing through liquidity pools with cost-aware pathfinding via Mirror Node.
+- **Plugin architecture** — Anyone can add their own trading strategy, rebalancer, or market-making bot without modifying core code.
+- **HCS signal marketplace** — First micropayment subscription service for trading signals on Hedera. Daily Power Law signals broadcast to HCS with community subscription model (~$10/year = 0.14 HBAR/day).
+
+---
+
+## Onboarding
+
+Get started in 3 steps:
+
+**Step 1: Clone & Initialize**
+```bash
+git clone https://github.com/chris0x88/pacman.git && cd pacman
+./launch.sh setup                    # Guided wizard (testnet/mainnet selection)
+```
+
+**Step 2: Fund Your Wallet**
+```bash
+./launch.sh fund
+# Testnet: Automatic faucet request
+# Mainnet: MoonPay pre-filled link (100+ countries)
+```
+
+**Step 3: Connect Agent or Use Directly**
+```bash
+# Option A: OpenClaw plugin
+Load SKILL.md as system instructions in OpenClaw agent
+
+# Option B: Telegram bot
+Chat with @Chris0x88hederabot
+
+# Option C: Direct CLI
+./launch.sh swap 10 HBAR for USDC
+./launch.sh balance --json
+./launch.sh nfts
+```
+
+---
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────┐
+│              OpenClaw / AI Agent                  │
+│   Reads SKILL.md → drives CLI conversationally   │
+└──────────────────┬───────────────────────────────┘
+                   │  ./launch.sh <cmd> --json --yes
+┌──────────────────▼───────────────────────────────┐
+│            Single-Instance Launcher               │
+│   PID lock → daemon management → one-shot cmds   │
+└──────────────────┬───────────────────────────────┘
+                   │
+┌──────────────────▼───────────────────────────────┐
+│              CLI Dispatcher (cli/main.py)         │
+│   30+ commands → --json/--yes flag injection     │
+└──────────────────┬───────────────────────────────┘
+                   │
+┌──────────────────▼───────────────────────────────┐
+│           PacmanController (src/controller.py)    │
+│   Facade: config + router + executor + plugins   │
+└───┬──────────┬──────────┬──────────┬─────────────┘
+    │          │          │          │
+┌───▼──┐  ┌───▼───┐  ┌───▼──────┐  ┌▼──────────┐
+│Config│  │Router │  │Executor  │  │Plugins    │
+│ Keys │  │Paths  │  │Swaps,    │  │PowerLaw,  │
+│Safety│  │Graphs │  │Transfers │  │AcctMgr,   │
+│ KMS  │  │Prices │  │NFTs      │  │HCS, ...   │
+└──────┘  └───────┘  └──────────┘  └───────────┘
+                         │
+              ┌──────────▼──────────┐
+              │  Hedera Hashgraph   │
+              │  JSON-RPC (Hashio)  │
+              │  Mirror Node API    │
+              │  SaucerSwap V2 DEX  │
+              └─────────────────────┘
+```
+
+## Hedera Integration Depth
+
+| Service | Usage |
+|---------|-------|
+| **HTS (Token Service)** | Token associations, transfers, ERC20 approvals via HTS precompile |
+| **HCS (Consensus Service)** | Daily Power Law signal broadcast, HCS-10 agent messaging |
+| **EVM (Smart Contracts)** | SaucerSwap V2 router, multicall swaps, exact_in/exact_out |
+| **Mirror Node** | Real-time balances, tx history, HCS message retrieval |
+| **Accounts** | Multi-account (main + robot), ECDSA signing, nickname discovery |
+
 ## Why Pacman?
 
-- **Local-First Key Storage**: Private keys stay on your machine. XOR-obfuscated in memory. Auto-backed up to ~/Downloads on account creation. AWS KMS integration planned for institutional-grade security.
-- **AI-Native Design**: Every command returns structured JSON. Natural language parsing ("swap 10 HBAR for USDC"). Agents drive it like a tool, not a website.
-- **Agent-Safe Guardrails**: $100 max per swap, $100 daily limit, **transfer whitelists required** for all outbound transfers. Live execution only — no simulation mode. Your agent can't accidentally drain your wallet.
-- **Fiat Onramp**: New users fund with credit card via MoonPay — one link, zero intermediary, HBAR arrives direct. Only suggested when wallet is empty.
+- **Fully Autonomous**: The AI agent has complete wallet control — swaps, sends, rebalancing. Safety comes from whitelists and confirmation, not restrictions.
+- **Self-Custody**: Private keys stay on your machine. Ghost Tunnel encrypted key input. Never exposed in chat.
+- **Real Trading**: Every swap executes on Hedera mainnet via SaucerSwap V2. No simulations. Real money, real transactions.
+- **HCS Signal Marketplace**: Robot publishes daily Power Law signals to HCS. Anyone can subscribe. Creates a real micropayment economy ($10/year = ~0.14 HBAR/day).
+- **Battle-Tested**: 11 documented anti-patterns from real agent sessions. Each bug became training data.
 - **Power Law Rebalancer**: Autonomous BTC allocation daemon based on Bitcoin's 4-year cycle model (Heartbeat V3.2).
-- **Single-Instance Daemon**: One command starts everything — robot, API, dashboard. PID-locked, idempotent, no orphaned processes.
 
 ---
 
@@ -168,46 +282,6 @@ MoonPay is an official HBAR Foundation partner. No custody, no API key, 100+ cou
 | **Key Isolation** | Robot account has independent ECDSA key (separate EVM address) |
 | **KMS Planned** | AWS KMS key provider PoC — keys can stay in HSM (FIPS 140-2 L3) |
 | **Inventory** | `backup-keys --json` shows all keys with accounts (redacted) |
-
----
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────────┐
-│              OpenClaw / AI Agent                  │
-│   Reads SKILL.md → drives CLI conversationally   │
-└──────────────────┬───────────────────────────────┘
-                   │  ./launch.sh <cmd> --json --yes
-┌──────────────────▼───────────────────────────────┐
-│            Single-Instance Launcher               │
-│   PID lock → daemon management → one-shot cmds   │
-└──────────────────┬───────────────────────────────┘
-                   │
-┌──────────────────▼───────────────────────────────┐
-│              CLI Dispatcher (cli/main.py)         │
-│   30+ commands → --json/--yes flag injection     │
-└──────────────────┬───────────────────────────────┘
-                   │
-┌──────────────────▼───────────────────────────────┐
-│           PacmanController (src/controller.py)    │
-│   Facade: config + router + executor + plugins   │
-└───┬──────────┬──────────┬──────────┬─────────────┘
-    │          │          │          │
-┌───▼──┐  ┌───▼───┐  ┌───▼──────┐  ┌▼──────────┐
-│Config│  │Router │  │Executor  │  │Plugins    │
-│ Keys │  │Paths  │  │Swaps,    │  │PowerLaw,  │
-│Safety│  │Graphs │  │Transfers │  │AcctMgr,   │
-│ KMS  │  │Prices │  │NFTs      │  │HCS, ...   │
-└──────┘  └───────┘  └──────────┘  └───────────┘
-                         │
-              ┌──────────▼──────────┐
-              │  Hedera Hashgraph   │
-              │  JSON-RPC (Hashio)  │
-              │  Mirror Node API    │
-              │  SaucerSwap V2 DEX  │
-              └─────────────────────┘
-```
 
 ### Repository Structure
 

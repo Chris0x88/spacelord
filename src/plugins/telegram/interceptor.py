@@ -76,6 +76,33 @@ async def lifespan(application: FastAPI):
     _controller = PacmanController()
     _router = InboundRouter(_controller)
 
+    # Register bot commands so they appear in Telegram's "/" menu
+    import httpx
+    _bot_commands = [
+        {"command": "start",     "description": "Open wallet home screen"},
+        {"command": "portfolio", "description": "View balances & USD values"},
+        {"command": "swap",      "description": "Swap tokens (button-driven)"},
+        {"command": "send",      "description": "Send tokens to whitelisted address"},
+        {"command": "price",     "description": "Live token prices"},
+        {"command": "gas",       "description": "Check HBAR gas reserve"},
+        {"command": "history",   "description": "Recent transactions"},
+        {"command": "robot",     "description": "BTC rebalancer status"},
+        {"command": "tokens",    "description": "Supported tokens list"},
+        {"command": "status",    "description": "System health check"},
+        {"command": "setup",     "description": "Secure key setup (Mini App)"},
+        {"command": "menu",      "description": "Show main menu"},
+    ]
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                f"https://api.telegram.org/bot{_bot_token}/setMyCommands",
+                json={"commands": _bot_commands},
+            )
+            if resp.json().get("ok"):
+                logger.info(f"[Telegram] Registered {len(_bot_commands)} bot commands")
+    except Exception as exc:
+        logger.warning(f"[Telegram] setMyCommands failed: {exc}")
+
     logger.info(
         f"[Telegram] Ready. Allowed users: "
         f"{'(all)' if not _allowed_users else _allowed_users}"
@@ -210,18 +237,35 @@ async def _dispatch(update: Dict[str, Any]) -> None:
             return  # Ignore non-text messages (photos, stickers, etc.)
 
         response = _router.handle_message(text, user_id)
-        await _send(
-            chat_id,
-            response["text"],
-            reply_markup=response.get("reply_markup"),
-            parse_mode=response.get("parse_mode", "HTML"),
-        )
+        # Photo response — send image first, then optional text
+        if response.get("photo_file") or response.get("photo_url"):
+            await _send_photo(
+                chat_id,
+                photo_file=response.get("photo_file"),
+                photo_url=response.get("photo_url"),
+                caption=response.get("photo_caption", ""),
+            )
+            if response.get("text"):
+                await _send(
+                    chat_id,
+                    response["text"],
+                    reply_markup=response.get("reply_markup"),
+                    parse_mode=response.get("parse_mode", "HTML"),
+                )
+        else:
+            await _send(
+                chat_id,
+                response["text"],
+                reply_markup=response.get("reply_markup"),
+                parse_mode=response.get("parse_mode", "HTML"),
+            )
 
     # --- Callback query (inline button press) ---
     elif "callback_query" in update:
         cq = update["callback_query"]
         user_id = cq.get("from", {}).get("id", 0)
         chat_id = cq.get("message", {}).get("chat", {}).get("id", 0)
+        message_id = cq.get("message", {}).get("message_id", 0)
         callback_data = cq.get("data", "")
         callback_query_id = cq.get("id", "")
 
@@ -232,23 +276,31 @@ async def _dispatch(update: Dict[str, Any]) -> None:
         # confirm_swap:* — execute asynchronously so we don't block Telegram's
         # 5-second webhook timeout and so the user sees an immediate response.
         if callback_data.startswith("confirm_swap:"):
-            await _execute_swap_async(callback_data, chat_id, callback_query_id)
+            await _execute_swap_async(callback_data, chat_id, message_id, callback_query_id)
             return
 
         # confirm_send:* — same async pattern for blocking transfer RPC calls
         if callback_data.startswith("confirm_send:"):
-            await _execute_send_async(callback_data, chat_id, callback_query_id)
+            await _execute_send_async(callback_data, chat_id, message_id, callback_query_id)
             return
 
         response = _router.handle_callback(callback_data, user_id)
         # Acknowledge the button press first (removes loading spinner)
         await _answer_callback(callback_query_id)
-        await _send(
-            chat_id,
+        # Edit in place for seamless app-like navigation
+        edited = await _edit(
+            chat_id, message_id,
             response["text"],
             reply_markup=response.get("reply_markup"),
             parse_mode=response.get("parse_mode", "HTML"),
         )
+        if not edited:
+            await _send(
+                chat_id,
+                response["text"],
+                reply_markup=response.get("reply_markup"),
+                parse_mode=response.get("parse_mode", "HTML"),
+            )
 
     else:
         # Edited messages, channel posts, etc. — silently ignore
@@ -262,6 +314,7 @@ async def _dispatch(update: Dict[str, Any]) -> None:
 async def _execute_swap_async(
     callback_data: str,
     chat_id: int,
+    message_id: int,
     callback_query_id: str,
 ) -> None:
     """
@@ -269,16 +322,16 @@ async def _execute_swap_async(
 
     Flow:
       1. ACK the button press immediately (clears Telegram's loading spinner).
-      2. Send "⏳ Executing…" so the user knows work is in progress.
+      2. Edit confirm card to "⏳ Executing…" so the user knows work is in progress.
       3. Run the blocking controller.swap() call in a thread pool.
-      4. Send the receipt (or error message) when done.
+      4. Edit again with the receipt (or error message) when done.
     """
     # 1. Acknowledge immediately
     await _answer_callback(callback_query_id)
 
-    # 2. Notify user swap is in progress
-    await _send(
-        chat_id,
+    # 2. Edit confirm card to show progress
+    await _edit(
+        chat_id, message_id,
         "\u23f3 <b>Executing swap\u2026</b>\n\n<i>Submitting to Hedera. Please wait.</i>",
         reply_markup=None,
     )
@@ -298,13 +351,20 @@ async def _execute_swap_async(
             "parse_mode": "HTML",
         }
 
-    # 4. Send receipt or error
-    await _send(
-        chat_id,
+    # 4. Edit with receipt or error (fall back to send if edit fails)
+    edited = await _edit(
+        chat_id, message_id,
         response["text"],
         reply_markup=response.get("reply_markup"),
         parse_mode=response.get("parse_mode", "HTML"),
     )
+    if not edited:
+        await _send(
+            chat_id,
+            response["text"],
+            reply_markup=response.get("reply_markup"),
+            parse_mode=response.get("parse_mode", "HTML"),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -314,6 +374,7 @@ async def _execute_swap_async(
 async def _execute_send_async(
     callback_data: str,
     chat_id: int,
+    message_id: int,
     callback_query_id: str,
 ) -> None:
     """
@@ -321,13 +382,13 @@ async def _execute_send_async(
 
     Flow:
       1. ACK the button press immediately.
-      2. Send "⏳ Sending…" message.
+      2. Edit confirm card to "⏳ Sending…".
       3. Run the blocking controller.transfer() call in a thread pool.
-      4. Send the receipt (or error message) when done.
+      4. Edit again with the receipt (or error message) when done.
     """
     await _answer_callback(callback_query_id)
-    await _send(
-        chat_id,
+    await _edit(
+        chat_id, message_id,
         "\u23f3 <b>Sending\u2026</b>\n\n<i>Submitting transfer to Hedera. Please wait.</i>",
         reply_markup=None,
     )
@@ -344,12 +405,19 @@ async def _execute_send_async(
             "parse_mode": "HTML",
         }
 
-    await _send(
-        chat_id,
+    edited = await _edit(
+        chat_id, message_id,
         response["text"],
         reply_markup=response.get("reply_markup"),
         parse_mode=response.get("parse_mode", "HTML"),
     )
+    if not edited:
+        await _send(
+            chat_id,
+            response["text"],
+            reply_markup=response.get("reply_markup"),
+            parse_mode=response.get("parse_mode", "HTML"),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -366,20 +434,73 @@ async def _send(
     import httpx
 
     payload: Dict[str, Any] = {
-        "chat_id": chat_id,
+        "chat_id": str(chat_id),
         "text": text,
         "parse_mode": parse_mode,
     }
     if reply_markup:
-        payload["reply_markup"] = reply_markup
+        payload["reply_markup"] = json.dumps(reply_markup)
 
     url = f"https://api.telegram.org/bot{_bot_token}/sendMessage"
     async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.post(url, json=payload)
+        resp = await client.post(url, data=payload)
         if resp.status_code != 200:
             logger.warning(
                 f"[Telegram] sendMessage failed: {resp.status_code} {resp.text[:200]}"
             )
+        else:
+            data = resp.json()
+            if not data.get("ok"):
+                logger.warning(f"[Telegram] sendMessage not ok: {data.get('description', '')[:200]}")
+
+
+async def _send_photo(
+    chat_id: int,
+    photo_file: Optional[str] = None,
+    photo_url: Optional[str] = None,
+    caption: Optional[str] = None,
+) -> bool:
+    """
+    Send a photo via Telegram Bot API.
+    Prefers photo_file (local path) over photo_url.
+    Returns True on success.
+    """
+    import httpx
+
+    tg_url = f"https://api.telegram.org/bot{_bot_token}/sendPhoto"
+
+    try:
+        if photo_file:
+            path = Path(photo_file)
+            if not path.exists():
+                logger.warning(f"[Telegram] sendPhoto: file not found {photo_file}")
+                return False
+            data = {"chat_id": str(chat_id)}
+            if caption:
+                data["caption"] = caption
+            async with httpx.AsyncClient(timeout=30) as client:
+                with open(path, "rb") as f:
+                    resp = await client.post(
+                        tg_url,
+                        data=data,
+                        files={"photo": (path.name, f, "image/png")},
+                    )
+        elif photo_url:
+            payload = {"chat_id": str(chat_id), "photo": photo_url}
+            if caption:
+                payload["caption"] = caption
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(tg_url, data=payload)
+        else:
+            return False
+
+        if resp.status_code == 200 and resp.json().get("ok"):
+            return True
+        logger.warning(f"[Telegram] sendPhoto failed: {resp.status_code} {resp.text[:200]}")
+        return False
+    except Exception as exc:
+        logger.error(f"[Telegram] sendPhoto exception: {exc}")
+        return False
 
 
 async def _answer_callback(callback_query_id: str, text: str = "") -> None:
@@ -387,11 +508,48 @@ async def _answer_callback(callback_query_id: str, text: str = "") -> None:
     import httpx
 
     url = f"https://api.telegram.org/bot{_bot_token}/answerCallbackQuery"
-    payload = {"callback_query_id": callback_query_id}
+    payload: Dict[str, str] = {"callback_query_id": callback_query_id}
     if text:
         payload["text"] = text
     async with httpx.AsyncClient(timeout=5) as client:
-        await client.post(url, json=payload)
+        await client.post(url, data=payload)
+
+
+async def _edit(
+    chat_id: int,
+    message_id: int,
+    text: str,
+    reply_markup: Optional[Dict] = None,
+    parse_mode: str = "HTML",
+) -> bool:
+    """Edit an existing message in place. Returns True on success."""
+    import httpx
+
+    payload: Dict[str, Any] = {
+        "chat_id": str(chat_id),
+        "message_id": str(message_id),
+        "text": text,
+        "parse_mode": parse_mode,
+    }
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup)
+    else:
+        # Explicitly remove keyboard when reply_markup is None
+        payload["reply_markup"] = json.dumps({"inline_keyboard": []})
+
+    url = f"https://api.telegram.org/bot{_bot_token}/editMessageText"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post(url, data=payload)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("ok"):
+                return True
+            logger.warning(f"[Telegram] editMessageText not ok: {data.get('description', '')[:200]}")
+        else:
+            logger.warning(
+                f"[Telegram] editMessageText failed: {resp.status_code} {resp.text[:200]}"
+            )
+    return False
 
 
 # ---------------------------------------------------------------------------

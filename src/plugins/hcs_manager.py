@@ -66,11 +66,15 @@ class HcsManager(BasePlugin):
 
     def submit_message(self, message: str, topic_id: Optional[str] = None) -> bool:
         """Submit a message to an HCS topic."""
+        if not _HAS_HIERO_SDK:
+            logger.error("❌ hiero_sdk_python not installed — cannot submit HCS message.")
+            return False
+
         target_topic = topic_id or self.topic_id
         if not target_topic:
             logger.error("❌ No HCS Topic ID configured.")
             return False
-            
+
         try:
             client = self.app.account_manager.client
             tx = TopicMessageSubmitTransaction() \
@@ -83,7 +87,7 @@ class HcsManager(BasePlugin):
             
             return receipt.status == 22 # SUCCESS
         except Exception as e:
-            logger.error(f"❌ Failed to submit HCS message: {e}")
+            logger.error(f"❌ Failed to submit HCS message: {e}", exc_info=True)
             return False
 
     def submit_with_fee(self, message: str, collector_id: str, fee_hbar: float = 0.01) -> bool:
@@ -101,12 +105,28 @@ class HcsManager(BasePlugin):
         return success
 
     def broadcast_signal(self, signal_type: str, data: Dict) -> bool:
-        """Broadcast an investment signal as a JSON-encoded HCS message."""
+        """Broadcast an investment signal as a JSON-encoded HCS message.
+
+        Schema v1.1 — designed for both human-readable dashboards and
+        machine consumption by subscribing agents.
+        """
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        # Display titles for common signal types
+        _TITLES = {
+            "REBALANCE_BUY_BTC": "🚀 BUY BTC",
+            "REBALANCE_SELL_BTC": "📉 SELL BTC",
+            "DAILY_HEARTBEAT": "📊 DAILY SIGNAL",
+            "SIGNAL_ALERT": "⚠️ ALERT",
+        }
         payload = {
-            "version": "1.0",
+            "version": "1.1",
             "type": "SIGNAL",
-            "sender": self.app.hedera_account_id,
             "signal": signal_type,
+            "display_title": _TITLES.get(signal_type, f"📡 {signal_type}"),
+            "sender": self.app.hedera_account_id,
+            "timestamp_utc": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp_unix": int(now.timestamp()),
             "data": data,
         }
         return self.submit_message(json.dumps(payload))

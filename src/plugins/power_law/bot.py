@@ -208,14 +208,19 @@ class PowerLawBot(BasePlugin):
             log_dev = f"{abs(deviation):.1f}%"
             logger.info(f"   📏 Deviation: {log_dev} (Threshold: {self.config.threshold_percent}%)")
             
+            # Broadcast daily heartbeat signal (whether or not we trade).
+            # This makes the HCS topic a real-time market data feed —
+            # subscribers see the Power Law model's view even on quiet days.
+            self._broadcast_heartbeat(signal, state, target_btc_pct)
+
             # Rebalance Logic
             if abs(deviation) < self.config.threshold_percent:
                 reason = f"Deviation {log_dev} < {self.config.threshold_percent}%"
                 logger.info(f"   ⏭️ {reason}")
                 self._log("skip", reason)
                 return {
-                    "success": True, 
-                    "reason": reason, 
+                    "success": True,
+                    "reason": reason,
                     "traded": False,
                     "signal": signal,
                     "current_btc_pct": state.wbtc_percent,
@@ -304,6 +309,48 @@ class PowerLawBot(BasePlugin):
             # even if we exited early due to an error.
             self._save_state()
     
+    def _broadcast_heartbeat(self, signal: dict, state, target_btc_pct: float) -> None:
+        """Broadcast a daily heartbeat signal to HCS, whether or not a trade executes.
+
+        This is what makes the HCS topic a real market data feed. Subscribers see
+        the Power Law model's signal every day — the allocation target, the BTC
+        cycle phase, current portfolio state, and whether the model is saying
+        accumulate or distribute.
+
+        Cost: ~$0.0001 per HCS message. Revenue per subscriber: ~$0.027/day.
+        """
+        try:
+            heartbeat_data = {
+                "portfolio": {
+                    "wbtc_balance": round(state.wbtc_balance, 8),
+                    "wbtc_pct": round(state.wbtc_percent, 1),
+                    "usdc_balance": round(state.usdc_balance, 2),
+                    "hbar_balance": round(state.hbar_balance, 2),
+                    "total_usd": round(state.total_value_usd, 2),
+                },
+                "signal": {
+                    "allocation_pct": signal.get("allocation_pct"),
+                    "stance": signal.get("stance"),
+                    "phase": signal.get("phase"),
+                    "valuation": signal.get("valuation"),
+                    "model_price": signal.get("model_price"),
+                    "price_floor": signal.get("price_floor"),
+                    "price_ceiling": signal.get("price_ceiling"),
+                    "position_in_band_pct": signal.get("position_in_band_pct"),
+                },
+                "target_btc_pct": target_btc_pct,
+                "deviation_pct": round(state.wbtc_percent - target_btc_pct, 1),
+                "threshold_pct": self.config.threshold_percent,
+                "will_trade": abs(state.wbtc_percent - target_btc_pct) >= self.config.threshold_percent,
+            }
+            self.app.hcs_manager.broadcast_signal(
+                signal_type="DAILY_HEARTBEAT",
+                data=heartbeat_data,
+            )
+            logger.info("   📡 Daily heartbeat broadcast to HCS")
+        except Exception as e:
+            logger.error(f"HCS heartbeat broadcast failed: {e}", exc_info=True)
+
     def run_loop(self):
         """Standard work loop called by BasePlugin."""
         result = self.check_and_rebalance()

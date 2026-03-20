@@ -29,6 +29,7 @@ Returns a response dict:
 
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
@@ -39,6 +40,10 @@ logger = logging.getLogger("pacman.telegram")
 # Repo root — used for data file access
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _DATA_DIR = _REPO_ROOT / "data"
+
+# Pending custom amount input per user (user_id → context dict with TTL)
+_pending_input: Dict[int, Dict[str, Any]] = {}
+_PENDING_INPUT_TTL = 300.0  # 5 minutes in seconds
 
 # Commands handled in the fast lane (no LLM)
 FAST_LANE_COMMANDS = {
@@ -54,6 +59,7 @@ FAST_LANE_COMMANDS = {
     "/setup",
     "/robot",
     "/orders",
+    "/nfts",
 }
 
 # callback_data values → treated as equivalent slash command
@@ -66,7 +72,6 @@ CALLBACK_MAP = {
     "status":    "/status",
     "tokens":    "/tokens",
     "history":   "/history",
-    "setup":     "/setup",
     "robot":     "/robot",
     "orders":    "/orders",
     "menu":      "/menu",
@@ -129,6 +134,17 @@ class InboundRouter:
         if callback_data.startswith("confirm_send:"):
             return _reply("⏳ Processing transfer…", with_buttons=False)
 
+        # nft_photo:<token_id>:<serial> — send NFT image to Telegram
+        # Format: nft_photo:0.0.4054027:73729
+        if callback_data.startswith("nft_photo:"):
+            rest = callback_data[len("nft_photo:"):]  # "0.0.4054027:73729"
+            colon_idx = rest.rfind(":")
+            if colon_idx > 0:
+                token_id = rest[:colon_idx]
+                serial = rest[colon_idx + 1:]
+                return self._cmd_nfts(f"photo {token_id} {serial}")
+            return _reply("⚠️ Invalid NFT reference.", with_buttons=True)
+
         # Cancel
         if callback_data in ("cancel:swap", "cancel:send"):
             return _reply("🚫 Cancelled.", with_buttons=True)
@@ -149,6 +165,10 @@ class InboundRouter:
         if callback_data.startswith("sa:"):
             return self._cmd_swap_confirm_from_callback(callback_data)
 
+        # custom_swap:{from_id}:{to_id} — user taps "✏️ Custom" button → request amount input
+        if callback_data.startswith("custom_swap:"):
+            return self._cmd_custom_swap_input(callback_data, user_id)
+
         # ── Send flow (interactive) ──────────────────────────
         if callback_data == "send":
             return self._cmd_send_interactive()
@@ -164,6 +184,27 @@ class InboundRouter:
         # send_amt:{token_id}:{recipient}:{amount} — user picked amount → show confirm
         if callback_data.startswith("send_amt:"):
             return self._cmd_send_confirm_from_callback(callback_data)
+
+        # custom_send:{token_id}:{recipient} — user taps "✏️ Custom" button → request amount input
+        if callback_data.startswith("custom_send:"):
+            return self._cmd_custom_send_input(callback_data, user_id)
+
+        # ── Quick-swap shortcuts ───────────────────────────────
+        if callback_data == "qs:HBAR":
+            # Quick buy HBAR: pre-select USDC → HBAR, skip to amount.
+            # Use whichever USDC the user actually holds balance in.
+            usdc_id = self._preferred_usdc_id("0.0.456858")
+            return self._cmd_swap_pick_amount(f"st:{usdc_id}:0.0.0")
+
+        if callback_data == "qs:USDC":
+            # Quick buy USDC: pre-select HBAR → USDC, skip to amount.
+            # Use whichever USDC the user actually holds balance in (or default).
+            usdc_id = self._preferred_usdc_id("0.0.456858")
+            return self._cmd_swap_pick_amount(f"st:0.0.0:{usdc_id}")
+
+        # ── Setup (handled separately — may need webapp button) ───
+        if callback_data == "setup":
+            return self._cmd_setup()
 
         # ── Standard commands ────────────────────────────────
         cmd = CALLBACK_MAP.get(callback_data)
@@ -311,6 +352,8 @@ class InboundRouter:
                 return self._cmd_robot()
             elif cmd == "/orders":
                 return self._cmd_orders()
+            elif cmd == "/nfts":
+                return self._cmd_nfts(arg)
             else:
                 return _not_implemented(cmd)
         except Exception as exc:
@@ -342,14 +385,44 @@ class InboundRouter:
         except Exception:
             return {}
 
+    # USDC comes in two flavors on Hedera: EVM (0.0.456858) and HTS-native (0.0.1055459).
+    # The user may hold either one. These helpers pick the right one so swaps don't fail
+    # with "Have 0.000000" just because the router guessed the wrong variant.
+    _USDC_ALT: Dict[str, str] = {
+        "0.0.456858":  "0.0.1055459",
+        "0.0.1055459": "0.0.456858",
+    }
+
+    def _preferred_usdc_id(self, default: str = "0.0.456858") -> str:
+        """Return whichever USDC token ID the user actually holds a positive balance in.
+        Falls back to *default* if neither has balance or on any error."""
+        alt = self._USDC_ALT.get(default)
+        if not alt:
+            return default
+        try:
+            held = self._normalize_balances(self._ctrl.get_balances())
+            default_sym = self._id_to_symbol(default)
+            alt_sym     = self._id_to_symbol(alt)
+            if held.get(default_sym, 0.0) > 0:
+                return default
+            if held.get(alt_sym, 0.0) > 0:
+                return alt
+        except Exception:
+            pass
+        return default
+
+    def _usdc_balance_fallback(self, token_id: str) -> str:
+        """If *token_id* is a USDC variant and user has 0 balance, swap to the other one.
+        Used to silently fix "swap 0.5 USDC for HBAR" when user holds USDC[hts]."""
+        if token_id not in self._USDC_ALT:
+            return token_id
+        return self._preferred_usdc_id(default=token_id)
+
     def _get_token_balance(self, sym: str) -> float:
         """Get balance for a specific token symbol."""
         try:
-            balances = self._ctrl.get_balances()
-            bal = balances.get(sym, 0.0)
-            if isinstance(bal, dict):
-                bal = bal.get("balance", 0.0)
-            return float(bal)
+            balances = self._normalize_balances(self._ctrl.get_balances())
+            return balances.get(sym, 0.0)
         except Exception:
             return 0.0
 
@@ -358,15 +431,33 @@ class InboundRouter:
         prices = self._get_prices()
         return prices.get(sym, 0.0)
 
+    def _normalize_balances(self, raw: Dict[str, Any]) -> Dict[str, float]:
+        """Convert raw balances (may use token IDs as keys) to symbol-keyed dict.
+        Filters out WHBAR (internal routing only) and zero balances."""
+        result: Dict[str, float] = {}
+        for key, val in raw.items():
+            if isinstance(val, dict):
+                val = val.get("balance", 0.0)
+            val = float(val)
+            if val <= 0:
+                continue
+            sym = self._id_to_symbol(key)
+            # WHBAR is internal routing only — never expose to users
+            if sym == "WHBAR" or key == "0.0.1456986":
+                continue
+            result[sym] = result.get(sym, 0.0) + val
+        return result
+
     def _cmd_balance(self) -> Dict[str, Any]:
-        balances = self._ctrl.get_balances()
+        raw_balances = self._ctrl.get_balances()
+        balances = self._normalize_balances(raw_balances)
         account_id = getattr(self._ctrl, "account_id", "")
         prices = self._get_prices()
         text, reply_markup = formatters.format_balance(balances, account_id=account_id, prices=prices)
         return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _cmd_status(self) -> Dict[str, Any]:
-        balances = self._ctrl.get_balances()
+        balances = self._normalize_balances(self._ctrl.get_balances())
         account_id = getattr(self._ctrl, "account_id", "unknown")
         network = getattr(self._ctrl, "network", "mainnet")
         prices = self._get_prices()
@@ -376,7 +467,7 @@ class InboundRouter:
     def _cmd_health(self) -> Dict[str, Any]:
         account_id = getattr(self._ctrl, "account_id", "unknown")
         network = getattr(self._ctrl, "network", "mainnet")
-        balances = self._ctrl.get_balances()
+        balances = self._normalize_balances(self._ctrl.get_balances())
         prices = self._get_prices()
         text, reply_markup = formatters.format_status(balances, account_id, network, prices=prices)
         return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
@@ -389,10 +480,8 @@ class InboundRouter:
                 with open(gov_path) as f:
                     gov = json.load(f)
                 min_reserve = gov.get("safety_limits", {}).get("min_hbar_reserve", 5.0)
-            balances = self._ctrl.get_balances()
-            hbar_bal = balances.get("HBAR", balances.get("hbar", 0.0))
-            if isinstance(hbar_bal, dict):
-                hbar_bal = hbar_bal.get("balance", 0.0)
+            balances = self._normalize_balances(self._ctrl.get_balances())
+            hbar_bal = balances.get("HBAR", 0.0)
             text, reply_markup = formatters.format_gas_status(hbar_bal, min_reserve)
         except Exception as exc:
             text = formatters.format_error(f"Could not fetch gas status: {exc}")
@@ -400,7 +489,30 @@ class InboundRouter:
         return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _cmd_help(self) -> Dict[str, Any]:
-        text = formatters.format_welcome()
+        """Home screen with live balance summary."""
+        total_usd = 0.0
+        hbar_balance = 0.0
+        hbar_reserve = 5.0
+        try:
+            balances = self._normalize_balances(self._ctrl.get_balances())
+            prices = self._get_prices()
+            for sym, amount in balances.items():
+                if sym == "HBAR":
+                    hbar_balance = float(amount)
+                if amount and prices.get(sym):
+                    total_usd += float(amount) * prices[sym]
+            gov_path = _DATA_DIR / "governance.json"
+            if gov_path.exists():
+                with open(gov_path) as f:
+                    gov = json.load(f)
+                hbar_reserve = gov.get("safety_limits", {}).get("min_hbar_reserve", 5.0)
+        except Exception:
+            pass
+        text = formatters.format_home(
+            total_usd=total_usd,
+            hbar_balance=hbar_balance,
+            hbar_reserve=hbar_reserve,
+        )
         return _reply(text, with_buttons=True)
 
     def _cmd_price(self, token: Optional[str] = None) -> Dict[str, Any]:
@@ -538,6 +650,67 @@ class InboundRouter:
         text = formatters.format_not_implemented("Pending Orders")
         return _reply(text, with_buttons=True)
 
+    def _cmd_nfts(self, arg: str = "") -> Dict[str, Any]:
+        """List NFTs — and optionally send photo if 'photo <token_id> <serial>' arg provided."""
+        import subprocess, json as _json
+        try:
+            if arg.startswith("photo "):
+                # nfts photo <token_id> <serial>
+                parts = arg.split()
+                if len(parts) >= 3:
+                    cmd = ["./launch.sh", "nfts", "photo", parts[1], parts[2], "--json"]
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=45,
+                                            cwd=str(_REPO_ROOT))
+                    data = _json.loads(result.stdout.strip()) if result.stdout.strip() else {}
+                    if data.get("sent_to_telegram"):
+                        return _reply(
+                            f"🖼 <b>Image sent!</b> Check above ↑\n"
+                            f"<code>{data.get('token_id')} #{data.get('serial_number')}</code>",
+                            with_buttons=True
+                        )
+                    return _reply(
+                        f"⚠️ Couldn't send photo. Image URL:\n"
+                        f"<a href=\"{data.get('image_url','')}\">View NFT Image</a>",
+                        with_buttons=True
+                    )
+
+            # List NFTs
+            result = subprocess.run(
+                ["./launch.sh", "nfts", "--json"],
+                capture_output=True, text=True, timeout=20, cwd=str(_REPO_ROOT)
+            )
+            data = _json.loads(result.stdout.strip()) if result.stdout.strip() else {}
+
+            if data.get("error"):
+                return _reply(f"❌ {data['error']}", with_buttons=True)
+
+            nfts = data.get("nfts", [])
+            count = data.get("count", 0)
+
+            if count == 0:
+                return _reply("🖼 <b>No NFTs found</b> for this account.", with_buttons=True)
+
+            lines = [f"🖼 <b>Your NFTs</b> ({count} total)\n"]
+            buttons = []
+            for nft in nfts[:5]:
+                tid = nft.get("token_id", "")
+                serial = nft.get("serial_number", "")
+                meta = nft.get("metadata", {}) or {}
+                name = meta.get("name", f"NFT #{serial}") if isinstance(meta, dict) else f"NFT #{serial}"
+                lines.append(f"• <b>{name}</b>\n  <code>{tid} #{serial}</code>")
+                buttons.append([{"text": f"🖼 {name}", "callback_data": f"nft_photo:{tid}:{serial}"}])
+
+            buttons.append([{"text": "🔙 Menu", "callback_data": "menu"}])
+            return {
+                "text": "\n".join(lines),
+                "reply_markup": {"inline_keyboard": buttons},
+                "parse_mode": "HTML",
+            }
+
+        except Exception as exc:
+            logger.error(f"_cmd_nfts error: {exc}", exc_info=True)
+            return _error(str(exc))
+
     # ------------------------------------------------------------------
     # Interactive Swap flow (button-driven, no typing)
     # ------------------------------------------------------------------
@@ -564,10 +737,12 @@ class InboundRouter:
         to_sym = self._id_to_symbol(to_id)
         from_balance = self._get_token_balance(from_sym)
         from_price = self._get_token_price(from_sym)
+        to_price = self._get_token_price(to_sym)
 
         text, reply_markup = formatters.format_swap_pick_amount(
             from_sym, to_sym, from_id, to_id,
             from_balance=from_balance, from_price=from_price,
+            to_price=to_price,
         )
         return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
@@ -690,6 +865,11 @@ class InboundRouter:
         amount  = req["amount"]
         mode    = req.get("mode", "exact_in")
 
+        # If translator mapped "USDC" to one variant but user holds the other,
+        # silently use the one they actually own so the swap doesn't fail.
+        from_id = self._usdc_balance_fallback(from_id)
+        to_id   = self._usdc_balance_fallback(to_id)
+
         if amount == -1:
             return _reply(
                 "ℹ️ <b>Swap All</b> isn't supported via Telegram.\n\n"
@@ -760,6 +940,15 @@ class InboundRouter:
                     "fee_pct": step.fee_percent * 100,
                 })
 
+        estimated_out = 0.0
+        try:
+            if hasattr(route, 'estimated_output'):
+                estimated_out = route.estimated_output
+            elif hasattr(route, 'amount_out'):
+                estimated_out = route.amount_out
+        except Exception:
+            pass
+
         confirm = formatters.format_swap_confirm(
             amount=amount,
             from_symbol=from_sym,
@@ -770,6 +959,7 @@ class InboundRouter:
             fee_pct=route.total_fee_percent,
             gas_hbar=route.total_gas_hbar,
             route_steps=steps,
+            estimated_out=estimated_out,
         )
         return {**confirm, "parse_mode": "HTML"}
 
@@ -874,6 +1064,119 @@ class InboundRouter:
             recipient_name=recipient_name,
         )
         return {**confirm, "parse_mode": "HTML"}
+
+    def _cmd_custom_swap_input(self, callback_data: str, user_id: int) -> Dict[str, Any]:
+        """custom_swap:{from_id}:{to_id} — user taps custom amount button.
+        Store context in _pending_input and ask for amount via force_reply."""
+        try:
+            parts = callback_data[len("custom_swap:"):].split(":", 1)
+            if len(parts) != 2:
+                return _error("Invalid custom swap parameters.")
+            from_id, to_id = parts
+        except Exception:
+            return _error("Could not parse custom swap request.")
+
+        from_sym = self._id_to_symbol(from_id)
+        to_sym = self._id_to_symbol(to_id)
+
+        # Store the context for when user types the amount
+        _pending_input[user_id] = {
+            "type": "custom_swap",
+            "from_id": from_id,
+            "to_id": to_id,
+            "timestamp": time.time(),
+        }
+
+        prompt = f"💱 Type the amount of {from_sym} to swap:"
+        return {
+            "text": prompt,
+            "reply_markup": {"force_reply": True, "selective": True},
+            "parse_mode": "HTML",
+        }
+
+    def _cmd_custom_send_input(self, callback_data: str, user_id: int) -> Dict[str, Any]:
+        """custom_send:{token_id}:{recipient} — user taps custom amount button.
+        Store context in _pending_input and ask for amount via force_reply."""
+        try:
+            parts = callback_data[len("custom_send:"):].split(":", 1)
+            if len(parts) != 2:
+                return _error("Invalid custom send parameters.")
+            token_id, recipient = parts
+        except Exception:
+            return _error("Could not parse custom send request.")
+
+        token_sym = self._id_to_symbol(token_id)
+
+        # Store the context for when user types the amount
+        _pending_input[user_id] = {
+            "type": "custom_send",
+            "token_id": token_id,
+            "recipient": recipient,
+            "timestamp": time.time(),
+        }
+
+        prompt = f"💰 Type the amount of {token_sym} to send:"
+        return {
+            "text": prompt,
+            "reply_markup": {"force_reply": True, "selective": True},
+            "parse_mode": "HTML",
+        }
+
+    def handle_pending_input(self, text: str, user_id: int) -> Optional[Dict[str, Any]]:
+        """Check if user has pending custom amount input.
+        If yes, parse the amount and call the appropriate confirm function.
+        If no, return None.
+        Cleans up expired entries."""
+        now = time.time()
+
+        # Clean up expired entries
+        expired = [
+            uid for uid, ctx in _pending_input.items()
+            if now - ctx.get("timestamp", now) > _PENDING_INPUT_TTL
+        ]
+        for uid in expired:
+            del _pending_input[uid]
+
+        # Check if this user has pending input
+        if user_id not in _pending_input:
+            return None
+
+        ctx = _pending_input.pop(user_id)
+
+        # Parse the amount
+        try:
+            amount = float(text.strip())
+            if amount <= 0:
+                return {
+                    "text": "❌ Amount must be positive.",
+                    "reply_markup": formatters.format_buttons(),
+                    "parse_mode": "HTML",
+                }
+        except ValueError:
+            return {
+                "text": f"❌ Could not parse '{text}' as a number.",
+                "reply_markup": formatters.format_buttons(),
+                "parse_mode": "HTML",
+            }
+
+        # Route to the appropriate confirm function
+        if ctx.get("type") == "custom_swap":
+            from_id = ctx.get("from_id", "")
+            to_id = ctx.get("to_id", "")
+            callback_data = f"sa:{from_id}:{to_id}:{amount}"
+            return self._cmd_swap_confirm_from_callback(callback_data)
+        elif ctx.get("type") == "custom_send":
+            token_id = ctx.get("token_id", "")
+            recipient = ctx.get("recipient", "")
+            callback_data = f"send_amt:{token_id}:{recipient}:{amount}"
+            return self._cmd_send_confirm_from_callback(callback_data)
+
+        # Unknown pending type
+        return {
+            "text": "❌ Unknown pending input type.",
+            "reply_markup": formatters.format_buttons(),
+            "parse_mode": "HTML",
+        }
 
     def _cmd_send_parse(self, text: str) -> Dict[str, Any]:
         """Parse a free-text send command, check whitelist and balance."""

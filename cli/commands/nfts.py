@@ -60,6 +60,12 @@ def cmd_nfts(app, args):
     if clean and clean[0].lower() == "view":
         _cmd_view(clean[1:], account_id, mirror, json_mode)
         return
+    if clean and clean[0].lower() == "image":
+        _cmd_image(clean[1:], account_id, mirror, json_mode)
+        return
+    if clean and clean[0].lower() == "photo":
+        _cmd_photo(clean[1:], account_id, mirror, json_mode)
+        return
 
     # Filter by collection if token_id provided
     collection_filter = None
@@ -225,6 +231,293 @@ def _cmd_view(args, account_id, mirror, json_mode):
 
     print(f"\n  {C.MUTED}Download image: {C.ACCENT}nfts download {token_id} {serial}{C.R}")
     print()
+
+
+def _cmd_photo(args, account_id, mirror, json_mode):
+    """
+    Send an NFT image directly to Telegram chat via the bot token in .env.
+    This is the OpenClaw agent's path — it can't send photos natively,
+    so this command does it on the agent's behalf.
+
+    Usage: nfts photo <token_id> <serial>
+    Reads TELEGRAM_BOT_TOKEN + TELEGRAM_OWNER_CHAT_ID from .env
+    Returns JSON: {"success": True, "sent": True, "name": "..."}
+    """
+    import os
+
+    if len(args) < 2:
+        msg = "Usage: nfts photo <token_id> <serial_number>"
+        print(_json.dumps({"error": msg}) if json_mode else f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    token_id = args[0]
+    try:
+        serial = int(args[1])
+    except ValueError:
+        msg = f"Invalid serial: {args[1]}"
+        print(_json.dumps({"error": msg}) if json_mode else f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    # Load bot token + owner chat ID from env
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
+    if not bot_token:
+        msg = "TELEGRAM_BOT_TOKEN not set in .env"
+        print(_json.dumps({"error": msg}) if json_mode else f"  {C.ERR}✗{C.R} {msg}")
+        return
+    if not chat_id:
+        # Fall back to first allowed user
+        allowed = os.environ.get("TELEGRAM_ALLOWED_USERS", "")
+        chat_id = allowed.split(",")[0].strip() if allowed else ""
+    if not chat_id:
+        msg = "TELEGRAM_OWNER_CHAT_ID not set in .env (add your Telegram user ID)"
+        print(_json.dumps({"error": msg}) if json_mode else f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    # Fetch NFT + image
+    nft_data = _fetch_single_nft(token_id, serial, mirror)
+    if not nft_data:
+        msg = f"NFT not found: {token_id} #{serial}"
+        print(_json.dumps({"error": msg}) if json_mode else f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    meta_str = _decode_metadata_str(nft_data.get("metadata", ""))
+    meta_obj = _fetch_metadata_json(meta_str) if meta_str else None
+    nft_name = meta_obj.get("name", f"NFT #{serial}") if meta_obj else f"NFT #{serial}"
+    nft_desc = meta_obj.get("description", "") if meta_obj else ""
+
+    image_url = None
+    if meta_obj:
+        image_url = meta_obj.get("image") or meta_obj.get("image_url")
+    if not image_url and meta_str and meta_str.startswith("http"):
+        image_url = meta_str
+
+    if not image_url:
+        msg = "No image URL found for this NFT"
+        print(_json.dumps({"error": msg}) if json_mode else f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    original_url = image_url
+    image_url = _resolve_ipfs(image_url)
+
+    # Download + convert SVG→PNG if needed
+    try:
+        resp = requests.get(image_url, timeout=30)
+        resp.raise_for_status()
+    except Exception as e:
+        msg = f"Could not fetch image: {e}"
+        print(_json.dumps({"error": msg, "image_url": original_url}) if json_mode
+              else f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    content_type = resp.headers.get("Content-Type", "")
+    is_svg = "svg" in content_type or image_url.lower().endswith(".svg")
+
+    out_dir = Path("data/nft_images")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    safe_tid = token_id.replace(".", "_")
+
+    if is_svg:
+        try:
+            import cairosvg
+            png_path = out_dir / f"{safe_tid}_{serial}.png"
+            cairosvg.svg2png(bytestring=resp.content, write_to=str(png_path),
+                             output_width=800, output_height=800)
+            send_path = str(png_path)
+        except ImportError:
+            # cairosvg not available — send SVG URL directly via Telegram document
+            send_path = None
+    else:
+        ext = ".jpg" if ("jpeg" in content_type or "jpg" in content_type) else ".png"
+        img_path = out_dir / f"{safe_tid}_{serial}{ext}"
+        img_path.write_bytes(resp.content)
+        send_path = str(img_path)
+
+    # Build caption
+    caption = f"🖼 <b>{nft_name}</b>"
+    if nft_desc:
+        caption += f"\n{nft_desc[:200]}"
+    caption += f"\n<code>{token_id} #{serial}</code>"
+
+    # Send via Telegram Bot API
+    import urllib.request, urllib.parse
+
+    tg_base = f"https://api.telegram.org/bot{bot_token}"
+    sent = False
+
+    if send_path and Path(send_path).exists():
+        # Send as photo (PNG/JPG)
+        try:
+            import http.client, mimetypes, uuid
+            boundary = uuid.uuid4().hex
+            with open(send_path, "rb") as f:
+                file_data = f.read()
+
+            body_parts = []
+            # chat_id field
+            body_parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n{chat_id}'.encode())
+            # caption field
+            body_parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n{caption}'.encode())
+            # parse_mode
+            body_parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="parse_mode"\r\n\r\nHTML'.encode())
+            # photo file
+            fname = Path(send_path).name
+            body_parts.append(
+                f'--{boundary}\r\nContent-Disposition: form-data; name="photo"; filename="{fname}"\r\nContent-Type: image/png\r\n\r\n'.encode()
+                + file_data
+            )
+            body_parts.append(f'--{boundary}--'.encode())
+            body = b'\r\n'.join(body_parts)
+
+            req = urllib.request.Request(
+                f"{tg_base}/sendPhoto",
+                data=body,
+                headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=30) as r:
+                result = _json.loads(r.read())
+                sent = result.get("ok", False)
+        except Exception as e:
+            logger.warning(f"sendPhoto failed: {e}")
+
+    if not sent:
+        # Fallback: send original URL as a link with metadata
+        try:
+            params = urllib.parse.urlencode({
+                "chat_id": chat_id,
+                "text": f"{caption}\n\n🔗 <a href=\"{original_url}\">View Image</a>",
+                "parse_mode": "HTML",
+                "disable_web_page_preview": "false",
+            }).encode()
+            req = urllib.request.Request(f"{tg_base}/sendMessage", data=params, method="POST")
+            with urllib.request.urlopen(req, timeout=10) as r:
+                result = _json.loads(r.read())
+                sent = result.get("ok", False)
+        except Exception as e:
+            logger.warning(f"sendMessage fallback failed: {e}")
+
+    result_payload = {
+        "success": sent,
+        "sent_to_telegram": sent,
+        "name": nft_name,
+        "token_id": token_id,
+        "serial_number": serial,
+        "image_url": original_url,
+    }
+    if json_mode:
+        print(_json.dumps(result_payload))
+    elif sent:
+        print(f"  {C.OK}✅ Image sent to Telegram — {nft_name}{C.R}")
+    else:
+        print(f"  {C.ERR}✗{C.R} Send failed. Image URL: {original_url}")
+
+
+def _cmd_image(args, account_id, mirror, json_mode):
+    """
+    Fetch NFT image, convert SVG→PNG if needed, return local file path.
+    Designed for Telegram bot photo sending.
+    Returns JSON: {"success": True, "file": "/path/to/image.png", "name": "...", "image_url": "..."}
+    """
+    if len(args) < 2:
+        msg = "Usage: nfts image <token_id> <serial_number>"
+        print(_json.dumps({"error": msg}) if json_mode else f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    token_id = args[0]
+    try:
+        serial = int(args[1])
+    except ValueError:
+        msg = f"Invalid serial number: {args[1]}"
+        print(_json.dumps({"error": msg}) if json_mode else f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    nft_data = _fetch_single_nft(token_id, serial, mirror)
+    if not nft_data:
+        msg = f"NFT not found: {token_id} #{serial}"
+        print(_json.dumps({"error": msg}) if json_mode else f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    meta_str = _decode_metadata_str(nft_data.get("metadata", ""))
+    meta_obj = _fetch_metadata_json(meta_str) if meta_str else None
+    nft_name = ""
+    image_url = None
+
+    if meta_obj:
+        nft_name = meta_obj.get("name", "")
+        image_url = meta_obj.get("image") or meta_obj.get("image_url")
+
+    # SaucerSwap LP position NFTs: image is at a known URL pattern if not in metadata
+    if not image_url and meta_str and "ssv2.io" in meta_str:
+        image_url = meta_str
+    if not image_url and meta_str and meta_str.startswith("http"):
+        image_url = meta_str
+
+    if not image_url:
+        msg = "No image URL found in NFT metadata"
+        print(_json.dumps({"error": msg}) if json_mode else f"  {C.ERR}✗{C.R} {msg}")
+        return
+
+    original_url = image_url
+    image_url = _resolve_ipfs(image_url)
+
+    out_dir = Path("data/nft_images")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    safe_tid = token_id.replace(".", "_")
+
+    try:
+        resp = requests.get(image_url, timeout=30)
+        resp.raise_for_status()
+        content_type = resp.headers.get("Content-Type", "")
+        is_svg = "svg" in content_type or image_url.lower().endswith(".svg")
+
+        if is_svg:
+            # Convert SVG → PNG using cairosvg
+            try:
+                import cairosvg
+                png_path = out_dir / f"{safe_tid}_{serial}.png"
+                cairosvg.svg2png(
+                    bytestring=resp.content,
+                    write_to=str(png_path),
+                    output_width=800,
+                    output_height=800,
+                )
+                out_path = png_path
+            except ImportError:
+                # Fallback: save SVG as-is — caller can use image_url directly
+                svg_path = out_dir / f"{safe_tid}_{serial}.svg"
+                svg_path.write_bytes(resp.content)
+                out_path = svg_path
+        else:
+            ext = ".png"
+            if "jpeg" in content_type or "jpg" in content_type:
+                ext = ".jpg"
+            elif "gif" in content_type:
+                ext = ".gif"
+            elif "webp" in content_type:
+                ext = ".webp"
+            out_path = out_dir / f"{safe_tid}_{serial}{ext}"
+            out_path.write_bytes(resp.content)
+
+        result = {
+            "success": True,
+            "token_id": token_id,
+            "serial_number": serial,
+            "name": nft_name,
+            "file": str(out_path),
+            "image_url": original_url,
+            "is_png": str(out_path).endswith(".png"),
+            "size_bytes": out_path.stat().st_size,
+        }
+        if json_mode:
+            print(_json.dumps(result))
+        else:
+            print(f"  {C.OK}✅ Image ready: {out_path}{C.R}")
+
+    except Exception as e:
+        msg = f"Image fetch failed: {e}"
+        print(_json.dumps({"error": msg, "image_url": original_url}) if json_mode
+              else f"  {C.ERR}✗{C.R} {msg}")
 
 
 def _cmd_download(args, account_id, mirror, json_mode):
