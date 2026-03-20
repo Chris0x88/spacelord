@@ -2,21 +2,27 @@
 Telegram Inbound Router
 =======================
 Traffic cop: decides whether an incoming update goes to the fast lane
-(direct PacmanController call) or the AI lane (Phase 2+, LLM round-trip).
+(direct PacmanController call) or the AI lane (LLM round-trip, future).
 
-Fast-lane commands (Phase 1):
-  /balance, /portfolio → get_balances()
-  /price               → placeholder (Phase 2)
+Fast-lane commands (Phase 1–3):
+  /balance, /portfolio → get_balances() + prices
+  /price               → price lookups
   /status, /health     → system status
-  callback_query       → same mapping as slash commands
+  /tokens, /gas        → token info, gas reserve
+  /history             → recent tx records
+  /send                → transfer flow
+  /robot               → rebalancer status
+  /setup               → Ghost Tunnel
+  /menu, /start, /help → main menu
 
 Swap lane (Phase 2):
-  Free-text swap commands  → parse → confirm keyboard
-  confirm_swap:* callback  → execute_swap_callback() (called from async thread)
-  cancel:swap callback     → cancel message
+  Free-text swap commands → parse → confirm keyboard
+  confirm_swap:* callback → execute_swap_callback() (async thread)
+  cancel:swap callback    → cancel message
 
-AI lane:
-  Everything else → placeholder response for now.
+Send lane (Phase 3):
+  send/transfer commands  → parse → confirm keyboard
+  confirm_send:* callback → execute_send_callback() (async thread)
 
 Returns a response dict:
   {
@@ -44,12 +50,14 @@ FAST_LANE_COMMANDS = {
     "/balance", "/portfolio",
     "/price",
     "/status", "/health",
-    "/start", "/help",
+    "/start", "/help", "/menu",
     "/tokens",
     "/gas",
     "/history",
     "/send",
     "/setup",
+    "/robot",
+    "/orders",
 }
 
 # callback_data values → treated as equivalent slash command
@@ -64,10 +72,11 @@ CALLBACK_MAP = {
     "history":   "/history",
     "send":      "/send",
     "setup":     "/setup",
+    "robot":     "/robot",
+    "orders":    "/orders",
+    "menu":      "/menu",
     # Phase 2+ — handled explicitly below
     "swap":      "/swap",
-    "orders":    "/orders",
-    "robot":     "/robot",
 }
 
 # Words that indicate a swap intent in free-text messages
@@ -93,7 +102,6 @@ class InboundRouter:
         """Route a text message (slash command or free text)."""
         cmd = self._extract_command(text)
         if cmd and cmd in FAST_LANE_COMMANDS:
-            # Pass the rest of the line as an argument for commands that accept it
             arg = text[len(cmd):].strip() if cmd else ""
             return self._fast_lane(cmd, user_id, arg=arg)
 
@@ -112,11 +120,7 @@ class InboundRouter:
     def handle_web_app_data(self, data: str, user_id: int) -> Dict[str, Any]:
         """
         Handle web_app_data sent back by Telegram after Mini App submission.
-        Telegram delivers this as a special message type when the Mini App calls
-        Telegram.WebApp.sendData(). We treat it as a confirmation receipt.
-
-        Note: Ghost Tunnel uses a direct POST /ghost instead of sendData(),
-        so this is a belt-and-suspenders handler for future use.
+        Ghost Tunnel uses direct POST /ghost instead, so this is belt-and-suspenders.
         """
         try:
             import json as _json
@@ -127,47 +131,49 @@ class InboundRouter:
                 return _reply(text, with_buttons=True)
         except Exception:
             pass
-        return _reply("\U0001f510 Key received.", with_buttons=True)
+        return _reply("🔐 Key received.", with_buttons=True)
 
     def handle_callback(self, callback_data: str, user_id: int) -> Dict[str, Any]:
         """Route a callback_query (inline button press)."""
-        # confirm_swap:AMOUNT:FROM_ID:TO_ID:MODE — execution is done by the
-        # interceptor asynchronously; this path is never reached for that prefix.
+        # confirm_swap:* — handled by interceptor async path
         if callback_data.startswith("confirm_swap:"):
-            # Fallback: should be handled by interceptor async path
-            return _reply("\u23f3 Processing swap\u2026", with_buttons=False)
+            return _reply("⏳ Processing swap…", with_buttons=False)
 
-        # confirm_send:AMOUNT:TOKEN:RECIPIENT — handled by interceptor async path
+        # confirm_send:* — handled by interceptor async path
         if callback_data.startswith("confirm_send:"):
-            return _reply("\u23f3 Processing transfer\u2026", with_buttons=False)
+            return _reply("⏳ Processing transfer…", with_buttons=False)
 
         # Cancel
         if callback_data in ("cancel:swap", "cancel:send"):
-            return _reply("\U0001f6ab Cancelled.", with_buttons=True)
+            return _reply("🚫 Cancelled.", with_buttons=True)
 
         # "swap" button in the main menu → show prompt
         if callback_data == "swap":
             return self._cmd_swap_prompt()
 
+        if callback_data == "swap_select_from":
+            return self._cmd_swap_select_from()
+
+        if callback_data == "swap_select_to":
+            return self._cmd_swap_select_to()
+
+        if callback_data == "swap_select_amount":
+            return self._cmd_swap_select_amount()
+
         cmd = CALLBACK_MAP.get(callback_data)
         if cmd and cmd in FAST_LANE_COMMANDS:
             return self._fast_lane(cmd, user_id)
 
-        # Unmapped callback or unimplemented Phase 2+ command
+        # Unmapped callback
         return self._ai_lane_placeholder(callback_data)
 
     def execute_swap_callback(self, callback_data: str) -> Dict[str, Any]:
         """
-        Execute a confirmed swap.  Called from an asyncio thread pool so
-        blocking Hedera RPC calls are fine here.
-
+        Execute a confirmed swap. Called from asyncio thread pool.
         callback_data format: confirm_swap:AMOUNT:FROM_ID:TO_ID:MODE
         """
         try:
             parts = callback_data.split(":")
-            # Parts: ["confirm_swap", "AMOUNT", "FROM_ID", "TO_ID", "MODE"]
-            # Token IDs like "0.0.456858" contain dots, NOT colons, so the
-            # split is unambiguous.
             if len(parts) != 5:
                 return _error("Malformed swap callback — please try again.")
             _, amount_str, from_id, to_id, mode = parts
@@ -204,12 +210,12 @@ class InboundRouter:
             from_dec = self._ctrl.executor._get_token_decimals(from_id)
             to_dec   = self._ctrl.executor._get_token_decimals(to_id)
         except Exception:
-            from_dec, to_dec = 8, 8  # Safe fallback
+            from_dec, to_dec = 8, 8
 
         amount_in  = result.amount_in_raw  / (10 ** from_dec) if result.amount_in_raw  else amount
         amount_out = result.amount_out_raw / (10 ** to_dec)   if result.amount_out_raw else 0.0
 
-        text = formatters.format_swap_receipt(
+        text, reply_markup = formatters.format_swap_receipt(
             tx_hash=result.tx_hash,
             amount_in=amount_in,
             amount_out=amount_out,
@@ -219,7 +225,7 @@ class InboundRouter:
             gas_cost_usd=result.gas_cost_usd,
             lp_fee=result.lp_fee_amount,
         )
-        return {"text": text, "reply_markup": formatters.format_buttons(), "parse_mode": "HTML"}
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     # ------------------------------------------------------------------
     # Fast lane
@@ -232,11 +238,11 @@ class InboundRouter:
                 return self._cmd_balance()
             elif cmd == "/status":
                 return self._cmd_status()
-            elif cmd == "/health":
+            elif cmd in ("/health",):
                 return self._cmd_health()
             elif cmd == "/gas":
                 return self._cmd_gas()
-            elif cmd in ("/start", "/help"):
+            elif cmd in ("/start", "/help", "/menu"):
                 return self._cmd_help()
             elif cmd == "/price":
                 return self._cmd_price(arg.upper() if arg else None)
@@ -248,6 +254,10 @@ class InboundRouter:
                 return self._cmd_send_prompt()
             elif cmd == "/setup":
                 return self._cmd_setup(arg)
+            elif cmd == "/robot":
+                return self._cmd_robot()
+            elif cmd == "/orders":
+                return self._cmd_orders()
             else:
                 return _not_implemented(cmd)
         except Exception as exc:
@@ -257,29 +267,51 @@ class InboundRouter:
     # Fast-lane command implementations
     # ------------------------------------------------------------------
 
+    def _get_prices(self) -> Dict[str, float]:
+        """Fetch USD prices for major tokens. Non-fatal on failure."""
+        try:
+            from lib.prices import price_manager
+            MAJOR = {
+                "HBAR": "0.0.0",
+                "USDC": "0.0.456858",
+                "WBTC": "0.0.10082597",
+                "WETH": "0.0.9470869",
+                "SAUCE": "0.0.731861",
+            }
+            prices = {}
+            for sym, tid in MAJOR.items():
+                if sym == "HBAR":
+                    prices[sym] = price_manager.get_hbar_price()
+                elif sym == "USDC":
+                    prices[sym] = 1.0  # Stablecoin
+                else:
+                    prices[sym] = price_manager.get_price(tid)
+            return prices
+        except Exception:
+            return {}
+
     def _cmd_balance(self) -> Dict[str, Any]:
         balances = self._ctrl.get_balances()
         account_id = getattr(self._ctrl, "account_id", "")
-        text = formatters.format_balance(balances, account_id=account_id)
-        return _reply(text, with_buttons=True)
+        prices = self._get_prices()
+        text, reply_markup = formatters.format_balance(balances, account_id=account_id, prices=prices)
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _cmd_status(self) -> Dict[str, Any]:
         balances = self._ctrl.get_balances()
         account_id = getattr(self._ctrl, "account_id", "unknown")
         network = getattr(self._ctrl, "network", "mainnet")
-        text = formatters.format_status(balances, account_id, network)
-        return _reply(text, with_buttons=True)
+        prices = self._get_prices()
+        text, reply_markup = formatters.format_status(balances, account_id, network, prices=prices)
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _cmd_health(self) -> Dict[str, Any]:
         account_id = getattr(self._ctrl, "account_id", "unknown")
         network = getattr(self._ctrl, "network", "mainnet")
-        text = (
-            "\U0001f7e2 <b>System Status</b>\n\n"
-            f"Account: <code>{account_id}</code>\n"
-            f"Network: <code>{network}</code>\n"
-            "Controller: <code>online</code>"
-        )
-        return _reply(text, with_buttons=True)
+        balances = self._ctrl.get_balances()
+        prices = self._get_prices()
+        text, reply_markup = formatters.format_status(balances, account_id, network, prices=prices)
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _cmd_gas(self) -> Dict[str, Any]:
         try:
@@ -293,17 +325,17 @@ class InboundRouter:
             hbar_bal = balances.get("HBAR", balances.get("hbar", 0.0))
             if isinstance(hbar_bal, dict):
                 hbar_bal = hbar_bal.get("balance", 0.0)
-            text = formatters.format_gas_status(hbar_bal, min_reserve)
+            text, reply_markup = formatters.format_gas_status(hbar_bal, min_reserve)
         except Exception as exc:
             text = formatters.format_error(f"Could not fetch gas status: {exc}")
-        return _reply(text, with_buttons=True)
+            reply_markup = formatters.format_buttons()
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _cmd_help(self) -> Dict[str, Any]:
         text = formatters.format_welcome()
         return _reply(text, with_buttons=True)
 
     def _cmd_price(self, token: Optional[str] = None) -> Dict[str, Any]:
-        # Major tokens: symbol → token ID
         MAJOR_TOKENS = {
             "HBAR":  "0.0.0",
             "USDC":  "0.0.456858",
@@ -314,29 +346,31 @@ class InboundRouter:
         try:
             from lib.prices import price_manager
             if token:
-                # Single token lookup
                 sym = token.upper()
                 tid = MAJOR_TOKENS.get(sym)
                 if sym == "HBAR":
                     price = price_manager.get_hbar_price()
+                elif sym == "USDC":
+                    price = 1.0
                 elif tid:
                     price = price_manager.get_price(tid)
                 else:
-                    # Try by ID directly
                     price = price_manager.get_price(sym)
-                text = formatters.format_price(sym, price)
+                text, reply_markup = formatters.format_price(sym, price)
             else:
-                # All major tokens
                 prices = {}
                 for sym, tid in MAJOR_TOKENS.items():
                     if sym == "HBAR":
                         prices[sym] = price_manager.get_hbar_price()
+                    elif sym == "USDC":
+                        prices[sym] = 1.0
                     else:
                         prices[sym] = price_manager.get_price(tid)
-                text = formatters.format_prices(prices)
+                text, reply_markup = formatters.format_prices(prices)
         except Exception as exc:
             text = formatters.format_error(f"Could not fetch prices: {exc}")
-        return _reply(text, with_buttons=True)
+            reply_markup = formatters.format_buttons()
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _cmd_tokens(self) -> Dict[str, Any]:
         try:
@@ -345,15 +379,15 @@ class InboundRouter:
             if tokens_path.exists():
                 with open(tokens_path) as f:
                     tokens_data = json.load(f)
-            text = formatters.format_tokens(tokens_data)
+            text, reply_markup = formatters.format_tokens(tokens_data)
         except Exception as exc:
             text = formatters.format_error(f"Could not load tokens: {exc}")
-        return _reply(text, with_buttons=True)
+            reply_markup = formatters.format_buttons()
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _cmd_history(self) -> Dict[str, Any]:
         try:
             records = []
-            # Try controller's get_history first
             try:
                 raw = self._ctrl.get_history(10)
                 if raw:
@@ -361,7 +395,6 @@ class InboundRouter:
             except Exception:
                 pass
 
-            # Fallback: read execution_records/ directory directly
             if not records:
                 exec_dir = _REPO_ROOT / "execution_records"
                 if exec_dir.exists():
@@ -372,9 +405,73 @@ class InboundRouter:
                                 records.append(json.load(f))
                         except Exception:
                             continue
-            text = formatters.format_history(records)
+            text, reply_markup = formatters.format_history(records)
         except Exception as exc:
             text = formatters.format_error(f"Could not load history: {exc}")
+            reply_markup = formatters.format_buttons()
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
+
+    def _cmd_robot(self) -> Dict[str, Any]:
+        """Show BTC rebalancer daemon status."""
+        try:
+            gov_path = _DATA_DIR / "governance.json"
+            robot_account = ""
+            funded = False
+            if gov_path.exists():
+                with open(gov_path) as f:
+                    gov = json.load(f)
+                robot_info = gov.get("accounts", {}).get("robot", {})
+                robot_account = robot_info.get("id", "")
+                funded = robot_info.get("funded", False)
+
+            # Try to read robot state
+            portfolio_usd = 0.0
+            btc_pct = 0.0
+            target_pct = 50.0
+            last_rebalance = ""
+            status = "idle"
+
+            state_path = _DATA_DIR / "robot_state.json"
+            if state_path.exists():
+                try:
+                    with open(state_path) as f:
+                        state = json.load(f)
+                    portfolio_usd = state.get("portfolio_usd", 0.0)
+                    btc_pct = state.get("btc_pct", 0.0)
+                    target_pct = state.get("target_pct", 50.0)
+                    last_rebalance = state.get("last_rebalance", "")
+                    status = state.get("status", "idle")
+                except Exception:
+                    pass
+
+            # Check if daemon PID is alive
+            pid_path = _DATA_DIR / "robot.pid"
+            if pid_path.exists():
+                try:
+                    import os
+                    pid = int(pid_path.read_text().strip())
+                    os.kill(pid, 0)  # Check if process exists
+                    status = "running"
+                except (ValueError, ProcessLookupError, PermissionError):
+                    status = "stopped"
+
+            text, reply_markup = formatters.format_robot_status(
+                robot_account=robot_account,
+                funded=funded,
+                portfolio_usd=portfolio_usd,
+                btc_pct=btc_pct,
+                target_pct=target_pct,
+                last_rebalance=last_rebalance,
+                status=status,
+            )
+        except Exception as exc:
+            text = formatters.format_error(f"Could not fetch robot status: {exc}")
+            reply_markup = formatters.format_buttons()
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
+
+    def _cmd_orders(self) -> Dict[str, Any]:
+        """Pending orders — placeholder for now."""
+        text = formatters.format_not_implemented("Pending Orders")
         return _reply(text, with_buttons=True)
 
     # ------------------------------------------------------------------
@@ -383,7 +480,30 @@ class InboundRouter:
 
     def _cmd_swap_prompt(self) -> Dict[str, Any]:
         """Return the 'What do you want to swap?' prompt."""
-        return {"text": formatters.format_swap_prompt(), "reply_markup": None, "parse_mode": "HTML"}
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {"text": "1️⃣ From token", "callback_data": "swap_select_from"},
+                    {"text": "2️⃣ To token", "callback_data": "swap_select_to"},
+                ],
+                [
+                    {"text": "3️⃣ Amount", "callback_data": "swap_select_amount"},
+                ],
+                [
+                    {"text": "⬅️ Menu", "callback_data": "menu"},
+                ],
+            ]
+        }
+        return {"text": formatters.format_swap_prompt(), "reply_markup": keyboard, "parse_mode": "HTML"}
+
+    def _cmd_swap_select_from(self) -> Dict[str, Any]:
+        return _reply("💱 <b>Choose the token to swap from</b>\n\nUse a typed swap command for now:\n<code>swap 5 USDC for HBAR</code>", with_buttons=True)
+
+    def _cmd_swap_select_to(self) -> Dict[str, Any]:
+        return _reply("💱 <b>Choose the token to swap to</b>\n\nUse a typed swap command for now:\n<code>swap 5 USDC for HBAR</code>", with_buttons=True)
+
+    def _cmd_swap_select_amount(self) -> Dict[str, Any]:
+        return _reply("💱 <b>Choose an amount</b>\n\nUse a typed swap command for now:\n<code>swap 5 USDC for HBAR</code>", with_buttons=True)
 
     def _cmd_swap_parse(self, text: str) -> Dict[str, Any]:
         """
@@ -395,7 +515,7 @@ class InboundRouter:
         req = translate_command(text)
         if not req or req.get("intent") != "swap":
             return _reply(
-                "\u2753 <b>Couldn\u2019t parse that.</b>\n\nExamples:\n"
+                "❓ <b>Couldn't parse that.</b>\n\nExamples:\n"
                 "<code>swap 5 USDC for HBAR</code>\n"
                 "<code>buy 100 HBAR</code>\n"
                 "<code>sell 10 HBAR</code>",
@@ -407,10 +527,9 @@ class InboundRouter:
         amount  = req["amount"]
         mode    = req.get("mode", "exact_in")
 
-        # "swap all" is not supported via Telegram — needs real-time balance query
         if amount == -1:
             return _reply(
-                "\u2139\ufe0f <b>Swap All</b> isn\u2019t supported via Telegram.\n\n"
+                "ℹ️ <b>Swap All</b> isn't supported via Telegram.\n\n"
                 "Specify an amount:\n<code>swap 100 HBAR for USDC</code>",
                 with_buttons=True,
             )
@@ -418,7 +537,7 @@ class InboundRouter:
         from_sym = self._id_to_symbol(from_id)
         to_sym   = self._id_to_symbol(to_id)
 
-        # --- Balance check ---
+        # Balance check
         try:
             balances = self._ctrl.get_balances()
             from_bal = balances.get(from_sym, balances.get(from_id, 0.0))
@@ -436,9 +555,8 @@ class InboundRouter:
                 }
         except Exception as exc:
             logger.warning(f"[Telegram] balance pre-check failed: {exc}")
-            # Non-fatal: proceed and let the executor catch it
 
-        # --- Governance limits ---
+        # Governance limits
         limit_err = self._check_swap_limits(from_id, to_id, amount, mode)
         if limit_err:
             return {
@@ -447,7 +565,7 @@ class InboundRouter:
                 "parse_mode": "HTML",
             }
 
-        # --- Route ---
+        # Route
         try:
             route = self._ctrl.get_route(from_id, to_id, amount, mode=mode)
         except Exception as exc:
@@ -499,7 +617,6 @@ class InboundRouter:
 
     def _cmd_setup(self, field: str = "") -> Dict[str, Any]:
         """Return a WebApp button for secure key entry via the Ghost Tunnel."""
-        # Import here to avoid circular dependency at module load time
         try:
             from src.plugins.telegram.interceptor import build_webapp_button
             field = field.upper() if field else "PRIVATE_KEY"
@@ -510,22 +627,23 @@ class InboundRouter:
         return {"text": text, "reply_markup": markup, "parse_mode": "HTML"}
 
     def _cmd_send_prompt(self) -> Dict[str, Any]:
-        return {"text": formatters.format_send_prompt(), "reply_markup": None, "parse_mode": "HTML"}
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "⬅️ Menu", "callback_data": "menu"}],
+            ]
+        }
+        return {"text": formatters.format_send_prompt(), "reply_markup": keyboard, "parse_mode": "HTML"}
 
     def _cmd_send_parse(self, text: str) -> Dict[str, Any]:
-        """
-        Parse a free-text send command, check whitelist and balance,
-        then return a Confirm/Cancel keyboard.
-        """
+        """Parse a free-text send command, check whitelist and balance."""
         import re
-        # Match: send/transfer AMOUNT TOKEN to 0.0.xxx
         m = re.match(
             r"(?:send|transfer)\s+([\d.]+)\s+(\w+)\s+to\s+(0\.0\.\d+)",
             text.strip(), re.IGNORECASE
         )
         if not m:
             return _reply(
-                "\u2753 <b>Couldn\u2019t parse that.</b>\n\n"
+                "❓ <b>Couldn't parse that.</b>\n\n"
                 "Format: <code>send 5 USDC to 0.0.7949179</code>",
                 with_buttons=True,
             )
@@ -534,14 +652,13 @@ class InboundRouter:
         token = m.group(2).upper()
         recipient = m.group(3)
 
-        # Block EVM addresses (should not happen here, but belt-and-suspenders)
         if recipient.startswith("0x"):
             return _reply(
-                "\U0001f512 <b>EVM addresses blocked.</b>\n\nUse a Hedera ID: <code>0.0.xxx</code>",
+                "🔒 <b>EVM addresses blocked.</b>\n\nUse a Hedera ID: <code>0.0.xxx</code>",
                 with_buttons=True,
             )
 
-        # Whitelist check BEFORE showing confirmation
+        # Whitelist check
         whitelist_err = self._check_send_whitelist(recipient)
         if whitelist_err:
             return {
@@ -573,14 +690,8 @@ class InboundRouter:
         return {**confirm, "parse_mode": "HTML"}
 
     def execute_send_callback(self, callback_data: str) -> Dict[str, Any]:
-        """
-        Execute a confirmed send. Called from async thread pool.
-
-        callback_data format: confirm_send:AMOUNT:TOKEN_SYM:RECIPIENT
-        """
+        """Execute a confirmed send. Called from async thread pool."""
         try:
-            # Format: confirm_send:AMOUNT:TOKEN_SYM:0.0.XXXXXXX
-            # Hedera IDs use dots (not colons), so split is unambiguous.
             parts = callback_data.split(":")
             if len(parts) != 4:
                 return _error("Malformed send callback — please try again.")
@@ -589,7 +700,6 @@ class InboundRouter:
         except Exception as exc:
             return _error(f"Could not parse send request: {exc}")
 
-        # Final whitelist check
         whitelist_err = self._check_send_whitelist(recipient)
         if whitelist_err:
             return {
@@ -617,14 +727,11 @@ class InboundRouter:
             }
 
         tx_hash = result.get("tx_hash", "")
-        text = formatters.format_send_receipt(amount, token, recipient, tx_hash)
-        return {"text": text, "reply_markup": formatters.format_buttons(), "parse_mode": "HTML"}
+        text, reply_markup = formatters.format_send_receipt(amount, token, recipient, tx_hash)
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _check_send_whitelist(self, recipient: str) -> Optional[str]:
-        """
-        Check whether recipient is in the transfer whitelist.
-        Returns an error string if blocked, None if OK.
-        """
+        """Check transfer whitelist. Returns error string if blocked, None if OK."""
         try:
             settings_path = _DATA_DIR / "settings.json"
             if settings_path.exists():
@@ -633,7 +740,6 @@ class InboundRouter:
                 whitelist = settings.get("transfer_whitelist", [])
                 whitelist_addresses = [e.get("address") for e in whitelist]
                 if recipient not in whitelist_addresses:
-                    # Also allow our own known accounts
                     accounts_path = _DATA_DIR / "accounts.json"
                     if accounts_path.exists():
                         with open(accounts_path) as f:
@@ -652,40 +758,32 @@ class InboundRouter:
     def _check_swap_limits(
         self, from_id: str, to_id: str, amount: float, mode: str
     ) -> Optional[str]:
-        """
-        Validate against governance.json safety limits.
-        Returns an error string if a limit is violated, None otherwise.
-        """
+        """Validate against governance.json safety limits."""
         max_swap_usd     = getattr(self._ctrl.config, "max_swap_amount_usd", 100.0)
-        min_hbar_reserve = 5.0  # Governance default
+        min_hbar_reserve = 5.0
 
         try:
             gov_path = _DATA_DIR / "governance.json"
             if gov_path.exists():
                 with open(gov_path) as f:
                     gov = json.load(f)
-                min_hbar_reserve = gov.get("safety_limits", {}).get(
-                    "min_hbar_reserve", 5.0
-                )
+                min_hbar_reserve = gov.get("safety_limits", {}).get("min_hbar_reserve", 5.0)
         except Exception:
             pass
 
         # USD value check
         try:
             from lib.prices import price_manager
-
             if mode == "exact_in":
                 basis_id = from_id
                 basis_amt = amount
             else:
                 basis_id = to_id
                 basis_amt = amount
-
             if basis_id in ("0.0.0", "HBAR"):
                 price = price_manager.get_hbar_price()
             else:
                 price = price_manager.get_price(basis_id)
-
             if price and price > 0:
                 swap_usd = basis_amt * price
                 if swap_usd > max_swap_usd:
@@ -694,7 +792,7 @@ class InboundRouter:
                         f" ${max_swap_usd:.0f} per-swap limit."
                     )
         except Exception:
-            pass  # Skip USD check if price data unavailable
+            pass
 
         # HBAR gas reserve check (only when selling HBAR exact_in)
         if from_id in ("0.0.0", "HBAR") and mode == "exact_in":
@@ -721,9 +819,9 @@ class InboundRouter:
 
     def _ai_lane_placeholder(self, text: str) -> Dict[str, Any]:
         reply = (
-            "\U0001f916 <b>AI Lane</b>\n\n"
-            "Natural language trading is coming in Phase 2.\n\n"
-            "Use slash commands or the buttons below for now."
+            "🤖 <b>AI Mode</b>\n\n"
+            "Natural language trading is coming soon.\n\n"
+            "Use the buttons or slash commands for now."
         )
         return _reply(reply, with_buttons=True)
 
@@ -732,7 +830,7 @@ class InboundRouter:
     # ------------------------------------------------------------------
 
     def _id_to_symbol(self, token_id: str) -> str:
-        """Reverse-lookup a token ID (or symbol key) to its display symbol."""
+        """Reverse-lookup a token ID to its display symbol."""
         if not token_id:
             return "???"
         if token_id in ("0.0.0", "HBAR"):
@@ -742,17 +840,14 @@ class InboundRouter:
             if tokens_path.exists():
                 with open(tokens_path) as f:
                     tokens = json.load(f)
-                # tokens.json is {symbol: {id, symbol, decimals, name}}
-                # If token_id is already a key (e.g. "USDC"), return its symbol field
                 if token_id in tokens:
                     return tokens[token_id].get("symbol", token_id)
-                # Otherwise scan for a matching id
                 for sym, meta in tokens.items():
                     if isinstance(meta, dict) and meta.get("id") == token_id:
                         return meta.get("symbol", sym)
         except Exception:
             pass
-        return token_id  # Fallback: return the raw ID
+        return token_id
 
     @staticmethod
     def _extract_command(text: str) -> Optional[str]:
@@ -760,7 +855,6 @@ class InboundRouter:
         if not text or not text.startswith("/"):
             return None
         word = text.split()[0].lower()
-        # Strip @botname suffix: /balance@MyBot → /balance
         if "@" in word:
             word = word.split("@")[0]
         return word
@@ -779,8 +873,8 @@ def _reply(text: str, with_buttons: bool = False) -> Dict[str, Any]:
 
 
 def _error(msg: str, hint: str = "") -> Dict[str, Any]:
-    return _reply(formatters.format_error(msg, hint=hint))
+    return _reply(formatters.format_error(msg, hint=hint), with_buttons=True)
 
 
 def _not_implemented(cmd: str) -> Dict[str, Any]:
-    return _reply(formatters.format_not_implemented(cmd))
+    return _reply(formatters.format_not_implemented(cmd), with_buttons=True)

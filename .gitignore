@@ -29,6 +29,7 @@ execution_records/
 logs/
 daemon_output.log
 training_data/
+data/chat_archive/
 
 # Node
 node_modules/

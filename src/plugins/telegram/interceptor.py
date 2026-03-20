@@ -371,7 +371,7 @@ async def _send(
         "parse_mode": parse_mode,
     }
     if reply_markup:
-        payload["reply_markup"] = json.dumps(reply_markup)
+        payload["reply_markup"] = reply_markup
 
     url = f"https://api.telegram.org/bot{_bot_token}/sendMessage"
     async with httpx.AsyncClient(timeout=10) as client:
