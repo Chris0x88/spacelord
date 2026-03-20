@@ -24,20 +24,16 @@ function mkSlide() {
   return s;
 }
 
-// Standard title + purple underline bar
+// Clean title — no accent line (whitespace separation instead)
 function addTitle(s, text, y = 0.25) {
   s.addText(text, {
     x: 0.45, y, w: 9, h: 0.85,
-    fontSize: 52, bold: true, color: C.white, fontFace: 'Arial',
-  });
-  s.addShape(prs.ShapeType.rect, {
-    x: 0.45, y: y + 0.9, w: 2.6, h: 0.06,
-    fill: { color: C.purple }, line: { color: C.purple, width: 0 },
+    fontSize: 48, bold: true, color: C.white, fontFace: 'Arial',
   });
 }
 
 // Italic gray subtitle
-function addSubtitle(s, text, y = 1.45) {
+function addSubtitle(s, text, y = 1.15) {
   s.addText(text, {
     x: 0.45, y, w: 9.1, h: 0.45,
     fontSize: 17, italic: true, color: C.dim, fontFace: 'Arial',
@@ -563,6 +559,27 @@ function addSubtitle(s, text, y = 1.45) {
       fontSize: 13, color: C.white, fontFace: 'Arial',
     });
     y += 0.6;
+  });
+
+  // Quick Start section
+  s.addText('Quick Start:', {
+    x: 0.45, y: 6.15, w: 2, h: 0.3,
+    fontSize: 12, bold: true, color: C.cyan, fontFace: 'Arial',
+  });
+
+  const quickStart = [
+    'Dashboard: http://127.0.0.1:8088/',
+    './launch.sh daemon-start  |  ./launch.sh dashboard',
+    './launch.sh daemon-status  |  ./launch.sh swap 10 HBAR for USDC',
+  ];
+
+  let qy = 6.5;
+  quickStart.forEach((line) => {
+    s.addText(line, {
+      x: 0.45, y: qy, w: 9.1, h: 0.22,
+      fontSize: 11, color: C.dim, fontFace: 'Courier New',
+    });
+    qy += 0.25;
   });
 }
 

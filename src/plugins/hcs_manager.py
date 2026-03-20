@@ -22,7 +22,9 @@ try:
     from hiero_sdk_python.consensus.topic_id import TopicId
     from hiero_sdk_python.account.account_id import AccountId
     _HAS_HIERO_SDK = True
-except ImportError:
+except Exception:
+    # Catch all exceptions (ImportError, ModuleNotFoundError, AttributeError, etc.)
+    # to ensure _HAS_HIERO_SDK is always defined
     _HAS_HIERO_SDK = False
 
 class HcsManager(BasePlugin):
@@ -80,12 +82,16 @@ class HcsManager(BasePlugin):
             tx = TopicMessageSubmitTransaction() \
                 .set_topic_id(TopicId.from_string(target_topic)) \
                 .set_message(message)
-            
+
             tx.freeze_with(client)
             response = tx.execute(client)
             receipt = response.get_receipt(client)
-            
-            return receipt.status == 22 # SUCCESS
+
+            if receipt.status == 22:  # SUCCESS
+                return True
+            else:
+                logger.error(f"❌ HCS message submission failed with status {receipt.status}")
+                return False
         except Exception as e:
             logger.error(f"❌ Failed to submit HCS message: {e}", exc_info=True)
             return False

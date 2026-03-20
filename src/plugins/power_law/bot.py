@@ -343,11 +343,14 @@ class PowerLawBot(BasePlugin):
                 "threshold_pct": self.config.threshold_percent,
                 "will_trade": abs(state.wbtc_percent - target_btc_pct) >= self.config.threshold_percent,
             }
-            self.app.hcs_manager.broadcast_signal(
+            success = self.app.hcs_manager.broadcast_signal(
                 signal_type="DAILY_HEARTBEAT",
                 data=heartbeat_data,
             )
-            logger.info("   📡 Daily heartbeat broadcast to HCS")
+            if success:
+                logger.info("   📡 Daily heartbeat broadcast to HCS")
+            else:
+                logger.warning("   ⚠️  HCS heartbeat broadcast returned False (message may not have been sent)")
         except Exception as e:
             logger.error(f"HCS heartbeat broadcast failed: {e}", exc_info=True)
 

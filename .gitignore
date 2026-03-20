@@ -107,7 +107,6 @@ slide-*.jpg
 lu*.tmp
 
 # Builder / planning docs (dev-only, not for submission)
-/telegram/
 DEMO_SCRIPT.md
 
 # NFT image cache
