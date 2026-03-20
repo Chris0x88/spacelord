@@ -176,16 +176,24 @@ if [ $# -gt 0 ]; then
 
         telegram-start|tg-start)
             TG_PID_FILE="$SCRIPT_DIR/data/telegram.pid"
-            if [ -f "$TG_PID_FILE" ] && kill -0 "$(cat $TG_PID_FILE)" 2>/dev/null; then
-                echo -e "${GREEN}[Pacman]${NC} Telegram interceptor already running (PID: $(cat $TG_PID_FILE))"
+            if [ -f "$TG_PID_FILE" ] && kill -0 "$(cat "$TG_PID_FILE")" 2>/dev/null; then
+                echo -e "${GREEN}[Pacman]${NC} Telegram interceptor already running (PID: $(cat "$TG_PID_FILE"))"
                 exit 0
             fi
-            if [ -z "$TELEGRAM_BOT_TOKEN" ] && [ ! -f "$SCRIPT_DIR/.env" ]; then
+            # Load .env so TELEGRAM_BOT_TOKEN is available
+            if [ -f "$SCRIPT_DIR/.env" ]; then
+                set -a
+                # shellcheck disable=SC1091
+                source "$SCRIPT_DIR/.env"
+                set +a
+            fi
+            if [ -z "${TELEGRAM_BOT_TOKEN:-}" ]; then
                 echo -e "${RED}[Pacman]${NC} TELEGRAM_BOT_TOKEN not set. Add it to .env first."
                 exit 1
             fi
             PORT="${TELEGRAM_PORT:-8443}"
             echo -e "${GREEN}[Pacman]${NC} Starting Telegram interceptor on port $PORT..."
+            mkdir -p "$SCRIPT_DIR/logs"
             PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
             nohup "$PYTHON_EXEC" -m uvicorn src.plugins.telegram.interceptor:app \
                 --host 0.0.0.0 --port "$PORT" \
@@ -215,7 +223,7 @@ if [ $# -gt 0 ]; then
                 rm -f "$TG_PID_FILE"
             else
                 echo -e "${CYAN}[Pacman]${NC} No Telegram interceptor running."
-                lsof -ti:${TELEGRAM_PORT:-8443} | xargs kill -9 2>/dev/null || true
+                lsof -ti:"${TELEGRAM_PORT:-8443}" | xargs kill -9 2>/dev/null || true
             fi
             exit 0
             ;;
