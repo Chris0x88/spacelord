@@ -214,27 +214,154 @@ if [ $# -gt 0 ]; then
 
         telegram-stop|tg-stop)
             TG_PID_FILE="$SCRIPT_DIR/data/telegram.pid"
+            # Kill by PID file first
             if [ -f "$TG_PID_FILE" ]; then
-                tg_pid=$(cat "$TG_PID_FILE")
-                kill "$tg_pid" 2>/dev/null && echo -e "${GREEN}[Pacman]${NC} Telegram interceptor stopped."
+                tg_pid=$(cat "$TG_PID_FILE" 2>/dev/null)
+                if [ -n "$tg_pid" ] && kill -0 "$tg_pid" 2>/dev/null; then
+                    kill "$tg_pid" 2>/dev/null || true
+                    # Wait gracefully (poller needs up to 2s to flush shutdown)
+                    for i in $(seq 1 5); do
+                        kill -0 "$tg_pid" 2>/dev/null || break
+                        sleep 1
+                    done
+                    kill -9 "$tg_pid" 2>/dev/null || true
+                fi
                 rm -f "$TG_PID_FILE"
-            else
-                echo -e "${CYAN}[Pacman]${NC} No Telegram interceptor running."
-                lsof -ti:"${TELEGRAM_PORT:-8443}" | xargs kill -9 2>/dev/null || true
             fi
+            # Belt-and-suspenders: kill any stray poller processes by pattern
+            pkill -f "src.plugins.telegram.poller" 2>/dev/null || true
+            sleep 1
+            if pgrep -f "src.plugins.telegram.poller" > /dev/null 2>&1; then
+                echo -e "${YELLOW}[Pacman]${NC} Warning: stray poller still running — forcing kill."
+                pkill -9 -f "src.plugins.telegram.poller" 2>/dev/null || true
+            fi
+            echo -e "${GREEN}[Pacman]${NC} Telegram bot stopped."
+            exit 0
+            ;;
+
+        telegram-restart|tg-restart)
+            "$0" telegram-stop
+            sleep 1
+            "$0" telegram-start
             exit 0
             ;;
 
         telegram-status|tg-status)
             TG_PID_FILE="$SCRIPT_DIR/data/telegram.pid"
-            PORT="${TELEGRAM_PORT:-8443}"
-            if [ -f "$TG_PID_FILE" ] && kill -0 "$(cat $TG_PID_FILE)" 2>/dev/null; then
-                echo -e "${GREEN}[Pacman]${NC} Telegram interceptor running (PID: $(cat $TG_PID_FILE))"
-                curl -s "http://localhost:$PORT/health" 2>/dev/null && echo ""
-            else
-                echo -e "${CYAN}[Pacman]${NC} Telegram interceptor not running."
-                echo -e "${CYAN}[Pacman]${NC} Start: ./launch.sh telegram-start"
+            # Check PID file first, then fall back to pgrep (launchd doesn't write PID file)
+            LIVE_PID=""
+            if [ -f "$TG_PID_FILE" ]; then
+                _pid=$(cat "$TG_PID_FILE" 2>/dev/null)
+                if [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null; then
+                    LIVE_PID="$_pid"
+                fi
             fi
+            if [ -z "$LIVE_PID" ]; then
+                LIVE_PID=$(pgrep -f "src.plugins.telegram.poller" 2>/dev/null | head -1)
+            fi
+
+            if [ -n "$LIVE_PID" ]; then
+                # Check whether launchd is managing it
+                if launchctl list 2>/dev/null | grep -q "com.pacman.telegram"; then
+                    echo -e "${GREEN}[Pacman]${NC} Telegram bot running (PID: $LIVE_PID) — managed by launchd (auto-restarts)"
+                else
+                    echo -e "${GREEN}[Pacman]${NC} Telegram bot running (PID: $LIVE_PID)"
+                fi
+                # Pull bot username from last log entry
+                BOT_NAME=$(grep "Bot: @" "$SCRIPT_DIR/logs/telegram.log" 2>/dev/null | tail -1 | sed 's/.*Bot: //')
+                [ -n "$BOT_NAME" ] && echo -e "${CYAN}[Pacman]${NC} Connected as: $BOT_NAME"
+                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/telegram.log"
+            else
+                echo -e "${CYAN}[Pacman]${NC} Telegram bot not running."
+                if launchctl list 2>/dev/null | grep -q "com.pacman.telegram"; then
+                    echo -e "${YELLOW}[Pacman]${NC} launchd service exists but process is down — check logs."
+                else
+                    echo -e "${CYAN}[Pacman]${NC} Start:   ./launch.sh telegram-start"
+                    echo -e "${CYAN}[Pacman]${NC} Install: ./launch.sh telegram-install  (auto-start on login)"
+                fi
+            fi
+            exit 0
+            ;;
+
+        telegram-install|tg-install)
+            # Install as a macOS launchd service — starts on login, restarts on crash
+            PLIST_DIR="$HOME/Library/LaunchAgents"
+            PLIST_FILE="$PLIST_DIR/com.pacman.telegram.plist"
+            mkdir -p "$PLIST_DIR"
+
+            PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python 2>/dev/null)
+            if [ -z "$PYTHON_EXEC" ]; then
+                echo -e "${RED}[Pacman]${NC} Could not find Python via uv. Run './launch.sh telegram-start' first."
+                exit 1
+            fi
+
+            cat > "$PLIST_FILE" << PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.pacman.telegram</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$PYTHON_EXEC</string>
+    <string>-m</string>
+    <string>src.plugins.telegram.poller</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>$SCRIPT_DIR</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>$HOME</string>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>$SCRIPT_DIR/logs/telegram.log</string>
+  <key>StandardErrorPath</key>
+  <string>$SCRIPT_DIR/logs/telegram.log</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+</dict>
+</plist>
+PLIST_EOF
+
+            # Unload any existing instance, then load fresh
+            launchctl unload "$PLIST_FILE" 2>/dev/null || true
+            # Kill any competing poller so launchd owns the connection cleanly
+            pkill -f "src.plugins.telegram.poller" 2>/dev/null || true
+            sleep 1
+            launchctl load "$PLIST_FILE"
+            sleep 2
+            if launchctl list | grep -q "com.pacman.telegram"; then
+                echo -e "${GREEN}[Pacman]${NC} Telegram bot installed as launchd service."
+                echo -e "${CYAN}[Pacman]${NC} It will now start automatically on login and restart on crash."
+                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/telegram.log"
+                echo ""
+                echo -e "${YELLOW}[Pacman]${NC} IMPORTANT: Disconnect OpenClaw from this bot's Telegram account."
+                echo -e "           Two connections = 409 Conflict. OpenClaw must NOT poll this bot token."
+            else
+                echo -e "${RED}[Pacman]${NC} launchd load may have failed. Check: launchctl list | grep pacman"
+            fi
+            exit 0
+            ;;
+
+        telegram-uninstall|tg-uninstall)
+            PLIST_FILE="$HOME/Library/LaunchAgents/com.pacman.telegram.plist"
+            if [ -f "$PLIST_FILE" ]; then
+                launchctl unload "$PLIST_FILE" 2>/dev/null || true
+                rm -f "$PLIST_FILE"
+                echo -e "${GREEN}[Pacman]${NC} Telegram launchd service removed."
+            else
+                echo -e "${CYAN}[Pacman]${NC} No launchd service installed."
+            fi
+            pkill -f "src.plugins.telegram.poller" 2>/dev/null || true
             exit 0
             ;;
 

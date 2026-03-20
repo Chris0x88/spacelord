@@ -22,6 +22,7 @@ import logging
 import os
 import signal
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -68,6 +69,11 @@ _router: Optional[InboundRouter] = None
 _http: Optional[httpx.AsyncClient] = None
 _shutdown = False
 
+# Dedup guard: track recently processed confirm callback_query_ids
+# Maps callback_query_id → timestamp. Prevents double-tap and stale replay.
+_recent_confirm_ids: Dict[str, float] = {}
+_CONFIRM_DEDUP_TTL = 30.0  # seconds
+
 
 # ---------------------------------------------------------------------------
 # Telegram Bot API helpers
@@ -81,18 +87,22 @@ async def _send(
 ) -> None:
     """Send a message via the Telegram Bot API."""
     payload: Dict[str, Any] = {
-        "chat_id": chat_id,
+        "chat_id": str(chat_id),
         "text": text,
         "parse_mode": parse_mode,
     }
     if reply_markup:
-        payload["reply_markup"] = reply_markup
+        payload["reply_markup"] = json.dumps(reply_markup)
 
     url = f"https://api.telegram.org/bot{_bot_token}/sendMessage"
     try:
-        resp = await _http.post(url, json=payload)
+        resp = await _http.post(url, data=payload)
         if resp.status_code != 200:
             logger.warning(f"sendMessage failed: {resp.status_code} {resp.text[:200]}")
+        else:
+            data = resp.json()
+            if not data.get("ok"):
+                logger.warning(f"sendMessage not ok: {data.get('description', '')[:200]}")
     except Exception as exc:
         logger.error(f"sendMessage error: {exc}")
 
@@ -100,20 +110,55 @@ async def _send(
 async def _answer_callback(callback_query_id: str, text: str = "") -> None:
     """Acknowledge a callback query (clears Telegram's loading spinner)."""
     url = f"https://api.telegram.org/bot{_bot_token}/answerCallbackQuery"
-    payload: Dict[str, Any] = {"callback_query_id": callback_query_id}
+    payload: Dict[str, str] = {"callback_query_id": callback_query_id}
     if text:
         payload["text"] = text
     try:
-        await _http.post(url, json=payload)
+        await _http.post(url, data=payload)
     except Exception as exc:
         logger.error(f"answerCallbackQuery error: {exc}")
+
+
+async def _edit(
+    chat_id: int,
+    message_id: int,
+    text: str,
+    reply_markup: Optional[Dict] = None,
+    parse_mode: str = "HTML",
+) -> bool:
+    """Edit an existing message. Returns True on success, False on failure."""
+    payload: Dict[str, Any] = {
+        "chat_id": str(chat_id),
+        "message_id": str(message_id),
+        "text": text,
+        "parse_mode": parse_mode,
+    }
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup)
+    else:
+        # Explicitly remove keyboard when reply_markup is None
+        payload["reply_markup"] = json.dumps({"inline_keyboard": []})
+
+    url = f"https://api.telegram.org/bot{_bot_token}/editMessageText"
+    try:
+        resp = await _http.post(url, data=payload)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("ok"):
+                return True
+            logger.warning(f"editMessageText not ok: {data.get('description', '')[:200]}")
+        else:
+            logger.warning(f"editMessageText failed: {resp.status_code} {resp.text[:200]}")
+    except Exception as exc:
+        logger.error(f"editMessageText error: {exc}")
+    return False
 
 
 async def _delete_webhook() -> None:
     """Remove any existing webhook so getUpdates works."""
     url = f"https://api.telegram.org/bot{_bot_token}/deleteWebhook"
     try:
-        resp = await _http.post(url)
+        resp = await _http.post(url, data={})
         data = resp.json()
         if data.get("ok"):
             logger.info("Webhook cleared — polling mode active")
@@ -121,6 +166,82 @@ async def _delete_webhook() -> None:
             logger.warning(f"deleteWebhook response: {data}")
     except Exception as exc:
         logger.error(f"deleteWebhook error: {exc}")
+
+
+async def _register_commands() -> None:
+    """Register bot commands with Telegram so they appear in the '/' menu."""
+    commands = [
+        {"command": "start",     "description": "Open wallet home screen"},
+        {"command": "portfolio", "description": "View balances & USD values"},
+        {"command": "swap",      "description": "Swap tokens (button-driven)"},
+        {"command": "send",      "description": "Send tokens to whitelisted address"},
+        {"command": "price",     "description": "Live token prices"},
+        {"command": "gas",       "description": "Check HBAR gas reserve"},
+        {"command": "history",   "description": "Recent transactions"},
+        {"command": "robot",     "description": "BTC rebalancer status"},
+        {"command": "tokens",    "description": "Supported tokens list"},
+        {"command": "status",    "description": "System health check"},
+        {"command": "setup",     "description": "Secure key setup (Mini App)"},
+        {"command": "menu",      "description": "Show main menu"},
+    ]
+    url = f"https://api.telegram.org/bot{_bot_token}/setMyCommands"
+    try:
+        resp = await _http.post(url, json={"commands": commands})
+        data = resp.json()
+        if data.get("ok"):
+            logger.info(f"Registered {len(commands)} bot commands with Telegram")
+        else:
+            logger.warning(f"setMyCommands response: {data}")
+    except Exception as exc:
+        logger.error(f"setMyCommands error: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Startup safety: drain stale updates
+# ---------------------------------------------------------------------------
+
+async def _drain_stale_updates() -> None:
+    """
+    Acknowledge (without processing) any updates that piled up while the bot
+    was offline. This is CRITICAL for a trading bot — without this, a pending
+    'confirm_swap' callback from a previous session can replay and fire a trade
+    the user never intentionally triggered after restart.
+    """
+    url = f"https://api.telegram.org/bot{_bot_token}/getUpdates"
+    try:
+        resp = await _http.get(url, params={"timeout": 0, "offset": -1})
+        data = resp.json()
+        updates = data.get("result", [])
+        if updates:
+            last_id = max(u["update_id"] for u in updates)
+            # Acknowledge all pending updates without dispatching them
+            await _http.get(url, params={"timeout": 0, "offset": last_id + 1})
+            logger.warning(
+                f"[Safety] Drained {len(updates)} stale pending update(s) on startup "
+                f"(last_id={last_id}). Any queued confirm_swap/confirm_send callbacks "
+                "were discarded to prevent unintended trade replay."
+            )
+        else:
+            logger.info("[Safety] No stale updates — clean startup.")
+    except Exception as exc:
+        logger.error(f"_drain_stale_updates failed: {exc}")
+
+
+def _is_confirm_already_processed(callback_query_id: str) -> bool:
+    """
+    Dedup guard against double-taps. Returns True if this confirm callback
+    was already processed within the last CONFIRM_DEDUP_TTL seconds.
+    Cleans up expired entries on each call.
+    """
+    now = time.monotonic()
+    # Prune expired entries
+    expired = [k for k, ts in _recent_confirm_ids.items() if now - ts > _CONFIRM_DEDUP_TTL]
+    for k in expired:
+        del _recent_confirm_ids[k]
+    if callback_query_id in _recent_confirm_ids:
+        return True
+    _recent_confirm_ids[callback_query_id] = now
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -167,6 +288,17 @@ async def _dispatch(update: Dict[str, Any]) -> None:
         if not text:
             return
 
+        # Check for pending custom amount input first
+        pending_response = _router.handle_pending_input(text, user_id)
+        if pending_response:
+            await _send(
+                chat_id,
+                pending_response["text"],
+                reply_markup=pending_response.get("reply_markup"),
+                parse_mode=pending_response.get("parse_mode", "HTML"),
+            )
+            return
+
         response = _router.handle_message(text, user_id)
         await _send(
             chat_id,
@@ -180,6 +312,7 @@ async def _dispatch(update: Dict[str, Any]) -> None:
         cq = update["callback_query"]
         user_id = cq.get("from", {}).get("id", 0)
         chat_id = cq.get("message", {}).get("chat", {}).get("id", 0)
+        message_id = cq.get("message", {}).get("message_id", 0)
         callback_data = cq.get("data", "")
         callback_query_id = cq.get("id", "")
 
@@ -187,12 +320,16 @@ async def _dispatch(update: Dict[str, Any]) -> None:
             await _answer_callback(callback_query_id, text="Access denied.")
             return
 
-        # confirm_swap:* — execute swap in thread pool
+        # confirm_swap:* — dedup check, show loading, execute in thread pool
         if callback_data.startswith("confirm_swap:"):
+            if _is_confirm_already_processed(callback_query_id):
+                logger.warning(f"[Dedup] Duplicate confirm_swap ignored: {callback_query_id}")
+                await _answer_callback(callback_query_id, text="Already processing…")
+                return
             await _answer_callback(callback_query_id)
-            await _send(
-                chat_id,
-                "\u23f3 <b>Executing swap\u2026</b>\n\n<i>Submitting to Hedera. Please wait.</i>",
+            await _edit(
+                chat_id, message_id,
+                "⏳ <b>Executing swap…</b>\n\n<i>Submitting to Hedera. Please wait.</i>",
                 reply_markup=None,
             )
             try:
@@ -206,20 +343,31 @@ async def _dispatch(update: Dict[str, Any]) -> None:
                     "reply_markup": formatters.format_buttons(),
                     "parse_mode": "HTML",
                 }
-            await _send(
-                chat_id,
+            edited = await _edit(
+                chat_id, message_id,
                 response["text"],
                 reply_markup=response.get("reply_markup"),
                 parse_mode=response.get("parse_mode", "HTML"),
             )
+            if not edited:
+                await _send(
+                    chat_id,
+                    response["text"],
+                    reply_markup=response.get("reply_markup"),
+                    parse_mode=response.get("parse_mode", "HTML"),
+                )
             return
 
-        # confirm_send:* — execute send in thread pool
+        # confirm_send:* — same pattern with dedup
         if callback_data.startswith("confirm_send:"):
+            if _is_confirm_already_processed(callback_query_id):
+                logger.warning(f"[Dedup] Duplicate confirm_send ignored: {callback_query_id}")
+                await _answer_callback(callback_query_id, text="Already processing…")
+                return
             await _answer_callback(callback_query_id)
-            await _send(
-                chat_id,
-                "\u23f3 <b>Sending\u2026</b>\n\n<i>Submitting transfer to Hedera. Please wait.</i>",
+            await _edit(
+                chat_id, message_id,
+                "⏳ <b>Sending…</b>\n\n<i>Submitting transfer to Hedera. Please wait.</i>",
                 reply_markup=None,
             )
             try:
@@ -233,23 +381,39 @@ async def _dispatch(update: Dict[str, Any]) -> None:
                     "reply_markup": formatters.format_buttons(),
                     "parse_mode": "HTML",
                 }
+            edited = await _edit(
+                chat_id, message_id,
+                response["text"],
+                reply_markup=response.get("reply_markup"),
+                parse_mode=response.get("parse_mode", "HTML"),
+            )
+            if not edited:
+                await _send(
+                    chat_id,
+                    response["text"],
+                    reply_markup=response.get("reply_markup"),
+                    parse_mode=response.get("parse_mode", "HTML"),
+                )
+            return
+
+        # All other callbacks — fast lane.
+        # Answer the callback FIRST so Telegram's button spinner clears immediately
+        # (before potentially slow network calls for portfolio/prices/etc.)
+        await _answer_callback(callback_query_id)
+        response = _router.handle_callback(callback_data, user_id)
+        edited = await _edit(
+            chat_id, message_id,
+            response["text"],
+            reply_markup=response.get("reply_markup"),
+            parse_mode=response.get("parse_mode", "HTML"),
+        )
+        if not edited:
             await _send(
                 chat_id,
                 response["text"],
                 reply_markup=response.get("reply_markup"),
                 parse_mode=response.get("parse_mode", "HTML"),
             )
-            return
-
-        # All other callbacks — fast lane
-        response = _router.handle_callback(callback_data, user_id)
-        await _answer_callback(callback_query_id)
-        await _send(
-            chat_id,
-            response["text"],
-            reply_markup=response.get("reply_markup"),
-            parse_mode=response.get("parse_mode", "HTML"),
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -331,6 +495,13 @@ async def main() -> None:
 
     # Clear any stale webhook so getUpdates works
     await _delete_webhook()
+
+    # SAFETY: drain any updates that accumulated while offline.
+    # Must happen before _register_commands and the poll loop.
+    await _drain_stale_updates()
+
+    # Register bot commands so they appear in Telegram's "/" menu
+    await _register_commands()
 
     # Verify bot identity
     try:

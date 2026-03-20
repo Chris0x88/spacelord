@@ -21,6 +21,13 @@ def _optional(key: str, default: str = "") -> str:
 
 
 def get_bot_token() -> str:
+    # Prefer the wallet-specific token if set, so you can have both in .env:
+    #   TELEGRAM_WALLET_BOT_TOKEN = token for @YourWalletBot  (this poller)
+    #   TELEGRAM_BOT_TOKEN        = token for @YourAIBot      (OpenClaw — its own config)
+    # Falls back to TELEGRAM_BOT_TOKEN for backward compatibility.
+    wallet_token = os.getenv("TELEGRAM_WALLET_BOT_TOKEN", "").strip()
+    if wallet_token:
+        return wallet_token
     return _require("TELEGRAM_BOT_TOKEN")
 
 

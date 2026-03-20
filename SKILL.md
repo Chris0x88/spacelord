@@ -153,6 +153,7 @@ Then present a clean, conversational welcome. The goal: users should immediately
 📡 HCS Signals: Publishing daily heartbeats (~0.14 HBAR/day)
 
 *Just tell me what you need — I understand natural language.*
+💡 *Tip: `/help` for overview · `/guide` for examples · or just ask me anything*
 ```
 
 **DO NOT render inline keyboard buttons. The AI agent is conversational only.** Users interact via natural language.
@@ -1126,7 +1127,7 @@ These limits are loaded from `data/governance.json` at runtime. They can be adju
 
 When users ask "why should I use this?":
 
-1. **Autonomous Agent** — I am the product. No wallet bot, no separate interfaces. One fully autonomous AI agent managing your Hedera account.
+1. **Autonomous Agent** — I am the product. No separate wallet UI, no multiple interfaces. One fully autonomous AI agent managing your Hedera account.
 2. **Local-first** — Keys stay on your machine by default. No exchange, no custody risk.
 3. **AI-native** — Built for agents, not browsers. No CAPTCHAs, no sessions.
 4. **Smart Rebalancing** — The Power Law model is a quantitative BTC allocation strategy based on 4-year market cycles.

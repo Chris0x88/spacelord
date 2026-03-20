@@ -28,13 +28,19 @@ data/knowledge/
 execution_records/
 logs/
 daemon_output.log
+pacman.log
+telegram.log
+ngrok.log
+agent_interactions.jsonl
 training_data/
 data/chat_archive/
 
 # Node
 node_modules/
+pitch_deck/node_modules/
 package-lock.json
 package.json
+uv.lock
 
 # IDEs
 .vscode/
@@ -81,3 +87,28 @@ FEEDBACK/
 # OpenClaw agent memory (user-specific runtime state)
 openclaw/memory/*.md
 !openclaw/memory/.gitkeep
+openclaw/.openclaw/
+openclaw/TOOLS.md
+openclaw/bug.md
+
+# Memory (dev-only daily notes)
+memory/*.md
+!memory/.gitkeep
+
+# Presentation & QA artifacts
+Pacman_Pitch_Deck.pdf
+Pacman_Pitch_Deck.pptx
+pitch_deck/Pacman_Pitch_Deck.pptx
+slide-*.jpg
+.~lock*
+
+# Temp files
+*.tmp
+lu*.tmp
+
+# Builder / planning docs (dev-only, not for submission)
+/telegram/
+DEMO_SCRIPT.md
+
+# NFT image cache
+data/nft_images/
