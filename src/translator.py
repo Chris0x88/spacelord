@@ -200,10 +200,6 @@ def translate_command(text: str) -> Optional[dict]:
 
     return None
 
-def load_dynamic_aliases():
-    """Stub for dynamic alias loading."""
-    pass
-
 translate = translate_command
 
 # Load aliases on import

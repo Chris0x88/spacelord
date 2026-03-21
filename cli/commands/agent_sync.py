@@ -153,7 +153,6 @@ def _build_agents():
         "hcs": ("HCS", "Hedera Consensus Service signals", "`hcs status`"),
         "hcs10": ("HCS-10", "Agent-to-agent messaging protocol", "`hcs10 status`"),
         "account_manager": ("AccountManager", "Multi-account management", "`account --json`"),
-        "x402": ("x402", "HTTP 402 payment protocol", "`x402 status`"),
     }
 
     plugin_rows = ""
