@@ -53,7 +53,7 @@ from src.history import (
 
 # ERC20 Wrapper contract (0.0.9675688) — handles HTS <-> ERC20 bridging (wrap/unwrap)
 ERC20_WRAPPER_ID = "0.0.9675688"
-ERC20_WRAPPER_ABI = json.loads((Path(__file__).parent.parent / "abi" / "erc20_wrapper.json").read_text())
+ERC20_WRAPPER_ABI = json.loads((Path(__file__).parent.parent / "data" / "abi" / "erc20_wrapper.json").read_text())
 
 @dataclass
 class ExecutionResult:

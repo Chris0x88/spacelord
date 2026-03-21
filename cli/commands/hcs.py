@@ -85,14 +85,170 @@ def cmd_hcs(app, args):
 
     elif sub == "status":
         topic_id = app.hcs_manager.topic_id
+        feedback_topic = _get_feedback_topic_id()
         print(f"\n  {C.BOLD}{C.TEXT}HCS STATUS{C.R}")
         print(f"  {C.CHROME}{'─' * 40}{C.R}")
         print(f"  {C.TEXT}Active Topic ID: {C.R} {C.BOLD}{topic_id or 'None'}{C.R}")
+        print(f"  {C.TEXT}Feedback Topic:  {C.R} {C.BOLD}{feedback_topic or 'None'}{C.R}")
         if not topic_id:
             print(f"  {C.WARN}⚠  No HCS topic configured.{C.R}")
+        if not feedback_topic:
+            print(f"  {C.MUTED}   Run: hcs feedback-setup to create one{C.R}")
         print(f"  {C.CHROME}{'─' * 40}{C.R}\n")
+
+    elif sub == "feedback":
+        _cmd_feedback(app, args[1:])
+
+    elif sub == "feedback-setup":
+        _cmd_feedback_setup(app)
+
     else:
         print_hcs_help()
+
+def _get_feedback_topic_id() -> str:
+    """Get feedback topic ID from env var or governance.json."""
+    import os
+    topic = os.getenv("FEEDBACK_TOPIC_ID", "").strip()
+    if topic:
+        return topic
+    # Try governance.json
+    try:
+        import json
+        from pathlib import Path
+        gov_path = Path(__file__).resolve().parent.parent.parent / "data" / "governance.json"
+        if gov_path.exists():
+            with open(gov_path) as f:
+                gov = json.load(f)
+            return gov.get("hcs", {}).get("feedback_topic_id", "")
+    except Exception:
+        pass
+    return ""
+
+
+def _cmd_feedback(app, args):
+    """Handle feedback submit/read subcommands."""
+    if not args:
+        print(f"  {C.ERR}✗{C.R} Usage:")
+        print(f"    {C.TEXT}hcs feedback submit <severity> <description>{C.R}")
+        print(f"    {C.TEXT}hcs feedback read{C.R}")
+        print(f"    {C.MUTED}Severity: bug | warning | suggestion | success{C.R}")
+        return
+
+    action = args[0].lower()
+
+    if action == "submit":
+        if len(args) < 3:
+            print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}hcs feedback submit <severity> <description>{C.R}")
+            print(f"    {C.MUTED}Severity: bug | warning | suggestion | success{C.R}")
+            return
+
+        severity = args[1].lower()
+        valid_severities = ("bug", "warning", "suggestion", "success")
+        if severity not in valid_severities:
+            print(f"  {C.ERR}✗{C.R} Invalid severity '{severity}'. Use: {', '.join(valid_severities)}")
+            return
+
+        description = " ".join(args[2:])
+        topic_id = _get_feedback_topic_id()
+        if not topic_id:
+            print(f"  {C.WARN}⚠  No feedback topic configured.{C.R}")
+            print(f"  {C.MUTED}   Run: {C.TEXT}hcs feedback-setup{C.MUTED} to create one{C.R}")
+            return
+
+        import json
+        from datetime import datetime, timezone
+        payload = json.dumps({
+            "type": "FEEDBACK",
+            "severity": severity,
+            "description": description,
+            "version": "1.0.0-beta",
+            "account": app.account_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+
+        print(f"  {C.MUTED}Submitting feedback to HCS topic {topic_id}...{C.R}")
+        if app.hcs_manager.submit_message(payload, topic_id=topic_id):
+            icon = {"bug": "🐛", "warning": "⚠️", "suggestion": "💡", "success": "✅"}.get(severity, "📝")
+            print(f"  {C.OK}{icon} Feedback submitted ({severity}): {description}{C.R}")
+        else:
+            print(f"  {C.ERR}✗{C.R} Failed to submit feedback.")
+
+    elif action == "read":
+        topic_id = _get_feedback_topic_id()
+        if not topic_id:
+            print(f"  {C.WARN}⚠  No feedback topic configured.{C.R}")
+            print(f"  {C.MUTED}   Run: {C.TEXT}hcs feedback-setup{C.MUTED} to create one{C.R}")
+            return
+
+        print(f"  {C.MUTED}Fetching feedback from topic {topic_id}...{C.R}")
+        try:
+            import requests
+            import base64
+            import json
+            network = app.config.network
+            base_url = ("https://mainnet-public.mirrornode.hedera.com" if network == "mainnet"
+                        else "https://testnet-public.mirrornode.hedera.com")
+            url = f"{base_url}/api/v1/topics/{topic_id}/messages?limit=10&order=desc"
+
+            resp = requests.get(url, timeout=5)
+            if resp.status_code != 200:
+                print(f"  {C.ERR}✗{C.R} Mirror node returned {resp.status_code}")
+                return
+
+            messages = resp.json().get("messages", [])
+            feedback_items = []
+            for msg in messages:
+                try:
+                    raw = base64.b64decode(msg["message"]).decode("utf-8")
+                    data = json.loads(raw)
+                    if data.get("type") == "FEEDBACK":
+                        feedback_items.append(data)
+                except Exception:
+                    continue
+
+            if not feedback_items:
+                print(f"  {C.MUTED}No feedback messages found on topic {topic_id}{C.R}")
+                return
+
+            severity_icons = {"bug": "🐛", "warning": "⚠️", "suggestion": "💡", "success": "✅"}
+            print(f"\n  {C.BOLD}{C.TEXT}RECENT FEEDBACK{C.R}")
+            print(f"  {C.CHROME}{'─' * 60}{C.R}")
+            for item in feedback_items:
+                sev = item.get("severity", "?")
+                icon = severity_icons.get(sev, "📝")
+                acct = item.get("account", "?")
+                ts = item.get("timestamp", "")[:19]
+                desc = item.get("description", "")
+                print(f"  {icon} {C.ACCENT}{sev:<12}{C.R} {C.TEXT}{desc}{C.R}")
+                print(f"    {C.MUTED}from {acct}  {ts}{C.R}")
+            print(f"  {C.CHROME}{'─' * 60}{C.R}\n")
+        except Exception as e:
+            print(f"  {C.ERR}✗{C.R} Failed to read feedback: {e}")
+
+    else:
+        print(f"  {C.ERR}✗{C.R} Unknown feedback action '{action}'. Use: submit, read")
+
+
+def _cmd_feedback_setup(app):
+    """Create a new HCS topic for cross-agent feedback."""
+    existing = _get_feedback_topic_id()
+    if existing:
+        print(f"  {C.TEXT}Feedback topic already configured: {C.BOLD}{existing}{C.R}")
+        print(f"  {C.MUTED}To change it, update FEEDBACK_TOPIC_ID in .env or governance.json{C.R}")
+        return
+
+    print(f"  {C.MUTED}Creating new HCS feedback topic...{C.R}")
+    topic_id = app.hcs_manager.create_topic(memo="Pacman Cross-Agent Feedback")
+    if topic_id:
+        # Persist to .env
+        from src.config import PacmanConfig
+        PacmanConfig.set_env_value("FEEDBACK_TOPIC_ID", topic_id)
+        print(f"  {C.OK}✅ Feedback topic created: {C.BOLD}{topic_id}{C.R}")
+        print(f"  {C.MUTED}   Saved to .env as FEEDBACK_TOPIC_ID{C.R}")
+        print(f"  {C.TEXT}   Submit feedback: {C.ACCENT}hcs feedback submit bug <description>{C.R}")
+    else:
+        print(f"  {C.ERR}✗{C.R} Failed to create feedback topic.")
+
 
 def print_hcs_help():
     print(f"""
@@ -103,5 +259,11 @@ def print_hcs_help():
   {C.ACCENT}signal <t> <d>{C.R}  Broadcast structured JSON signal
   {C.ACCENT}signals{C.R}         View recent signals from the topic
   {C.ACCENT}status{C.R}          Show active topic info
+  {C.CHROME}{'─' * 40}{C.R}
+  {C.BOLD}{C.TEXT}FEEDBACK{C.R}
+  {C.CHROME}{'─' * 40}{C.R}
+  {C.ACCENT}feedback submit <sev> <desc>{C.R}  Report a bug/issue
+  {C.ACCENT}feedback read{C.R}                 Read recent feedback
+  {C.ACCENT}feedback-setup{C.R}               Create feedback topic
   {C.CHROME}{'─' * 40}{C.R}
     """)

@@ -36,7 +36,7 @@ CONTRACTS = {
 import json as _json
 from pathlib import Path as _Path
 
-_ABI_DIR = _Path(__file__).parent.parent / "abi"
+_ABI_DIR = _Path(__file__).parent.parent / "data" / "abi"
 QUOTER_ABI = _json.loads((_ABI_DIR / "quoter.json").read_text())
 ROUTER_ABI = _json.loads((_ABI_DIR / "router.json").read_text())
 ERC20_ABI  = _json.loads((_ABI_DIR / "erc20.json").read_text())

@@ -66,7 +66,8 @@ class PacmanController:
         if not data_dir.exists():
             data_dir.mkdir(parents=True, exist_ok=True)
             
-        for template_path in data_dir.glob("*.template.json"):
+        templates_dir = data_dir / "templates"
+        for template_path in templates_dir.glob("*.template.json"):
             target_name = template_path.name.replace(".template.json", ".json")
             target_path = data_dir / target_name
             if not target_path.exists():

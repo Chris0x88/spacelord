@@ -43,7 +43,7 @@ training_data/
 agent_interactions.jsonl
 
 # ----- Template exception: always track templates -----
-!data/*.template.json
+!data/templates/*.template.json
 
 # ----- IDE & Dev Tools -----
 .vscode/

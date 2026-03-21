@@ -27,7 +27,7 @@ from src.logger import logger
 from pathlib import Path
 from lib.saucerswap import hedera_id_to_evm
 
-_ABI_DIR = Path(__file__).parent.parent / "abi"
+_ABI_DIR = Path(__file__).parent.parent / "data" / "abi"
 try:
     POSITION_MANAGER_ABI = json.loads((_ABI_DIR / "position_manager.json").read_text())
 except FileNotFoundError:

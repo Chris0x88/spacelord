@@ -76,6 +76,11 @@ class PowerLawBot(BasePlugin):
         # Debounce for simulated trades
         self._last_simulated_direction = None
         self._last_simulated_usd = 0.0
+
+        # HCS broadcast backoff tracking
+        self._hcs_fail_count = 0
+        self._hcs_last_attempt = 0.0  # monotonic timestamp of last HCS attempt
+        self._HCS_BACKOFF_SCHEDULE = [60, 300, 900, 3600]  # 1m, 5m, 15m, 1h cap
         
         # Load persisted state
         self._load_state()
@@ -309,6 +314,13 @@ class PowerLawBot(BasePlugin):
             # even if we exited early due to an error.
             self._save_state()
     
+    def _hcs_backoff_seconds(self) -> int:
+        """Return the current HCS backoff delay based on consecutive failure count."""
+        if self._hcs_fail_count <= 0:
+            return 0
+        idx = min(self._hcs_fail_count - 1, len(self._HCS_BACKOFF_SCHEDULE) - 1)
+        return self._HCS_BACKOFF_SCHEDULE[idx]
+
     def _broadcast_heartbeat(self, signal: dict, state, target_btc_pct: float) -> None:
         """Broadcast a daily heartbeat signal to HCS, whether or not a trade executes.
 
@@ -318,7 +330,19 @@ class PowerLawBot(BasePlugin):
         accumulate or distribute.
 
         Cost: ~$0.0001 per HCS message. Revenue per subscriber: ~$0.027/day.
+
+        Uses exponential backoff on consecutive HCS failures to avoid log flooding.
+        Backoff schedule: 60s -> 300s -> 900s -> 3600s (cap).
         """
+        # Check if we're still in backoff period from previous HCS failure
+        if self._hcs_fail_count > 0:
+            backoff = self._hcs_backoff_seconds()
+            elapsed = time.monotonic() - self._hcs_last_attempt
+            if elapsed < backoff:
+                remaining = int(backoff - elapsed)
+                logger.debug(f"   📡 HCS in backoff ({remaining}s remaining after {self._hcs_fail_count} failures), skipping broadcast")
+                return
+
         try:
             heartbeat_data = {
                 "portfolio": {
@@ -343,16 +367,26 @@ class PowerLawBot(BasePlugin):
                 "threshold_pct": self.config.threshold_percent,
                 "will_trade": abs(state.wbtc_percent - target_btc_pct) >= self.config.threshold_percent,
             }
+            self._hcs_last_attempt = time.monotonic()
             success = self.app.hcs_manager.broadcast_signal(
                 signal_type="DAILY_HEARTBEAT",
                 data=heartbeat_data,
             )
             if success:
-                logger.info("   📡 Daily heartbeat broadcast to HCS")
+                if self._hcs_fail_count > 0:
+                    logger.info(f"   📡 HCS heartbeat recovered after {self._hcs_fail_count} failures")
+                else:
+                    logger.info("   📡 Daily heartbeat broadcast to HCS")
+                self._hcs_fail_count = 0
             else:
-                logger.warning("   ⚠️  HCS heartbeat broadcast returned False (message may not have been sent)")
+                self._hcs_fail_count += 1
+                backoff = self._hcs_backoff_seconds()
+                logger.warning(f"   ⚠️  HCS broadcast failed (attempt {self._hcs_fail_count}), retrying in {backoff}s")
         except Exception as e:
-            logger.error(f"HCS heartbeat broadcast failed: {e}", exc_info=True)
+            self._hcs_fail_count += 1
+            self._hcs_last_attempt = time.monotonic()
+            backoff = self._hcs_backoff_seconds()
+            logger.error(f"HCS heartbeat broadcast failed (attempt {self._hcs_fail_count}), retrying in {backoff}s: {e}")
 
     def run_loop(self):
         """Standard work loop called by BasePlugin."""

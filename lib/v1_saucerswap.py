@@ -16,7 +16,7 @@ V1_ROUTER_ID = "0.0.3045981"
 V1_WHBAR_ID = "0.0.1456986"
 
 # Load ABI
-ABI_DIR = Path(__file__).parent.parent / "abi"
+ABI_DIR = Path(__file__).parent.parent / "data" / "abi"
 V1_ROUTER_ABI = json.loads((ABI_DIR / "v1_router.json").read_text())
 ERC20_ABI = json.loads((ABI_DIR / "erc20.json").read_text())
 
