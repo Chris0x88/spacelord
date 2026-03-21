@@ -34,6 +34,7 @@ import hashlib
 import hmac
 import json
 import logging
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -57,6 +58,28 @@ _router: Optional[InboundRouter] = None
 _bot_token: str = ""
 _webhook_secret: str = ""
 _allowed_users: set = set()
+
+# Dedup guard: track recently processed confirm callback_query_ids
+# Maps callback_query_id → monotonic timestamp. Prevents double-tap double-spend.
+_processed_confirms: Dict[str, float] = {}
+_CONFIRM_DEDUP_TTL = 30.0  # seconds
+
+
+def _is_confirm_already_processed(callback_query_id: str) -> bool:
+    """
+    Dedup guard against double-taps. Returns True if this confirm callback
+    was already processed within the last _CONFIRM_DEDUP_TTL seconds.
+    Cleans up expired entries on each call.
+    """
+    now = time.monotonic()
+    # Prune expired entries
+    expired = [k for k, ts in _processed_confirms.items() if now - ts > _CONFIRM_DEDUP_TTL]
+    for k in expired:
+        del _processed_confirms[k]
+    if callback_query_id in _processed_confirms:
+        return True
+    _processed_confirms[callback_query_id] = now
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -306,6 +329,12 @@ async def _execute_swap_async(
       3. Run the blocking controller.swap() call in a thread pool.
       4. Edit again with the receipt (or error message) when done.
     """
+    # 0. Dedup guard — prevent double-tap double-spend
+    if _is_confirm_already_processed(callback_query_id):
+        logger.warning(f"[Dedup] Duplicate confirm_swap ignored: {callback_query_id}")
+        await _answer_callback(callback_query_id, text="Already processing\u2026")
+        return
+
     # 1. Acknowledge immediately
     await _answer_callback(callback_query_id)
 
@@ -366,6 +395,12 @@ async def _execute_send_async(
       3. Run the blocking controller.transfer() call in a thread pool.
       4. Edit again with the receipt (or error message) when done.
     """
+    # 0. Dedup guard — prevent double-tap double-spend
+    if _is_confirm_already_processed(callback_query_id):
+        logger.warning(f"[Dedup] Duplicate confirm_send ignored: {callback_query_id}")
+        await _answer_callback(callback_query_id, text="Already processing\u2026")
+        return
+
     await _answer_callback(callback_query_id)
     await _edit(
         chat_id, message_id,

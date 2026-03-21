@@ -35,6 +35,8 @@ except FileNotFoundError:
 
 POSITION_MANAGER_ADDRESSES = {
     "mainnet": "0.0.4053945",
+    # TODO: testnet address is a copy of mainnet — needs verification against
+    #       SaucerSwap testnet deployment before testnet use is safe
     "testnet": "0.0.4053945",
 }
 

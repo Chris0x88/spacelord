@@ -342,13 +342,20 @@ class AccountManager:
             if token_id in ("0.0.0", "0.0.1456986"):
                 continue
 
-            # Check if already associated to avoid wasting HBAR on gas
+            # Check if already associated via Mirror Node to avoid wasting HBAR on gas.
+            # Note: We use Mirror Node directly here because AccountManager doesn't
+            # have a web3/SaucerSwap client — it uses the Hiero SDK for transactions.
             already = False
             try:
-                from src.associations import check_token_association as _check
-                already = _check(self.w3, self.eoa, token_id, self.hedera_account_id)
+                import requests as _requests
+                _mirror_base = "https://mainnet.mirrornode.hedera.com" if self.network == "mainnet" else "https://testnet.mirrornode.hedera.com"
+                _mirror_url = f"{_mirror_base}/api/v1/accounts/{self.operator_id}/tokens"
+                _resp = _requests.get(_mirror_url, params={"token.id": token_id, "limit": 1}, timeout=5)
+                if _resp.status_code == 200:
+                    _tokens_found = _resp.json().get("tokens", [])
+                    already = len(_tokens_found) > 0
             except Exception:
-                pass
+                pass  # If check fails, proceed with association attempt
 
             if already:
                 result["already_associated"].append((symbol, token_id))

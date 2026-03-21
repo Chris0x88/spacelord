@@ -56,7 +56,7 @@ def serve_dashboard():
 @require_auth
 def get_config(filename):
     """Securely serve JSON configuration files from the data directory."""
-    if not filename.endswith(".json") or "/" in filename or "\\" in filename:
+    if not filename.endswith(".json") or "/" in filename or "\\" in filename or ".." in filename:
         return jsonify({"error": "Invalid request"}), 400
         
     data_dir = Path(__file__).resolve().parent.parent.parent / "data"
@@ -499,7 +499,7 @@ def run_server(app, port=8088):
         logger.error("PACMAN_API_SECRET not set in .env. API starting in insecure mode (LOCAL ONLY).")
     
     logger.info(f"🚀 Pacman API starting on http://127.0.0.1:{port}")
-    logger.info(f"   [OpenClaw Integration] 📈 Chart Endpoint: http://127.0.0.1:{port}/chart.png?secret={api_secret or 'YOUR_SECRET'}")
+    logger.info(f"   [OpenClaw Integration] 📈 Chart Endpoint: http://127.0.0.1:{port}/chart.png?secret=***")
     import logging
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)

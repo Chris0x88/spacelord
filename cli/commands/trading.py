@@ -195,7 +195,7 @@ def cmd_swap_v1(app, args):
         print(f"  {C.ERR}✗{C.R} Could not resolve tokens. Use raw ID if symbol is unknown (e.g. 0.0.123).")
         return
 
-    simulate = getattr(app.config, "simulate_mode", True)
+    simulate = getattr(app.config, "simulate_mode", False)
     yes_flag = "--yes" in args or "-y" in args or not sys.stdin.isatty()  # Non-TTY = auto-confirm
     confirm = "y"
     if not simulate and not yes_flag:

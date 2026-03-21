@@ -111,11 +111,11 @@ def _dispatch_action(controller, order: LimitOrder) -> bool:
             
             logger.info(f"[LimitOrder {order.id}] Executing transfer: {amount} {token} → {recipient}")
             result = controller.transfer(token, amount, recipient)
-            if result and result.success:
+            if result and result.get("success"):
                 logger.info(f"[LimitOrder {order.id}] Transfer SUCCESS")
                 return True
             else:
-                err = result.error if result else "No result returned"
+                err = result.get("error", "Unknown error") if result else "No result returned"
                 logger.error(f"[LimitOrder {order.id}] Transfer FAILED: {err}")
                 order.error = str(err)
                 return False

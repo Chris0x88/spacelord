@@ -734,7 +734,7 @@ def cmd_receive(app, args):
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
 
     # 2. Check Token Association (if requested)
-    if not args:
+    if not clean:
         print(f"  {C.OK}✓{C.R} You can receive HBAR anytime.")
         print(f"  {C.MUTED}To check a token, run: {C.TEXT}receive <token>{C.R}")
         print()
@@ -815,12 +815,12 @@ def cmd_whitelist(app, args):
         return
 
     if action == "add":
-        if len(args) < 2:
+        if len(clean) < 2:
             print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}whitelist add <0.0.xxx> [nickname]{C.R}")
             return
 
-        address = args[1]
-        nickname = " ".join(args[2:]) if len(args) > 2 else ""
+        address = clean[1]
+        nickname = " ".join(clean[2:]) if len(clean) > 2 else ""
         if not nickname:
             nickname = _safe_input(
                 f"  Nickname for {address} {C.MUTED}(optional, press enter to skip){C.R}: ",
@@ -835,11 +835,11 @@ def cmd_whitelist(app, args):
             print(f"  {C.ERR}✗{C.R} Failed to add. Check format (0.0.xxx).")
 
     elif action in ["remove", "delete", "rm"]:
-        if len(args) < 2:
+        if len(clean) < 2:
             print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}whitelist remove <0.0.xxx>{C.R}")
             return
 
-        address = args[1]
+        address = clean[1]
         success = app.remove_from_whitelist(address)
         if success:
             print(f"  {C.OK}✅ Removed {address} from whitelist.{C.R}")
@@ -1241,6 +1241,7 @@ def _auto_backup_new_key(account_id, private_key, nickname="", evm_address=""):
         path1 = backup_dir / filename
         with open(path1, "w") as f:
             f.write(content)
+        os.chmod(path1, 0o600)
         saved_paths.append(str(path1))
     except Exception:
         pass
@@ -1252,6 +1253,7 @@ def _auto_backup_new_key(account_id, private_key, nickname="", evm_address=""):
             path2 = downloads / filename
             with open(path2, "w") as f:
                 f.write(content)
+            os.chmod(path2, 0o600)
             saved_paths.append(str(path2))
     except Exception:
         pass

@@ -377,7 +377,8 @@ def cmd_pool_deposit(app, args):
         _raw_path = _Path("data/pacman_data_raw.json")
         _pool_tick = tick_lower  # fallback
         if _raw_path.exists():
-            _pools = _json.load(open(_raw_path))
+            with open(_raw_path) as _raw_f:
+                _pools = _json.load(_raw_f)
             for _p in _pools:
                 _ta, _tb = _p.get("tokenA", {}), _p.get("tokenB", {})
                 if {_ta.get("symbol", "").upper(), _tb.get("symbol", "").upper()} == {token0.upper(), token1.upper()}:
@@ -444,6 +445,7 @@ def cmd_pool_withdraw(app, args):
 
     nft_id = None
     liquidity = None
+    pos = None
 
     if len(clean_args) >= 1:
         # Direct/agent mode
@@ -626,7 +628,7 @@ def cmd_pool_withdraw(app, args):
             print(f"  {C.ERR}✗{C.R} Invalid choice.")
             return
 
-    pct_of_total = f" ({liquidity / pos['liquidity'] * 100:.0f}%)" if nft_id and 'liquidity' in locals().get('pos', {}) else ""
+    pct_of_total = f" ({liquidity / pos['liquidity'] * 100:.0f}%)" if nft_id and pos is not None and 'liquidity' in pos else ""
     print(f"\n  {C.ACCENT}🌊{C.R} V2 Pool Withdraw: NFT #{nft_id} | Removing {liquidity:,} liquidity units{pct_of_total}")
 
     if dry_run:

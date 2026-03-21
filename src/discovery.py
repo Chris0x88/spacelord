@@ -12,12 +12,14 @@ Supported Protocols:
 - SaucerSwap V2 (Concentrated Liquidity)
 """
 
+import os
 import requests
 from typing import List, Dict, Optional
 from src.logger import logger
 
 SAUCERSWAP_BASE = "https://api.saucerswap.finance"
-PUBLIC_DEMO_KEY = "875e1017-87b8-4b12-8301-6aa1f1aa073b"
+# Public demo key from SaucerSwap — rate-limited, safe to expose
+PUBLIC_DEMO_KEY = os.getenv("SAUCERSWAP_API_KEY", "875e1017-87b8-4b12-8301-6aa1f1aa073b")
 
 class DiscoveryManager:
     """
@@ -28,11 +30,8 @@ class DiscoveryManager:
         self.network = network
         self.base_url = SAUCERSWAP_BASE
         
-        # Load API Key from environment
-        import os
-        self.api_key = os.getenv("SAUCERSWAP_API_KEY_MAINNET") or os.getenv("SAUCERSWAP_API_KEY")
-        if not self.api_key:
-            self.api_key = PUBLIC_DEMO_KEY
+        # Load API Key from environment, fall back to public demo key
+        self.api_key = os.getenv("SAUCERSWAP_API_KEY_MAINNET") or PUBLIC_DEMO_KEY
 
     def _get_headers(self) -> Dict:
         """Browser-like headers to bypass bot detection."""

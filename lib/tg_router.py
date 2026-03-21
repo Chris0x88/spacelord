@@ -39,7 +39,8 @@ from lib import tg_format as formatters
 logger = logging.getLogger("pacman.telegram")
 
 # Repo root — used for data file access
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+# lib/tg_router.py → lib/ → pacman/ (2 levels up)
+_REPO_ROOT = Path(__file__).resolve().parent.parent
 _DATA_DIR = _REPO_ROOT / "data"
 
 # Pending custom amount input per user (user_id → context dict with TTL)

@@ -19,6 +19,27 @@ _bot_instance = None
 PID_FILE = "data/robot.pid"
 
 
+def _check_pid_running():
+    """Check if the robot daemon is running. Cleans stale PID files.
+    Returns (is_running: bool, pid: int|None).
+    """
+    import os
+    if not os.path.exists(PID_FILE):
+        return False, None
+    try:
+        with open(PID_FILE) as f:
+            pid = int(f.read().strip())
+        os.kill(pid, 0)
+        return True, pid
+    except (ProcessLookupError, ValueError):
+        # Stale PID file — process no longer exists
+        try:
+            os.remove(PID_FILE)
+        except OSError:
+            pass
+        return False, None
+
+
 def _get_or_create_bot(app):
     """Get or create the bot singleton."""
     global _bot_instance
@@ -335,16 +356,7 @@ def _cmd_status(app, json_mode=False):
     except Exception:
         pass
     
-    is_running = False
-    pid = None
-    if os.path.exists(PID_FILE):
-        try:
-            with open(PID_FILE) as f:
-                pid = int(f.read().strip())
-            os.kill(pid, 0)
-            is_running = True
-        except (ProcessLookupError, ValueError):
-            pass
+    is_running, pid = _check_pid_running()
 
     min_portfolio = getattr(bot.config, 'min_portfolio_usd', 5.0)
 
@@ -389,18 +401,6 @@ def _cmd_status(app, json_mode=False):
     
     print(f"\n  {C.BOLD}🤖 Power Law Robot Status{C.R}")
     print(f"  {'─' * 45}")
-    
-    import os
-    is_running = False
-    pid = None
-    if os.path.exists(PID_FILE):
-        try:
-            with open(PID_FILE) as f:
-                pid = int(f.read().strip())
-            os.kill(pid, 0)
-            is_running = True
-        except (ProcessLookupError, ValueError):
-            if os.path.exists(PID_FILE): os.remove(PID_FILE)
 
     running_str = f"{C.OK}RUNNING{C.R}" if is_running else f"{C.MUTED}STOPPED{C.R}"
     pid_str = f" (PID: {pid})" if pid and is_running else ""

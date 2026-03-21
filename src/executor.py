@@ -174,6 +174,10 @@ class PacmanExecutor:
         from lib.prices import price_manager
         self.price_manager = price_manager
         
+        # Token metadata cache — loaded lazily on first access to avoid
+        # repeated disk reads (6-10 per multi-step swap).
+        self._tokens_cache: Optional[Dict] = None
+
         # Recording system
         self.recordings_dir = Path("execution_records")
         self.recordings_dir.mkdir(exist_ok=True)
@@ -269,6 +273,26 @@ class PacmanExecutor:
         return _get_balances_impl(self.w3, self.eoa, self.client, token_highlights=token_highlights, account_id=effective_id)
 
 
+    def _load_tokens_cache(self) -> Dict:
+        """Load and cache tokens.json. Returns cached data on subsequent calls."""
+        if self._tokens_cache is None:
+            root = Path(__file__).parent.parent
+            tokens_path = root / "data" / "tokens.json"
+            if not tokens_path.exists():
+                tokens_path = Path("data/tokens.json")
+            try:
+                with open(tokens_path) as f:
+                    self._tokens_cache = json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load tokens.json: {e}")
+                self._tokens_cache = {}
+        return self._tokens_cache
+
+    def _reload_tokens_cache(self) -> Dict:
+        """Force reload tokens.json from disk (call if file changes at runtime)."""
+        self._tokens_cache = None
+        return self._load_tokens_cache()
+
     def _get_token_id(self, symbol: str) -> Optional[str]:
         """Convert symbol to token ID using aliases.json then tokens.json."""
         if symbol.startswith("0.0."):
@@ -292,14 +316,9 @@ class PacmanExecutor:
         except Exception:
             pass
 
-        # 2. tokens.json key/symbol match
+        # 2. tokens.json key/symbol match (cached)
         try:
-            tokens_path = root / "data" / "tokens.json"
-            if not tokens_path.exists():
-                 tokens_path = Path("data/tokens.json")
-
-            with open(tokens_path) as f:
-                tokens_data = json.load(f)
+            tokens_data = self._load_tokens_cache()
 
             search_sym = symbol.upper()
             meta = None
@@ -321,15 +340,9 @@ class PacmanExecutor:
         return None
 
     def _get_token_data(self, token_id_or_symbol: str) -> Optional[dict]:
-        """Get full metadata for a token from tokens.json."""
+        """Get full metadata for a token from tokens.json (cached)."""
         try:
-            root = Path(__file__).parent.parent
-            tokens_path = root / "data" / "tokens.json"
-            if not tokens_path.exists():
-                 tokens_path = Path("data/tokens.json")
-
-            with open(tokens_path) as f:
-                tokens_data = json.load(f)
+            tokens_data = self._load_tokens_cache()
             
             search = token_id_or_symbol.upper()
             
@@ -561,27 +574,17 @@ class PacmanExecutor:
     
     def _get_token_decimals(self, token_id_or_sym: str) -> int:
         """Look up token decimals by Hedera ID or symbol, then fallback to API."""
-        import json as _json
-        # Try to look up by Hedera token ID from tokens.json
+        # Try to look up from cached tokens.json
+        tdata = self._load_tokens_cache()
         if token_id_or_sym.startswith("0.0."):
-            try:
-                with open("data/tokens.json") as f:
-                    tdata = _json.load(f)
-                for tid, m in tdata.items():
-                    if tid == token_id_or_sym:
-                        return m.get("decimals", 8)
-            except Exception:
-                pass
+            for tid, m in tdata.items():
+                if tid == token_id_or_sym:
+                    return m.get("decimals", 8)
         else:
             # Symbol-based lookup for wrap/unwrap steps that pass symbols
-            try:
-                with open("data/tokens.json") as f:
-                    tdata = _json.load(f)
-                for _tid, m in tdata.items():
-                    if m.get("symbol", "").upper() == token_id_or_sym.upper():
-                        return m.get("decimals", 8)
-            except Exception:
-                pass
+            for _tid, m in tdata.items():
+                if m.get("symbol", "").upper() == token_id_or_sym.upper():
+                    return m.get("decimals", 8)
 
         # Fallback: exact ID match
         tid = token_id_or_sym
