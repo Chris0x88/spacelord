@@ -1,87 +1,30 @@
-# ============================================================
-# Pacman .gitignore — Clean repo for open-source distribution
-# ============================================================
-
-# ----- Developer workspace (all planning, notes, private docs) -----
-dev/
-CLAUDE.md
-CONTEXT.md
-
-# ----- Environments & Secrets -----
-.env
-.env.backup
-.env.local
-.DS_Store
-
-# ----- Python -----
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
 venv/
 .venv/
-env/
-pacman_env/
-pacman_cli.egg-info/
 
-# ----- Data & Logs (user-specific, never committed) -----
-data/accounts.json
-data/governance.json
-data/pacman_data_raw.json
-data/orders.json
-data/robot_state.json
-data/status.json
-data/knowledge/
-data/nft_images/
-data/chat_archive/
-data/daemon.pid
-data/robot.pid
-execution_records/
-logs/
-training_data/
-*.log
-*.tmp
-agent_interactions.jsonl
+# Environment & secrets
+.env
+.env.*
+.DS_Store
 
-# ----- Template exception: always track templates -----
-!data/templates/*.template.json
-
-# ----- IDE & Dev Tools -----
+# IDE
 .vscode/
 .idea/
 .claude/
 
-# ----- Node (pitch deck tooling) -----
+# Node
 node_modules/
 package-lock.json
-package.json
-uv.lock
 
-# ----- OpenClaw agent (user-specific files) -----
-openclaw/USER.md
-openclaw/MEMORY.md
-openclaw/memory/*.md
-!openclaw/memory/.gitkeep
-openclaw/.openclaw/
-openclaw/TOOLS.md
-openclaw/bug.md
-
-# ----- Memory (dev-only daily notes) -----
-memory/*.md
-!memory/.gitkeep
-
-# ----- Presentation -----
-pitch_deck/Pacman_Pitch_Deck.pptx
-pitch_deck/slides/
+# Runtime artifacts
+*.log
+*.tmp
+*.pid
 .~lock*
 
-# ----- Backups & Runtime -----
-backups/
-FEEDBACK/
-dashboard/bundle.html
-dashboard/pacmate-dashboard.html
-
-# ----- macOS app bundle -----
-Pacman.app/
-
-# ----- Skill evals (dev work) -----
-evals/
+# Template exception
+!data/templates/*.template.json
