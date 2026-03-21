@@ -113,6 +113,13 @@ graph TD
         Exec ===>|Emit Events| HCS
         HCS10 ===>|Publish/Subscribe| HCS
     end
+
+    %% Subgraph Styling (Removes GitHub's default grey boxes) %%
+    style UI fill:none,stroke:#45475a,stroke-width:1px,stroke-dasharray: 5 5
+    style Intelligence fill:none,stroke:#45475a,stroke-width:1px,stroke-dasharray: 5 5
+    style Pacman fill:none,stroke:#45475a,stroke-width:1px,stroke-dasharray: 5 5
+    style Addons fill:none,stroke:#45475a,stroke-width:1px,stroke-dasharray: 5 5
+    style Blockchain fill:none,stroke:#45475a,stroke-width:1px,stroke-dasharray: 5 5
 ```
 
 | Interface | What It Does | Status |
