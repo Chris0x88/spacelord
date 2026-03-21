@@ -6,6 +6,36 @@
 
 ---
 
+### [BUG-021] Swap fails with "Have 0.000000" when user holds USDC[hts] not USDC
+**Resolved:** 2026-03-20
+**Root Cause:** Hedera has two USDC variants: EVM USDC (0.0.456858, marked `preferred`) and HTS-native USDC[hts] (0.0.1055459). The translator always resolves "USDC" → 0.0.456858. The executor then calls ERC20 `balanceOf(0.0.456858)` which returns 0 when the user only holds 0.0.1055459. Result: `InsufficientFundsError: Have 0.000000, Need 0.500000` even with 6.58 USDC[hts] in the wallet. Both "Quick Buy HBAR" and text-based "swap 0.5 USDC for HBAR" were broken.
+**Fix:** Added `_preferred_usdc_id()` and `_usdc_balance_fallback()` helpers to the Telegram `InboundRouter`. These check actual balances via `_normalize_balances()` and silently switch to the USDC variant the user actually holds. Applied in three places: `_cmd_swap_parse()` (text commands), `qs:HBAR` callback (quick-buy HBAR), and `qs:USDC` callback (quick-buy USDC). Base app untouched.
+**Files:** `src/plugins/telegram/router.py`
+
+### [BUG-020] Stale confirm_swap callbacks replay trades on bot restart
+**Resolved:** 2026-03-20
+**Root Cause:** Telegram's getUpdates long-polling offset is stored in-memory only. On bot restart, offset resets to 0, causing Telegram to re-deliver any pending updates from the previous session — including `confirm_swap:` and `confirm_send:` callbacks that had not yet been flushed. This could silently replay a trade the user had confirmed minutes (or hours) ago.
+**Fix:** Added `_drain_stale_updates()` called immediately after webhook deletion at startup. It fetches all pending updates with `timeout=0, offset=-1` to find the most recent ID, then calls getUpdates with `offset=last_id+1` to acknowledge and discard them all without dispatch.
+**Files:** `src/plugins/telegram/poller.py`
+
+### [BUG-019] Double-tap on Confirm Swap/Send button executes trade twice
+**Resolved:** 2026-03-20
+**Root Cause:** No deduplication on confirm callbacks. If a user double-tapped the ✅ Confirm button, or Telegram re-delivered the callback, `execute_swap_callback` / `execute_send_callback` would run twice, submitting two on-chain transactions.
+**Fix:** Added `_is_confirm_already_processed(callback_query_id)` guard with a 30-second TTL dedup cache (`_recent_confirm_ids` dict). On duplicate, the poller answers the callback with "Already processing…" and returns early.
+**Files:** `src/plugins/telegram/poller.py`
+
+### [BUG-018] Telegram button spinner times out before fast-lane response arrives
+**Resolved:** 2026-03-20
+**Root Cause:** For non-confirm callbacks (portfolio, prices, gas, etc.), `_answer_callback()` was called AFTER `_router.handle_callback()`. Since portfolio/prices make network calls (1–4 seconds), Telegram's 5-second spinner timeout could fire, showing an error indicator on the button even though the response was about to arrive.
+**Fix:** Moved `_answer_callback()` to execute BEFORE `handle_callback()` in the fast-lane path. The spinner now clears immediately on tap; the updated message arrives shortly after.
+**Files:** `src/plugins/telegram/poller.py`
+
+### [BUG-017] Text-based swap command missing estimated_out in confirm card
+**Resolved:** 2026-03-20
+**Root Cause:** `_cmd_swap_parse()` built the confirm card without passing `estimated_out=`. The button-driven path (`_cmd_swap_confirm_from_callback`) passed it correctly. This caused "Est. receive" to be absent from the confirm screen when using typed commands like `swap 5 USDC for HBAR`.
+**Fix:** Added `estimated_out` extraction from route object in `_cmd_swap_parse()`, matching the button path.
+**Files:** `src/plugins/telegram/router.py`
+
 ### [BUG-016] Token approval no-op causes on-chain swap reverts
 **Resolved:** 2026-03-19
 **Root Cause:** `executor.py` line 704 had `pass` where `self.client.ensure_approval()` should have been called. The executor detected that a token (e.g. USDC[hts] / 0.0.1055459) needed allowance approval for the SaucerSwap router, logged "Approving...", then did nothing. The swap was broadcast without approval → on-chain revert burning gas. Historical logs (March 11) show the same pattern 3x: "Approving 0.0.1055459..." → "Transaction REVERTED on-chain". Tokens with pre-existing approval (USDC, HBAR) worked, masking the bug.

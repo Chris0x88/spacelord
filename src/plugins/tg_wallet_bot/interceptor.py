@@ -1,11 +1,14 @@
 """
-Telegram Interceptor — FastAPI Webhook Server
+Telegram Interceptor — FastAPI Webhook Server  [WALLET BOT webhook variant — NOT the OpenClaw agent]
 =============================================
 Receives Telegram bot updates via HTTPS webhook and routes them
 to the fast lane (PacmanController) or the AI lane (Phase 2+).
 
+⚠️  This is the WEBHOOK version of the wallet bot (alternative to poller.py).
+    NOT the OpenClaw agent. The agent uses TELEGRAM_BOT_TOKEN via OpenClaw.
+
 Start with:
-    uvicorn src.plugins.telegram.interceptor:app --host 0.0.0.0 --port 8443
+    uvicorn src.plugins.tg_wallet_bot.interceptor:app --host 0.0.0.0 --port 8443
 
 Or via launch.sh:
     ./launch.sh telegram-start
@@ -38,10 +41,10 @@ from typing import Any, Dict, Optional
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 
-from src.plugins.telegram import config as tg_config
-from src.plugins.telegram import formatters
-from src.plugins.telegram.ghost import GhostRequest, handle_ghost, make_webapp_button
-from src.plugins.telegram.router import InboundRouter
+from src.plugins.tg_wallet_bot import config as tg_config
+from lib import tg_format as formatters                              # shared formatters
+from src.plugins.tg_wallet_bot.ghost import GhostRequest, handle_ghost, make_webapp_button
+from lib.tg_router import InboundRouter                              # shared router
 
 logger = logging.getLogger("pacman.telegram")
 
@@ -76,32 +79,9 @@ async def lifespan(application: FastAPI):
     _controller = PacmanController()
     _router = InboundRouter(_controller)
 
-    # Register bot commands so they appear in Telegram's "/" menu
-    import httpx
-    _bot_commands = [
-        {"command": "start",     "description": "Open wallet home screen"},
-        {"command": "portfolio", "description": "View balances & USD values"},
-        {"command": "swap",      "description": "Swap tokens (button-driven)"},
-        {"command": "send",      "description": "Send tokens to whitelisted address"},
-        {"command": "price",     "description": "Live token prices"},
-        {"command": "gas",       "description": "Check HBAR gas reserve"},
-        {"command": "history",   "description": "Recent transactions"},
-        {"command": "robot",     "description": "BTC rebalancer status"},
-        {"command": "tokens",    "description": "Supported tokens list"},
-        {"command": "status",    "description": "System health check"},
-        {"command": "setup",     "description": "Secure key setup (Mini App)"},
-        {"command": "menu",      "description": "Show main menu"},
-    ]
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(
-                f"https://api.telegram.org/bot{_bot_token}/setMyCommands",
-                json={"commands": _bot_commands},
-            )
-            if resp.json().get("ok"):
-                logger.info(f"[Telegram] Registered {len(_bot_commands)} bot commands")
-    except Exception as exc:
-        logger.warning(f"[Telegram] setMyCommands failed: {exc}")
+    # Bot command registration deprecated — pushing custom commands via
+    # setMyCommands overwrites the platform's own command list.
+    # Natural language works better with the agent.
 
     logger.info(
         f"[Telegram] Ready. Allowed users: "
@@ -570,4 +550,4 @@ def _is_authorized(user_id: int) -> bool:
 if __name__ == "__main__":
     import uvicorn
     port = tg_config.get_port()
-    uvicorn.run("src.plugins.telegram.interceptor:app", host="0.0.0.0", port=port, reload=False)
+    uvicorn.run("src.plugins.tg_wallet_bot.interceptor:app", host="0.0.0.0", port=port, reload=False)

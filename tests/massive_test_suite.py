@@ -28,8 +28,8 @@ class TestCoreLogic(unittest.TestCase):
         self.assertEqual(resolve_token("wbtc"), "0.0.10082597")
 
     def test_canonical_resolution_ethereum(self):
-        self.assertEqual(resolve_token("ethereum"), "0.0.9470869")
-        self.assertEqual(resolve_token("ETH"), "0.0.9470869")
+        self.assertEqual(resolve_token("ethereum"), "0.0.9770617")
+        self.assertEqual(resolve_token("ETH"), "0.0.9770617")
 
     def test_canonical_resolution_stablecoins(self):
         self.assertEqual(resolve_token("dollar"), "0.0.456858")
@@ -102,9 +102,9 @@ class TestTranslator(unittest.TestCase):
     # Adding many variations for comprehensive testing
     def test_translator_variations(self):
         cases = [
-            ("trade 50 eth into btc", {"intent": "swap", "amount": 50.0, "from_token": "0.0.9470869", "to_token": "0.0.10082597", "mode": "exact_in"}),
+            ("trade 50 eth into btc", {"intent": "swap", "amount": 50.0, "from_token": "0.0.9770617", "to_token": "0.0.10082597", "mode": "exact_in"}),
             ("exchange 10 hedera to dollar", {"intent": "swap", "amount": 10.0, "from_token": "0.0.0", "to_token": "0.0.456858", "mode": "exact_in"}),
-            ("get 0.5 ethereum with usdc", {"intent": "swap", "amount": 0.5, "to_token": "0.0.9470869", "from_token": "0.0.456858", "mode": "exact_out"}),
+            ("get 0.5 ethereum with usdc", {"intent": "swap", "amount": 0.5, "to_token": "0.0.9770617", "from_token": "0.0.456858", "mode": "exact_out"}),
             ("transfer 5 btc to 0.0.999", {"intent": "send", "amount": 5.0, "token": "0.0.10082597", "recipient": "0.0.999"}),
         ]
         for text, expected in cases:

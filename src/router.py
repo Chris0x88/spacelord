@@ -82,7 +82,7 @@ class PacmanVariantRouter:
     # These MUST always resolve. Users say "bitcoin", agents say "0.0.10082597".
     CANONICAL_DEFAULTS = {
         "bitcoin": "0.0.10082597", "btc": "0.0.10082597", "wbtc": "0.0.10082597",
-        "ethereum": "0.0.9470869", "eth": "0.0.9470869", "weth": "0.0.9470869",
+        "ethereum": "0.0.9770617", "eth": "0.0.9770617", "weth": "0.0.9770617",
         "dollar": "0.0.456858", "usd": "0.0.456858",        "usdc": "USDC", "usdt": "USDT[hts]", "dai": "DAI[hts]",
         "sauce": "SAUCE", "hbar": "HBAR", "hedera": "HEDERA"
     }

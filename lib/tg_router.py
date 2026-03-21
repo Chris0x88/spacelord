@@ -1,11 +1,12 @@
 """
-Telegram Inbound Router
+Telegram Inbound Router  [SHARED — business logic for command routing]
 =======================
-Traffic cop: decides whether an incoming update goes to the fast lane
-(direct PacmanController call) or the AI lane (LLM round-trip, future).
+Routes slash commands and button callbacks to PacmanController methods.
+Returns pre-formatted HTML + button markup as response dicts.
 
-ALL standard commands are fast-lane (pure code, no LLM). The AI lane is
-a future placeholder for natural-language conversation.
+Called by:
+  - cli/commands/telegram.py  (agent subprocess: ./launch.sh tg <action>)
+  - tg_wallet_bot/poller.py  (wallet bot, direct call)
 
 Interactive flows (all button-driven, zero typing required):
 
@@ -33,7 +34,7 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
-from src.plugins.telegram import formatters
+from lib import tg_format as formatters
 
 logger = logging.getLogger("pacman.telegram")
 
@@ -370,7 +371,7 @@ class InboundRouter:
                 "HBAR": "0.0.0",
                 "USDC": "0.0.456858",
                 "WBTC": "0.0.10082597",
-                "WETH": "0.0.9470869",
+                "WETH": "0.0.9770617",
                 "SAUCE": "0.0.731861",
             }
             prices = {}
@@ -449,11 +450,58 @@ class InboundRouter:
         return result
 
     def _cmd_balance(self) -> Dict[str, Any]:
+        prices = self._get_prices()
+
+        # Try multi-account view (main + robot in one shot)
+        try:
+            all_balances = self._ctrl.get_all_account_balances()
+            if len(all_balances) > 1:
+                return self._format_multi_account(all_balances, prices)
+        except Exception:
+            pass  # Fall through to single-account
+
+        # Single account fallback
         raw_balances = self._ctrl.get_balances()
         balances = self._normalize_balances(raw_balances)
         account_id = getattr(self._ctrl, "account_id", "")
-        prices = self._get_prices()
         text, reply_markup = formatters.format_balance(balances, account_id=account_id, prices=prices)
+        return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
+
+    def _format_multi_account(self, all_balances: Dict, prices: Dict) -> Dict[str, Any]:
+        """Build multi-account portfolio view from controller data."""
+        # Load account nicknames
+        nicknames = {}
+        try:
+            with open(_DATA_DIR / "accounts.json") as f:
+                for acc in json.load(f):
+                    if acc.get("active") is not False:
+                        nicknames[acc["id"]] = acc.get("nickname", "Account")
+        except Exception:
+            pass
+
+        main_id = getattr(self._ctrl, "account_id", "")
+        robot_id = getattr(self._ctrl.config, "robot_account_id", "")
+
+        accounts = []
+        for acct_id, raw_bal in all_balances.items():
+            balances = self._normalize_balances(raw_bal)
+            if acct_id == main_id:
+                icon = "👤"
+                nickname = nicknames.get(acct_id, "Main Account")
+            elif acct_id == robot_id:
+                icon = "🤖"
+                nickname = nicknames.get(acct_id, "Robot Account")
+            else:
+                icon = "💼"
+                nickname = nicknames.get(acct_id, "Account")
+            accounts.append({
+                "account_id": acct_id,
+                "nickname": nickname,
+                "icon": icon,
+                "balances": balances,
+            })
+
+        text, reply_markup = formatters.format_multi_account_balance(accounts, prices=prices)
         return {"text": text, "reply_markup": reply_markup, "parse_mode": "HTML"}
 
     def _cmd_status(self) -> Dict[str, Any]:
@@ -520,7 +568,7 @@ class InboundRouter:
             "HBAR":  "0.0.0",
             "USDC":  "0.0.456858",
             "WBTC":  "0.0.10082597",
-            "WETH":  "0.0.9470869",
+            "WETH":  "0.0.9770617",
             "SAUCE": "0.0.731861",
         }
         try:
@@ -1234,7 +1282,7 @@ class InboundRouter:
 
     def _cmd_setup(self, field: str = "") -> Dict[str, Any]:
         try:
-            from src.plugins.telegram.interceptor import build_webapp_button
+            from src.plugins.tg_wallet_bot.interceptor import build_webapp_button
             field = field.upper() if field else "PRIVATE_KEY"
             markup = build_webapp_button(field)
         except Exception:

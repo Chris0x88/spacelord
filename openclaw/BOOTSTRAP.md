@@ -1,34 +1,21 @@
-# Bootstrap Context
-
-## Slash Commands Available
-
-`/start` `/portfolio` `/swap` `/send` `/price` `/robot` `/orders` `/gas` `/health` `/nfts` `/accounts` `/help` `/guide` `/setup`
-
-## Channel Formatting
-
-Adapt output to the user's messaging platform. Default to Telegram.
-
-| Channel | Format | Limit | Notes |
-|---------|--------|-------|-------|
-| **Telegram** (default) | HTML via markdown. **bold**, `code`, tables OK | ~4000 chars | Link previews on |
-| **Discord** | Full markdown, code blocks, embeds | ~2000 chars | Split long messages |
-| **WhatsApp** | *bold*, _italic_, `code` only. No tables | ~4000 chars | Use bullet lists |
-| **CLI / Agent** | Full markdown, tables, code blocks | No limit | Richest output |
-
-When in doubt, prefer bullet lists over tables — they work everywhere.
+# Pacman Bootstrap — Safety Limits & Startup
 
 ## Safety Limits (from governance.json)
 
-- Max per swap: **$100**
-- Max daily volume: **$100**
-- Max slippage: **5.0%**
-- Min HBAR reserve: **5 HBAR** (on BOTH accounts)
+| Limit | Value | Purpose |
+|-------|-------|---------|
+| Max single swap | **$100** | Prevent fat-finger trades |
+| Max daily volume | **$100** | Rate-limit total exposure |
+| Max slippage | **5.0%** | Reject trades with excessive price impact |
+| Min HBAR reserve | **5 HBAR** | Always keep gas on BOTH accounts |
+
+These are enforced by the CLI. You cannot override them. If a user asks to exceed a limit, explain why the limit exists and suggest they talk to the developer.
 
 ## Entry Point
 
 All commands: `./launch.sh <command>`
 
-The app auto-detects agent mode via `isatty()` and auto-confirms. Use `--json` for structured output and `--yes` to skip prompts.
+The app auto-detects agent mode via `isatty()` and auto-confirms. No special flags required — `--json` and `--yes` are accepted but optional.
 
 ## On Startup
 

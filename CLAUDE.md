@@ -59,6 +59,37 @@ Pacman is a Python CLI for Hedera Hashgraph trading (~10K LOC), designed for AI 
 | `.agent/agents.md` | Architecture guide for AI agents working in the repo |
 | `FEEDBACK/` | Exported chat transcripts and handoff notes from OpenClaw sessions (gitignored). Look here for recent context when picking up mid‑session. |
 
+## Telegram Architecture — Two Separate Bots
+
+There are TWO completely separate Telegram bots. Different chats, different tokens, different code.
+
+### OpenClaw Agent Bot (TELEGRAM_BOT_TOKEN) — THE MAIN PRODUCT
+- Managed by OpenClaw. Agent reads `SKILL.md` (via symlink from `openclaw/skills/`), runs `./launch.sh` CLI commands.
+- Agent fast-lane bridge: `cli/commands/telegram.py` → `lib/tg_router.py`
+- Shared formatters: `lib/tg_format.py`
+- Agent workspace: `openclaw/` (the agent can ONLY see files in this directory)
+- **This is what we're optimizing for hackathon.**
+
+### Wallet Bot (TELEGRAM_WALLET_BOT_TOKEN) — SEPARATE PLUGIN, NOT THE AGENT
+- Standalone polling bot, runs via `./launch.sh telegram-start`
+- Self-contained plugin: `src/plugins/tg_wallet_bot/`
+- Imports shared logic from `lib/tg_router.py` and `lib/tg_format.py`
+- Still works on its own Telegram channel. Not the agent.
+
+### File Layout
+```
+lib/tg_router.py            ← Shared: command routing, swap/send flows
+lib/tg_format.py            ← Shared: HTML card rendering, button layouts
+cli/commands/telegram.py    ← Agent bridge: ./launch.sh tg <action>
+src/plugins/tg_wallet_bot/  ← Wallet bot plugin (standalone, not agent)
+openclaw/                   ← Agent workspace (ONLY thing the agent sees)
+```
+
+### The OpenClaw agent CANNOT see:
+- `src/`, `lib/`, `cli/`, `data/`, `CLAUDE.md`, or any repo root files
+- It only sees `openclaw/*.md` files + `SKILL.md` via symlink
+- It interacts with the app exclusively through `./launch.sh` subprocesses
+
 ## Training Data Pipeline
 We collect structured data for fine-tuning an LLM to drive and eventually BE the app.
 

@@ -45,6 +45,7 @@ from cli.commands.orders import cmd_order
 from cli.commands.hcs import cmd_hcs
 from cli.commands.hcs10 import cmd_hcs10
 from cli.commands.robot import cmd_robot
+from cli.commands.agent_sync import cmd_agent_sync
 from cli.commands.doctor import cmd_doctor
 from cli.commands.telegram import cmd_telegram
 
@@ -151,6 +152,8 @@ COMMANDS = {
     "logs": cmd_logs, "log": cmd_logs,
     "docs": cmd_docs, "doc": cmd_docs,
     "help": cmd_help, "?": cmd_help, "-h": cmd_help,
+    # --- Agent ---
+    "agent-sync": cmd_agent_sync,
     # --- Services ---
     "install-service": cmd_install_service,
     "uninstall-service": cmd_uninstall_service,

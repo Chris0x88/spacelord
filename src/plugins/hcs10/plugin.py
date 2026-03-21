@@ -128,7 +128,7 @@ class Hcs10Agent(BasePlugin):
             )
             tx.freeze_with(client)
             response = tx.execute(client)
-            receipt = response.get_receipt(client)
+            receipt = response.get_receipt(client) if hasattr(response, "get_receipt") else response
             if receipt.topic_id:
                 topic_id = str(receipt.topic_id)
                 with self._state_lock:
@@ -155,7 +155,7 @@ class Hcs10Agent(BasePlugin):
             )
             tx.freeze_with(client)
             response = tx.execute(client)
-            receipt = response.get_receipt(client)
+            receipt = response.get_receipt(client) if hasattr(response, "get_receipt") else response
             if receipt.topic_id:
                 return str(receipt.topic_id)
         except Exception as e:
@@ -450,7 +450,7 @@ class Hcs10Agent(BasePlugin):
             )
             tx.freeze_with(client)
             response = tx.execute(client)
-            receipt = response.get_receipt(client)
+            receipt = response.get_receipt(client) if hasattr(response, "get_receipt") else response
             return receipt.status == 22  # SUCCESS
         except Exception as e:
             logger.error(f"[HCS10] Submit to {topic_id} failed: {e}")

@@ -32,6 +32,41 @@ def get_balances(w3, eoa: str, client, token_highlights: list = None, account_id
 
     balances = {}
 
+    # If account_id is a DIFFERENT Hedera account than the executor's own (eoa),
+    # go straight to Mirror Node — the EVM multicall would return the executor's
+    # balances, not the requested account's.
+    if account_id and account_id.startswith("0.0."):
+        # Check if this account_id maps to a different EVM address than our eoa
+        try:
+            # Load accounts.json to find the EVM alias for this account
+            root = Path(__file__).parent.parent
+            accts_path = root / "data" / "accounts.json"
+            if not accts_path.exists():
+                accts_path = Path("data/accounts.json")
+            with open(accts_path) as f:
+                for acc in json.load(f):
+                    if acc.get("id") == account_id:
+                        acct_evm = acc.get("evm_alias", "")
+                        if acct_evm and acct_evm.lower() != eoa.lower():
+                            # Different EVM address → must use Mirror Node
+                            logger.debug(f"   📡 account_id {account_id} has different EOA ({acct_evm}), using Mirror Node...")
+                            tokens_data = {}
+                            try:
+                                tokens_path = root / "data" / "tokens.json"
+                                if not tokens_path.exists():
+                                    tokens_path = Path("data/tokens.json")
+                                with open(tokens_path) as f2:
+                                    tokens_data = json.load(f2)
+                            except Exception:
+                                pass
+                            return _get_balances_mirror(
+                                acct_evm, tokens_data, token_highlights,
+                                client.network, account_id,
+                            )
+                        break
+        except Exception as e:
+            logger.debug(f"   Account lookup for {account_id} failed: {e}")
+
     # Mirror Node requires the EVM alias address for token lookups — the Hedera native ID
     # (0.0.xxx) returns empty token lists. We use eoa (the ECDSA alias) as the primary
     # identifier and only fall back to the Hedera ID for unfunded/new accounts.
@@ -183,7 +218,7 @@ def _get_balances_sequential(client, tokens_data, token_highlights: list = None)
     Still kept for architectural completeness, but Mirror Node is preferred now.
     """
     balances = {}
-    targets = token_highlights if token_highlights else ["0.0.456858", "0.0.10082597", "0.0.9470869"]
+    targets = token_highlights if token_highlights else ["0.0.456858", "0.0.10082597", "0.0.9770617"]
     for token_id in targets:
         meta = tokens_data.get(token_id)
         if not meta: continue

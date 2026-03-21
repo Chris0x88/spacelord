@@ -51,10 +51,10 @@ PREFERENCES = {
     "bitcoin": "0.0.10082597",
     "btc":     "0.0.10082597",
     "wbtc":    "0.0.10082597",
-    # Ethereum — HTS-WETH (0.0.9470869)
-    "ethereum": "0.0.9470869",
-    "eth":      "0.0.9470869",
-    "weth":     "0.0.9470869",
+    # Ethereum — HTS-WETH (0.0.9770617)
+    "ethereum": "0.0.9770617",
+    "eth":      "0.0.9770617",
+    "weth":     "0.0.9770617",
     # Stablecoins
     "usd":   "0.0.456858",
     "usdc":  "0.0.456858",
@@ -70,9 +70,9 @@ ALIASES = {
     "BITCOIN":   "0.0.10082597",   # HTS-WBTC (highest V2 liquidity)
     "BTC":       "0.0.10082597",
     "WBTC_HTS":  "0.0.10082597",   # System canonical
-    "ETHEREUM":  "0.0.9470869",    # HTS-WETH
-    "ETH":       "0.0.9470869",
-    "WETH_HTS":  "0.0.9470869",    # System canonical
+    "ETHEREUM":  "0.0.9770617",    # HTS-WETH
+    "ETH":       "0.0.9770617",
+    "WETH_HTS":  "0.0.9770617",    # System canonical
     "DOLLAR":    "0.0.456858",
     "USD":       "0.0.456858",
     "HEDERA":    "0.0.0",

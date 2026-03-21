@@ -43,14 +43,19 @@ openclaw agents set pacman --workspace /path/to/pacman/openclaw
 ln -s /path/to/pacman/openclaw ~/.openclaw/workspace-pacman
 ```
 
-## Step 3: Link the Skill
+## Step 3: Link the Skill & Copy Defaults
 
 ```bash
+# Link the skill
 cd /path/to/pacman/openclaw/skills/pacman-hedera
 ln -s ../../../SKILL.md SKILL.md
+
+# Copy default user files (customize these for your setup)
+cp /path/to/pacman/openclaw/defaults/USER.md /path/to/pacman/openclaw/USER.md
+cp /path/to/pacman/openclaw/defaults/MEMORY.md /path/to/pacman/openclaw/MEMORY.md
 ```
 
-This symlink means SKILL.md updates automatically when the Pacman repo is updated.
+The symlink means SKILL.md updates automatically when the Pacman repo is updated. USER.md and MEMORY.md are gitignored — they're personal to each operator.
 
 ## Step 4: Configure OpenClaw
 

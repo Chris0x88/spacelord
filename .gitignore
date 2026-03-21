@@ -3,6 +3,7 @@ archive/
 archive_internal/
 legacy/
 deprecated/
+burnout/
 
 # Environments
 .env
@@ -56,12 +57,14 @@ ARCHITECTURE_RULES.md
 BUGS.md
 CHANGELOG.md
 CLAUDE.md
+CONTEXT.md
 OPERATIONS.md
 
 !data/*.template.json
 
 # Private Documentation
 docs/plans/
+hackathon.md
 docs_private/
 tui/
 TODO_*.md
@@ -84,7 +87,10 @@ backups/
 # Exported feedback (session transcripts, agent handoffs)
 FEEDBACK/
 
-# OpenClaw agent memory (user-specific runtime state)
+# OpenClaw agent — user-specific files (gitignored for mass adoption)
+# Defaults ship in openclaw/defaults/ ; users copy and customize
+openclaw/USER.md
+openclaw/MEMORY.md
 openclaw/memory/*.md
 !openclaw/memory/.gitkeep
 openclaw/.openclaw/

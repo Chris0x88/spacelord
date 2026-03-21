@@ -23,7 +23,7 @@ from lib.prices import price_manager as _pm
 
 # Default token IDs for the rebalancer (highest-liquidity HTS preferred pools)
 WBTC_TOKEN_ID = "0.0.10082597"  # HTS-WBTC (Preferred)
-WETH_TOKEN_ID = "0.0.9470869"   # ETH (Preferred)
+WETH_TOKEN_ID = "0.0.9770617"   # HTS-WETH (Preferred)
 USDC_TOKEN_ID = "0.0.456858"    # USDC (Standard)
 
 

@@ -1,5 +1,5 @@
 """
-Telegram Long-Polling Runner
+Telegram Long-Polling Runner  [WALLET BOT — standalone, NOT the OpenClaw agent]
 =============================
 Zero external dependencies beyond httpx (already installed).
 No ngrok, no tunnel, no public URL needed.
@@ -7,13 +7,16 @@ No ngrok, no tunnel, no public URL needed.
 Polls Telegram's getUpdates API with a 30-second long-poll timeout,
 so updates arrive near-instantly without busy-waiting.
 
-Uses the SAME router + formatters as the webhook interceptor.
+Uses the SAME router + formatters as the OpenClaw fast-lane CLI.
 
-Start with:
-    python -m src.plugins.telegram.poller
+    Bot token:  TELEGRAM_WALLET_BOT_TOKEN  (from .env)
+    Start:      ./launch.sh telegram-start
+    Install:    ./launch.sh telegram-install  (macOS launchd)
 
-Or via launch.sh:
-    ./launch.sh telegram-start
+⚠️  This is NOT the OpenClaw agent bot. The agent bot is a separate
+    Telegram chat powered by OpenClaw's LLM, using TELEGRAM_BOT_TOKEN.
+    That bot calls ./launch.sh tg <action> as subprocess commands.
+    This poller is a separate wallet-app bot with no LLM involvement.
 """
 
 import asyncio
@@ -46,9 +49,9 @@ if _ENV_FILE.exists():
             if key and key not in os.environ:
                 os.environ[key] = value
 
-from src.plugins.telegram import config as tg_config
-from src.plugins.telegram import formatters
-from src.plugins.telegram.router import InboundRouter
+from src.plugins.tg_wallet_bot import config as tg_config
+from lib import tg_format as formatters                      # shared formatters
+from lib.tg_router import InboundRouter                      # shared router
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -169,31 +172,13 @@ async def _delete_webhook() -> None:
 
 
 async def _register_commands() -> None:
-    """Register bot commands with Telegram so they appear in the '/' menu."""
-    commands = [
-        {"command": "start",     "description": "Open wallet home screen"},
-        {"command": "portfolio", "description": "View balances & USD values"},
-        {"command": "swap",      "description": "Swap tokens (button-driven)"},
-        {"command": "send",      "description": "Send tokens to whitelisted address"},
-        {"command": "price",     "description": "Live token prices"},
-        {"command": "gas",       "description": "Check HBAR gas reserve"},
-        {"command": "history",   "description": "Recent transactions"},
-        {"command": "robot",     "description": "BTC rebalancer status"},
-        {"command": "tokens",    "description": "Supported tokens list"},
-        {"command": "status",    "description": "System health check"},
-        {"command": "setup",     "description": "Secure key setup (Mini App)"},
-        {"command": "menu",      "description": "Show main menu"},
-    ]
-    url = f"https://api.telegram.org/bot{_bot_token}/setMyCommands"
-    try:
-        resp = await _http.post(url, json={"commands": commands})
-        data = resp.json()
-        if data.get("ok"):
-            logger.info(f"Registered {len(commands)} bot commands with Telegram")
-        else:
-            logger.warning(f"setMyCommands response: {data}")
-    except Exception as exc:
-        logger.error(f"setMyCommands error: {exc}")
+    """Deprecated — no longer pushes commands to Telegram.
+
+    Pushing custom commands via setMyCommands overwrites the platform's
+    own command list.  Natural language works better with the agent, so
+    we leave Telegram's slash-command menu alone.
+    """
+    logger.info("Bot command registration skipped (deprecated)")
 
 
 # ---------------------------------------------------------------------------

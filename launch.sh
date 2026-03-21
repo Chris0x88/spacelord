@@ -194,7 +194,7 @@ if [ $# -gt 0 ]; then
             echo -e "${GREEN}[Pacman]${NC} Starting Telegram bot (long-polling)..."
             mkdir -p "$SCRIPT_DIR/logs"
             PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
-            nohup "$PYTHON_EXEC" -m src.plugins.telegram.poller \
+            nohup "$PYTHON_EXEC" -m src.plugins.tg_wallet_bot.poller \
                 > "$SCRIPT_DIR/logs/telegram.log" 2>&1 &
             tg_pid=$!
             echo "$tg_pid" > "$TG_PID_FILE"
@@ -229,11 +229,11 @@ if [ $# -gt 0 ]; then
                 rm -f "$TG_PID_FILE"
             fi
             # Belt-and-suspenders: kill any stray poller processes by pattern
-            pkill -f "src.plugins.telegram.poller" 2>/dev/null || true
+            pkill -f "src.plugins.tg_wallet_bot.poller" 2>/dev/null || true
             sleep 1
-            if pgrep -f "src.plugins.telegram.poller" > /dev/null 2>&1; then
+            if pgrep -f "src.plugins.tg_wallet_bot.poller" > /dev/null 2>&1; then
                 echo -e "${YELLOW}[Pacman]${NC} Warning: stray poller still running — forcing kill."
-                pkill -9 -f "src.plugins.telegram.poller" 2>/dev/null || true
+                pkill -9 -f "src.plugins.tg_wallet_bot.poller" 2>/dev/null || true
             fi
             echo -e "${GREEN}[Pacman]${NC} Telegram bot stopped."
             exit 0
@@ -257,7 +257,7 @@ if [ $# -gt 0 ]; then
                 fi
             fi
             if [ -z "$LIVE_PID" ]; then
-                LIVE_PID=$(pgrep -f "src.plugins.telegram.poller" 2>/dev/null | head -1)
+                LIVE_PID=$(pgrep -f "src.plugins.tg_wallet_bot.poller" 2>/dev/null | head -1)
             fi
 
             if [ -n "$LIVE_PID" ]; then
@@ -307,7 +307,7 @@ if [ $# -gt 0 ]; then
   <array>
     <string>$PYTHON_EXEC</string>
     <string>-m</string>
-    <string>src.plugins.telegram.poller</string>
+    <string>src.plugins.tg_wallet_bot.poller</string>
   </array>
   <key>WorkingDirectory</key>
   <string>$SCRIPT_DIR</string>
@@ -335,7 +335,7 @@ PLIST_EOF
             # Unload any existing instance, then load fresh
             launchctl unload "$PLIST_FILE" 2>/dev/null || true
             # Kill any competing poller so launchd owns the connection cleanly
-            pkill -f "src.plugins.telegram.poller" 2>/dev/null || true
+            pkill -f "src.plugins.tg_wallet_bot.poller" 2>/dev/null || true
             sleep 1
             launchctl load "$PLIST_FILE"
             sleep 2
@@ -361,7 +361,7 @@ PLIST_EOF
             else
                 echo -e "${CYAN}[Pacman]${NC} No launchd service installed."
             fi
-            pkill -f "src.plugins.telegram.poller" 2>/dev/null || true
+            pkill -f "src.plugins.tg_wallet_bot.poller" 2>/dev/null || true
             exit 0
             ;;
 

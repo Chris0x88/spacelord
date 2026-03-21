@@ -139,7 +139,7 @@ Use these exact names — they always resolve correctly regardless of casing:
 | Say | Resolves To | Hedera ID | Notes |
 |---|---|---|---|
 | `bitcoin`, `btc`, `wbtc` | HTS-WBTC | 0.0.10082597 | HTS-native. Aggregated by ID ✅ |
-| `ethereum`, `eth`, `weth` | ETH | 0.0.9470869 | HTS-native. Aggregated by ID ✅ |
+| `ethereum`, `eth`, `weth` | HTS-WETH | 0.0.9770617 | HTS-native. Aggregated by ID ✅ |
 | `dollar`, `usd`, `usdc` | USDC | 0.0.456858 | Standard stablecoin ✅ |
 | `hbar`, `hedera` | HBAR | 0.0.0 | Native gas token (Pinned Top) ✅ |
 

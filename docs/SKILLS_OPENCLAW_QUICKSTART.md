@@ -260,7 +260,7 @@ Use these names — they always resolve correctly:
 | Say | Resolves To | Hedera ID |
 |---|---|---|
 | `bitcoin`, `btc`, `wbtc` | HTS-WBTC | 0.0.10082597 |
-| `ethereum`, `eth`, `weth` | ETH | 0.0.9470869 |
+| `ethereum`, `eth`, `weth` | HTS-WETH | 0.0.9770617 |
 | `dollar`, `usd`, `usdc` | USDC | 0.0.456858 |
 | `hbar`, `hedera` | HBAR | 0.0.0 (native) |
 | `sauce`, `saucerswap` | SAUCE | 0.0.731861 |

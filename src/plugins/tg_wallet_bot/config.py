@@ -1,8 +1,14 @@
 """
-Telegram Plugin Config
+Telegram Plugin Config  [WALLET BOT only — OpenClaw agent has its own config]
 ======================
 All configuration loaded from environment variables.
 No defaults for secrets — missing values raise at startup.
+
+TWO BOT TOKENS IN .env:
+    TELEGRAM_BOT_TOKEN         → OpenClaw agent bot (managed by OpenClaw, not this code)
+    TELEGRAM_WALLET_BOT_TOKEN  → Wallet bot (poller.py / interceptor.py use THIS one)
+
+get_bot_token() prefers WALLET token. Falls back to BOT token for backward compat.
 """
 
 import os

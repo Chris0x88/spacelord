@@ -1,11 +1,17 @@
 """
-Telegram Fast-Lane Command
+Telegram Fast-Lane Command  [OPENCLAW AGENT — subprocess bridge]
 ===========================
 Single CLI entry point for all Telegram button-driven operations.
 
-Called by OpenClaw's pacman agent when it receives callback_data or
-slash commands from Telegram. Returns pre-formatted HTML + JSON button
-markup that OpenClaw passes directly to Telegram.
+Called by OpenClaw's pacman agent (TELEGRAM_BOT_TOKEN) when it receives
+callback_data or slash commands from the AGENT Telegram chat.
+Returns pre-formatted HTML + JSON button markup that OpenClaw passes
+directly to Telegram's sendMessage API.
+
+⚠️  This is the AGENT bot's fast-lane, invoked as:
+        ./launch.sh tg portfolio
+        ./launch.sh tg callback sf:0.0.456858
+    It is NOT the wallet bot (poller.py), which calls the router directly.
 
 Usage:
     ./launch.sh tg portfolio
@@ -21,7 +27,7 @@ import sys
 from pathlib import Path
 
 from src.controller import PacmanController
-from src.plugins.telegram.router import InboundRouter
+from lib.tg_router import InboundRouter
 
 
 def cmd_telegram(app, args):
@@ -104,7 +110,7 @@ def _output_response(response):
 
 def _output_error(msg):
     """Print an error response."""
-    from src.plugins.telegram.formatters import format_error, format_buttons
+    from lib.tg_format import format_error, format_buttons
     output = {
         "text": format_error(msg),
         "parse_mode": "HTML",
@@ -115,7 +121,7 @@ def _output_error(msg):
 
 def _output_help():
     """Print usage help."""
-    from src.plugins.telegram.formatters import format_welcome, format_buttons
+    from lib.tg_format import format_welcome, format_buttons
     output = {
         "text": format_welcome(),
         "parse_mode": "HTML",

@@ -29,7 +29,7 @@ def load_static_aliases():
     # Built-in canonical aliases — these MUST always resolve to absolute IDs
     CANONICAL = {
         "BITCOIN": "0.0.10082597", "BTC": "0.0.10082597",
-        "ETHEREUM": "0.0.9470869", "ETH": "0.0.9470869",
+        "ETHEREUM": "0.0.9770617", "ETH": "0.0.9770617",
         "DOLLAR": "0.0.456858", "USD": "0.0.456858", "STABLECOIN": "0.0.456858",
         "HEDERA": "0.0.0", "HBAR": "0.0.0",
     }

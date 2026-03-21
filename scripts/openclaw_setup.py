@@ -424,8 +424,8 @@ def setup_telegram(is_multi_agent):
     if your_tg_id:
         print(f"  {C.MUTED}Restricted to user ID: {your_tg_id}{C.R}")
 
-    # Register slash commands with BotFather API
-    _register_bot_commands(token)
+    # Bot command registration deprecated — setMyCommands overwrites
+    # the platform's own command list. Natural language works better.
 
     return True
 

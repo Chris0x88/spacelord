@@ -1,5 +1,5 @@
 """
-Telegram Output Formatters
+Telegram Output Formatters  [SHARED — used by both wallet bot AND agent fast-lane]
 ==========================
 Pure functions: data → HTML-formatted Telegram message strings.
 No I/O, no controller calls. Just formatting.
@@ -34,7 +34,7 @@ TRADEABLE_TOKENS = [
     {"sym": "USDC[hts]","id": "0.0.1055459",    "emoji": "💲"},
     {"sym": "SAUCE",    "id": "0.0.731861",     "emoji": "🍕"},
     {"sym": "WBTC",     "id": "0.0.10082597",   "emoji": "₿"},
-    {"sym": "WETH",     "id": "0.0.9470869",    "emoji": "Ξ"},
+    {"sym": "WETH",     "id": "0.0.9770617",    "emoji": "Ξ"},
     {"sym": "HBARX",    "id": "0.0.834116",     "emoji": "⬟"},
 ]
 
@@ -205,6 +205,48 @@ def format_welcome() -> str:
 # Portfolio / Balance
 # ═══════════════════════════════════════════════════════════════════
 
+def _format_account_section(
+    balances: Dict[str, float],
+    account_id: str,
+    nickname: str,
+    icon: str,
+    prices: Optional[Dict[str, float]] = None,
+) -> Tuple[List[str], float]:
+    """Format one account's holdings. Returns (lines, total_usd)."""
+
+    def sort_key(sym):
+        if sym == "HBAR": return (0, sym)
+        if sym == "USDC": return (1, sym)
+        return (2, sym)
+
+    lines = [f"  {icon} <b>{nickname}</b> — <code>{account_id}</code>"]
+    total_usd = 0.0
+    has_prices = prices and any(v and v > 0 for v in prices.values())
+    has_tokens = False
+
+    for sym in sorted(balances.keys(), key=sort_key):
+        amount = balances[sym]
+        if amount <= 0:
+            continue
+        has_tokens = True
+        formatted = _fmt_amount(amount)
+        emoji = _SYM_EMOJI.get(sym, "·")
+
+        if has_prices and prices.get(sym):
+            usd_val = amount * prices[sym]
+            total_usd += usd_val
+            lines.append(f"    {emoji} {sym:<6} <code>{formatted:>12}</code>  ≈ ${usd_val:>8,.2f}")
+        else:
+            lines.append(f"    {emoji} {sym:<6} <code>{formatted:>12}</code>")
+
+    if not has_tokens:
+        lines.append("    <i>No balances</i>")
+    elif has_prices and total_usd > 0:
+        lines.append(f"    💼 Subtotal  <b>${total_usd:,.2f}</b>")
+
+    return lines, total_usd
+
+
 def format_balance(
     balances: Dict[str, float],
     account_id: str = "",
@@ -248,6 +290,47 @@ def format_balance(
     if has_prices and total_usd > 0:
         lines.append(_THIN_SEP)
         lines.append(f"  💼 <b>Total</b>  <b>${total_usd:,.2f}</b>")
+
+    return "\n".join(lines), _portfolio_actions()
+
+
+def format_multi_account_balance(
+    accounts: List[Dict[str, Any]],
+    prices: Optional[Dict[str, float]] = None,
+) -> Tuple[str, Dict[str, Any]]:
+    """Format portfolio across ALL accounts in one view.
+
+    Each entry in *accounts*:
+        {"account_id": "0.0.xxx", "nickname": "...", "icon": "👤",
+         "balances": {"HBAR": 55.0, "USDC": 6.5, ...}}
+    """
+    if not accounts:
+        text = (
+            "💰 <b>Portfolio</b>\n"
+            f"{_THIN_SEP}\n\n"
+            "<i>No accounts configured.</i>"
+        )
+        return text, _portfolio_actions()
+
+    lines = ["💰 <b>Portfolio — All Accounts</b>", _THIN_SEP]
+    grand_total = 0.0
+
+    for acct in accounts:
+        section_lines, subtotal = _format_account_section(
+            balances=acct.get("balances", {}),
+            account_id=acct.get("account_id", ""),
+            nickname=acct.get("nickname", "Account"),
+            icon=acct.get("icon", "💼"),
+            prices=prices,
+        )
+        lines.extend(section_lines)
+        lines.append("")  # spacer between accounts
+        grand_total += subtotal
+
+    has_prices = prices and any(v and v > 0 for v in prices.values())
+    if has_prices and grand_total > 0:
+        lines.append(_THIN_SEP)
+        lines.append(f"  💼 <b>Total (all accounts)</b>  <b>${grand_total:,.2f}</b>")
 
     return "\n".join(lines), _portfolio_actions()
 

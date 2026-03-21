@@ -585,7 +585,7 @@ class PacmanExecutor:
         # Fallback: exact ID match
         tid = token_id_or_sym
         if tid in ["0.0.456858", "0.0.1055459", "0.0.731861", "0.0.1460200", "0.0.4794920"]: return 6
-        if tid in ["0.0.10082597", "0.0.9470869", "0.0.4568584"]: return 8
+        if tid in ["0.0.10082597", "0.0.9770617", "0.0.9470869", "0.0.4568584"]: return 8
         if tid in ["0.0.0", "0.0.1456986"]: return 8 # HBAR / WHBAR
 
         # Last resort: Mirror Node lookup

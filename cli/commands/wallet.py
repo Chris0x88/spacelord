@@ -462,7 +462,7 @@ def cmd_associate(app, args):
                 "USDC": "0.0.456858",
                 "SAUCE": "0.0.731861",
                 "WBTC": "0.0.10082597",
-                "WETH": "0.0.9470869",
+                "WETH": "0.0.9770617",
                 "USDT": "0.0.1055472",
             }
             if token_id.upper() in symbols:
@@ -489,60 +489,115 @@ def cmd_associate(app, args):
         print(f"  {C.ERR}✗{C.R} Association failed. Check your balance or token ID.")
 
 
+def _build_account_json(app, account_id=None):
+    """Build structured balance JSON for one account. Used by cmd_balance."""
+    import json as _json
+    from lib.prices import price_manager
+    from cli.pacman_filter import ui_filter
+
+    price_manager.reload()
+    balances = app.get_balances(account_id=account_id)
+    tokens_data = ui_filter.get_token_metadata()
+
+    # HBAR — use Mirror Node data from get_balances (token_id "0.0.0")
+    hbar_bal = 0.0
+    for key in ("HBAR", "0.0.0"):
+        if key in balances:
+            hbar_bal = float(balances[key])
+            break
+    hbar_price = price_manager.get_hbar_price()
+
+    effective_id = account_id or app.executor.hedera_account_id
+    result = {
+        "account": effective_id,
+        "network": app.executor.network,
+        "hbar": {"balance": round(hbar_bal, 6), "price_usd": round(hbar_price, 6),
+                 "value_usd": round(hbar_bal * hbar_price, 2)},
+        "tokens": {},
+        "total_usd": 0,
+    }
+    total = hbar_bal * hbar_price
+
+    for token_key, bal in balances.items():
+        if token_key in ("HBAR", "0.0.0"):
+            continue
+        try:
+            meta = tokens_data.get(token_key, {})
+            if not meta:
+                for k, m in tokens_data.items():
+                    if m.get("symbol") == token_key:
+                        meta = m
+                        break
+            token_id = meta.get("id", token_key)
+            if ui_filter.is_blacklisted(token_id):
+                continue
+            display_name = meta.get("symbol", token_key)
+            price = price_manager.get_price(token_id) if token_id else 0
+            val = round(bal * price, 2)
+            result["tokens"][display_name] = {"balance": bal, "price_usd": price, "value_usd": val}
+            total += val
+        except Exception:
+            result["tokens"][token_key] = {"balance": bal, "price_usd": 0, "value_usd": 0}
+
+    result["total_usd"] = round(total, 2)
+    return result
+
+
 def cmd_balance(app, args):
     import json as _json
-    
-    # AI-agent flag: --json emits parseable structure
-    json_mode = "--json" in args
-    args = [a for a in args if a != "--json"]
-    token = args[0] if args else None
-    
-    if json_mode:
-        # Emit structured JSON for AI agents
-        try:
-            from lib.prices import price_manager
-            price_manager.reload()
-            balances = app.executor.get_balances()
-            hbar_raw = app.executor.w3.eth.get_balance(app.executor.eoa)
-            hbar_bal = hbar_raw / (10**18)
-            hbar_price = price_manager.get_hbar_price()
-            
-            result = {
-                "account": app.executor.hedera_account_id,
-                "network": app.executor.network,
-                "hbar": {"balance": round(hbar_bal, 6), "price_usd": round(hbar_price, 6), 
-                         "value_usd": round(hbar_bal * hbar_price, 2)},
-                "tokens": {},
-                "total_usd": 0,
-            }
-            total = hbar_bal * hbar_price
-            
-            from cli.pacman_filter import ui_filter
-            tokens_data = ui_filter.get_token_metadata()
 
-            for token_key, bal in balances.items():
-                # Skip HBAR (already in result["hbar"])
-                if token_key in ("HBAR", "0.0.0"):
-                    continue
-                try:
-                    meta = tokens_data.get(token_key, {})
-                    if not meta:
-                        for k, m in tokens_data.items():
-                            if m.get("symbol") == token_key:
-                                meta = m
-                                break
-                    token_id = meta.get("id", token_key)
-                    if ui_filter.is_blacklisted(token_id):
-                        continue
-                    display_name = meta.get("symbol", token_key)
-                    price = price_manager.get_price(token_id) if token_id else 0
-                    val = round(bal * price, 2)
-                    result["tokens"][display_name] = {"balance": bal, "price_usd": price, "value_usd": val}
-                    total += val
-                except Exception:
-                    result["tokens"][token_key] = {"balance": bal, "price_usd": 0, "value_usd": 0}
-            
-            result["total_usd"] = round(total, 2)
+    # AI-agent flags
+    json_mode = "--json" in args
+    all_mode = "--all" in args
+    args = [a for a in args if a not in ("--json", "--all")]
+    token = args[0] if args else None
+
+    if json_mode and all_mode:
+        # Multi-account: return ALL accounts in one call (main + robot)
+        # This is what the OpenClaw agent should use for "What are my balances?"
+        try:
+            all_balances = app.get_all_account_balances()
+            # Load nicknames
+            nicknames = {}
+            try:
+                with open("data/accounts.json") as f:
+                    import json
+                    for acc in json.load(f):
+                        if acc.get("active") is not False:
+                            nicknames[acc["id"]] = acc.get("nickname", "Account")
+            except Exception:
+                pass
+
+            main_id = app.executor.hedera_account_id
+            robot_id = getattr(app.config, "robot_account_id", "")
+            accounts = []
+            grand_total = 0.0
+
+            for acct_id in all_balances:
+                acct_json = _build_account_json(app, account_id=acct_id)
+                acct_json["nickname"] = nicknames.get(acct_id, "Account")
+                if acct_id == main_id:
+                    acct_json["role"] = "main"
+                elif acct_id == robot_id:
+                    acct_json["role"] = "robot"
+                else:
+                    acct_json["role"] = "sub"
+                accounts.append(acct_json)
+                grand_total += acct_json["total_usd"]
+
+            print(_json.dumps({
+                "accounts": accounts,
+                "grand_total_usd": round(grand_total, 2),
+            }, indent=2))
+            return
+        except Exception as e:
+            print(_json.dumps({"error": str(e)}))
+            return
+
+    if json_mode:
+        # Single account (active account only)
+        try:
+            result = _build_account_json(app)
             print(_json.dumps(result, indent=2))
             return
         except Exception as e:

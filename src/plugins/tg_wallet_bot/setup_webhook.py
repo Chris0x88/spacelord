@@ -6,9 +6,9 @@ Telegram Webhook Setup Utility
 Register, remove, or inspect the Telegram Bot API webhook.
 
 Usage:
-    python -m src.plugins.telegram.setup_webhook set      # Register webhook
-    python -m src.plugins.telegram.setup_webhook delete   # Remove webhook
-    python -m src.plugins.telegram.setup_webhook info     # Show current webhook
+    python -m src.plugins.tg_wallet_bot.setup_webhook set      # Register webhook
+    python -m src.plugins.tg_wallet_bot.setup_webhook delete   # Remove webhook
+    python -m src.plugins.tg_wallet_bot.setup_webhook info     # Show current webhook
 """
 
 import os
