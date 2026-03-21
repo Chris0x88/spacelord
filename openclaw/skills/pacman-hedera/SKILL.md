@@ -295,6 +295,32 @@ The agent publishes daily heartbeats to Hedera Consensus Service (HCS) as part o
 
 ---
 
+# SECTION 5B: CROSS-AGENT FEEDBACK (HCS)
+
+Pacman has a decentralized feedback system. Agents post bugs, suggestions, and successes to a shared HCS topic. All agents on the network can read and learn from collective feedback.
+
+**Commands**:
+- `hcs feedback submit bug "description"` — report a bug
+- `hcs feedback submit suggestion "improvement idea"` — suggest something
+- `hcs feedback submit success "what worked"` — log a win
+- `hcs feedback submit warning "concern"` — flag a warning
+- `hcs feedback read` — read recent feedback from all agents
+
+**When to submit feedback**:
+- After encountering a bug that required manual intervention
+- After a swap or transfer fails unexpectedly
+- When a workaround is discovered that other agents should know about
+- After a successful complex operation (multi-hop swap, rebalance cycle)
+
+**Rules (CRITICAL)**:
+1. **NEVER include private keys, passwords, or sensitive account data** — HCS messages are permanent and public
+2. **DO reference transaction IDs or hashscan URLs** when reporting bugs so others can investigate
+3. **Each message costs ~$0.0008** — only submit genuine, useful feedback. No spam, no testing.
+4. **Keep descriptions concise** — one clear sentence per issue. Don't waste message space.
+5. **Read feedback before submitting** — check if someone already reported the same issue
+
+---
+
 # SECTION 6: DECISION TREES
 
 These are the operational playbooks for the most common and most error-prone scenarios. Follow these exactly.

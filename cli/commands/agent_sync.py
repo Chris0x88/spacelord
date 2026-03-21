@@ -100,9 +100,24 @@ Working directory: The pacman repository root (where launch.sh lives)
 - Status: `./launch.sh daemon-status`
 - Dashboard: http://127.0.0.1:8088
 
-## HCS Topic
-- Signal topic: `0.0.10371598`
+## HCS Topics
+- Signal topic: `0.0.10371598` — Power Law signals broadcast here
+- Feedback topic: check with `./launch.sh hcs status`
 - Check: `./launch.sh hcs status`
+
+## Cross-Agent Feedback (HCS)
+Submit bugs, suggestions, and successes to a shared HCS topic that all Pacman agents can read.
+```
+./launch.sh hcs feedback submit bug "description of the issue"
+./launch.sh hcs feedback submit suggestion "improvement idea"
+./launch.sh hcs feedback submit success "what worked well"
+./launch.sh hcs feedback submit warning "potential concern"
+./launch.sh hcs feedback read                    # read recent feedback
+./launch.sh hcs feedback-setup                   # create a new feedback topic
+```
+**Rules**: Only submit genuine feedback. Each message costs ~$0.0008.
+Never include private keys, passwords, or sensitive data — HCS messages are permanent and public.
+Reference transaction IDs or hashscan URLs when reporting bugs so others can investigate.
 
 ## Network
 - Network: Hedera Mainnet
@@ -311,6 +326,26 @@ def _get_help_output():
         output = re.sub(r'\x1b\[[0-9;]*m', '', result.stdout)
         lines = output.strip().splitlines()
         clean = [l for l in lines if not l.startswith("User Input:")]
-        return "\n".join(clean).strip()
+        # Filter out Telegram fast-lane commands (deprecated for agent use)
+        filtered = []
+        skip_section = False
+        for l in clean:
+            if "TELEGRAM" in l and ("fast-lane" in l.lower() or "agent" in l.lower()):
+                skip_section = True
+                continue
+            if skip_section:
+                # Stop skipping when we hit the next section header or blank line after commands
+                if l.strip() and not l.startswith("  "):
+                    skip_section = False
+                    filtered.append(l)
+                elif l.strip().startswith("tg "):
+                    continue  # skip tg commands
+                else:
+                    if not l.strip():
+                        skip_section = False
+                    continue
+            else:
+                filtered.append(l)
+        return "\n".join(filtered).strip()
     except Exception as e:
         return f"(Could not capture help output: {e})"
