@@ -122,8 +122,8 @@ class Hcs10Agent(BasePlugin):
             memo = f"hcs-10:0:0:0:{account_id}"
             tx = (
                 TopicCreateTransaction()
-                .set_topic_memo(memo)
-                .set_admin_key(client.operator_public_key)
+                .set_memo(memo)
+                .set_admin_key(client.operator_private_key.public_key())
                 # No set_submit_key → open for all senders
             )
             tx.freeze_with(client)
@@ -149,8 +149,8 @@ class Hcs10Agent(BasePlugin):
             memo = f"hcs-10:1:0:2:{peer_inbound_topic_id}:{connection_id}"
             tx = (
                 TopicCreateTransaction()
-                .set_topic_memo(memo)
-                .set_admin_key(client.operator_public_key)
+                .set_memo(memo)
+                .set_admin_key(client.operator_private_key.public_key())
                 # No submit_key — both parties can post
             )
             tx.freeze_with(client)

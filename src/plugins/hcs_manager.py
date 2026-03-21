@@ -40,10 +40,11 @@ class HcsManager(BasePlugin):
         """Create a new HCS topic and set it as the active one."""
         try:
             client = self.app.account_manager.client
+            pub_key = client.operator_private_key.public_key()
             tx = TopicCreateTransaction() \
-                .set_topic_memo(memo) \
-                .set_admin_key(client.operator_public_key) \
-                .set_submit_key(client.operator_public_key)
+                .set_memo(memo) \
+                .set_admin_key(pub_key) \
+                .set_submit_key(pub_key)
             
             tx.freeze_with(client)
             response = tx.execute(client)

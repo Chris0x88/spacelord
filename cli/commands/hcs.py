@@ -108,7 +108,7 @@ def cmd_hcs(app, args):
 def _get_feedback_topic_id() -> str:
     """Get feedback topic ID from env var or governance.json."""
     import os
-    topic = os.getenv("FEEDBACK_TOPIC_ID", "").strip()
+    topic = os.getenv("FEEDBACK_TOPIC_ID", "").strip().strip("'").strip('"')
     if topic:
         return topic
     # Try governance.json

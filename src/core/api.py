@@ -426,6 +426,44 @@ def get_hcs_messages():
         logger.error(f"API Error get_hcs_messages: {e}")
         return jsonify([])
 
+@app_flask.route("/feedback", methods=["GET"])
+@require_auth
+def get_feedback():
+    """Return recent feedback messages from the cross-agent HCS feedback topic."""
+    import os
+    topic_id = os.getenv("FEEDBACK_TOPIC_ID", "").strip().strip("'").strip('"')
+    if not topic_id:
+        return jsonify([])
+    try:
+        import requests as _req
+        limit = int(request.args.get("limit", 20))
+        network = getattr(pacman_app.config, "network", "mainnet") if pacman_app else "mainnet"
+        base = "https://mainnet-public.mirrornode.hedera.com" if network == "mainnet" else "https://testnet.mirrornode.hedera.com"
+        url = f"{base}/api/v1/topics/{topic_id}/messages?limit={limit}&order=desc"
+        resp = _req.get(url, timeout=10)
+        if resp.status_code != 200:
+            return jsonify([])
+        import base64
+        messages = []
+        for msg in resp.json().get("messages", []):
+            try:
+                raw = base64.b64decode(msg.get("message", "")).decode("utf-8")
+                data = json.loads(raw)
+                if data.get("type") == "FEEDBACK":
+                    messages.append({
+                        "severity": data.get("severity", "unknown"),
+                        "description": data.get("description", ""),
+                        "account": data.get("account", ""),
+                        "timestamp": msg.get("consensus_timestamp", ""),
+                        "version": data.get("version", ""),
+                    })
+            except Exception:
+                continue
+        return jsonify(messages)
+    except Exception as e:
+        logger.error(f"API Error get_feedback: {e}")
+        return jsonify([])
+
 @app_flask.route("/readme", methods=["GET"])
 @require_auth
 def get_readme():
