@@ -55,48 +55,64 @@ Four ways to interact with Pacman — all driving the same core engine, all sett
 
 ```mermaid
 graph TD
-    subgraph User Interfaces
-        TG["Telegram Chat"]
-        CLI["Command Line (CLI)"]
-        DASH["Web Dashboard"]
-        OC["OpenClaw Agent"]
+    %% Styling %%
+    classDef interface fill:#1e1e2e,stroke:#cba6f7,stroke-width:2px,color:#fff,rx:8,ry:8
+    classDef ai fill:#ff2052,stroke:#fff,stroke-width:2px,color:#fff,rx:8,ry:8
+    classDef brain fill:#181825,stroke:#ff2052,stroke-dasharray: 5 5,color:#fff,rx:8,ry:8
+    classDef engine fill:#313244,stroke:#a6e3a1,stroke-width:2px,color:#fff,rx:8,ry:8
+    classDef hedera fill:#000000,stroke:#00a8e8,stroke-width:3px,color:#fff,rx:8,ry:8
+    classDef ext fill:#11111b,stroke:#f9e2af,stroke-width:2px,color:#fff,rx:8,ry:8
+    
+    %% Users & Interfaces %%
+    subgraph UI ["📱 User Interfaces & Touchpoints"]
+        Telegram["Telegram App<br/>(Conversational UI)"]:::interface
+        Dashboard["Web Dashboard<br/>(Visual Portfolio)"]:::interface
+        HumanCLI["Terminal CLI<br/>(Power Users)"]:::interface
     end
 
-    subgraph OpenClaw Platform
-        OC -->|reads| SKILL["SKILL.md<br/>(Agent Brain)"]
-        OC -->|subprocess| CLI
-        TG -->|tunnels via OpenClaw| OC
+    %% OpenClaw AI %%
+    subgraph Intelligence ["🧠 OpenClaw AI Middleware"]
+        Agent["🤖 OpenClaw Agent<br/>(Natural Language ➜ Actions)"]:::ai
+        Context["📝 SKILL.md<br/>(Hedera Logic / Constraints)"]:::brain
+        Context -.->|Rules & Context| Agent
+        Telegram ===|Chat / Webhooks| Agent
     end
 
-    subgraph Pacman Core
-        CLI --> Controller["Controller<br/>(Facade)"]
-        Controller --> Router["V2 Router<br/>(Pathfinding)"]
-        Controller --> Executor["TX Broadcaster"]
-        Controller --> Plugins["Plugin System"]
+    %% Core Application %%
+    subgraph Pacman ["⚡ Pacman Core Engine (Local Machine)"]
+        Controller["Core Controller<br/>(Deterministic Backend)"]:::engine
+        Router["SaucerSwap V2 Router<br/>(Price Pathfinding)"]:::engine
+        Exec["TX Broadcaster<br/>(Key Mgmt & Execution)"]:::engine
+        Plugins["Plugin System<br/>(Autonomous Daemons)"]:::ext
+        
+        Agent ===|Executes CLI subcommands| HumanCLI
+        HumanCLI -->|Triggers| Controller
+        Dashboard -.->|Read-Only Status| Controller
+        
+        Controller --> Router
+        Controller --> Exec
+        Controller --> Plugins
     end
 
-    subgraph Plugins
-        Plugins --> PL["Power Law<br/>Rebalancer"]
-        Plugins --> TGBOT["Telegram<br/>Wallet Bot"]
-        Plugins --> HCSP["HCS Publisher"]
-        Plugins --> HCS10["HCS-10<br/>Agent Messaging"]
-        Plugins --> DISC["Discord Bot"]
+    %% Plugins %%
+    subgraph Addons ["🧩 Active Plugins"]
+        PL["Power Law Rebalancer<br/>(Auto Trading)"]:::ext
+        HCS10["HCS-10 Protocol<br/>(Agent Messaging)"]:::ext
+        Plugins --> PL
+        Plugins --> HCS10
     end
 
-    subgraph Hedera Network
-        Router --> SS["SaucerSwap V2<br/>Smart Contracts"]
-        Executor --> HN["Hedera Mainnet"]
-        HCSP --> HCS["Consensus Service"]
-        HCS10 --> HCS
+    %% Hedera %%
+    subgraph Blockchain ["🌐 Hedera Network (On-Chain Settlement)"]
+        SSV2["SaucerSwap V2<br/>(DEX Smart Contracts)"]:::hedera
+        HCS["Hedera Consensus Service<br/>(Feedback / Logs)"]:::hedera
+        HTS["Hedera Token Service<br/>(Transfers / Approvals)"]:::hedera
+        
+        Router ===>|Quote/Swap| SSV2
+        Exec ===>|Broadcast| HTS
+        Exec ===>|Emit Events| HCS
+        HCS10 ===>|Publish/Subscribe| HCS
     end
-
-    DASH -.->|read-only| Controller
-
-    style TG fill:#0088cc,color:#fff
-    style CLI fill:#333,color:#fff
-    style DASH fill:#2d5016,color:#fff
-    style OC fill:#e65c00,color:#fff
-    style HN fill:#1a1a2e,color:#fff
 ```
 
 | Interface | What It Does | Status |
