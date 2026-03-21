@@ -350,7 +350,8 @@ class PacmanExecutor:
                 if meta.get("symbol", "").upper() == search:
                     return meta
                     
-        except: pass
+        except (FileNotFoundError, json.JSONDecodeError, KeyError, TypeError) as e:
+            logger.warning(f"Could not load token data for '{token_id_or_symbol}': {e}")
         return None
 
     def execute_swap(self, route, raw_amount: float = 0.0, mode: str = "exact_in", **kwargs) -> ExecutionResult:
@@ -595,7 +596,8 @@ class PacmanExecutor:
                 r = requests.get(f"https://mainnet-public.mirrornode.hedera.com/api/v1/tokens/{token_id_or_sym}", timeout=3)
                 if r.status_code == 200:
                     return int(r.json().get('decimals', 8))
-            except: pass
+            except (requests.RequestException, ValueError, KeyError) as e:
+                logger.warning(f"Mirror Node decimal lookup failed for {token_id_or_sym}: {e}")
 
         return 8  # Default for HBAR and unknowns
 
@@ -635,21 +637,24 @@ class PacmanExecutor:
             lp_fee_val = lp_fee_raw / (10**decimals)
             
             # Simulated gas constants (used in sim path AND as fallback sentinel for live path)
-            SIM_GAS_USED = 150_000
-            SIM_GAS_COST_HBAR = SIM_GAS_USED * 0.00000085
+            # These are hardcoded approximations based on observed SaucerSwap V2 swap gas usage.
+            # Kept as local constants (not governance.json) because they're only used for
+            # simulation estimates and don't affect live execution safety.
+            SIM_GAS_USED = 150_000          # Typical gas units for a single V2 swap
+            SIM_GAS_COST_HBAR = SIM_GAS_USED * 0.00000085  # At ~850 tinybar/gas
 
             if mode == "exact_in":
                 logger.debug(f"      - Requesting Quote (Exact In): {amount_raw} {from_token_id} -> {to_token_id} @ fee {fee_bps}")
                 quote = self.client.get_quote_single(from_token_id if not is_native_hbar else "0.0.1456986", to_token_id, amount_raw, fee_bps)
                 logger.debug(f"      - Quote received: {quote.get('amount_out', 0)}")
-                quoted_rate = quote['amount_out'] / amount_raw
+                quoted_rate = quote['amount_out'] / amount_raw if amount_raw else 0
                 amount_in_expected = amount_raw
                 amount_out_expected = quote['amount_out']
             else:
                 logger.debug(f"      - Requesting Quote (Exact Out): {amount_raw} {from_token_id} -> {to_token_id} @ fee {fee_bps}")
                 quote = self.client.get_quote_exact_output(from_token_id if not is_native_hbar else "0.0.1456986", to_token_id, amount_raw, fee_bps)
                 logger.debug(f"      - Quote received: {quote.get('amount_in', 0)}")
-                quoted_rate = amount_raw / quote['amount_in']
+                quoted_rate = amount_raw / quote['amount_in'] if quote.get('amount_in') else 0
                 amount_in_expected = quote['amount_in']
                 amount_out_expected = amount_raw
 
@@ -678,18 +683,16 @@ class PacmanExecutor:
                 from lib.saucerswap import hedera_id_to_evm
                 target_eoa = hedera_id_to_evm(account_id)
 
-            if is_native_hbar:
+            if is_intermediate:
+                # Intermediate steps receive tokens from the previous swap output,
+                # not from the wallet. Skip balance fetch entirely.
+                current_balance = amount_in_expected  # Assume we'll have what was quoted
+            elif is_native_hbar:
                 logger.debug(f"      - Fetching HBAR balance for {account_id or 'main'}...")
-                if simulate and target_eoa == "0x0000000000000000000000000000000000000000":
-                     current_balance = 10**24 # Plentiful fake balance
-                else:
-                     current_balance = self.w3.eth.get_balance(target_eoa) // (10**10) # Scale EVM Wei down to Tinybars
+                current_balance = self.w3.eth.get_balance(target_eoa) // (10**10)  # Scale EVM Wei down to Tinybars
             else:
                 logger.debug(f"      - Fetching {step.from_token} balance for {account_id or 'main'}...")
-                if simulate and target_eoa == "0x0000000000000000000000000000000000000000":
-                     current_balance = 10**24
-                else:
-                     current_balance = self.client.get_token_balance(from_token_id, account=target_eoa)
+                current_balance = self.client.get_token_balance(from_token_id, account=target_eoa)
             
             logger.debug(f"      - Current Balance: {current_balance}, Needed: {amount_in_expected}")
             needed_balance = amount_in_expected
@@ -918,7 +921,8 @@ class PacmanExecutor:
             from lib.saucerswap import hedera_id_to_evm
             try:
                 target_eoa = hedera_id_to_evm(results[-1].account_id)
-            except: pass
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Could not convert account_id to EVM address: {e}")
 
         _record_execution_impl(
             route, token_amount, results, simulate,

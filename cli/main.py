@@ -48,6 +48,7 @@ from cli.commands.robot import cmd_robot
 from cli.commands.agent_sync import cmd_agent_sync
 from cli.commands.doctor import cmd_doctor
 from cli.commands.telegram import cmd_telegram
+from cli.commands.discord import cmd_discord
 
 # Load banner from cli.text_content
 try:
@@ -145,6 +146,8 @@ COMMANDS = {
     "hcs10": cmd_hcs10,
     # --- Telegram Fast Lane ---
     "tg": cmd_telegram, "telegram": cmd_telegram,
+    # --- Discord Fast Lane ---
+    "dc": cmd_discord, "discord": cmd_discord,
     # --- System ---
     "doctor": cmd_doctor,
     "refresh": cmd_refresh, "sync": cmd_refresh,

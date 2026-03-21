@@ -11,7 +11,10 @@ Usage:
     receipt = manager.stake_to_node(node_id=5)
 """
 
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 # Optional dependency — staking requires hiero-sdk-python.
 # The CLI cmd_stake already guards against ImportError when lazily importing
@@ -61,8 +64,9 @@ class StakingManager:
                 key_bytes = bytes.fromhex(clean_key)
                 # Call specific ECDSA method to silence SDK warning
                 pk_obj = PrivateKey.from_bytes_ecdsa(key_bytes)
-            except:
+            except (ValueError, TypeError) as e:
                 # 2. Fallback: Re-try with string parser or standard from_bytes
+                logger.warning(f"ECDSA key parse failed, falling back to from_string: {e}")
                 pk_obj = PrivateKey.from_string(private_key)
             
             # Verify basic key validity
@@ -83,7 +87,8 @@ class StakingManager:
                 return None
             # Hiero SDK Public Key -> EVM Address string
             return self.client.operator_public_key.to_evm_address()
-        except:
+        except (AttributeError, TypeError) as e:
+            logger.warning(f"Could not derive EVM address from operator key: {e}")
             return None
 
     def stake_to_node(self, node_id: int, simulate: bool = False) -> dict:

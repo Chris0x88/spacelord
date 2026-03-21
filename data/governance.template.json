@@ -1,4 +1,5 @@
 {
+  "_note": "Template file. Personal values are auto-populated from .env and accounts.json on first run.",
   "version": "1.0.0",
   "updated": "2026-03-18",
   "description": "Machine-readable governance rules. This is the single source of truth for safety limits and operational policy. config.py loads from this file at runtime.",
@@ -13,21 +14,21 @@
 
   "accounts": {
     "main": {
-      "id": "0.0.10289160",
+      "id": "SET_VIA_ENV",
       "purpose": "user_trading",
       "default": true,
       "notes": "All user operations use this account"
     },
     "robot": {
-      "id": "0.0.10379302",
+      "id": "AUTO_DISCOVERED",
       "purpose": "rebalancer",
-      "funded": true,
+      "funded": false,
       "min_portfolio_usd": 5.00,
       "min_portfolio_rationale": "A 15% price move on $5 = $0.75 trade. Costs: ~$0.30 EVM + gas + 0.3% LP fee. Below $5, costs exceed rebalance benefit.",
       "notes": "Power Law rebalancer daemon. Currently unfunded — do NOT suggest rebalancing until funded with at least $5 in USDC + WBTC."
     },
     "robot_deprecated": {
-      "id": "0.0.10301803",
+      "id": "NONE",
       "purpose": "backup",
       "active": false,
       "notes": "Old robot with shared parent key. Kept as backup. Never delete."

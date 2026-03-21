@@ -109,6 +109,18 @@ class PacmanVariantRouter:
         # Phase 32: Live Pricing
         from lib.prices import price_manager as pm
         self.price_manager = price_manager or pm
+
+        # Load min pool liquidity from governance.json (routing section)
+        try:
+            gov_path = BASE_DIR / "data" / "governance.json"
+            if gov_path.exists():
+                with open(gov_path) as f:
+                    gov = json.load(f)
+                val = gov.get("routing", {}).get("min_pool_liquidity_usd")
+                if val is not None and float(val) >= 0:
+                    self.MIN_POOL_LIQUIDITY_USD = float(val)
+        except (FileNotFoundError, json.JSONDecodeError, ValueError, TypeError) as e:
+            logger.warning(f"Could not load min_pool_liquidity_usd from governance.json, using default {self.MIN_POOL_LIQUIDITY_USD}: {e}")
         
     def _load_json(self, path: Path, default):
         try:
@@ -256,7 +268,9 @@ class PacmanVariantRouter:
     # Pools below this threshold will be skipped — the swap would likely revert
     # on-chain due to insufficient depth or excessive price impact.
     # BUG-015: Agent swapped 17.58 USDC[hts] through a shallow pool → on-chain revert.
-    MIN_POOL_LIQUIDITY_USD = 50.0
+    # Primary source: data/governance.json → routing.min_pool_liquidity_usd
+    # Fallback: 50.0 (hardcoded default)
+    MIN_POOL_LIQUIDITY_USD = 50.0  # Default; overridden from governance.json in __init__
 
     def find_swap_step(self, from_id: str, to_id: str) -> Optional[RouteStep]:
         """Find a direct swap between two token IDs.
@@ -653,44 +667,3 @@ class PacmanVariantRouter:
             return cheapest
         
         return routes[0]  # Default to cheapest
-
-# =============================================================================
-# CLI Testing
-# =============================================================================
-
-def test_variant_router():
-    """Test the variant router."""
-    print("="*80)
-    print("🧠 PACMAN VARIANT ROUTER - TEST SUITE")
-    print("="*80)
-    
-    router = PacmanVariantRouter()
-    router.load_pools()
-    
-    # Test cases
-    test_cases = [
-        ("USDC", "WBTC_LZ", "cheapest", "Route to ERC20 WBTC (invisible)"),
-        ("USDC", "WBTC_HTS", "visible", "Route to HTS WBTC (visible in HashPack)"),
-        ("USDC", "WBTC_HTS", "auto", "Auto-choose based on cost savings"),
-    ]
-    
-    for from_variant, to_variant, preference, description in test_cases:
-        print(f"\n{'='*80}")
-        print(f"Test: {description}")
-        print(f"From: {from_variant} → To: {to_variant} | Preference: {preference}")
-        print("="*80)
-        
-        route = router.recommend_route(from_variant, to_variant, preference, volume_usd=100)
-        
-        if route:
-            print(route.explain())
-            print(f"\n💰 Total Cost: {route.total_cost_hbar:.4f} HBAR")
-            print(f"👁️  HashPack Visible: {'Yes' if route.hashpack_visible else 'No (manual unwrap needed)'}")
-            print(f"🎯 Confidence: {route.confidence:.0%}")
-        else:
-            print("❌ No route found")
-    
-    return 0
-
-if __name__ == "__main__":
-    exit(test_variant_router())

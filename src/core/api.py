@@ -172,8 +172,9 @@ def get_holdings():
         try:
             with open("data/tokens.json") as f:
                 tokens_data = json.load(f)
-        except: pass
-        
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            logger.warning(f"Could not load tokens.json for holdings: {e}")
+
         total_portfolio_usd = 0.0
         for sym, bal in raw_balances.items():
             if sym in ignore_aliases:
@@ -226,7 +227,8 @@ def get_accounts():
                     aid = acc.get("id")
                     if aid and acc.get("active") != False:
                         registry_map[aid] = acc.get("nickname")
-        except: pass
+        except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+            logger.warning(f"Could not load accounts.json for registry: {e}")
 
         # Build unique account list with prioritized roles
         accounts_to_process = {} # id -> role
@@ -255,7 +257,8 @@ def get_accounts():
         try:
             with open("data/tokens.json") as f:
                 tokens_data = json.load(f)
-        except: pass
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            logger.warning(f"Could not load tokens.json for accounts: {e}")
 
         def enrich_account(acc_id, role):
             # Use account_id_override for non-main IDs
@@ -400,8 +403,9 @@ def get_history():
                             "error": msg,
                             "success": "TRIGGERED" in msg or "Checking" in msg
                         })
-        except: pass
-        
+        except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+            logger.warning(f"Could not load supplementary history data: {e}")
+
         # Sort descending by timestamp
         history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
         return jsonify(history[:limit])

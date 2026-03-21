@@ -130,39 +130,47 @@ class PacmanConfig:
         
         # Safety limits — data/governance.json is the ONLY place to change these.
         # Edit that file, not this code and not .env.
+        gov_limits = {}
         try:
             gov_path = Path(__file__).parent.parent / "data" / "governance.json"
             if gov_path.exists():
                 import json as _gjson
                 with open(gov_path) as gf:
                     gov = _gjson.load(gf)
-                limits = gov.get("safety_limits", {})
-                config.max_swap_amount_usd = cls._safe_float(str(limits.get("max_swap_usd", 100.00)), 100.00)
-                config.max_daily_volume_usd = cls._safe_float(str(limits.get("max_daily_usd", 100.00)), 100.00)
-        except Exception:
-            pass  # Keeps dataclass defaults (100.00) if governance.json is unreadable
-        
-        # Slippage priority: ENV var > settings.json > default (2.0%)
+                gov_limits = gov.get("safety_limits", {})
+                config.max_swap_amount_usd = cls._safe_float(str(gov_limits.get("max_swap_usd", 100.00)), 100.00)
+                config.max_daily_volume_usd = cls._safe_float(str(gov_limits.get("max_daily_usd", 100.00)), 100.00)
+        except (FileNotFoundError, ValueError, KeyError, TypeError) as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Could not load governance.json safety limits: {e}")
+            # Keeps dataclass defaults (100.00) if governance.json is unreadable
+
+        # Slippage priority: ENV var (override) > governance.json (primary) > default (2.0%)
+        # Hard cap: 5% (enforced in validate())
         max_slippage = 2.0  # Default fallback
         env_slippage = os.getenv("PACMAN_MAX_SLIPPAGE")
         if env_slippage:
+            # ENV var is the override escape hatch (e.g. for one-off high-slippage swaps)
             max_slippage = cls._safe_float(env_slippage, 2.0)
         else:
-            try:
-                settings_path = Path(__file__).parent.parent / "data" / "settings.json"
-                if settings_path.exists():
-                    import json
-                    with open(settings_path) as sf:
-                        settings = json.load(sf)
-                    saved = settings.get("swap_settings", {}).get("slippage_percent")
-                    if saved is not None:
-                        max_slippage = cls._safe_float(str(saved), 2.0)
-                        
-                    saved_pad = settings.get("swap_settings", {}).get("lp_padding_percent")
-                    if saved_pad is not None:
-                        config.lp_padding_percent = min(cls._safe_float(str(saved_pad), 2.0), 10.0) # hard cap at 10%
-            except Exception:
-                pass
+            # Primary source: governance.json safety_limits.max_slippage_pct
+            gov_slippage = gov_limits.get("max_slippage_pct")
+            if gov_slippage is not None:
+                max_slippage = cls._safe_float(str(gov_slippage), 2.0)
+
+        # LP padding from settings.json (operational, not safety-critical)
+        try:
+            settings_path = Path(__file__).parent.parent / "data" / "settings.json"
+            if settings_path.exists():
+                import json
+                with open(settings_path) as sf:
+                    settings = json.load(sf)
+                saved_pad = settings.get("swap_settings", {}).get("lp_padding_percent")
+                if saved_pad is not None:
+                    config.lp_padding_percent = min(cls._safe_float(str(saved_pad), 2.0), 10.0)  # hard cap at 10%
+        except (FileNotFoundError, ValueError, KeyError, TypeError) as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Could not load settings.json for lp_padding: {e}")
         config.max_slippage_percent = min(max_slippage, 5.0)  # Hard cap at 5%
         
         # Execution mode
@@ -213,8 +221,9 @@ class PacmanConfig:
                         with open(state_path) as f:
                             state_data = json.load(f)
                             config.robot_account_id = state_data.get("robot_account_id")
-            except Exception:
-                pass
+            except (FileNotFoundError, ValueError, KeyError, TypeError) as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Could not auto-discover robot account: {e}")
         
         return config
     
@@ -327,9 +336,9 @@ HEDERA_ACCOUNT_ID=0.0.123456
 # Network (mainnet or testnet)
 PACMAN_NETWORK={_default_config.network}
 
-# Safety limits — edit data/governance.json (NOT here)
-# Slippage only (swap/daily limits live in data/governance.json)
-PACMAN_MAX_SLIPPAGE={_default_config.max_slippage_percent:.1f}  # Or set in data/settings.json
+# Safety limits — ALL live in data/governance.json (NOT here)
+# Slippage override (governance.json is primary; this env var overrides it)
+PACMAN_MAX_SLIPPAGE={_default_config.max_slippage_percent:.1f}  # Override only; primary source is governance.json
 
 # Execution mode
 PACMAN_SIMULATE={'true' if _default_config.simulate_mode else 'false'}

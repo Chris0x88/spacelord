@@ -11,7 +11,10 @@ Usage:
 """
 
 import json
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 class PacmanPriceManager:
     """
@@ -157,8 +160,8 @@ class PacmanPriceManager:
                     ts = time.strftime("%H:%M")
                     self.sources["0.0.0"] = f"CoinGecko (Live {ts})"
                     return price
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"CoinGecko HBAR price fetch failed: {e}")
 
         # 3. Fallback: Binance
         try:
@@ -172,8 +175,8 @@ class PacmanPriceManager:
                     ts = time.strftime("%H:%M")
                     self.sources["0.0.0"] = f"Binance (Live {ts})"
                     return price
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Binance HBAR price fetch failed: {e}")
 
         return self.hbar_price
 
@@ -212,7 +215,8 @@ class PacmanPriceManager:
                     price = data.get(cg_id, {}).get("usd", 0)
                     if price > 0:
                         return price, f"CoinGecko (Live {ts})"
-            except: pass
+            except (requests.RequestException, ValueError, KeyError) as e:
+                logger.warning(f"CoinGecko live price fetch failed for {token_id}: {e}")
 
         # B. Binance (Only for major pairs)
         bn_sym = binance_map.get(token_id)
@@ -226,7 +230,8 @@ class PacmanPriceManager:
                     price = float(data.get("price", 0))
                     if price > 0:
                         return price, f"Binance (Live {ts})"
-            except: pass
+            except (requests.RequestException, ValueError, KeyError) as e:
+                logger.warning(f"Binance live price fetch failed for {token_id}: {e}")
 
         # C. Cache Fallback
         price = self.prices.get(token_id, 0.0)

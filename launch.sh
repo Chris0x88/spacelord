@@ -91,9 +91,66 @@ stop_daemon() {
     rm -f "$PID_FILE" "$SCRIPT_DIR/data/robot.pid"
 }
 
-# --- Step 2: Special Commands ---
+# --- Step 2: Check for .env ---
+if [ ! -f "$SCRIPT_DIR/.env" ] && [ "$1" != "init" ] 2>/dev/null; then
+    echo -e "${YELLOW}[Pacman]${NC} No .env file found."
+    echo -e "${CYAN}[Pacman]${NC} Run: ./launch.sh init    (full first-run wizard)"
+    echo -e "${CYAN}[Pacman]${NC}  or: cp .env.template .env && edit manually"
+    exit 1
+fi
+
+# --- Step 3: Special Commands ---
 if [ $# -gt 0 ]; then
     case "$1" in
+        init)
+            echo ""
+            echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${GREEN}  Pacman — First Run Setup${NC}"
+            echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo ""
+
+            # 1. Create .env from template if missing
+            if [ ! -f "$SCRIPT_DIR/.env" ]; then
+                cp "$SCRIPT_DIR/.env.template" "$SCRIPT_DIR/.env"
+                echo -e "${GREEN}[1/5]${NC} Created .env from template."
+            else
+                echo -e "${GREEN}[1/5]${NC} .env already exists."
+            fi
+
+            # 2. Run interactive setup wizard (key gen, account creation)
+            echo -e "${CYAN}[2/5]${NC} Running setup wizard..."
+            uv run --project "$SCRIPT_DIR" python -m cli.main setup
+
+            # 3. Sync agent docs if openclaw/ exists
+            if [ -d "$SCRIPT_DIR/openclaw" ]; then
+                echo -e "${CYAN}[3/5]${NC} Syncing agent documentation..."
+                uv run --project "$SCRIPT_DIR" python -m cli.main agent-sync 2>/dev/null || \
+                    echo -e "${YELLOW}[Pacman]${NC} agent-sync skipped (run manually if needed)"
+            else
+                echo -e "${CYAN}[3/5]${NC} OpenClaw workspace not found — skipping agent sync."
+            fi
+
+            # 4. Run health check
+            echo -e "${CYAN}[4/5]${NC} Running health check..."
+            uv run --project "$SCRIPT_DIR" python -m cli.main doctor 2>/dev/null || \
+                echo -e "${YELLOW}[Pacman]${NC} Doctor check had warnings — review above."
+
+            # 5. Done
+            echo ""
+            echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${GREEN}  Setup complete!${NC}"
+            echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo ""
+            echo -e "  Try these commands:"
+            echo -e "    ${CYAN}./launch.sh balance${NC}          — View your portfolio"
+            echo -e "    ${CYAN}./launch.sh${NC}                  — Interactive mode"
+            echo -e "    ${CYAN}./launch.sh dashboard${NC}        — Open web dashboard"
+            echo -e "    ${CYAN}./launch.sh telegram-start${NC}   — Start Telegram bot"
+            echo -e "    ${CYAN}./launch.sh help${NC}             — See all commands"
+            echo ""
+            exit 0
+            ;;
+
         dashboard)
             if ! is_daemon_running; then
                 echo -e "${YELLOW}[Pacman]${NC} Daemon not running — starting..."
@@ -402,6 +459,178 @@ PLIST_EOF
             exit $?
             ;;
 
+        # ── Discord Bot ─────────────────────────────────────────────
+
+        discord-start|dc-start)
+            DC_PID_FILE="$SCRIPT_DIR/data/discord.pid"
+            if [ -f "$DC_PID_FILE" ] && kill -0 "$(cat "$DC_PID_FILE")" 2>/dev/null; then
+                echo -e "${GREEN}[Pacman]${NC} Discord bot already running (PID: $(cat "$DC_PID_FILE"))"
+                exit 0
+            fi
+            # Load .env so DISCORD_BOT_TOKEN is available
+            if [ -f "$SCRIPT_DIR/.env" ]; then
+                set -a
+                # shellcheck disable=SC1091
+                source "$SCRIPT_DIR/.env"
+                set +a
+            fi
+            if [ -z "${DISCORD_BOT_TOKEN:-}" ]; then
+                echo -e "${RED}[Pacman]${NC} DISCORD_BOT_TOKEN not set. Add it to .env first."
+                echo -e "${CYAN}[Pacman]${NC} Get one at: https://discord.com/developers/applications"
+                exit 1
+            fi
+            echo -e "${GREEN}[Pacman]${NC} Starting Discord bot..."
+            mkdir -p "$SCRIPT_DIR/logs"
+            PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
+            nohup "$PYTHON_EXEC" -m src.plugins.discord_bot.poller \
+                > "$SCRIPT_DIR/logs/discord.log" 2>&1 &
+            dc_pid=$!
+            echo "$dc_pid" > "$DC_PID_FILE"
+            disown
+            sleep 3
+            if kill -0 "$dc_pid" 2>/dev/null; then
+                echo -e "${GREEN}[Pacman]${NC} Discord bot started (PID: $dc_pid)"
+                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/discord.log"
+            else
+                echo -e "${RED}[Pacman]${NC} Failed to start. Check logs/discord.log"
+                rm -f "$DC_PID_FILE"
+                exit 1
+            fi
+            exit 0
+            ;;
+
+        discord-stop|dc-stop)
+            DC_PID_FILE="$SCRIPT_DIR/data/discord.pid"
+            if [ -f "$DC_PID_FILE" ]; then
+                dc_pid=$(cat "$DC_PID_FILE" 2>/dev/null)
+                if [ -n "$dc_pid" ] && kill -0 "$dc_pid" 2>/dev/null; then
+                    kill "$dc_pid" 2>/dev/null || true
+                    for i in $(seq 1 5); do
+                        kill -0 "$dc_pid" 2>/dev/null || break
+                        sleep 1
+                    done
+                    kill -9 "$dc_pid" 2>/dev/null || true
+                fi
+                rm -f "$DC_PID_FILE"
+            fi
+            pkill -f "src.plugins.discord_bot.poller" 2>/dev/null || true
+            sleep 1
+            if pgrep -f "src.plugins.discord_bot.poller" > /dev/null 2>&1; then
+                echo -e "${YELLOW}[Pacman]${NC} Warning: stray Discord bot still running — forcing kill."
+                pkill -9 -f "src.plugins.discord_bot.poller" 2>/dev/null || true
+            fi
+            echo -e "${GREEN}[Pacman]${NC} Discord bot stopped."
+            exit 0
+            ;;
+
+        discord-restart|dc-restart)
+            "$0" discord-stop
+            sleep 1
+            "$0" discord-start
+            exit 0
+            ;;
+
+        discord-status|dc-status)
+            DC_PID_FILE="$SCRIPT_DIR/data/discord.pid"
+            LIVE_PID=""
+            if [ -f "$DC_PID_FILE" ]; then
+                _pid=$(cat "$DC_PID_FILE" 2>/dev/null)
+                if [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null; then
+                    LIVE_PID="$_pid"
+                fi
+            fi
+            if [ -z "$LIVE_PID" ]; then
+                LIVE_PID=$(pgrep -f "src.plugins.discord_bot.poller" 2>/dev/null | head -1)
+            fi
+
+            if [ -n "$LIVE_PID" ]; then
+                echo -e "${GREEN}[Pacman]${NC} Discord bot running (PID: $LIVE_PID)"
+                BOT_NAME=$(grep "Bot:" "$SCRIPT_DIR/logs/discord.log" 2>/dev/null | tail -1 | sed 's/.*Bot: //')
+                [ -n "$BOT_NAME" ] && echo -e "${CYAN}[Pacman]${NC} Connected as: $BOT_NAME"
+                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/discord.log"
+            else
+                echo -e "${CYAN}[Pacman]${NC} Discord bot not running."
+                echo -e "${CYAN}[Pacman]${NC} Start: ./launch.sh discord-start"
+            fi
+            exit 0
+            ;;
+
+        discord-install|dc-install)
+            PLIST_DIR="$HOME/Library/LaunchAgents"
+            PLIST_FILE="$PLIST_DIR/com.pacman.discord.plist"
+            mkdir -p "$PLIST_DIR"
+
+            PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python 2>/dev/null)
+            if [ -z "$PYTHON_EXEC" ]; then
+                echo -e "${RED}[Pacman]${NC} Could not find Python via uv. Run './launch.sh discord-start' first."
+                exit 1
+            fi
+
+            cat > "$PLIST_FILE" << PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.pacman.discord</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$PYTHON_EXEC</string>
+    <string>-m</string>
+    <string>src.plugins.discord_bot.poller</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>$SCRIPT_DIR</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>$HOME</string>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>$SCRIPT_DIR/logs/discord.log</string>
+  <key>StandardErrorPath</key>
+  <string>$SCRIPT_DIR/logs/discord.log</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+</dict>
+</plist>
+PLIST_EOF
+
+            launchctl unload "$PLIST_FILE" 2>/dev/null || true
+            pkill -f "src.plugins.discord_bot.poller" 2>/dev/null || true
+            sleep 1
+            launchctl load "$PLIST_FILE"
+            sleep 2
+            if launchctl list | grep -q "com.pacman.discord"; then
+                echo -e "${GREEN}[Pacman]${NC} Discord bot installed as launchd service."
+                echo -e "${CYAN}[Pacman]${NC} It will now start automatically on login and restart on crash."
+                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/discord.log"
+            else
+                echo -e "${RED}[Pacman]${NC} launchd load may have failed. Check: launchctl list | grep pacman"
+            fi
+            exit 0
+            ;;
+
+        discord-uninstall|dc-uninstall)
+            PLIST_FILE="$HOME/Library/LaunchAgents/com.pacman.discord.plist"
+            if [ -f "$PLIST_FILE" ]; then
+                launchctl unload "$PLIST_FILE" 2>/dev/null || true
+                rm -f "$PLIST_FILE"
+                echo -e "${GREEN}[Pacman]${NC} Discord launchd service removed."
+            else
+                echo -e "${CYAN}[Pacman]${NC} No Discord launchd service installed."
+            fi
+            pkill -f "src.plugins.discord_bot.poller" 2>/dev/null || true
+            exit 0
+            ;;
+
         openclaw-setup|agent-setup)
             echo -e "${CYAN}[Pacman]${NC} Starting OpenClaw agent setup..."
             uv run --project "$SCRIPT_DIR" python scripts/openclaw_setup.py
@@ -411,8 +640,9 @@ PLIST_EOF
         kill)
             echo -e "${CYAN}[Pacman]${NC} Killing ALL Pacman processes..."
             pkill -9 -f "cli.main" 2>/dev/null || true
+            pkill -9 -f "src.plugins.discord_bot.poller" 2>/dev/null || true
             lsof -ti:8088 | xargs kill -9 2>/dev/null || true
-            rm -f "$PID_FILE" "$SCRIPT_DIR/data/robot.pid"
+            rm -f "$PID_FILE" "$SCRIPT_DIR/data/robot.pid" "$SCRIPT_DIR/data/discord.pid"
             sleep 1
             remaining=$(pgrep -f "cli.main" 2>/dev/null | wc -l | tr -d ' ')
             if [ "$remaining" -eq 0 ]; then
@@ -425,7 +655,7 @@ PLIST_EOF
     esac
 fi
 
-# --- Step 3: Run Pacman ---
+# --- Step 4: Run Pacman ---
 cd "$SCRIPT_DIR"
 
 if [ $# -eq 0 ]; then
