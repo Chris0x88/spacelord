@@ -39,13 +39,13 @@
         },
         {
             "id": "0.0.541564",
-            "symbol": "WETH_HTS",
-            "note": "Wrapped ETH (HTS native)"
+            "symbol": "WETH[hts]",
+            "note": "Wrapped Ether (Hashport bridge — older variant)"
         },
         {
             "id": "0.0.9770617",
-            "symbol": "WETH_LZ",
-            "note": "Wrapped ETH (LayerZero ERC20)"
+            "symbol": "HTS-WETH",
+            "note": "HTS Wrapped ETH (native — preferred, has V2 pools)"
         }
     ]
 }

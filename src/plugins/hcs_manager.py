@@ -47,8 +47,8 @@ class HcsManager(BasePlugin):
             
             tx.freeze_with(client)
             response = tx.execute(client)
-            receipt = response.get_receipt(client)
-            
+            receipt = response.get_receipt(client) if hasattr(response, "get_receipt") else response
+
             if receipt.topic_id:
                 topic_id = str(receipt.topic_id)
                 self.topic_id = topic_id
@@ -84,13 +84,37 @@ class HcsManager(BasePlugin):
                 .set_message(message)
 
             tx.freeze_with(client)
-            response = tx.execute(client)
-            receipt = response.get_receipt(client)
 
-            if receipt.status == 22:  # SUCCESS
+            # Topics with submit_key need explicit signing with the key that
+            # CREATED the topic. The operator (MAIN_OPERATOR_KEY) may differ from
+            # the signing key (PRIVATE_KEY) that was used for topic creation.
+            # Always sign with PRIVATE_KEY to match the topic's submit_key.
+            import os
+            signing_key = os.getenv("PRIVATE_KEY", "").strip().replace("0x", "")
+            if signing_key and len(signing_key) == 64:
+                from hiero_sdk_python.crypto.private_key import PrivateKey as _PK
+                key_bytes = bytes.fromhex(signing_key)
+                pk = _PK.from_bytes_ecdsa(key_bytes) if len(key_bytes) == 32 else _PK.from_string(signing_key)
+                tx.sign(pk)
+
+            response = tx.execute(client)
+            receipt = response.get_receipt(client) if hasattr(response, "get_receipt") else response
+
+            status = receipt.status
+            # Status 22 = SUCCESS; handle both int and enum
+            if status == 22 or str(status) == "22" or (hasattr(status, 'name') and status.name == 'SUCCESS'):
                 return True
             else:
-                logger.error(f"❌ HCS message submission failed with status {receipt.status}")
+                _status_names = {7: "INVALID_SIGNATURE", 11: "INVALID_TOPIC_ID", 22: "SUCCESS"}
+                status_int = int(status) if isinstance(status, int) else status
+                label = _status_names.get(status_int, str(status))
+                logger.error(f"❌ HCS message submission failed with status {status} ({label})")
+                if status_int == 7:
+                    logger.error(
+                        "   Topic %s submit_key doesn't match the current operator key. "
+                        "Check that HEDERA_ACCOUNT_ID and PRIVATE_KEY in .env are correct.",
+                        target_topic,
+                    )
                 return False
         except Exception as e:
             logger.error(f"❌ Failed to submit HCS message: {e}", exc_info=True)
@@ -130,7 +154,7 @@ class HcsManager(BasePlugin):
             "type": "SIGNAL",
             "signal": signal_type,
             "display_title": _TITLES.get(signal_type, f"📡 {signal_type}"),
-            "sender": self.app.hedera_account_id,
+            "sender": self.app.account_id,
             "timestamp_utc": now.strftime("%Y-%m-%d %H:%M:%S"),
             "timestamp_unix": int(now.timestamp()),
             "data": data,
