@@ -26,5 +26,15 @@ package-lock.json
 *.pid
 .~lock*
 
+# Non-essential directories (keep root clean)
+dashboard/
+pitch_deck/
+memory/
+.agent/
+
+# Developer files
+CLAUDE.md
+SKILL.md
+
 # Template exception
 !data/templates/*.template.json

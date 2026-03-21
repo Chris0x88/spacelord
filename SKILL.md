@@ -1,1 +1,0 @@
-openclaw/skills/pacman-hedera/SKILL.md

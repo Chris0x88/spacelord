@@ -103,10 +103,13 @@ HELP_GROUPS = {
     },
     "messaging": {
         "title": "MESSAGING (HCS)",
-        "summary": "hcs, hcs10",
+        "summary": "hcs, hcs10, feedback",
         "commands": [
             ("hcs status",                  "Show active signal topic"),
             ("hcs signals",                 "View recent investment signals"),
+            ("hcs feedback submit <s> <d>", "Report bug/suggestion to shared topic"),
+            ("hcs feedback read",           "Read recent cross-agent feedback"),
+            ("hcs feedback-setup",          "Create a feedback topic"),
             ("hcs10 setup",                 "Create public inbound topic"),
             ("hcs10 connect <topic_id>",    "Connect to another agent"),
             ("hcs10 send <id> <msg>",       "Send message to connected agent"),

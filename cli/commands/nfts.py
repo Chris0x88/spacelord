@@ -339,61 +339,42 @@ def _cmd_photo(args, account_id, mirror, json_mode):
         caption += f"\n{nft_desc[:200]}"
     caption += f"\n<code>{token_id} #{serial}</code>"
 
-    # Send via Telegram Bot API
-    import urllib.request, urllib.parse
-
+    # Send via Telegram Bot API (using requests for reliable multipart)
     tg_base = f"https://api.telegram.org/bot{bot_token}"
     sent = False
 
     if send_path and Path(send_path).exists():
         # Send as photo (PNG/JPG)
         try:
-            import http.client, mimetypes, uuid
-            boundary = uuid.uuid4().hex
             with open(send_path, "rb") as f:
-                file_data = f.read()
-
-            body_parts = []
-            # chat_id field
-            body_parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n{chat_id}'.encode())
-            # caption field
-            body_parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n{caption}'.encode())
-            # parse_mode
-            body_parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="parse_mode"\r\n\r\nHTML'.encode())
-            # photo file
-            fname = Path(send_path).name
-            body_parts.append(
-                f'--{boundary}\r\nContent-Disposition: form-data; name="photo"; filename="{fname}"\r\nContent-Type: image/png\r\n\r\n'.encode()
-                + file_data
-            )
-            body_parts.append(f'--{boundary}--'.encode())
-            body = b'\r\n'.join(body_parts)
-
-            req = urllib.request.Request(
-                f"{tg_base}/sendPhoto",
-                data=body,
-                headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=30) as r:
-                result = _json.loads(r.read())
-                sent = result.get("ok", False)
+                resp_tg = requests.post(
+                    f"{tg_base}/sendPhoto",
+                    data={"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"},
+                    files={"photo": (Path(send_path).name, f, "image/png")},
+                    timeout=30,
+                )
+            result = resp_tg.json()
+            sent = result.get("ok", False)
+            if not sent:
+                logger.warning(f"sendPhoto API error: {result}")
         except Exception as e:
             logger.warning(f"sendPhoto failed: {e}")
 
     if not sent:
         # Fallback: send original URL as a link with metadata
         try:
-            params = urllib.parse.urlencode({
-                "chat_id": chat_id,
-                "text": f"{caption}\n\n🔗 <a href=\"{original_url}\">View Image</a>",
-                "parse_mode": "HTML",
-                "disable_web_page_preview": "false",
-            }).encode()
-            req = urllib.request.Request(f"{tg_base}/sendMessage", data=params, method="POST")
-            with urllib.request.urlopen(req, timeout=10) as r:
-                result = _json.loads(r.read())
-                sent = result.get("ok", False)
+            resp_tg = requests.post(
+                f"{tg_base}/sendMessage",
+                data={
+                    "chat_id": chat_id,
+                    "text": f"{caption}\n\n<a href=\"{original_url}\">View Image</a>",
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": "false",
+                },
+                timeout=10,
+            )
+            result = resp_tg.json()
+            sent = result.get("ok", False)
         except Exception as e:
             logger.warning(f"sendMessage fallback failed: {e}")
 
