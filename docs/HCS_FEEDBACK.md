@@ -92,7 +92,7 @@ The long-term vision: agents that automatically fix bugs reported by other agent
 
 ## Cost
 
-Each HCS message costs ~0.0001 HBAR (~$0.00001). Posting 100 bug reports costs about $0.001. Reading is free (Mirror Node queries).
+Each HCS message costs ~$0.0008. Reading is free via Mirror Node queries. Don't let agents go trigger-happy -- submit feedback only for genuine bugs, meaningful suggestions, or confirmed successes. A handful of messages per day is plenty.
 
 ## Architecture
 
