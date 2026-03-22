@@ -1,6 +1,6 @@
 # 🚀 Space Lord
 
-**Open-source AI agent toolset for Hedera DeFi**
+**Open-source Hedera DeFi toolkit built for an [OpenClaw](https://openclaw.ai) AI agent to drive — via CLI tool use, not MCP. Fully built. Ready to go.**
 
 [![Hedera Apex Hackathon 2026](https://img.shields.io/badge/Hedera_Apex_Hackathon-2026-black.svg)](https://hedera.com)
 [![Hedera Mainnet](https://img.shields.io/badge/Network-Hedera_Mainnet-blue.svg)](https://hedera.com)
