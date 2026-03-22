@@ -62,18 +62,25 @@ cd pacman
 
 ```mermaid
 graph TD
-    User((You)) -->|Natural Language| Agent[OpenClaw AI Agent]
-    User -->|Terminal| CLI[CLI Direct]
+    %% Styling %%
+    classDef interface fill:#1e1e2e,stroke:#cba6f7,stroke-width:2px,color:#fff,rx:8,ry:8
+    classDef ai fill:#ff2052,stroke:#fff,stroke-width:2px,color:#fff,rx:8,ry:8
+    classDef engine fill:#313244,stroke:#a6e3a1,stroke-width:2px,color:#fff,rx:8,ry:8
+    classDef ext fill:#11111b,stroke:#f9e2af,stroke-width:2px,color:#fff,rx:8,ry:8
+    classDef hedera fill:#000000,stroke:#00a8e8,stroke-width:3px,color:#fff,rx:8,ry:8
 
-    Agent -->|subprocess| Engine[Space Lord Engine]
+    User((You)):::interface -->|Natural Language| Agent[OpenClaw AI Agent]:::ai
+    User -->|Terminal| CLI[CLI Direct]:::interface
+
+    Agent -->|subprocess| Engine[Space Lord Engine]:::engine
     CLI --> Engine
 
-    Engine -->|controller| Router[SaucerSwap V2 Router]
-    Engine -->|HTS| Tokens[Token Transfers]
-    Engine -->|HCS| Signals[On-Chain Signals]
-    Engine -->|SDK| Accounts[Account Management]
+    Engine -->|controller| Router[SaucerSwap V2 Router]:::ext
+    Engine -->|HTS| Tokens[Token Transfers]:::ext
+    Engine -->|HCS| Signals[On-Chain Signals]:::ext
+    Engine -->|SDK| Accounts[Account Management]:::ext
 
-    Router -->|JSON-RPC| Hedera[Hedera Mainnet]
+    Router -->|JSON-RPC| Hedera[Hedera Mainnet]:::hedera
     Tokens --> Hedera
     Signals --> Hedera
     Accounts --> Hedera
