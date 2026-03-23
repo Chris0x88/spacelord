@@ -49,6 +49,7 @@ from cli.commands.agent_sync import cmd_agent_sync
 from cli.commands.doctor import cmd_doctor
 from cli.commands.telegram import cmd_telegram
 from cli.commands.discord import cmd_discord
+from cli.commands.patch import cmd_patch
 
 # Load banner from cli.text_content
 try:
@@ -148,6 +149,8 @@ COMMANDS = {
     "tg": cmd_telegram, "telegram": cmd_telegram,
     # --- Discord Fast Lane ---
     "dc": cmd_discord, "discord": cmd_discord,
+    # --- Patch Network ---
+    "patch": cmd_patch,
     # --- System ---
     "doctor": cmd_doctor,
     "refresh": cmd_refresh, "sync": cmd_refresh,
