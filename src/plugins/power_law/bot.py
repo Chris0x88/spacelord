@@ -357,6 +357,7 @@ class PowerLawBot(BasePlugin):
                     "stance": signal.get("stance"),
                     "phase": signal.get("phase"),
                     "valuation": signal.get("valuation"),
+                    "btc_price": signal.get("price"),
                     "model_price": signal.get("model_price"),
                     "price_floor": signal.get("price_floor"),
                     "price_ceiling": signal.get("price_ceiling"),

@@ -1116,6 +1116,7 @@
         const deviation = d.deviation_pct !== undefined ? d.deviation_pct.toFixed(1) : '--';
         const threshold = d.threshold_pct !== undefined ? d.threshold_pct.toFixed(0) : '--';
         const phase = (s.phase || '').replace(/_/g, ' ');
+        const btcPrice = s.btc_price ? '$' + s.btc_price.toLocaleString(undefined, {maximumFractionDigits: 0}) : '--';
         const modelPrice = s.model_price ? '$' + s.model_price.toLocaleString(undefined, {maximumFractionDigits: 0}) : '--';
         const valuation = (s.valuation || '').replace(/_/g, ' ');
 
@@ -1131,21 +1132,21 @@
               <span class="signal-time">${ts}</span>
             </div>
             <div class="signal-metric">
-              <div class="metric-value accent">${targetPct}%</div>
-              <div class="metric-label">Target BTC</div>
+              <div class="metric-value purple">${btcPrice}</div>
+              <div class="metric-label">BTC Price</div>
             </div>
             <div class="signal-metric">
-              <div class="metric-value">${currentPct}%</div>
-              <div class="metric-label">Current BTC</div>
+              <div class="metric-value accent">${modelPrice}</div>
+              <div class="metric-label">Model Price</div>
             </div>
             <div class="signal-metric">
               <div class="metric-value ${parseFloat(deviation) > parseFloat(threshold) ? 'yellow' : 'green'}">${deviation}%</div>
               <div class="metric-label">Deviation</div>
             </div>
             <div class="signal-detail-row">
+              <span>Target: ${targetPct}% BTC</span>
+              <span>Current: ${currentPct}% BTC</span>
               <span>Portfolio: ${totalUsd}</span>
-              <span>Model: ${modelPrice}</span>
-              <span>${stance} · ${phase}</span>
               ${tradeBadge}
             </div>
           </div>`;
