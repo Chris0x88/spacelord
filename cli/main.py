@@ -348,7 +348,14 @@ def main():
                 with open(status_file, "w") as f:
                     json.dump(status, f, indent=2)
                 
-                # 2. Periodic Refresh (24h = 86400s)
+                # 2. Training data harvest (auto-detect stale)
+                try:
+                    from lib.training_monitor import check_and_harvest_if_stale
+                    check_and_harvest_if_stale()
+                except Exception:
+                    pass
+
+                # 3. Periodic Refresh (24h = 86400s)
                 if time.time() - last_sync > 86400:
                     try:
                         from scripts.refresh_data import refresh
@@ -375,6 +382,14 @@ def main():
 
     # ── INTERACTIVE MODE ─────────────────────────────────────────
     # Human TUI: banner already shown, show help, enter REPL.
+
+    # Background: check training data freshness on startup
+    try:
+        from lib.training_monitor import check_and_harvest_if_stale
+        check_and_harvest_if_stale()
+    except Exception:
+        pass
+
     cmd_help(app, [])
     
     import select
