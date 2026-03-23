@@ -243,6 +243,14 @@ def process_input(app, text):
                     output=_cap.get_output(), stack_trace=_stack,
                     account_id=_account_id)
 
+    # ── Patch Network: auto-report errors to HCS (fire-and-forget) ──
+    if _error:
+        try:
+            from lib.patch_reporter import auto_report_error
+            auto_report_error(app, text, _error, _stack)
+        except Exception:
+            pass  # Never let reporting crash the CLI
+
 # ---------------------------------------------------------------------------
 # Entry Point
 # ---------------------------------------------------------------------------

@@ -35,5 +35,11 @@
     },
     "transfer_whitelist": [],
     "limit_order_poll_seconds": 3600,
-    "limit_order_daemon_enabled": true
+    "limit_order_daemon_enabled": true,
+    "patch_network": {
+        "enabled": false,
+        "auto_report_errors": true,
+        "check_fixes_on_startup": true,
+        "notify_available_patches": true
+    }
 }
