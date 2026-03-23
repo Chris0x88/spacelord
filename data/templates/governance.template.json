@@ -54,6 +54,14 @@
     "notes": "If user has swappable tokens worth >= $1, suggest swapping first. Only show MoonPay as primary when wallet is nearly empty."
   },
 
+  "network": {
+    "signal_topic": "0.0.10371598",
+    "feedback_topic": "0.0.10386171",
+    "signal_topic_notes": "READ-ONLY for new users. BTC Power Law signals, patch reports, and network activity. Free to read via Mirror Node. Only the maintainer broadcasts — do not submit without explicit opt-in.",
+    "patch_network_default": false,
+    "patch_network_notes": "When enabled via 'patch enable', your agent auto-reports errors to the signal topic ($0.0008/msg). Defaults to OFF. Users must opt in."
+  },
+
   "agent_rules": {
     "can_modify_on_user_command": ["safety_limits"],
     "never_modify_autonomously": [".env", "data/accounts.json", "data/settings.json", "data/governance.json"],

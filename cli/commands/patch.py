@@ -58,17 +58,22 @@ def cmd_patch(app, args):
 # Helpers
 # ---------------------------------------------------------------------------
 
+    # Hardcoded Space Lord network topic — every user can READ this for free
+SPACE_LORD_SIGNAL_TOPIC = "0.0.10371598"
+SPACE_LORD_FEEDBACK_TOPIC = "0.0.10386171"
+
+
 def _get_patch_topic_id() -> str:
-    """Get patch topic ID from env var or fall back to signal topic."""
+    """Get patch topic ID. Falls back to the Space Lord network topic (read-only for most users)."""
     import os
     topic = os.getenv("PATCH_TOPIC_ID", "").strip().strip("'").strip('"')
     if topic:
         return topic
-    # Fall back to signal topic
+    # Fall back to user's own signal topic
     topic = os.getenv("HCS_TOPIC_ID", "").strip().strip("'").strip('"')
     if topic:
         return topic
-    # Try governance.json
+    # Try governance.json network section
     try:
         import json
         from pathlib import Path
@@ -76,10 +81,14 @@ def _get_patch_topic_id() -> str:
         if gov_path.exists():
             with open(gov_path) as f:
                 gov = json.load(f)
+            net_topic = gov.get("network", {}).get("signal_topic", "")
+            if net_topic:
+                return net_topic
             return gov.get("hcs", {}).get("topic_id", "")
     except Exception:
         pass
-    return ""
+    # Final fallback: the Space Lord network topic (always readable)
+    return SPACE_LORD_SIGNAL_TOPIC
 
 
 def _severity_icon(severity: str) -> str:

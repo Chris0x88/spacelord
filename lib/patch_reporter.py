@@ -114,22 +114,28 @@ def _send_report(app, command: str, error: str, stack_trace: str, error_hash: st
 
 
 def _get_patch_topic_id() -> str:
-    """Get patch topic ID from env var or fall back to signal topic."""
+    """Get patch topic ID from env var or governance.json network section."""
     topic = os.getenv("PATCH_TOPIC_ID", "").strip().strip("'").strip('"')
     if topic:
         return topic
     topic = os.getenv("HCS_TOPIC_ID", "").strip().strip("'").strip('"')
     if topic:
         return topic
-    # Try governance.json
+    # Try governance.json network section
     try:
         gov_path = Path(__file__).resolve().parent.parent / "data" / "governance.json"
         if gov_path.exists():
             with open(gov_path) as f:
                 gov = json.load(f)
+            net_topic = gov.get("network", {}).get("signal_topic", "")
+            if net_topic:
+                return net_topic
             return gov.get("hcs", {}).get("topic_id", "")
     except Exception:
         pass
+    # NOTE: No hardcoded fallback here. Auto-reporting should only work
+    # if the user has a configured topic. Reading uses patch CLI which
+    # has its own fallback to the Space Lord network topic.
     return ""
 
 
