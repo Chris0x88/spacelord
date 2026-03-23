@@ -44,6 +44,12 @@ def cmd_patch(app, args):
         _cmd_apply(app, args[1:])
     elif sub == "network":
         _cmd_network(app, args[1:])
+    elif sub == "enable":
+        _cmd_enable(app)
+    elif sub == "disable":
+        _cmd_disable(app)
+    elif sub == "status":
+        _cmd_status(app)
     else:
         print_patch_help()
 
@@ -382,6 +388,91 @@ def _cmd_network(app, args):
 
 
 # ---------------------------------------------------------------------------
+# Enable / Disable / Status
+# ---------------------------------------------------------------------------
+
+_PATCH_SETTINGS_FILE = None
+
+def _get_settings_path():
+    global _PATCH_SETTINGS_FILE
+    if _PATCH_SETTINGS_FILE is None:
+        from pathlib import Path
+        _PATCH_SETTINGS_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "settings.json"
+    return _PATCH_SETTINGS_FILE
+
+
+def _cmd_enable(app):
+    """Enable patch network participation — agent will auto-report errors to HCS."""
+    import json
+    path = _get_settings_path()
+    try:
+        settings = json.loads(path.read_text()) if path.exists() else {}
+    except Exception:
+        settings = {}
+
+    settings["patch_network"] = {
+        "enabled": True,
+        "auto_report_errors": True,
+        "check_fixes_on_startup": True,
+        "notify_available_patches": True,
+    }
+    path.write_text(json.dumps(settings, indent=4))
+    print(f"\n  {C.OK}\u2705 Patch Network ENABLED{C.R}")
+    print(f"  {C.MUTED}Your agent will now:{C.R}")
+    print(f"  {C.TEXT}  \u2022 Auto-report errors to the HCS patch topic{C.R}")
+    print(f"  {C.TEXT}  \u2022 Check for available fixes on startup{C.R}")
+    print(f"  {C.TEXT}  \u2022 Notify you when patches are available{C.R}")
+    print(f"  {C.MUTED}Disable anytime: {C.ACCENT}patch disable{C.R}\n")
+
+
+def _cmd_disable(app):
+    """Disable patch network participation."""
+    import json
+    path = _get_settings_path()
+    try:
+        settings = json.loads(path.read_text()) if path.exists() else {}
+    except Exception:
+        settings = {}
+
+    if "patch_network" in settings:
+        settings["patch_network"]["enabled"] = False
+    else:
+        settings["patch_network"] = {"enabled": False}
+    path.write_text(json.dumps(settings, indent=4))
+    print(f"\n  {C.WARN}\u26a0  Patch Network DISABLED{C.R}")
+    print(f"  {C.MUTED}Your agent will no longer participate in the patch network.{C.R}")
+    print(f"  {C.MUTED}Re-enable: {C.ACCENT}patch enable{C.R}\n")
+
+
+def _cmd_status(app):
+    """Show whether the patch network is enabled and current config."""
+    import json
+    path = _get_settings_path()
+    try:
+        settings = json.loads(path.read_text()) if path.exists() else {}
+    except Exception:
+        settings = {}
+
+    pn = settings.get("patch_network", {})
+    enabled = pn.get("enabled", False)
+    auto_report = pn.get("auto_report_errors", False)
+    check_fixes = pn.get("check_fixes_on_startup", False)
+    notify = pn.get("notify_available_patches", False)
+    topic = _get_patch_topic_id()
+
+    status_str = f"{C.OK}ENABLED{C.R}" if enabled else f"{C.ERR}DISABLED{C.R}"
+
+    print(f"\n  {C.BOLD}{C.TEXT}PATCH NETWORK STATUS{C.R}")
+    print(f"  {C.CHROME}{'\u2500' * 44}{C.R}")
+    print(f"  {C.TEXT}Participation:       {C.R} {status_str}")
+    print(f"  {C.TEXT}Auto-report errors:  {C.R} {C.BOLD}{'Yes' if auto_report else 'No'}{C.R}")
+    print(f"  {C.TEXT}Check fixes on start:{C.R} {C.BOLD}{'Yes' if check_fixes else 'No'}{C.R}")
+    print(f"  {C.TEXT}Notify on patches:   {C.R} {C.BOLD}{'Yes' if notify else 'No'}{C.R}")
+    print(f"  {C.TEXT}Patch Topic:         {C.R} {C.BOLD}{topic or 'Not configured'}{C.R}")
+    print(f"  {C.CHROME}{'\u2500' * 44}{C.R}\n")
+
+
+# ---------------------------------------------------------------------------
 # Help
 # ---------------------------------------------------------------------------
 
@@ -389,17 +480,32 @@ def print_patch_help():
     print(f"""
   {C.BOLD}{C.TEXT}PATCH NETWORK COMMANDS{C.R}
   {C.CHROME}{'\u2500' * 52}{C.R}
-  {C.ACCENT}propose <sev> <desc>{C.R}    Publish a patch proposal to HCS
-  {C.ACCENT}list [--limit N]{C.R}        Read recent patches from the network
+  {C.BOLD}{C.TEXT}PARTICIPATION{C.R}
+  {C.CHROME}{'\u2500' * 52}{C.R}
+  {C.ACCENT}enable{C.R}                  Turn on patch network (auto-report errors)
+  {C.ACCENT}disable{C.R}                 Turn off patch network
+  {C.ACCENT}status{C.R}                  Show current patch network config
+  {C.CHROME}{'\u2500' * 52}{C.R}
+  {C.BOLD}{C.TEXT}OPERATIONS{C.R}
+  {C.CHROME}{'\u2500' * 52}{C.R}
+  {C.ACCENT}propose <sev> <desc>{C.R}    Report a bug or propose a fix to HCS
+  {C.ACCENT}list [--limit N]{C.R}        Read the priority queue from the network
   {C.ACCENT}endorse <patch_seq>{C.R}     Endorse a patch by sequence number
-  {C.ACCENT}apply <patch_seq>{C.R}       Mark a patch as applied (with confirm)
+  {C.ACCENT}apply <patch_seq>{C.R}       Confirm you applied a fix
   {C.ACCENT}network{C.R}                 Show network status and agent count
   {C.CHROME}{'\u2500' * 52}{C.R}
   {C.BOLD}{C.TEXT}SEVERITY LEVELS{C.R}
   {C.CHROME}{'\u2500' * 52}{C.R}
-  {C.TEXT}bug{C.R}           Bug fix patch
-  {C.TEXT}enhancement{C.R}   Feature improvement
-  {C.TEXT}plugin{C.R}        New plugin or extension
+  {C.TEXT}bug{C.R}           Bug report — small agents cry for help
+  {C.TEXT}enhancement{C.R}   Feature request or improvement
+  {C.TEXT}plugin{C.R}        New plugin announcement
   {C.TEXT}critical{C.R}      Critical security or stability fix
+  {C.CHROME}{'\u2500' * 52}{C.R}
+  {C.BOLD}{C.TEXT}HOW IT WORKS{C.R}
+  {C.CHROME}{'\u2500' * 52}{C.R}
+  {C.MUTED}Small agents report bugs to HCS. Duplicate reports{C.R}
+  {C.MUTED}stack up, prioritising the most common errors.{C.R}
+  {C.MUTED}Coding agents watch the queue, build fixes, push{C.R}
+  {C.MUTED}to GitHub. All agents pull the update.{C.R}
   {C.CHROME}{'\u2500' * 52}{C.R}
     """)
