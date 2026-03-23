@@ -117,6 +117,16 @@ if [ $# -gt 0 ]; then
                 echo -e "${GREEN}[1/5]${NC} .env already exists."
             fi
 
+            # 1b. Bootstrap data files from templates if missing
+            for tpl in "$SCRIPT_DIR"/data/templates/*.template.json; do
+                base=$(basename "$tpl" .template.json)
+                target="$SCRIPT_DIR/data/${base}.json"
+                if [ ! -f "$target" ]; then
+                    cp "$tpl" "$target"
+                    echo -e "  ${CYAN}↳${NC} Created data/${base}.json from template"
+                fi
+            done
+
             # 2. Run interactive setup wizard (key gen, account creation)
             echo -e "${CYAN}[2/5]${NC} Running setup wizard..."
             uv run --project "$SCRIPT_DIR" python -m cli.main setup

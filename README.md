@@ -11,6 +11,8 @@
 
 > **Hedera Hello Future Apex Hackathon 2026** — AI & Agents Track | OpenClaw Bounty
 
+📄 [Whitepaper (PDF)](docs/WHITEPAPER.pdf) · 🎬 [Demo Video](https://www.youtube.com/watch?v=OElX33KViGo)
+
 ---
 
 ## 💡 What is Space Lord?

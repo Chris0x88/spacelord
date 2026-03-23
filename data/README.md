@@ -2,7 +2,7 @@
 
 This directory contains the central source of truth for token metadata, liquidity pool registries, and application logic rules.
 
-## ⚙️ Settings ([settings.json](file:///Users/cdi/Documents/Github/pacman/data/settings.json))
+## ⚙️ Settings (settings.json)
 
 The `settings.json` file is your "Control Panel". It allows you to tune the UI and data fetching logic without touching code.
 
@@ -21,10 +21,10 @@ The `refresh_strategy` defines how `scripts/refresh_data.py` builds the local li
 
 ## 📂 Source of Truth Files
 
-- **[tokens.json](file:///Users/cdi/Documents/Github/pacman/data/tokens.json)**: Core metadata (Name, Symbol, Decimals) for officially supported tokens.
-- **[aliases.json](file:///Users/cdi/Documents/Github/pacman/data/aliases.json)**: Mapping of nicknames (e.g., "stables") to canonical symbols or IDs.
-- **[pools_v2.json](file:///Users/cdi/Documents/Github/pacman/data/pools_v2.json)**: Static registry of verified liquidity pool Contract IDs and fees.
-- **[variants.json](file:///Users/cdi/Documents/Github/pacman/data/variants.json)**: Maps relationship between ERC20 bridged tokens and HTS native variants.
+- **[tokens.json](./tokens.json)**: Core metadata (Name, Symbol, Decimals) for officially supported tokens.
+- **[aliases.json](./aliases.json)**: Mapping of nicknames (e.g., "stables") to canonical symbols or IDs.
+- **[pools_v2.json](./pools_v2.json)**: Static registry of verified liquidity pool Contract IDs and fees.
+- **[variants.json](./variants.json)**: Maps relationship between ERC20 bridged tokens and HTS native variants.
 
 ## 🛠 Variables Registry
 - **`pacman_data_raw.json`**: The live cache. This file is generated/updated by `scripts/refresh_data.py`. It contains the actual reserves and pricing data used by the router.

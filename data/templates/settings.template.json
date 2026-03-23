@@ -33,12 +33,7 @@
             "0.0.1456986"
         ]
     },
-    "transfer_whitelist": [
-        {
-            "address": "0.0.7949179",
-            "nickname": ""
-        }
-    ],
+    "transfer_whitelist": [],
     "limit_order_poll_seconds": 3600,
     "limit_order_daemon_enabled": true
 }

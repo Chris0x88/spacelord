@@ -158,7 +158,7 @@ import subprocess, json
 def pacman(cmd):
     result = subprocess.run(
         ["./launch.sh"] + cmd.split(),
-        cwd="/Users/cdi/Documents/Github/pacman",
+        cwd="/path/to/pacman",  # adjust to your install location
         capture_output=True, text=True, timeout=120
     )
     return result.stdout.strip()

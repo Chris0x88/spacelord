@@ -102,14 +102,6 @@ class AccountManager:
         if purpose and purpose in self.PURPOSE_MAP:
             nickname = self.PURPOSE_MAP[purpose]
 
-        # Standard Account Mapping for Pacman project (Legacy fallback)
-        STANDARD_NICKNAMES = {
-            "0.0.10289160": "Main Transaction Account",
-            "0.0.10301803": "Bitcoin Rebalancer Daemon"
-        }
-        if not nickname and account_id in STANDARD_NICKNAMES:
-            nickname = STANDARD_NICKNAMES[account_id]
-
         # Label account based on purpose
         if purpose == "rebalancer":
             nickname = "Bitcoin Rebalancer Daemon"
