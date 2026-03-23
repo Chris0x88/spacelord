@@ -208,6 +208,7 @@ def _cmd_list(app, args):
                 data = json.loads(raw)
                 if data.get("type") == "PATCH":
                     data["_seq"] = msg.get("sequence_number", "?")
+                    data["_consensus_ts"] = msg.get("consensus_timestamp", "")
                     patch_items.append(data)
             except Exception:
                 continue
@@ -216,7 +217,13 @@ def _cmd_list(app, args):
             print(f"  {C.MUTED}No patch messages found on topic {topic_id}{C.R}")
             return
 
-        print(f"\n  {C.BOLD}{C.TEXT}PATCH NETWORK \u2014 RECENT PROPOSALS{C.R}")
+        # Build a lookup so endorsements/applies can show the original description
+        proposals = {}
+        for item in patch_items:
+            if item.get("op") == "propose" or item.get("op") == "report":
+                proposals[str(item.get("_seq", ""))] = item.get("description", "")
+
+        print(f"\n  {C.BOLD}{C.TEXT}PATCH NETWORK \u2014 RECENT ACTIVITY{C.R}")
         print(f"  {C.CHROME}{'\u2500' * 64}{C.R}")
         for item in patch_items:
             op = item.get("op", "?")
@@ -224,9 +231,14 @@ def _cmd_list(app, args):
             icon = _op_icon(op)
             seq = item.get("_seq", "?")
             agent = item.get("agent_id", "?")
-            ts = item.get("timestamp", "")[:19]
+            # Format datetime: "2026-03-23T21:17:37" → "2026-03-23 21:17:37"
+            ts = item.get("timestamp", "")[:19].replace("T", " ")
             desc = item.get("description", "")
             ref = item.get("patch_ref")
+
+            # For endorsements/applies, show what they reference
+            if ref and op in ("endorse", "apply") and str(ref) in proposals:
+                desc = f"{desc}  ({proposals[str(ref)][:50]})"
 
             ref_str = f" \u2192 #{ref}" if ref else ""
             print(f"  {icon} {C.ACCENT}#{seq:<6}{C.R} {C.TEXT}{op:<8}{C.R} [{sev}]{ref_str}")
