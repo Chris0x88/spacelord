@@ -13,6 +13,15 @@
 
 📄 [Whitepaper (PDF)](docs/WHITEPAPER_v2.pdf) · 📑 [Pitch Deck (PDF)](docs/PITCH_DECK.pdf) · 🎬 [Demo Video](https://www.youtube.com/watch?v=OElX33KViGo)
 
+### For Judges
+
+1. **Watch** → [Demo Video](https://www.youtube.com/watch?v=OElX33KViGo) (5 min)
+2. **Read** → [Pitch Deck](docs/PITCH_DECK.pdf) or [Whitepaper](docs/WHITEPAPER_v2.pdf)
+3. **Explore** → This README (architecture, features, security model)
+4. **Try it** → `git clone` → `./launch.sh init` → `./launch.sh balance` (2 min setup)
+
+Built solo by Chris — [github.com/Chris0x88](https://github.com/Chris0x88)
+
 ---
 
 ## 💡 What is Space Lord?

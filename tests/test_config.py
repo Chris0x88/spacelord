@@ -7,7 +7,7 @@ from unittest.mock import patch, mock_open
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.config import PacmanConfig
+from src.config import PacmanConfig, SecureString
 from src.errors import ConfigurationError
 
 class TestPacmanConfig:
@@ -83,7 +83,7 @@ class TestPacmanConfig:
     def test_validate_success(self):
         """Test validate method with a valid configuration."""
         config = PacmanConfig(
-            private_key="a" * 64,
+            private_key=SecureString("a" * 64),
             simulate_mode=False,
             max_swap_amount_usd=100.0,
             max_daily_volume_usd=100.0,
@@ -106,39 +106,39 @@ class TestPacmanConfig:
 
     def test_validate_invalid_key_length(self):
         """Test validate method with invalid private key length."""
-        config = PacmanConfig(private_key="abc", simulate_mode=False)
+        config = PacmanConfig(private_key=SecureString("abc"), simulate_mode=False)
         with pytest.raises(ConfigurationError, match="Invalid private key format"):
             config.validate()
 
-        config.private_key = "a" * 63
+        config.private_key = SecureString("a" * 63)
         with pytest.raises(ConfigurationError, match="Invalid private key format"):
             config.validate()
 
     def test_validate_invalid_key_chars(self):
         """Test validate method with non-hex characters in private key."""
-        config = PacmanConfig(private_key="z" * 64, simulate_mode=False)
+        config = PacmanConfig(private_key=SecureString("z" * 64), simulate_mode=False)
         with pytest.raises(ConfigurationError, match="non-hex characters"):
             config.validate()
 
     def test_validate_invalid_limits(self):
         """Test validate method with invalid limits."""
-        # Max swap negative
-        config = PacmanConfig(max_swap_amount_usd=-0.1)
+        # Max swap negative — needs a valid key so validation gets past key check
+        config = PacmanConfig(private_key=SecureString("a" * 64), max_swap_amount_usd=-0.1)
         with pytest.raises(ConfigurationError, match="Invalid max_swap_amount_usd"):
             config.validate()
 
         # Max daily negative
-        config = PacmanConfig(max_daily_volume_usd=-1.0)
+        config = PacmanConfig(private_key=SecureString("a" * 64), max_daily_volume_usd=-1.0)
         with pytest.raises(ConfigurationError, match="Invalid max_daily_volume_usd"):
             config.validate()
 
         # Max slippage too high (5% hard cap stays)
-        config = PacmanConfig(max_slippage_percent=5.1)
+        config = PacmanConfig(private_key=SecureString("a" * 64), max_slippage_percent=5.1)
         with pytest.raises(ConfigurationError, match="Invalid max_slippage_percent"):
             config.validate()
 
         # NaN limits
-        config = PacmanConfig(max_swap_amount_usd=float('nan'))
+        config = PacmanConfig(private_key=SecureString("a" * 64), max_swap_amount_usd=float('nan'))
         with pytest.raises(ConfigurationError, match="Invalid max_swap_amount_usd"):
             config.validate()
 
