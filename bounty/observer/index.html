@@ -902,20 +902,21 @@
       const now = Date.now() / 1000;
       const day = 86400;
 
-      const heartbeats = allMessages.filter(m => classifyType(m) === 'HEARTBEAT');
-      const recentHeartbeatAgents = new Set();
-      for (const hb of heartbeats) {
-        const ts = parseFloat(hb._consensus_timestamp || '0');
+      // Count agents active in last 24h (any message type counts)
+      const recentAgents = new Set();
+      for (const msg of allMessages) {
+        const ts = parseFloat(msg._consensus_timestamp || '0');
         if (now - ts < day) {
-          recentHeartbeatAgents.add(getAgentId(hb));
+          const id = getAgentId(msg);
+          if (id && id !== 'unknown') recentAgents.add(id);
         }
       }
+      const agentCount = recentAgents.size || 1;
 
-      // Fallback: count all unique agents if no heartbeats
-      const allAgents = new Set(allMessages.map(m => getAgentId(m)));
-      const agentCount = recentHeartbeatAgents.size || allAgents.size;
-
-      const proposed = allMessages.filter(m => classifyType(m) === 'PROPOSE').length;
+      const proposed = allMessages.filter(m => {
+        const t = classifyType(m);
+        return t === 'PROPOSE' || t === 'REPORT';
+      }).length;
       const applied = allMessages.filter(m => classifyType(m) === 'APPLY').length;
       const endorsed = allMessages.filter(m => classifyType(m) === 'ENDORSE').length;
 
@@ -944,7 +945,7 @@
           agentMap[id].lastSeen = ts;
         }
 
-        if (type === 'PROPOSE') agentMap[id].proposed++;
+        if (type === 'PROPOSE' || type === 'REPORT') agentMap[id].proposed++;
         if (type === 'APPLY') agentMap[id].applied++;
       }
 
@@ -979,14 +980,15 @@
       // Collect applied sequence numbers
       for (const msg of allMessages) {
         if (classifyType(msg) === 'APPLY') {
-          const refSeq = msg.proposal_seq || msg.ref_sequence || msg.patch_id;
+          const refSeq = msg.patch_ref || msg.proposal_seq || msg.ref_sequence || msg.patch_id;
           if (refSeq) appliedSeqs.add(String(refSeq));
         }
       }
 
-      // Find open proposals
+      // Find open proposals (PROPOSE and REPORT are both proposals)
       for (const msg of allMessages) {
-        if (classifyType(msg) === 'PROPOSE') {
+        const mtype = classifyType(msg);
+        if (mtype === 'PROPOSE' || mtype === 'REPORT') {
           const seq = String(msg._sequence_number || '');
           if (!appliedSeqs.has(seq)) {
             // Count endorsements for this proposal
