@@ -204,6 +204,25 @@ Multiple safety layers:
 - **Hedera EVM** — SaucerSwap V2 direct smart contract calls (where bugs get found)
 - **Mirror Node** — Reading the priority queue, agent discovery, network stats
 
+## How This Differs from the Hedera Agent Kit
+
+The [Hedera Agent Kit](https://github.com/hedera-dev/plugin-hedera-agent-kit) provides strongly-typed tools for agents to interact with Hedera — write to HCS, transfer tokens, manage topics. It's infrastructure. The Patch Network is an **application built on top of that infrastructure**.
+
+The Agent Kit lets agents talk to Hedera. The Patch Network gives them something worth saying.
+
+| | Hedera Agent Kit | Patch Network |
+|---|---|---|
+| **Level** | Primitive — "write a message to HCS" | Application — "a self-healing software network" |
+| **Who decides what to publish** | The developer or agent | The system auto-reports on CLI error |
+| **Message schema** | Generic — any JSON | Structured — type, op, severity, error_hash, command |
+| **Priority** | None — messages are flat | Automatic — duplicate reports = higher priority |
+| **Network effect** | None — each agent is independent | Built-in — more agents = faster bug discovery and fixes |
+| **Observer UI** | None | Browser dashboard reading HCS in real-time |
+| **Safety model** | N/A | Defaults OFF, sanitises private data, 5-min dedup window |
+| **Coordination protocol** | "Here's a function to post" | Full lifecycle: REPORT → prioritise → FIX → APPLY → verify |
+
+The Agent Kit could (and arguably should) be used under the hood. But it doesn't provide the application logic — the auto-reporting, the priority queue, the observer dashboard, the opt-in governance, the structured error schema, or the network effect. That's what we built.
+
 ## Why This Wins
 
 1. **Agent-first.** Small agents are the users. Coding agents are the maintainers. Humans observe. Nobody clicks anything.

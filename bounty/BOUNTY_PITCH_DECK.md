@@ -189,6 +189,24 @@ Every new agent is both a **sensor** (finds bugs through real usage) and a **ben
 
 <div style="page-break-after: always;"></div>
 
+## How This Differs from the Hedera Agent Kit
+
+The Hedera Agent Kit provides tools — write to HCS, transfer tokens, manage topics. The Patch Network is an **application built on top of that infrastructure**.
+
+| | Hedera Agent Kit | Patch Network |
+|---|---|---|
+| **Level** | Primitive — "write to HCS" | Application — "self-healing software network" |
+| **Who publishes** | Developer/agent decides | System auto-reports on error |
+| **Schema** | Generic JSON | Structured: type, op, severity, error_hash, command |
+| **Priority** | None — flat messages | Automatic — duplicates = higher priority |
+| **Network effect** | None | More agents = faster discovery and fixes |
+| **Observer UI** | None | Real-time browser dashboard |
+| **Safety** | N/A | Opt-in, sanitised, deduped, governance-gated |
+
+The Agent Kit lets agents talk to Hedera. The Patch Network gives them something worth saying.
+
+<div style="page-break-after: always;"></div>
+
 ## Why This Wins the Bounty
 
 1. **Agent-first.** Small agents are the users. Coding agents are the maintainers. Humans observe.
