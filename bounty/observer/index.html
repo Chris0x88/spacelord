@@ -290,12 +290,14 @@
       flex-shrink: 0;
     }
 
+    .feed-type.REPORT { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; }
     .feed-type.PROPOSE { background: rgba(240, 192, 64, 0.15); color: var(--yellow); }
     .feed-type.ENDORSE { background: rgba(46, 204, 113, 0.15); color: var(--green); }
     .feed-type.APPLY { background: rgba(0, 180, 216, 0.15); color: var(--cyan); }
     .feed-type.SIGNAL { background: rgba(168, 85, 247, 0.15); color: var(--purple); }
     .feed-type.HEARTBEAT { background: rgba(107, 114, 128, 0.15); color: var(--gray); }
     .feed-type.FEEDBACK { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+    .feed-type.PATCH { background: rgba(240, 192, 64, 0.1); color: var(--yellow); }
     .feed-type.UNKNOWN { background: rgba(107, 114, 128, 0.1); color: var(--gray); }
 
     .feed-agent {
@@ -741,15 +743,23 @@
         ts = new Date(timestamp).getTime();
       }
       const d = new Date(ts);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const date = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return `${date} ${time}`;
     }
 
     function classifyType(msg) {
       const t = (msg.type || msg.operation || '').toUpperCase();
-      if (t.includes('PROPOSE') || t === 'PATCH_PROPOSAL') return 'PROPOSE';
-      if (t.includes('ENDORSE') || t === 'PATCH_ENDORSEMENT') return 'ENDORSE';
-      if (t.includes('APPLY') || t === 'PATCH_APPLIED') return 'APPLY';
-      if (t.includes('SIGNAL')) return 'SIGNAL';
+      const op = (msg.op || '').toLowerCase();
+      // PATCH messages have type=PATCH and op=report|propose|endorse|apply
+      if (t === 'PATCH') {
+        if (op === 'report') return 'REPORT';
+        if (op === 'propose') return 'PROPOSE';
+        if (op === 'endorse') return 'ENDORSE';
+        if (op === 'apply') return 'APPLY';
+        return 'PATCH';
+      }
+      if (t.includes('SIGNAL') || (msg.signal && msg.signal.includes('HEARTBEAT'))) return 'SIGNAL';
       if (t.includes('HEARTBEAT') || t === 'PING') return 'HEARTBEAT';
       if (t.includes('FEEDBACK')) return 'FEEDBACK';
       if (t) return t;
@@ -761,7 +771,31 @@
     }
 
     function getDescription(msg) {
-      return msg.description || msg.message || msg.detail || msg.payload || msg.text || JSON.stringify(msg).substring(0, 120);
+      // PATCH messages: use description field
+      if (msg.type === 'PATCH') {
+        let desc = msg.description || '';
+        if (msg.command) desc += ` [cmd: ${msg.command}]`;
+        if (msg.severity) desc = `[${msg.severity}] ${desc}`;
+        return desc || 'Patch message';
+      }
+      // SIGNAL messages: render a human-readable summary instead of raw JSON
+      if (msg.type === 'SIGNAL' || msg.signal) {
+        const d = msg.data || {};
+        const sig = d.signal || {};
+        const port = d.portfolio || {};
+        const parts = [];
+        if (msg.display_title) parts.push(msg.display_title);
+        if (sig.stance) parts.push(`Stance: ${sig.stance}`);
+        if (sig.allocation_pct !== undefined) parts.push(`Target: ${sig.allocation_pct}% BTC`);
+        if (port.total_usd !== undefined) parts.push(`Portfolio: $${port.total_usd.toFixed(2)}`);
+        if (d.will_trade !== undefined) parts.push(d.will_trade ? 'WILL TRADE' : 'No trade');
+        return parts.join(' · ') || 'Signal';
+      }
+      // FEEDBACK messages
+      if (msg.type === 'FEEDBACK') {
+        return `[${msg.severity || 'info'}] ${msg.description || 'Feedback'}`;
+      }
+      return msg.description || msg.message || msg.detail || msg.text || 'Message';
     }
 
     function getSeverity(msg) {
