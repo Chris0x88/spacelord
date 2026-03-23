@@ -26,12 +26,23 @@ Built solo by Chris — [github.com/Chris0x88](https://github.com/Chris0x88)
 
 ## 💡 What is Space Lord?
 
-Open-source software you download and run on **your own machine**. It collapses the exchange, the wallet, and the portfolio tracker into one local tool — so you or your AI agent can interact with Hedera DeFi directly, with your own keys, through natural language.
+The [Hedera Agent Kit](https://github.com/hashgraph/hedera-agent-kit) gives developers incredible building blocks — swaps, transfers, token operations. **What it doesn't give you is an agent system to drive them.** That's what we built.
+
+Space Lord is the **connective tissue** between an [OpenClaw](https://openclaw.ai) AI agent and the Hedera hashgraph. It collapses the exchange, the wallet, and the portfolio tracker into one local CLI tool that an AI agent drives through **CLI tool use — not MCP**. Your agent doesn't write swap code. It calls fixed tools every time. One valid execution path per operation.
+
+| | Hedera Agent Kit | Space Lord |
+|---|---|---|
+| **What** | Developer toolkit / library | Full-stack agent-driven application |
+| **Agent integration** | You build it | Pre-configured OpenClaw specialist agent |
+| **SaucerSwap** | API-dependent | Direct smart contract calls (no API) |
+| **Governance** | None | Read-only config: per-swap limits, daily caps, slippage ceilings |
+| **Key security** | Framework-dependent | XOR-obfuscated, agent-sandboxed, whitelisted transfers |
+| **Runs on** | Your infrastructure | Your machine — local edge compute |
 
 > No browser wallet. No exchange login. No click fatigue. No multi-app juggling.
 > **One local tool. 30+ commands. Direct to smart contracts.**
 
-Built from **Project Pacman** — an experiment in "eating the middleware" between users and the Hedera blockchain. Phase 1 of a larger vision: collapsing DeFi into the Hashgraph itself, or local edge compute. Still a bit clunky, but it works — **with real money, on Hedera mainnet**.
+We consume the middleware — starting with HashPack and SaucerSwap. Built and tested exclusively on **Hedera mainnet with real tokens**. See the full [differentiation breakdown](docs/SAUCERSWAP_COMPARISON.md).
 
 ---
 
