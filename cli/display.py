@@ -59,13 +59,13 @@ class C:
 
     # ── Semantic Roles ──────────────────────────────────
     TEXT   = "\033[97m"     # Primary text  (bright white)
-    MUTED  = "\033[37m"     # Secondary     (std white — visible on dark!)
-    ACCENT = "\033[96m"     # Emphasis      (bright cyan)
-    OK     = "\033[92m"     # Success       (bright green)
+    MUTED  = "\033[38;5;243m" # Secondary   (darker subtle gray)
+    ACCENT = "\033[96m"     # Emphasis      (Neon Cyan)
+    OK     = "\033[92m"     # Success       (Daemon Green)
     WARN   = "\033[93m"     # Warning       (bright yellow)
     ERR    = "\033[91m"     # Error         (bright red)
     BRAND  = "\033[95m"     # Hedera purple (bright magenta)
-    CHROME = "\033[36m"     # Borders       (std cyan)
+    CHROME = "\033[38;5;238m" # Borders     (Deep space dark gray)
 
     @staticmethod
     def strip(text: str) -> str:

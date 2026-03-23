@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Lord — AI-Driven Hedera DeFi Toolkit</title>
+<meta name="description" content="An open-source Hedera DeFi toolkit driven by an AI agent through natural language. 30+ commands. Real mainnet. Your keys never leave your machine.">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a14;
+  --bg-card: #0d0d1a;
+  --border: #1a1a2e;
+  --accent: #00b4d8;
+  --accent-glow: rgba(0, 180, 216, 0.15);
+  --text: #ffffff;
+  --text-muted: #d4d0cb;
+  --text-dim: #8a8a9a;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(10, 10, 20, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.3s;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  position: relative;
+}
+
+.logo-icon .planet {
+  width: 20px;
+  height: 20px;
+  background: var(--accent);
+  border-radius: 50%;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+
+.logo-icon .ring {
+  width: 36px;
+  height: 14px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  position: absolute;
+  top: 11px;
+  left: 0;
+  opacity: 0.7;
+  transform: rotateX(60deg);
+}
+
+.logo-text {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.logo-text .lord {
+  letter-spacing: 0.35em;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover { color: var(--accent); }
+
+.nav-hamburger {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+/* ── SECTIONS ── */
+section {
+  padding: 6rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section-divider {
+  width: 60px;
+  height: 2px;
+  background: var(--accent);
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.section-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.section-title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.section-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  max-width: 640px;
+  line-height: 1.7;
+}
+
+/* ── FADE-IN ANIMATION ── */
+.fade-in {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  padding-top: 5rem;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* Orbital rings effect */
+.orbital {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 180, 216, 0.08);
+}
+
+.orbital-1 {
+  width: 600px;
+  height: 200px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotateX(70deg) rotateZ(-15deg);
+  animation: orbit-spin 30s linear infinite;
+}
+
+.orbital-2 {
+  width: 800px;
+  height: 280px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotateX(65deg) rotateZ(25deg);
+  animation: orbit-spin 45s linear infinite reverse;
+}
+
+.orbital-3 {
+  width: 500px;
+  height: 160px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotateX(75deg) rotateZ(60deg);
+  animation: orbit-spin 35s linear infinite;
+}
+
+.orbital-4 {
+  width: 1000px;
+  height: 350px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotateX(68deg) rotateZ(-40deg);
+  animation: orbit-spin 55s linear infinite reverse;
+  border-color: rgba(0, 180, 216, 0.04);
+}
+
+.hero-glow {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(0, 180, 216, 0.06) 0%, transparent 70%);
+  z-index: 0;
+}
+
+@keyframes orbit-spin {
+  from { transform: translate(-50%, -50%) rotateX(70deg) rotateZ(0deg); }
+  to { transform: translate(-50%, -50%) rotateX(70deg) rotateZ(360deg); }
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+}
+
+.hero-badge {
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 2rem;
+  background: var(--accent-glow);
+}
+
+.hero h1 {
+  font-size: clamp(2.5rem, 7vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+}
+
+.hero h1 .accent { color: var(--accent); }
+
+.hero-sub {
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin-bottom: 2.5rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero-ctas {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem 2rem;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.25s;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #33c5e3;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 180, 216, 0.3);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem 2rem;
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  transition: all 0.25s;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-2px);
+}
+
+/* ── HOW IT WORKS CARDS ── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 3rem;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2rem;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.card:hover {
+  border-color: rgba(0, 180, 216, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.card:hover::before { opacity: 1; }
+
+.card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--accent-glow);
+  border: 1px solid rgba(0, 180, 216, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  font-size: 1.3rem;
+}
+
+.card h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.card p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* ── POWERED BY ── */
+.powered-by {
+  padding: 5rem 2rem;
+  text-align: center;
+}
+
+.powered-logos {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4rem;
+  margin-top: 3rem;
+  flex-wrap: wrap;
+}
+
+.powered-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+  text-decoration: none;
+}
+
+.powered-logo:hover { opacity: 1; }
+
+.powered-logo-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.powered-logo:hover .powered-logo-icon {
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.powered-logo-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.powered-connector {
+  color: var(--accent);
+  font-size: 1.5rem;
+  opacity: 0.3;
+  align-self: center;
+  margin-top: -1rem;
+}
+
+/* ── TELEGRAM DEMO ── */
+.tg-demo {
+  padding: 6rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Custom Native Chat UI - Ultra-realistic iPhone Frame */
+.iphone-frame {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  background: #000;
+  border-radius: 48px;
+  padding: 14px; /* bezel */
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6), inset 0 0 0 1px #444, inset 0 0 0 4px #111;
+  position: relative;
+}
+
+/* Hardware buttons */
+.iphone-frame::before {
+  content: '';
+  position: absolute;
+  top: 120px; left: -2px; width: 3px; height: 30px;
+  background: #333; border-radius: 4px 0 0 4px;
+  box-shadow: 0 50px 0 #333, 0 100px 0 #333; /* ringer + volume */
+}
+.iphone-frame::after {
+  content: '';
+  position: absolute;
+  top: 140px; right: -2px; width: 3px; height: 60px;
+  background: #333; border-radius: 0 4px 4px 0; /* power button */
+}
+
+/* Dynamic island */
+.iphone-notch {
+  position: absolute;
+  top: 18px; left: 50%; transform: translateX(-50%);
+  width: 100px; height: 30px;
+  background: #000;
+  border-radius: 20px;
+  z-index: 20;
+}
+.iphone-camera {
+  position: absolute;
+  top: 24px; left: 50%; transform: translateX(30px);
+  width: 10px; height: 10px;
+  background: #111; border-radius: 50%; z-index: 25;
+  box-shadow: inset -1px -1px 2px rgba(255,255,255,0.1), inset 1px 1px 3px rgba(0,0,0,0.8);
+}
+
+.chat-ui {
+  display: flex;
+  flex-direction: column;
+  background: #0f172a; /* dark slate space bg */
+  font-family: -apple-system, system-ui, sans-serif;
+  height: auto;
+  min-height: 500px; /* enough to look substantial */
+  border-radius: 36px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid #222;
+}
+
+.chat-header {
+  padding: 56px 1rem 0.75rem; /* space for notch */
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 10;
+}
+
+.chat-header-back { color: #38bdf8; display:flex; align-items:center; }
+.chat-header-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border: 1px solid rgba(0,180,216,0.3);
+  display: flex; align-items: center; justify-content: center;
+  color: #00b4d8; font-size: 1.1rem;
+}
+.chat-header-info {
+  display: flex; flex-direction: column; line-height:1.2;
+}
+.chat-header-name { color: #fff; font-weight: 600; font-size: 0.95rem; display:flex; align-items:center; }
+.chat-header-status { color: #38bdf8; font-size: 0.75rem; margin-top:0.15rem; }
+
+.chat-body {
+  flex-grow: 1;
+  padding: 1rem 1rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 90%;
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.msg-user {
+  align-self: flex-end;
+  background: #2b5278;
+  color: #fff;
+  border-radius: 16px 16px 4px 16px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.msg-bot {
+  align-self: flex-start;
+  background: #1e293b;
+  color: #e2e8f0;
+  border-radius: 16px 16px 16px 4px;
+  padding: 1rem;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.msg-bot-header {
+  font-weight: 700;
+  color: #38bdf8;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 0.5rem;
+}
+.msg-bot-header svg {
+  margin-right: 0.25rem;
+}
+.msg-bot ul {
+  list-style: none;
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.msg-bot li {
+  padding-left: 1.25rem;
+  position: relative;
+  line-height: 1.4;
+}
+.msg-bot li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #38bdf8;
+}
+.msg-bot strong {
+  color: #fff;
+}
+.msg-bot .highlight {
+  color: #fbbf24;
+}
+.msg-bot .mono {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: #94a3b8;
+  background: rgba(0,0,0,0.3);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.tg-demo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.tg-demo-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.tg-demo-caption {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  flex-grow: 1;
+  transition: all 0.3s;
+}
+
+.tg-demo-caption:hover {
+  border-color: rgba(0, 180, 216, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.tg-demo-caption h4 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+
+.tg-demo-caption p {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .tg-demo-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
+  .powered-logos { gap: 2rem; }
+  .powered-connector { display: none; }
+}
+
+/* ── ARCHITECTURE ── */
+.arch-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 3rem 0;
+  flex-wrap: wrap;
+}
+
+.arch-step {
+  text-align: center;
+  padding: 1.5rem 1.25rem;
+  flex: 0 1 auto;
+}
+
+.arch-step-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.75rem;
+  font-size: 1.5rem;
+  transition: border-color 0.3s;
+}
+
+.arch-step:hover .arch-step-icon {
+  border-color: var(--accent);
+}
+
+.arch-step-label {
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.arch-arrow {
+  color: var(--accent);
+  font-size: 1.2rem;
+  opacity: 0.5;
+  flex-shrink: 0;
+  margin: 0 0.25rem;
+}
+
+.arch-description {
+  max-width: 720px;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.8;
+  margin-top: 1rem;
+}
+
+/* ── FEATURES GRID ── */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 3rem;
+}
+
+.feature {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  transition: all 0.3s;
+}
+
+.feature:hover {
+  border-color: rgba(0, 180, 216, 0.25);
+}
+
+.feature-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.feature-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.feature h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.feature p {
+  color: var(--text-dim);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  padding-left: 1.5rem;
+}
+
+/* ── VISION TIMELINE ── */
+.vision-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-top: 3rem;
+  position: relative;
+}
+
+.vision-cols::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), rgba(0, 180, 216, 0.2));
+  border-radius: 2px;
+}
+
+.vision-col {
+  padding-top: 2rem;
+  position: relative;
+}
+
+.vision-col::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  border: 3px solid var(--bg);
+}
+
+.vision-phase {
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+  font-weight: 700;
+}
+
+.vision-col h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.vision-col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.vision-col li {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.vision-col li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 4px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0.6;
+}
+
+.vision-quote {
+  margin-top: 3rem;
+  padding: 2rem;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-card);
+  border-radius: 0 8px 8px 0;
+}
+
+.vision-quote p {
+  font-size: 1.05rem;
+  font-style: italic;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* ── SECURITY ── */
+.security-headline {
+  font-size: clamp(1.5rem, 3.5vw, 2.2rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+}
+
+.security-headline .accent { color: var(--accent); }
+
+.security-sub {
+  font-size: 1.3rem;
+  color: var(--text-muted);
+  margin-bottom: 2.5rem;
+}
+
+.security-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.security-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.security-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--accent-glow);
+  border: 1px solid rgba(0, 180, 216, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+
+.security-item h4 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+
+.security-item p {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ── GETTING STARTED ── */
+.start-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.start-option {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2rem;
+}
+
+.start-option-label {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  background: var(--accent-glow);
+  border: 1px solid rgba(0, 180, 216, 0.2);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.start-option h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+
+.start-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.start-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.start-steps li span {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.code-block {
+  background: #0f0f1e;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-top: 1.25rem;
+  overflow-x: auto;
+}
+
+.code-block code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.8;
+  color: var(--text-muted);
+}
+
+.code-block .cmd { color: var(--accent); }
+.code-block .comment { color: var(--text-dim); }
+
+.start-note {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.start-note-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  margin-top: 0.1rem;
+}
+
+.start-note p {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* ── HEDERA BAR ── */
+.hedera-bar {
+  padding: 4rem 2rem;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.hedera-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hedera-title {
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 2rem;
+  font-weight: 700;
+}
+
+.hedera-badges {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.hedera-badge {
+  padding: 0.6rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: var(--bg);
+  transition: all 0.2s;
+}
+
+.hedera-badge:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── FOOTER ── */
+footer {
+  padding: 4rem 2rem 2rem;
+  border-top: 1px solid var(--border);
+}
+
+.footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.footer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.footer-brand {
+  max-width: 300px;
+}
+
+.footer-brand .logo-text {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.footer-brand p {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.footer-links {
+  display: flex;
+  gap: 3rem;
+  flex-wrap: wrap;
+}
+
+.footer-col h4 {
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.75rem;
+}
+
+.footer-col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.footer-col a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.2s;
+}
+
+.footer-col a:hover { color: var(--accent); }
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+
+.footer-hackathon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.footer-copy {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  nav { padding: 0.75rem 1.25rem; }
+
+  .nav-links { display: none; }
+  .nav-links.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: rgba(10, 10, 20, 0.97);
+    padding: 1.5rem 2rem;
+    gap: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-hamburger { display: block; }
+
+  section { padding: 4rem 1.25rem; }
+
+  .hero { min-height: 90vh; padding-top: 4rem; }
+
+  .vision-cols { grid-template-columns: 1fr; }
+  .vision-cols::before { display: none; }
+  .vision-col::before { display: none; }
+  .vision-col { padding-top: 0; padding-left: 1.5rem; border-left: 3px solid var(--accent); }
+
+  .arch-flow { flex-direction: column; gap: 0.5rem; }
+  .arch-arrow { transform: rotate(90deg); }
+
+  .start-options { grid-template-columns: 1fr; }
+
+  .footer-top { flex-direction: column; }
+  .footer-bottom { flex-direction: column; text-align: center; }
+}
+
+@media (max-width: 480px) {
+  .hero h1 { font-size: 2rem; }
+  .cards-grid { grid-template-columns: 1fr; }
+  .features-grid { grid-template-columns: 1fr; }
+  .security-grid { grid-template-columns: 1fr; }
+  .hedera-badges { flex-direction: column; align-items: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════ NAV ════ -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="logo-icon">
+      <div class="planet"></div>
+      <div class="ring"></div>
+    </div>
+    <span class="logo-text">SPACE <span class="lord">LORD</span></span>
+  </a>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#vision">Vision</a></li>
+    <li><a href="#getting-started">Get Started</a></li>
+    <li><a href="https://github.com/Chris0x88/pacman" target="_blank" rel="noopener">GitHub</a></li>
+  </ul>
+  <button class="nav-hamburger" id="navToggle" aria-label="Toggle menu">&#9776;</button>
+</nav>
+
+<!-- ════ HERO ════ -->
+<section class="hero">
+  <div class="hero-bg">
+    <div class="hero-glow"></div>
+    <div class="orbital orbital-1"></div>
+    <div class="orbital orbital-2"></div>
+    <div class="orbital orbital-3"></div>
+    <div class="orbital orbital-4"></div>
+  </div>
+  <div class="hero-content fade-in">
+    <div class="hero-badge">Open Source &middot; Hedera Mainnet &middot; AI Agent</div>
+    <h1>Your Tokens.<br>Your Machine.<br>Your <span class="accent">Agent.</span></h1>
+    <p class="hero-sub">An open-source Hedera DeFi toolkit driven by an AI agent through natural language. 30+ commands. Real mainnet. Your keys never leave your machine.</p>
+    <div class="hero-ctas">
+      <a href="#getting-started" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+        Get Started
+      </a>
+      <a href="#architecture" class="btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        See How It Works
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ════ HOW IT WORKS (CARDS) ════ -->
+<section id="how-it-works">
+  <div class="fade-in">
+    <div class="section-divider"></div>
+    <p class="section-label">Why Space Lord</p>
+    <h2 class="section-title">DeFi Without the Dashboard</h2>
+    <p class="section-subtitle">No browser extensions. No seed phrase pop-ups. Just tell your agent what you want.</p>
+  </div>
+  <div class="cards-grid">
+    <div class="card fade-in">
+      <div class="card-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <h3>Talk, Don't Click</h3>
+      <p>Say "swap 10 USDC for HBAR" in Telegram. Your AI agent handles routing, slippage, gas, and confirmation.</p>
+    </div>
+    <div class="card fade-in">
+      <div class="card-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      </div>
+      <h3>Fixed Code, Not Guesswork</h3>
+      <p>Your agent doesn't write swap code &mdash; it calls the exact tool every time. One valid execution path per operation. Fewer tokens, consistent results, and your agent focuses on mastering workflows instead of reinventing them.</p>
+    </div>
+    <div class="card fade-in">
+      <div class="card-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+      </div>
+      <h3>Your Tools, Your Machine</h3>
+      <p>Download the CLI and its plugins &mdash; swap, transfer, stake, signal &mdash; all running locally on your computer. OpenClaw config files create a dedicated agent tuned to drive these tools. As models advance, your agent can pick, optimise, and even build its own plugins. An experiment in edge compute.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════ POWERED BY ════ -->
+<section class="powered-by">
+  <div class="fade-in">
+    <p class="section-label" style="text-align:center;">Built&nbsp;On</p>
+    <h2 class="section-title" style="text-align:center;">Three Platforms, One Agent</h2>
+    <p class="section-subtitle" style="text-align:center; margin:0 auto;">Space Lord connects Hedera's DeFi infrastructure to your Telegram through an OpenClaw AI agent.</p>
+  </div>
+  <div class="powered-logos fade-in">
+    <!-- Hedera -->
+    <a href="https://hedera.com" target="_blank" rel="noopener" class="powered-logo" style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; text-decoration:none;">
+      <div style="width:70px; height:70px; border-radius:12px; overflow:hidden;">
+        <img src="img/hedera_logo.png" alt="Hedera SDK" style="width:100%; height:100%; object-fit:contain;">
+      </div>
+      <span style="color:#ffffff; font-weight:800; font-size:1.1rem; letter-spacing:0.1em; text-shadow:0 0 10px rgba(255,255,255,0.5);">HEDERA</span>
+    </a>
+    <span class="powered-connector">+</span>
+    <!-- OpenClaw -->
+    <a href="https://openclaw.ai" target="_blank" rel="noopener" class="powered-logo" style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; text-decoration:none;">
+      <div style="width:80px; height:80px; border-radius:12px; overflow:hidden;">
+        <img src="img/openclaw_logo.png" alt="OpenClaw Agent Tooling" style="width:100%; height:100%; object-fit:contain;">
+      </div>
+      <span style="color:#dc3232; font-weight:800; font-size:1.1rem; letter-spacing:0.1em; text-shadow:0 0 10px rgba(220,50,50,0.5);">OPENCLAW</span>
+    </a>
+    <span class="powered-connector">+</span>
+    <!-- Telegram -->
+    <a href="https://telegram.org" target="_blank" rel="noopener" class="powered-logo" style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; text-decoration:none;">
+      <div style="width:80px; height:80px; border-radius:12px; overflow:hidden;">
+        <img src="img/telegram_logo.png" alt="Telegram API" style="width:100%; height:100%; object-fit:cover;">
+      </div>
+      <span style="color:#24a1de; font-weight:800; font-size:1.1rem; letter-spacing:0.1em; text-shadow:0 0 10px rgba(36,161,222,0.5);">TELEGRAM</span>
+    </a>
+  </div>
+</section>
+
+<!-- ════ TELEGRAM DEMO ════ -->
+<section class="tg-demo" id="demo">
+  <div class="fade-in">
+    <div class="section-divider"></div>
+    <p class="section-label">In Action</p>
+    <h2 class="section-title">Real Trades from Telegram</h2>
+    <p class="section-subtitle">No dashboards. No browser extensions. Just chat with your agent on Telegram and it executes on Hedera mainnet.</p>
+  </div>
+  <div class="tg-demo-grid fade-in">
+    <!-- Card 1: Menu -->
+    <div class="tg-demo-card">
+      <div class="iphone-frame">
+        <div class="iphone-notch"></div>
+        <div class="iphone-camera"></div>
+        <div class="chat-ui">
+          <div class="chat-header">
+            <div class="chat-header-back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg></div>
+            <div class="chat-header-avatar">🪐</div>
+            <div class="chat-header-info">
+              <span class="chat-header-name">Space Lord <span style="font-size:0.65rem; background:rgba(255,255,255,0.1); padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700;">bot</span></span>
+              <span class="chat-header-status">online</span>
+            </div>
+          </div>
+          <div class="chat-body">
+            <div class="chat-msg msg-user">Hi OpenClaw Agent, Show me the main menu!</div>
+            <div class="chat-msg msg-bot" style="animation-delay: 0.2s;">
+              <div class="msg-bot-header">
+                Space Lord &mdash; Your Hedera Agent
+              </div>
+              <ul>
+                <li><strong>💱 TRADING</strong> &mdash; natural language</li>
+                <li><strong>🟡 PORTFOLIO</strong> &mdash; USD values</li>
+                <li><strong>🏦 TRANSFERS</strong> &mdash; whitelisted-only</li>
+                <li><strong>💳 ACCOUNT</strong> &mdash; multi-account</li>
+                <li><strong>🤖 ROBOT</strong> &mdash; Rebalancer daemon</li>
+                <li><strong>📈 STAKING</strong> &mdash; stake/unstake</li>
+                <li><strong>💧 LIQUIDITY</strong> &mdash; LP positions</li>
+                <li><strong>📋 LIMIT ORDERS</strong> &mdash; set triggers</li>
+              </ul>
+              <p style="margin-top:0.75rem; color:#94a3b8; font-size:0.8rem; border-top:1px solid rgba(255,255,255,0.05); padding-top:0.5rem;">Just tell me what you need, or pick a category.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tg-demo-caption">
+        <h4>Natural Language Menu</h4>
+        <p>30+ commands organized by category. Just type what you need or pick from the menu.</p>
+      </div>
+    </div>
+    
+    <!-- Card 2: Price Check -->
+    <div class="tg-demo-card">
+      <div class="iphone-frame">
+        <div class="iphone-notch"></div>
+        <div class="iphone-camera"></div>
+        <div class="chat-ui">
+          <div class="chat-header">
+            <div class="chat-header-back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg></div>
+            <div class="chat-header-avatar">🪐</div>
+            <div class="chat-header-info">
+              <span class="chat-header-name">Space Lord <span style="font-size:0.65rem; background:rgba(255,255,255,0.1); padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700;">bot</span></span>
+              <span class="chat-header-status">online</span>
+            </div>
+          </div>
+          <div class="chat-body">
+            <div class="chat-msg msg-user">Check the wBTC price please.</div>
+            <div class="chat-msg msg-bot" style="animation-delay: 0.1s;">
+              <div class="msg-bot-header">🪐 wBTC Price</div>
+              <p style="font-size:1.1rem; font-weight:700; color:#fff; margin-bottom:0.4rem;">HTS-WBTC: <span style="color:#10b981;">$68,053.39</span></p>
+              <p style="color:#94a3b8; font-size:0.75rem; margin-bottom:0.75rem;">Source: <span style="color:#fff;">SaucerSwap V2</span> (<span class="mono">0.0...996</span>)</p>
+              <p style="font-size:0.8rem;">Your balance (0.00024) is worth approx <strong style="color:#fff;">$16.43</strong>.</p>
+            </div>
+            <div class="chat-msg msg-user" style="animation-delay: 0.8s;">Buy $1 USDC worth of wBTC at limit $65k.</div>
+            <div class="chat-msg msg-bot" style="animation-delay: 1.1s;">
+              <div class="msg-bot-header" style="color:#10b981;">✅ Limit Order Set</div>
+              <p style="font-size:0.8rem;"><strong>ID:</strong> <span class="mono">2237d9d5</span> monitoring</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tg-demo-caption">
+        <h4>Price Checks &amp; Limit Orders</h4>
+        <p>Ask for prices, set triggers, and the agent monitors and executes automatically.</p>
+      </div>
+    </div>
+    
+    <!-- Card 3: Portfolio & History -->
+    <div class="tg-demo-card">
+      <div class="iphone-frame">
+        <div class="iphone-notch"></div>
+        <div class="iphone-camera"></div>
+        <div class="chat-ui">
+          <div class="chat-header">
+            <div class="chat-header-back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg></div>
+            <div class="chat-header-avatar">🪐</div>
+            <div class="chat-header-info">
+              <span class="chat-header-name">Space Lord <span style="font-size:0.65rem; background:rgba(255,255,255,0.1); padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700;">bot</span></span>
+              <span class="chat-header-status">online</span>
+            </div>
+          </div>
+          <div class="chat-body">
+            <div class="chat-msg msg-user">How much HBAR do I hold and what was my last trade?</div>
+            <div class="chat-msg msg-bot" style="animation-delay: 0.2s;">
+              <div class="msg-bot-header">🪐 HBAR Overview</div>
+              <p style="margin-bottom:0.5rem; font-size:0.8rem; color:#94a3b8;">Price: <strong style="color:#10b981; font-size:1rem;">$0.09005</strong></p>
+              <ul style="margin-bottom:0.75rem;">
+                <li><strong style="color:#fff;">51.59 HBAR</strong> &approx; $4.62 (Main)</li>
+                <li><strong style="color:#fff;">39.21 HBAR</strong> &approx; $3.53 (Robot)</li>
+                <li style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:0.25rem; margin-top:0.25rem;"><strong class="highlight">Total: 90.80 HBAR &approx; $8.15</strong></li>
+              </ul>
+              <p style="color:#cbd5e1; font-size:0.8rem; padding-left:0.5rem; border-left:2px solid #38bdf8; background:rgba(0,0,0,0.2); border-radius:0 4px 4px 0; padding:0.5rem;"><strong>03-22 23:22:12 Swap:</strong><br>5.58 USDC &rarr; 5.61 HTS-WBTC<br><span style="color:#94a3b8;">Value: ~$5.61 &middot; Cost: $0.0112 gas</span></p>
+            </div>
+            <div class="chat-msg msg-bot" style="animation-delay: 0.4s;">
+              <p style="font-size:0.8rem;">Want to check the current wBTC price or set another limit order?</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tg-demo-caption">
+        <h4>Portfolio &amp; Trade History</h4>
+        <p>Real-time balances, USD values, and detailed transaction history across all accounts.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ ARCHITECTURE ════ -->
+<section id="architecture">
+  <div class="fade-in">
+    <div class="section-divider"></div>
+    <p class="section-label">Architecture</p>
+    <h2 class="section-title">How It Works</h2>
+  </div>
+  <div class="arch-flow fade-in">
+    <div class="arch-step">
+      <div class="arch-step-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div class="arch-step-label">You Speak</div>
+    </div>
+    <div class="arch-arrow">&rarr;</div>
+    <div class="arch-step">
+      <div class="arch-step-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 0-4 4v4h8V6a4 4 0 0 0-4-4z"/><rect x="4" y="10" width="16" height="12" rx="2"/><circle cx="12" cy="16" r="1"/></svg>
+      </div>
+      <div class="arch-step-label">Agent Interprets</div>
+    </div>
+    <div class="arch-arrow">&rarr;</div>
+    <div class="arch-step">
+      <div class="arch-step-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      </div>
+      <div class="arch-step-label">CLI Executes</div>
+    </div>
+    <div class="arch-arrow">&rarr;</div>
+    <div class="arch-step">
+      <div class="arch-step-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      <div class="arch-step-label">Hedera Settles</div>
+    </div>
+  </div>
+  <div class="arch-description fade-in">
+    <p>Space Lord collapses the exchange, the wallet, and the portfolio tracker into one local tool. An OpenClaw AI agent drives it through CLI tool use &mdash; not MCP. The agent runs the same commands you would. It's a user, not an admin.</p>
+  </div>
+</section>
+
+<!-- ════ FEATURES ════ -->
+<section id="features">
+  <div class="fade-in">
+    <div class="section-divider"></div>
+    <p class="section-label">Capabilities</p>
+    <h2 class="section-title">Features</h2>
+  </div>
+  <div class="features-grid">
+    <div class="feature fade-in">
+      <div class="feature-header">
+        <div class="feature-dot"></div>
+        <h3>Token Swaps</h3>
+      </div>
+      <p>Natural language to SaucerSwap V2 smart contracts. Optimal routing through WHBAR with slippage protection.</p>
+    </div>
+    <div class="feature fade-in">
+      <div class="feature-header">
+        <div class="feature-dot"></div>
+        <h3>Portfolio Management</h3>
+      </div>
+      <p>Real-time balances, USD values, and transaction history across all Hedera tokens.</p>
+    </div>
+    <div class="feature fade-in">
+      <div class="feature-header">
+        <div class="feature-dot"></div>
+        <h3>Self-Custody Transfers</h3>
+      </div>
+      <p>Whitelisted destinations only. EVM addresses blocked. Only Hedera native IDs accepted.</p>
+    </div>
+    <div class="feature fade-in">
+      <div class="feature-header">
+        <div class="feature-dot"></div>
+        <h3>Autonomous Rebalancing</h3>
+      </div>
+      <p>Power Law daemon for automated portfolio management with independent robot account.</p>
+    </div>
+    <div class="feature fade-in">
+      <div class="feature-header">
+        <div class="feature-dot"></div>
+        <h3>On-Chain Signals</h3>
+      </div>
+      <p>Daily HCS heartbeat broadcasting structured JSON. Anyone can subscribe to the topic.</p>
+    </div>
+    <div class="feature fade-in">
+      <div class="feature-header">
+        <div class="feature-dot"></div>
+        <h3>Governance & Safety</h3>
+      </div>
+      <p>One config file controls per-swap limits, daily caps, slippage ceilings, and gas reserves.</p>
+    </div>
+    <div class="feature fade-in">
+      <div class="feature-header">
+        <div class="feature-dot"></div>
+        <h3>Training Pipeline</h3>
+      </div>
+      <p>Every command generates fine-tuning data. Building toward an AI that doesn't just drive the app &mdash; it becomes it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════ VISION ════ -->
+<section id="vision">
+  <div class="fade-in">
+    <div class="section-divider"></div>
+    <p class="section-label">Roadmap</p>
+    <h2 class="section-title">Where This Goes</h2>
+  </div>
+  <div class="vision-cols fade-in">
+    <div class="vision-col">
+      <div class="vision-phase">Today &middot; Working</div>
+      <h3>Foundation</h3>
+      <ul>
+        <li>AI agent drives CLI on real mainnet</li>
+        <li>Auto-generates training data every command</li>
+        <li>Governance enforced locally</li>
+        <li>Real trades, real money, real learnings</li>
+      </ul>
+    </div>
+    <div class="vision-col">
+      <div class="vision-phase">Next &middot; Building</div>
+      <h3>Intelligence</h3>
+      <ul>
+        <li>Fine-tuned model on operational data</li>
+        <li>Agent spawns sub-agents for tasks</li>
+        <li>HCS-10 agent-to-agent messaging</li>
+        <li>Multi-chain routing capabilities</li>
+      </ul>
+    </div>
+    <div class="vision-col">
+      <div class="vision-phase">Endgame &middot; The Thesis</div>
+      <h3>Autonomy</h3>
+      <ul>
+        <li>Autonomous index funds as Hedera agents</li>
+        <li>Lowest-cost chain for agent autonomy</li>
+        <li>Personalized edge-local AI</li>
+        <li>Zero-UI financial infrastructure</li>
+      </ul>
+    </div>
+  </div>
+  <div class="vision-quote fade-in">
+    <p>"We're not building a better dashboard. We're building the last generation of financial software that needs a human to click buttons."</p>
+  </div>
+</section>
+
+<!-- ════ SECURITY ════ -->
+<section id="security">
+  <div class="fade-in">
+    <div class="section-divider"></div>
+    <p class="section-label">Security</p>
+    <h2 class="security-headline">The Golden Rule</h2>
+    <p class="security-sub">The AI agent <span class="accent">never</span> sees your keys.</p>
+  </div>
+  <div class="security-grid fade-in">
+    <div class="security-item">
+      <div class="security-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+      </div>
+      <div>
+        <h4>Key Isolation</h4>
+        <p>Private keys stay on your machine, XOR-obfuscated in memory. The agent workspace has no access.</p>
+      </div>
+    </div>
+    <div class="security-item">
+      <div class="security-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      </div>
+      <div>
+        <h4>Deterministic Execution</h4>
+        <p>The agent calls the same CLI you would. No hidden APIs. No special privileges.</p>
+      </div>
+    </div>
+    <div class="security-item">
+      <div class="security-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+      </div>
+      <div>
+        <h4>Transfer Whitelists</h4>
+        <p>Every transfer requires a pre-approved destination. EVM addresses are blocked entirely.</p>
+      </div>
+    </div>
+    <div class="security-item">
+      <div class="security-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div>
+        <h4>Immutable Governance</h4>
+        <p>Swap limits, daily caps, and slippage ceilings live in a config the agent can read but never write.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ GETTING STARTED ════ -->
+<section id="getting-started">
+  <div class="fade-in">
+    <div class="section-divider"></div>
+    <p class="section-label">Quick Start</p>
+    <h2 class="section-title">Get Started in 5 Minutes</h2>
+  </div>
+  <div class="start-options">
+    <div class="start-option fade-in">
+      <div class="start-option-label">Option A</div>
+      <h3>From Your OpenClaw Agent</h3>
+      <ol class="start-steps">
+        <li>
+          <span class="step-num">1</span>
+          <span>Clone the repo and run <code>./launch.sh init</code> to set up keys and accounts</span>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <span>Connect OpenClaw to the <code>openclaw/</code> workspace &mdash; the agent reads SKILL.md automatically</span>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <span>Link your Telegram bot and start talking: "Show my balance" or "Swap 5 USDC for HBAR"</span>
+        </li>
+      </ol>
+    </div>
+    <div class="start-option fade-in">
+      <div class="start-option-label">Option B</div>
+      <h3>Manual Install</h3>
+      <div class="code-block">
+        <code>
+<span class="comment"># Clone and initialize</span><br>
+<span class="cmd">git clone</span> https://github.com/Chris0x88/pacman.git<br>
+<span class="cmd">cd</span> pacman<br>
+<span class="cmd">./launch.sh</span> init<br>
+<br>
+<span class="comment"># Explore</span><br>
+<span class="cmd">./launch.sh</span> help<br>
+<span class="cmd">./launch.sh</span> balance<br>
+        </code>
+      </div>
+    </div>
+  </div>
+  <div class="start-note fade-in">
+    <div class="start-note-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <p><strong>Keys are entered locally through the setup wizard &mdash; never through your agent's API.</strong> This software is experimental. Your agent can technically read local files if it chooses to &mdash; guardrails discourage this but cannot yet prevent it. We are exploring AWS-KMS and local encryption with cloud-backed PassKey to solve this properly.</p>
+  </div>
+</section>
+
+<!-- ════ HEDERA BAR ════ -->
+<div class="hedera-bar fade-in">
+  <div class="hedera-inner">
+    <div class="hedera-title">Direct to Hedera &mdash; No Middleware</div>
+    <div class="hedera-badges">
+      <div class="hedera-badge">SaucerSwap V2</div>
+      <div class="hedera-badge">HTS</div>
+      <div class="hedera-badge">HCS</div>
+      <div class="hedera-badge">Mirror Node</div>
+      <div class="hedera-badge">Accounts</div>
+      <div class="hedera-badge">Staking</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ FOOTER ════ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <span class="logo-text">SPACE <span class="lord">LORD</span></span>
+        <p>Built with real money. Real transactions. Real learnings.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/Chris0x88/pacman" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://clawhub.ai/Chris0x88/pacman-hedera" target="_blank" rel="noopener">ClawHub</a></li>
+            <li><a href="#getting-started">Get Started</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>On-Chain</h4>
+          <ul>
+            <li><a href="https://hashscan.io/mainnet/topic/0.0.10371598" target="_blank" rel="noopener">HCS Topic 0.0.10371598</a></li>
+            <li><a href="https://github.com/Chris0x88/pacman/blob/main/docs/whitepaper.pdf" target="_blank" rel="noopener">Whitepaper</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Learn</h4>
+          <ul>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#vision">Vision</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-hackathon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Hedera Hello Future Apex Hackathon 2026 &mdash; AI &amp; Agents Track
+      </div>
+      <div class="footer-copy">&copy; 2026 Space Lord. Open source under MIT.</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── Intersection Observer for fade-in animations
+(function() {
+  const observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.fade-in').forEach(function(el) {
+    observer.observe(el);
+  });
+})();
+
+// ── Mobile nav toggle
+(function() {
+  var toggle = document.getElementById('navToggle');
+  var links = document.getElementById('navLinks');
+  toggle.addEventListener('click', function() {
+    links.classList.toggle('open');
+  });
+  links.addEventListener('click', function(e) {
+    if (e.target.tagName === 'A') {
+      links.classList.remove('open');
+    }
+  });
+})();
+
+// ── Nav background on scroll
+(function() {
+  var nav = document.querySelector('nav');
+  window.addEventListener('scroll', function() {
+    if (window.scrollY > 50) {
+      nav.style.background = 'rgba(10, 10, 20, 0.95)';
+    } else {
+      nav.style.background = 'rgba(10, 10, 20, 0.85)';
+    }
+  }, { passive: true });
+})();
+</script>
+
+</body>
+</html>

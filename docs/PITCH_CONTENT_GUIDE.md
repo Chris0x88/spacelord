@@ -107,8 +107,8 @@ Every slide and every sentence in the video should reinforce one or more of thes
 - Training pipeline → fine-tuned LLMs that *become* the toolkit
 - Local rebalancers → Hedera Schedule Service / Blockstreams
 - Dashboard → OpenClaw "canvas" (AI-generated UI)
-- **Why pay Vanguard?** Hedera: $0.04/year on $100k vs Vanguard: $30/year
-- The Sasspocalypse: index funds as autonomous agents on Hedera
+- **Why Hedera?** Lowest-cost hashgraph/blockchain — critical as agent activity scales
+- Autonomous index funds as agents on Hedera — the cost advantage compounds with autonomy
 
 ### Slide 9: It's Real
 - Running on Hedera mainnet with real money
