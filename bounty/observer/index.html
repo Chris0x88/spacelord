@@ -1116,7 +1116,12 @@
         const deviation = d.deviation_pct !== undefined ? d.deviation_pct.toFixed(1) : '--';
         const threshold = d.threshold_pct !== undefined ? d.threshold_pct.toFixed(0) : '--';
         const phase = (s.phase || '').replace(/_/g, ' ');
-        const btcPrice = s.btc_price ? '$' + s.btc_price.toLocaleString(undefined, {maximumFractionDigits: 0}) : '--';
+        // btc_price added in v1.2 signals. For older signals, derive from portfolio
+        let rawBtcPrice = s.btc_price;
+        if (!rawBtcPrice && p.wbtc_balance && p.wbtc_balance > 0 && p.total_usd) {
+          rawBtcPrice = Math.round((p.total_usd * (p.wbtc_pct || 0) / 100) / p.wbtc_balance);
+        }
+        const btcPrice = rawBtcPrice ? '$' + Number(rawBtcPrice).toLocaleString(undefined, {maximumFractionDigits: 0}) : '--';
         const modelPrice = s.model_price ? '$' + s.model_price.toLocaleString(undefined, {maximumFractionDigits: 0}) : '--';
         const valuation = (s.valuation || '').replace(/_/g, ' ');
 
