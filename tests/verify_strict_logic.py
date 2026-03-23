@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 import sys
-from pacman_app import PacmanApp
-from pacman_logger import set_verbose
+from pathlib import Path
+
+# Add project root to sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.controller import PacmanController
+from src.logger import set_verbose
 
 def test_strict_logic():
     print("--- Testing Strict Logic Separation ---")
     set_verbose(False)
-    app = PacmanApp()
+    app = PacmanController()
     
     # 1. Test Strict Convert (Should Succeed)
     print("\n[TEST 1] Convert HTS-WBTC -> WBTC_LZ (Should SUCCEED)")

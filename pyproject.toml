@@ -31,6 +31,11 @@ dependencies = [
     "cairosvg>=2.9.0",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+]
+
 [project.scripts]
 pacman = "cli.main:main"
 

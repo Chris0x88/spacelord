@@ -133,12 +133,12 @@ AGENT_WORKFLOWS = {
         "description": "Fund and start the robot rebalancer",
         "steps": [
             "robot status                      # Check if already funded",
-            "send <amount> USDC to 0.0.10379302  # Send USDC to robot",
-            "send <amount> WBTC to 0.0.10379302  # Send WBTC to robot",
+            "send <amount> USDC to <robot_id>      # Send USDC to robot",
+            "send <amount> WBTC to <robot_id>      # Send WBTC to robot",
             "robot status                      # Verify portfolio > $5",
             "robot start                       # Start the daemon",
         ],
-        "examples": ["send 10 USDC to 0.0.10379302", "send 0.0003 WBTC to 0.0.10379302"],
+        "examples": ["send 10 USDC to <robot_id>", "send 0.0003 WBTC to <robot_id>"],
         "notes": "Robot needs >= $5 portfolio (USDC + WBTC). Threshold 15%. Min trade $1.",
     },
     "close-lp": {
@@ -160,7 +160,7 @@ AGENT_WORKFLOWS = {
             "robot stop                        # Stop daemon",
         ],
         "examples": ["robot status", "robot start"],
-        "notes": "Robot account: 0.0.10379302. Min portfolio $5. Threshold 15%.",
+        "notes": "Run 'robot status' to see robot account ID. Min portfolio $5. Threshold 15%.",
     },
     "order": {
         "description": "Set limit orders that trigger automatically",
@@ -179,10 +179,10 @@ AGENT_WORKFLOWS = {
         "steps": [
             "account                           # View active account + known accounts",
             "account switch <id_or_name>       # Switch active account",
-            "account switch 0.0.10289160       # ALWAYS switch back to main after robot ops",
+            "account switch <main_id>          # ALWAYS switch back to main after robot ops",
         ],
-        "examples": ["account switch 0.0.10379302", "account rename 0.0.xxx MyLabel"],
-        "notes": "Main: 0.0.10289160. Robot: 0.0.10379302. Always switch back to main after robot ops.",
+        "examples": ["account switch <robot_id>", "account rename 0.0.xxx MyLabel"],
+        "notes": "Run 'account' to see your account IDs. Always switch back to main after robot ops.",
     },
     "whitelist": {
         "description": "Manage trusted transfer destinations",

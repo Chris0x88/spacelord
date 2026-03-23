@@ -11,7 +11,7 @@
 
 > **Hedera Hello Future Apex Hackathon 2026** — AI & Agents Track | OpenClaw Bounty
 
-📄 [Whitepaper (PDF)](docs/WHITEPAPER.pdf) · 🎬 [Demo Video](https://www.youtube.com/watch?v=OElX33KViGo)
+📄 [Whitepaper (PDF)](docs/WHITEPAPER_v2.pdf) · 📑 [Pitch Deck (PDF)](docs/PITCH_DECK.pdf) · 🎬 [Demo Video](https://www.youtube.com/watch?v=OElX33KViGo)
 
 ---
 
@@ -46,7 +46,7 @@ cd pacman
 ./launch.sh init        # Guided wizard: key setup, token associations
 ./launch.sh help        # See all 30+ available commands
 ./launch.sh balance     # Check your portfolio
-./launch.sh swap 10 USDC for HBAR --yes   # Execute a real swap
+./launch.sh swap 10 USDC for HBAR          # Execute a real swap
 ```
 
 `./launch.sh` is a zero-dependency bash launcher — installs `uv`, validates `.env`, dispatches to the CLI engine. Keys entered locally through the wizard — they never travel through any API.
@@ -146,9 +146,9 @@ Direct to Hedera — no middleware:
 
 | Resource | Link |
 |----------|------|
-| 🎥 Demo Video | [YouTube link in submission] |
-| 📑 Pitch Deck | [`pitch_deck/`](pitch_deck/) |
-| 📄 Technical Whitepaper | [`docs/WHITEPAPER.md`](docs/WHITEPAPER.md) |
+| 🎥 Demo Video | [YouTube](https://www.youtube.com/watch?v=OElX33KViGo) |
+| 📑 Pitch Deck | [`docs/PITCH_DECK.pdf`](docs/PITCH_DECK.pdf) |
+| 📄 Technical Whitepaper | [`docs/WHITEPAPER_v2.pdf`](docs/WHITEPAPER_v2.pdf) |
 | 🔌 ClawHub Skill | [clawhub.ai/Chris0x88/pacman-hedera](https://clawhub.ai/Chris0x88/pacman-hedera) |
 | 📡 HCS Signal Topic | `0.0.10371598` |
 

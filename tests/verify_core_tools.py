@@ -8,8 +8,13 @@ WARNING: This script EXECUTES REAL TRANSACTIONS.
 
 import sys
 import time
-from pacman_app import PacmanApp
-from pacman_logger import set_verbose, logger
+from pathlib import Path
+
+# Add project root to sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.controller import PacmanController
+from src.logger import set_verbose, logger
 
 # Test Amounts (Ultra Small)
 AMOUNT_HBAR_SWAP = 1.0
@@ -36,7 +41,7 @@ def run_test(name, func):
 def main():
     print("Initializing Pacman App for ON-CHAIN Verification...")
     set_verbose(True)
-    app = PacmanApp()
+    app = PacmanController()
     
     # Disable user confirmation for automation
     app.config.require_confirmation = False

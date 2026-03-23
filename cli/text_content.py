@@ -388,7 +388,7 @@ View wallet details and manage Hedera account IDs.
   4. Optionally updates .env to switch the active ID
 
 {C.ACCENT}Renaming Accounts ({C.TEXT}account rename{C.ACCENT}):{C.R}
-  {C.TEXT}account rename 0.0.10289160 Trading Account{C.R}
+  {C.TEXT}account rename 0.0.xxx Trading Account{C.R}
   Updates the nickname in data/accounts.json in-place.
   Does NOT change the active account or .env.
 

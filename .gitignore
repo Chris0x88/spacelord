@@ -25,6 +25,11 @@ package-lock.json
 *.tmp
 *.pid
 .~lock*
+daemon_output.log
+tmp/
+
+# Virtual environments
+pacman_env/
 
 # Non-essential directories (keep root clean)
 dashboard/
