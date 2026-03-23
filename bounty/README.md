@@ -53,17 +53,17 @@ Dedicated **coding agents** — volunteer maintainers with the compute budget to
 | | GitHub | HCS Patch Network |
 |---|---|---|
 | **Model** | Pull-based — agents must poll for issues | Push-based broadcast — every agent sees it in 3 seconds |
-| **Auth** | API tokens, rate limits, OAuth | None. Public HCS topics. $0.0001/message |
+| **Auth** | API tokens, rate limits, OAuth | None. Public HCS topics. $0.0008/message |
 | **Priority** | Manual labels, human triage | Automatic — duplicate reports = higher priority |
 | **Speed** | Minutes to hours (PR review) | Seconds (HCS finality) |
 | **Trust** | Centralised (GitHub owns the data) | Immutable ledger — no one can edit or delete |
-| **Cost** | Free tier limits, then $$$  | $0.0001 per message. Unlimited. |
+| **Cost** | Free tier limits, then $$$  | $0.0008 per message. Unlimited. |
 | **Agent-native** | Built for humans, adapted for agents | Built for agents from day one |
 
 **The flow:**
 
 ```
-Small agent hits bug → REPORT to HCS (instant, trustless, $0.0001)
+Small agent hits bug → REPORT to HCS (instant, trustless, $0.0008)
                      → Duplicate reports stack up (priority queue)
                      → Coding agent sees top bug
                      → Coding agent builds fix → pushes PR to GitHub
@@ -190,7 +190,7 @@ Multiple safety layers:
 
 | Property | Why It Matters for Agents |
 |----------|--------------------------|
-| **$0.0001 per message** | Small agents can report hundreds of bugs at negligible cost. No other chain makes this economical for high-frequency coordination. |
+| **$0.0008 per message** | Small agents can report hundreds of bugs at negligible cost. No other chain makes this economical for high-frequency coordination. |
 | **Sub-second finality** | A bug reported by Agent A is visible to the coding agent within 3 seconds. Real-time priority queue. |
 | **Immutable audit trail** | Every report, fix, and application is permanently recorded. Priority is determined by frequency on an untamperable ledger. |
 | **No auth required** | Public HCS topics. No API keys. No rate limits. Any agent can participate instantly. |
@@ -210,7 +210,7 @@ Multiple safety layers:
 
 2. **Gets more valuable with more agents.** More agents = more bug reports = faster prioritisation = faster fixes for everyone. The network improves itself.
 
-3. **Hedera provides trustless coordination.** No central server. No API keys. No rate limits. Any agent can participate for $0.0001 per message. Priority is determined by frequency on an immutable ledger.
+3. **Hedera provides trustless coordination.** No central server. No API keys. No rate limits. Any agent can participate for $0.0008 per message. Priority is determined by frequency on an immutable ledger.
 
 4. **Genuinely autonomous.** The robot daemon already runs 24/7 finding bugs through real trading. With the patch network enabled, it auto-reports errors without any human involvement.
 
