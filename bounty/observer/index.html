@@ -799,7 +799,7 @@
     <p style="font-size:0.75rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--accent); margin-bottom:0.5rem;">The Problem</p>
     <h2 style="font-size:clamp(1.5rem,3vw,2.2rem); font-weight:700; text-transform:uppercase; margin-bottom:1.5rem; line-height:1.2;">Small Agents Can't Fix Their Own Bugs</h2>
     <p style="font-size:1.05rem; color:var(--text-muted); line-height:1.8; margin-bottom:1.5rem;">Small, efficient agentic models — the kind that run locally on a Mac Mini or cheaply via API — are great at executing commands. Swaps, transfers, portfolio checks. But when they hit a wall, they're stuck. They don't have the token budget to debug complex failures. They can describe what went wrong. They <strong>cannot fix it</strong>.</p>
-    <p style="font-size:1.05rem; color:var(--text-muted); line-height:1.8;">Today's coordination model was built for humans. A developer finds a bug → files a GitHub issue → waits for a maintainer to triage it → another developer picks it up days later. <strong>If 100 agents hit the same bug, GitHub produces 99 duplicate issues that get closed.</strong> The signal is destroyed by the deduplication process.</p>
+    <p style="font-size:1.05rem; color:var(--text-muted); line-height:1.8;">On GitHub, if 100 agents hit the same bug, they file 100 issues. A human closes 99 as duplicates. One survives with no frequency signal attached. On HCS, those 100 reports <strong>stack up on the same topic with the same error hash</strong>. The count IS the priority. Every duplicate adds signal. Agents can see exactly how many others hit the same wall — and coding agents know what to fix first.</p>
   </section>
 
   <!-- ════ HOW IT WORKS ════ -->
@@ -1058,7 +1058,7 @@
     <!-- Bottom: Patch Queue -->
     <div class="card">
       <div class="card-header">
-        <h2>Patch Queue</h2>
+        <h2>Priority Queue — Sorted by Frequency</h2>
         <span class="badge" id="queueCount">0 open</span>
       </div>
       <div class="card-body">
@@ -1510,58 +1510,115 @@
     }
 
     function renderPatchQueue() {
-      // Find proposals that haven't been applied
-      const proposals = [];
+      // Group reports/proposals by error_hash to show duplicate frequency
       const appliedSeqs = new Set();
+      const appliedHashes = new Set();
 
-      // Collect applied sequence numbers
+      // Collect applied items
       for (const msg of allMessages) {
         if (classifyType(msg) === 'APPLY') {
           const refSeq = msg.patch_ref || msg.proposal_seq || msg.ref_sequence || msg.patch_id;
           if (refSeq) appliedSeqs.add(String(refSeq));
+          if (msg.error_hash) appliedHashes.add(msg.error_hash);
         }
       }
 
-      // Find open proposals (PROPOSE and REPORT are both proposals)
+      // Group by error_hash (if available) or by description similarity
+      const hashGroups = {};  // error_hash → { count, agents: Set, first_msg, endorsements, seqs }
+      const ungrouped = [];   // proposals without error_hash
+
       for (const msg of allMessages) {
         const mtype = classifyType(msg);
-        if (mtype === 'PROPOSE' || mtype === 'REPORT') {
-          const seq = String(msg._sequence_number || '');
-          if (!appliedSeqs.has(seq)) {
-            // Count endorsements for this proposal
-            const endorsements = allMessages.filter(m =>
-              classifyType(m) === 'ENDORSE' &&
-              String(m.patch_ref || m.proposal_seq || m.ref_sequence || m.patch_id) === seq
-            ).length;
+        if (mtype !== 'PROPOSE' && mtype !== 'REPORT') continue;
 
-            proposals.push({
-              seq: msg._sequence_number,
-              severity: getSeverity(msg),
-              description: getDescription(msg),
-              endorsements,
-              agent: getAgentId(msg),
-              timestamp: msg._consensus_timestamp
-            });
+        const seq = String(msg._sequence_number || '');
+        const hash = msg.error_hash;
+
+        if (hash && !appliedHashes.has(hash)) {
+          if (!hashGroups[hash]) {
+            hashGroups[hash] = {
+              count: 0,
+              agents: new Set(),
+              first_msg: msg,
+              seqs: [],
+              endorsements: 0,
+            };
           }
+          const g = hashGroups[hash];
+          g.count++;
+          g.agents.add(getAgentId(msg));
+          g.seqs.push(seq);
+          if (!g.first_msg || (msg._consensus_timestamp < g.first_msg._consensus_timestamp)) {
+            g.first_msg = msg;
+          }
+        } else if (!hash && !appliedSeqs.has(seq)) {
+          // Count endorsements for ungrouped proposals
+          const endorsements = allMessages.filter(m =>
+            classifyType(m) === 'ENDORSE' &&
+            String(m.patch_ref || m.proposal_seq || m.ref_sequence || m.patch_id) === seq
+          ).length;
+          ungrouped.push({
+            seq: msg._sequence_number,
+            severity: getSeverity(msg),
+            description: getDescription(msg),
+            endorsements,
+            count: 1,
+            agents: 1,
+            agent: getAgentId(msg),
+            timestamp: msg._consensus_timestamp,
+          });
         }
       }
 
-      $queueCount.textContent = proposals.length + ' open';
+      // Count endorsements for grouped items
+      for (const [hash, g] of Object.entries(hashGroups)) {
+        g.endorsements = allMessages.filter(m =>
+          classifyType(m) === 'ENDORSE' &&
+          g.seqs.includes(String(m.patch_ref || m.proposal_seq || m.ref_sequence || m.patch_id))
+        ).length;
+      }
 
-      if (proposals.length === 0) {
+      // Merge grouped and ungrouped, sort by report count (frequency = priority)
+      const allProposals = [];
+      for (const [hash, g] of Object.entries(hashGroups)) {
+        allProposals.push({
+          seq: g.first_msg._sequence_number,
+          severity: getSeverity(g.first_msg),
+          description: getDescription(g.first_msg),
+          endorsements: g.endorsements,
+          count: g.count,
+          agents: g.agents.size,
+          agent: getAgentId(g.first_msg),
+          timestamp: g.first_msg._consensus_timestamp,
+          hash: hash,
+        });
+      }
+      allProposals.push(...ungrouped);
+      allProposals.sort((a, b) => b.count - a.count); // highest frequency first
+
+      $queueCount.textContent = allProposals.length + ' open';
+
+      if (allProposals.length === 0) {
         $patchQueue.innerHTML = '<div class="patch-empty">No open patch proposals found.</div>';
         return;
       }
 
       let html = '';
-      for (const p of proposals) {
+      for (const p of allProposals) {
+        const freqBadge = p.count > 1
+          ? `<span style="font-family:var(--font-mono);font-size:0.75rem;font-weight:800;color:var(--red);background:rgba(239,68,68,0.15);padding:0.15rem 0.5rem;border-radius:3px;">${p.count} reports</span>`
+          : `<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);">1 report</span>`;
+        const agentsBadge = p.agents > 1
+          ? ` <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--yellow);">${p.agents} agents</span>`
+          : '';
+
         html += `
-          <div class="patch-item">
+          <div class="patch-item" style="grid-template-columns:60px auto 80px 1fr 100px 80px;">
             <span class="patch-seq">#${p.seq || '--'}</span>
             <span class="severity-badge ${p.severity}">${p.severity}</span>
-            <span class="patch-desc">${escapeHtml(typeof p.description === 'string' ? p.description : JSON.stringify(p.description)).substring(0, 120)}</span>
+            ${freqBadge}
+            <span class="patch-desc">${escapeHtml(typeof p.description === 'string' ? p.description : JSON.stringify(p.description)).substring(0, 100)}${agentsBadge}</span>
             <span class="patch-endorsements">${p.endorsements} endorse${p.endorsements !== 1 ? 's' : ''}</span>
-            <span class="patch-agent">${escapeHtml(truncateId(p.agent))}</span>
             <span class="patch-age">${timeAgo(p.timestamp)}</span>
           </div>`;
       }
