@@ -495,6 +495,122 @@
       font-size: 0.85rem;
     }
 
+    /* ── AGENT FLOW PIPELINE ── */
+    .flow-pipeline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 1.5rem 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 1rem 1.2rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      min-width: 110px;
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .flow-step:hover {
+      border-color: var(--accent-dim);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0, 180, 216, 0.1);
+    }
+
+    .flow-step-final {
+      border-color: rgba(46, 204, 113, 0.3);
+    }
+
+    .flow-step-final:hover {
+      border-color: var(--green);
+      box-shadow: 0 4px 20px rgba(46, 204, 113, 0.15);
+    }
+
+    .flow-step.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .flow-icon {
+      font-size: 1.5rem;
+    }
+
+    .flow-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+
+    .flow-step-final .flow-label {
+      color: var(--green);
+    }
+
+    .flow-desc {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      text-align: center;
+      max-width: 100px;
+    }
+
+    .flow-count {
+      font-family: var(--font-mono);
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-top: 0.2rem;
+    }
+
+    .flow-arrow {
+      font-size: 1.2rem;
+      color: var(--accent-dim);
+      padding: 0 0.5rem;
+      font-family: var(--font-mono);
+    }
+
+    .flow-tracker {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .flow-tracker-item {
+      display: grid;
+      grid-template-columns: 50px 1fr auto;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .flow-state-badge {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .flow-state-badge.reported { background: rgba(240, 192, 64, 0.15); color: var(--yellow); }
+    .flow-state-badge.endorsed { background: rgba(0, 180, 216, 0.15); color: var(--cyan); }
+    .flow-state-badge.fixed { background: rgba(168, 85, 247, 0.15); color: var(--purple); }
+    .flow-state-badge.applied { background: rgba(46, 204, 113, 0.15); color: var(--green); }
+
     /* ── SIGNAL FEED ── */
     .signal-feed {
       display: flex;
@@ -756,6 +872,54 @@
       </div>
     </div>
 
+    <!-- Agent Flow Steps & States -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Agent Flow</h2>
+        <span class="badge">lifecycle</span>
+      </div>
+      <div class="card-body">
+        <div class="flow-pipeline" id="flowPipeline">
+          <div class="flow-step" id="flowReport">
+            <div class="flow-icon">🔍</div>
+            <div class="flow-label">REPORT</div>
+            <div class="flow-desc">Small agent hits error</div>
+            <div class="flow-count" id="flowReportCount">0</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step" id="flowPrioritise">
+            <div class="flow-icon">📊</div>
+            <div class="flow-label">PRIORITISE</div>
+            <div class="flow-desc">Duplicates stack up</div>
+            <div class="flow-count" id="flowPrioritiseCount">0</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step" id="flowEndorse">
+            <div class="flow-icon">👍</div>
+            <div class="flow-label">ENDORSE</div>
+            <div class="flow-desc">Agents confirm the issue</div>
+            <div class="flow-count" id="flowEndorseCount">0</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step" id="flowFix">
+            <div class="flow-icon">🔧</div>
+            <div class="flow-label">FIX</div>
+            <div class="flow-desc">Coding agent builds patch</div>
+            <div class="flow-count" id="flowFixCount">0</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step flow-step-final" id="flowApply">
+            <div class="flow-icon">✅</div>
+            <div class="flow-label">APPLIED</div>
+            <div class="flow-desc">Agents pull from GitHub</div>
+            <div class="flow-count" id="flowApplyCount">0</div>
+          </div>
+        </div>
+        <!-- Active patches with their current state -->
+        <div class="flow-tracker" id="flowTracker"></div>
+      </div>
+    </div>
+
     <!-- Signal Intelligence Feed -->
     <div class="card">
       <div class="card-header">
@@ -975,6 +1139,7 @@
       renderFeed();
       renderStats();
       renderAgentRegistry();
+      renderAgentFlow();
       renderSignalFeed();
       renderPatchQueue();
 
@@ -1157,6 +1322,69 @@
           </div>`;
       }
       $signalFeed.innerHTML = html;
+    }
+
+    function renderAgentFlow() {
+      // Count messages at each lifecycle stage
+      const reports = allMessages.filter(m => { const t = classifyType(m); return t === 'REPORT' || t === 'PROPOSE'; });
+      const endorsements = allMessages.filter(m => classifyType(m) === 'ENDORSE');
+      const fixes = allMessages.filter(m => {
+        const t = classifyType(m);
+        return t === 'PROPOSE' && (m.severity === 'fix' || (m.description && m.description.toLowerCase().includes('fix')));
+      });
+      const applied = allMessages.filter(m => classifyType(m) === 'APPLY');
+
+      // Unique error descriptions for prioritisation count
+      const errorDescs = {};
+      reports.forEach(m => {
+        const desc = (m.description || '').substring(0, 60).toLowerCase().trim();
+        if (desc) errorDescs[desc] = (errorDescs[desc] || 0) + 1;
+      });
+      const prioritised = Object.values(errorDescs).filter(c => c > 1).length;
+
+      document.getElementById('flowReportCount').textContent = reports.length;
+      document.getElementById('flowPrioritiseCount').textContent = prioritised;
+      document.getElementById('flowEndorseCount').textContent = endorsements.length;
+      document.getElementById('flowFixCount').textContent = fixes.length;
+      document.getElementById('flowApplyCount').textContent = applied.length;
+
+      // Highlight active stages
+      document.getElementById('flowReport').classList.toggle('active', reports.length > 0);
+      document.getElementById('flowEndorse').classList.toggle('active', endorsements.length > 0);
+      document.getElementById('flowApply').classList.toggle('active', applied.length > 0);
+
+      // Build individual patch tracker — show each proposal and its current state
+      const $tracker = document.getElementById('flowTracker');
+      const appliedSeqs = new Set();
+      const endorsedSeqs = new Set();
+
+      applied.forEach(m => {
+        const ref = String(m.patch_ref || m.proposal_seq || m.ref_sequence || '');
+        if (ref) appliedSeqs.add(ref);
+      });
+      endorsements.forEach(m => {
+        const ref = String(m.patch_ref || m.proposal_seq || m.ref_sequence || '');
+        if (ref) endorsedSeqs.add(ref);
+      });
+
+      let trackerHtml = '';
+      const tracked = reports.slice(0, 8); // Show last 8
+      for (const msg of tracked) {
+        const seq = String(msg._sequence_number || '');
+        let state = 'reported';
+        let stateLabel = 'REPORTED';
+        if (appliedSeqs.has(seq)) { state = 'applied'; stateLabel = 'APPLIED'; }
+        else if (endorsedSeqs.has(seq)) { state = 'endorsed'; stateLabel = 'ENDORSED'; }
+
+        const desc = (typeof msg.description === 'string' ? msg.description : '').substring(0, 80) || 'No description';
+        trackerHtml += `
+          <div class="flow-tracker-item">
+            <span class="flow-state-badge ${state}">${stateLabel}</span>
+            <span style="color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(desc)}</span>
+            <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);">#${seq}</span>
+          </div>`;
+      }
+      $tracker.innerHTML = trackerHtml || '<div class="patch-empty">No patches being tracked.</div>';
     }
 
     function renderPatchQueue() {
