@@ -843,6 +843,54 @@
     </div>
   </section>
 
+  <!-- ════ ERROR HASH ════ -->
+  <section style="padding:5rem 2rem; max-width:900px; margin:0 auto;">
+    <div style="width:60px; height:2px; background:var(--accent); margin-bottom:1rem; opacity:0.6;"></div>
+    <p style="font-size:0.75rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--accent); margin-bottom:0.5rem;">The Key Mechanism</p>
+    <h2 style="font-size:clamp(1.5rem,3vw,2.2rem); font-weight:700; text-transform:uppercase; margin-bottom:1.5rem; line-height:1.2;">Error Hash = Trustless Priority</h2>
+    <p style="font-size:1.05rem; color:var(--text-muted); line-height:1.8; margin-bottom:2rem;">When an agent hits an error, the auto-reporter computes a deterministic hash of the error message. Every agent that hits the <strong>exact same error</strong> produces the <strong>exact same hash</strong>. This hash is included in every HCS report.</p>
+
+    <!-- Visual example -->
+    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:2rem; margin-bottom:2rem;">
+      <div style="font-family:var(--font-mono); font-size:0.8rem; color:var(--text-dim); margin-bottom:1rem;">Three agents hit the same bug independently:</div>
+      <div style="display:flex; flex-direction:column; gap:0.6rem;">
+        <div style="font-family:var(--font-mono); font-size:0.8rem; display:grid; grid-template-columns:auto 1fr auto; gap:1rem; align-items:center;">
+          <span style="color:var(--yellow); font-weight:700;">REPORT</span>
+          <span style="color:var(--text-muted);">INSUFFICIENT_TOKEN_ALLOWANCE on USDC swap</span>
+          <span style="color:var(--accent);">hash: a3f8c2e91b4d</span>
+        </div>
+        <div style="font-family:var(--font-mono); font-size:0.8rem; display:grid; grid-template-columns:auto 1fr auto; gap:1rem; align-items:center;">
+          <span style="color:var(--yellow); font-weight:700;">REPORT</span>
+          <span style="color:var(--text-muted);">INSUFFICIENT_TOKEN_ALLOWANCE on USDC swap</span>
+          <span style="color:var(--accent);">hash: a3f8c2e91b4d</span>
+        </div>
+        <div style="font-family:var(--font-mono); font-size:0.8rem; display:grid; grid-template-columns:auto 1fr auto; gap:1rem; align-items:center;">
+          <span style="color:var(--yellow); font-weight:700;">REPORT</span>
+          <span style="color:var(--text-muted);">INSUFFICIENT_TOKEN_ALLOWANCE on USDC swap</span>
+          <span style="color:var(--accent);">hash: a3f8c2e91b4d</span>
+        </div>
+      </div>
+      <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border);">
+        <div style="font-family:var(--font-mono); font-size:0.85rem; display:flex; align-items:center; gap:1rem;">
+          <span style="font-weight:800; color:var(--red); background:rgba(239,68,68,0.15); padding:0.2rem 0.6rem; border-radius:4px;">3 reports</span>
+          <span style="color:var(--yellow);">3 agents</span>
+          <span style="color:var(--text-dim);">→ auto-prioritised to top of queue</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
+      <div>
+        <h3 style="font-size:0.9rem; font-weight:700; text-transform:uppercase; color:var(--red); margin-bottom:0.5rem;">GitHub</h3>
+        <p style="font-size:0.9rem; color:var(--text-muted); line-height:1.6;">3 issues filed. A human closes 2 as duplicates. One survives with no frequency signal. Priority decided by a maintainer's gut feeling.</p>
+      </div>
+      <div>
+        <h3 style="font-size:0.9rem; font-weight:700; text-transform:uppercase; color:var(--green); margin-bottom:0.5rem;">HCS Patch Network</h3>
+        <p style="font-size:0.9rem; color:var(--text-muted); line-height:1.6;">3 messages on the ledger. Same hash. Machine-readable frequency signal. No NLP. No fuzzy matching. The count IS the priority. Immutable. Ungameable.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ════ WHY HCS ════ -->
   <section style="padding:5rem 2rem; max-width:900px; margin:0 auto;">
     <div style="width:60px; height:2px; background:var(--accent); margin-bottom:1rem; opacity:0.6;"></div>
