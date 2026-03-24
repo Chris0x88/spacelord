@@ -334,6 +334,10 @@ class PowerLawBot(BasePlugin):
         Uses exponential backoff on consecutive HCS failures to avoid log flooding.
         Backoff schedule: 60s -> 300s -> 900s -> 3600s (cap).
         """
+        # Skip entirely if no HCS topic configured (normal for new users)
+        if not self.app.hcs_manager.topic_id:
+            return
+
         # Check if we're still in backoff period from previous HCS failure
         if self._hcs_fail_count > 0:
             backoff = self._hcs_backoff_seconds()

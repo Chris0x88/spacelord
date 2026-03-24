@@ -90,7 +90,9 @@ class HcsManager(BasePlugin):
         """Submit a message to an HCS topic."""
         target_topic = (topic_id or self.topic_id or "").strip("'").strip('"')
         if not target_topic:
-            logger.error("❌ No HCS Topic ID configured.")
+            # Silently skip — new users won't have a topic configured.
+            # This is normal, not an error.
+            logger.debug("HCS broadcast skipped — no topic ID configured.")
             return False
             
         try:
