@@ -1181,7 +1181,7 @@
             // Count endorsements for this proposal
             const endorsements = allMessages.filter(m =>
               classifyType(m) === 'ENDORSE' &&
-              String(m.proposal_seq || m.ref_sequence || m.patch_id) === seq
+              String(m.patch_ref || m.proposal_seq || m.ref_sequence || m.patch_id) === seq
             ).length;
 
             proposals.push({
