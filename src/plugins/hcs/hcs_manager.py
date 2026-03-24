@@ -126,11 +126,17 @@ class HcsManager(BasePlugin):
             logger.info(f"✅ Fee collected and message submitted to walled garden.")
         return success
 
-    def broadcast_signal(self, signal_type: str, data: Dict) -> bool:
-        """Broadcast an investment signal as a JSON-encoded HCS message with rich metadata."""
+    def broadcast_signal(self, signal_type: str, data: Dict,
+                         sender_override: str = None) -> bool:
+        """Broadcast an investment signal as a JSON-encoded HCS message with rich metadata.
+
+        Args:
+            sender_override: Use a different account ID as the logical sender
+                (e.g., robot account) while still submitting via main account's key.
+        """
         from datetime import datetime
         now = datetime.utcnow()
-        
+
         # Metadata mapping for premium presentation
         emojis = {
             "REBALANCE_BUY_BTC": "🚀 BUY SIGNAL",
@@ -138,9 +144,9 @@ class HcsManager(BasePlugin):
             "SIGNAL_HEARTBEAT": "📊 MARKET PULSE",
             "SIGNAL_ALERT": "⚠️ ALERT"
         }
-        
+
         display_type = emojis.get(signal_type, signal_type.replace("_", " "))
-        
+
         payload = {
             "version": "1.1",
             "type": "SIGNAL",
@@ -148,7 +154,7 @@ class HcsManager(BasePlugin):
             "display_title": display_type,
             "timestamp_utc": now.strftime("%Y-%m-%d %H:%M:%S"),
             "timestamp_unix": now.timestamp(),
-            "sender": self.app.account_id,
+            "sender": sender_override or self.app.account_id,
             "data": data,
         }
         return self.submit_message(json.dumps(payload))

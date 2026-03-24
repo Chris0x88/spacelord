@@ -368,10 +368,17 @@ class PowerLawBot(BasePlugin):
                 "threshold_pct": self.config.threshold_percent,
                 "will_trade": abs(state.wbtc_percent - target_btc_pct) >= self.config.threshold_percent,
             }
+            # Tag with robot account ID so the signal identifies the daemon,
+            # even though HCS submission uses main account's key.
+            robot_id = getattr(self.app.config, 'robot_account_id', None)
+            if robot_id:
+                heartbeat_data["robot_account"] = robot_id
+
             self._hcs_last_attempt = time.monotonic()
             success = self.app.hcs_manager.broadcast_signal(
                 signal_type="DAILY_HEARTBEAT",
                 data=heartbeat_data,
+                sender_override=robot_id,
             )
             if success:
                 if self._hcs_fail_count > 0:

@@ -315,10 +315,35 @@ def _cmd_stop(app):
 
 
 def _cmd_run_internal(app):
-    """Internal use only: starts bot thread and keeps process alive."""
+    """Internal use only: starts bot thread and keeps process alive.
+
+    Single-instance guard: checks for other 'robot run-internal' processes
+    to prevent duplicate daemons broadcasting duplicate HCS signals.
+    """
+    import os
+    import subprocess as _sp
+
+    # Guard: kill stale instances before starting
+    my_pid = os.getpid()
+    try:
+        result = _sp.run(
+            ["pgrep", "-f", "cli.main robot run-internal"],
+            capture_output=True, text=True
+        )
+        for line in result.stdout.strip().split("\n"):
+            if line.strip() and int(line.strip()) != my_pid:
+                stale_pid = int(line.strip())
+                logger.warning(f"[Robot] Killing stale robot process {stale_pid}")
+                try:
+                    os.kill(stale_pid, 9)
+                except ProcessLookupError:
+                    pass
+    except Exception:
+        pass
+
     bot = _get_or_create_bot(app)
     # Reset running state for the new process
-    bot.stop_plugin() 
+    bot.stop_plugin()
     bot.start_plugin()
     
     try:
