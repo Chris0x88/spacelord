@@ -13,7 +13,7 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.controller import PacmanController
+from src.controller import SpaceLordController
 from src.logger import set_verbose, logger
 
 # Test Amounts (Ultra Small)
@@ -39,9 +39,9 @@ def run_test(name, func):
         return False
 
 def main():
-    print("Initializing Pacman App for ON-CHAIN Verification...")
+    print("Initializing Space Lord App for ON-CHAIN Verification...")
     set_verbose(True)
-    app = PacmanController()
+    app = SpaceLordController()
     
     # Disable user confirmation for automation
     app.config.require_confirmation = False

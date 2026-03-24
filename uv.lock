@@ -2237,62 +2237,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pacman-cli"
-version = "1.0.0b0"
-source = { editable = "." }
-dependencies = [
-    { name = "cairosvg" },
-    { name = "cryptography" },
-    { name = "discord-py" },
-    { name = "fastapi" },
-    { name = "flask" },
-    { name = "flask-cors" },
-    { name = "hiero-sdk-python" },
-    { name = "httpx" },
-    { name = "matplotlib" },
-    { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "pandas", version = "3.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "python-dotenv" },
-    { name = "requests" },
-    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "uvicorn", extra = ["standard"] },
-    { name = "web3" },
-]
-
-[package.optional-dependencies]
-test = [
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cairosvg", specifier = ">=2.9.0" },
-    { name = "cryptography", specifier = ">=41.0.0" },
-    { name = "discord-py", specifier = ">=2.3.0" },
-    { name = "fastapi", specifier = ">=0.115.0" },
-    { name = "flask", specifier = ">=3.1.3" },
-    { name = "flask-cors", specifier = ">=6.0.2" },
-    { name = "hiero-sdk-python", specifier = ">=0.2.0" },
-    { name = "httpx", specifier = ">=0.27.0" },
-    { name = "matplotlib", specifier = ">=3.10.8" },
-    { name = "networkx", specifier = ">=3.0" },
-    { name = "numpy", specifier = ">=1.24.0" },
-    { name = "pandas", specifier = ">=2.0.0" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "requests", specifier = ">=2.31.0" },
-    { name = "scipy", specifier = ">=1.10.0" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
-    { name = "web3", specifier = ">=6.0.0" },
-]
-provides-extras = ["test"]
-
-[[package]]
 name = "pandas"
 version = "2.3.3"
 source = { registry = "https://pypi.org/simple" }
@@ -3310,6 +3254,62 @@ sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
 ]
+
+[[package]]
+name = "spacelord-cli"
+version = "1.0.0b0"
+source = { editable = "." }
+dependencies = [
+    { name = "cairosvg" },
+    { name = "cryptography" },
+    { name = "discord-py" },
+    { name = "fastapi" },
+    { name = "flask" },
+    { name = "flask-cors" },
+    { name = "hiero-sdk-python" },
+    { name = "httpx" },
+    { name = "matplotlib" },
+    { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pandas", version = "3.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "python-dotenv" },
+    { name = "requests" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "uvicorn", extra = ["standard"] },
+    { name = "web3" },
+]
+
+[package.optional-dependencies]
+test = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cairosvg", specifier = ">=2.9.0" },
+    { name = "cryptography", specifier = ">=41.0.0" },
+    { name = "discord-py", specifier = ">=2.3.0" },
+    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "flask", specifier = ">=3.1.3" },
+    { name = "flask-cors", specifier = ">=6.0.2" },
+    { name = "hiero-sdk-python", specifier = ">=0.2.0" },
+    { name = "httpx", specifier = ">=0.27.0" },
+    { name = "matplotlib", specifier = ">=3.10.8" },
+    { name = "networkx", specifier = ">=3.0" },
+    { name = "numpy", specifier = ">=1.24.0" },
+    { name = "pandas", specifier = ">=2.0.0" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "requests", specifier = ">=2.31.0" },
+    { name = "scipy", specifier = ">=1.10.0" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
+    { name = "web3", specifier = ">=6.0.0" },
+]
+provides-extras = ["test"]
 
 [[package]]
 name = "starlette"

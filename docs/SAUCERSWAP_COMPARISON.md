@@ -35,7 +35,7 @@ A standalone Python CLI application with a custom routing engine. 30+ commands a
 
 **Routing approach:**
 1. Local pool registry (`pools_v2.json`) — no API dependency
-2. Custom multi-hop pathfinding in `PacmanVariantRouter` — understands Hedera's dual-token system
+2. Custom multi-hop pathfinding in `SpaceLordVariantRouter` — understands Hedera's dual-token system
 3. Direct JSON-RPC calls to SaucerSwap smart contracts
 4. WHBAR wrap/unwrap as explicit route steps
 5. Governance enforcement before execution

@@ -61,8 +61,8 @@ We're heading to a **multi-agent universe**. The Space Lord skill is a support t
 > ⚠️ **Best to run locally** — don't pass crypto keys through AI LLM chat APIs (unsafe — keys could end up in model training data). New key protection features coming soon. For now, treat as live network "experimental."
 
 ```bash
-git clone https://github.com/Chris0x88/pacman.git
-cd pacman
+git clone https://github.com/Chris0x88/spacelord.git
+cd spacelord
 ./launch.sh init        # Guided wizard: key setup, token associations
 ./launch.sh help        # See all 30+ available commands
 ./launch.sh balance     # Check your portfolio
@@ -169,7 +169,7 @@ Direct to Hedera — no middleware:
 | 🎥 Demo Video | [YouTube](https://www.youtube.com/watch?v=OElX33KViGo) |
 | 📑 Pitch Deck | [`docs/PITCH_DECK.pdf`](docs/PITCH_DECK.pdf) |
 | 📄 Technical Whitepaper | [`docs/WHITEPAPER_v2.pdf`](docs/WHITEPAPER_v2.pdf) |
-| 🔌 ClawHub Skill | [clawhub.ai/Chris0x88/pacman-hedera](https://clawhub.ai/Chris0x88/pacman-hedera) |
+| 🔌 ClawHub Skill | [clawhub.ai/Chris0x88/spacelord-hedera](https://clawhub.ai/Chris0x88/spacelord-hedera) |
 | 📡 HCS Signal Topic | `0.0.10371598` |
 
 ---

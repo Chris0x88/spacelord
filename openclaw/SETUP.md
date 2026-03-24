@@ -1,6 +1,6 @@
-# Pacman Agent — OpenClaw Setup Guide
+# Space Lord Agent — OpenClaw Setup Guide
 
-Turn your Pacman CLI into a full AI-powered Hedera trading agent on any messaging platform.
+Turn your Space Lord CLI into a full AI-powered Hedera trading agent on any messaging platform.
 
 ## What You Get
 
@@ -11,78 +11,78 @@ Turn your Pacman CLI into a full AI-powered Hedera trading agent on any messagin
 
 ## Prerequisites
 
-1. **Pacman CLI** installed and working (`./launch.sh balance` returns your portfolio)
+1. **Space Lord CLI** installed and working (`./launch.sh balance` returns your portfolio)
 2. **OpenClaw** installed ([openclaw.ai](https://openclaw.ai))
 3. A **Telegram bot token** (optional — for Telegram routing)
 
 ---
 
-## Step 1: Install Pacman
+## Step 1: Install Space Lord
 
 ```bash
-git clone https://github.com/Chris0x88/pacman.git
-cd pacman
+git clone https://github.com/Chris0x88/spacelord.git
+cd spacelord
 ./launch.sh setup        # Configure wallet keys
 ./launch.sh doctor       # Verify system health
 ./launch.sh balance      # Confirm it works
 ```
 
-## Step 2: Create the Pacman Agent
+## Step 2: Create the Space Lord Agent
 
 ```bash
-openclaw agents add pacman
+openclaw agents add spacelord
 ```
 
 Set the workspace to this `openclaw/` directory:
 
 ```bash
 # Option A: Set workspace directly
-openclaw agents set pacman --workspace /path/to/pacman/openclaw
+openclaw agents set spacelord --workspace /path/to/spacelord/openclaw
 
 # Option B: Symlink into OpenClaw's agent directory
-ln -s /path/to/pacman/openclaw ~/.openclaw/workspace-pacman
+ln -s /path/to/spacelord/openclaw ~/.openclaw/workspace-spacelord
 ```
 
 ## Step 3: Link the Skill & Copy Defaults
 
 ```bash
 # Link the skill
-cd /path/to/pacman/openclaw/skills/pacman-hedera
+cd /path/to/spacelord/openclaw/skills/spacelord-hedera
 ln -s ../../../SKILL.md SKILL.md
 
 # Copy default user files (customize these for your setup)
-cp /path/to/pacman/openclaw/defaults/USER.md /path/to/pacman/openclaw/USER.md
-cp /path/to/pacman/openclaw/defaults/MEMORY.md /path/to/pacman/openclaw/MEMORY.md
+cp /path/to/spacelord/openclaw/defaults/USER.md /path/to/spacelord/openclaw/USER.md
+cp /path/to/spacelord/openclaw/defaults/MEMORY.md /path/to/spacelord/openclaw/MEMORY.md
 ```
 
-The symlink means SKILL.md updates automatically when the Pacman repo is updated. USER.md and MEMORY.md are gitignored — they're personal to each operator.
+The symlink means SKILL.md updates automatically when the Space Lord repo is updated. USER.md and MEMORY.md are gitignored — they're personal to each operator.
 
 ## Step 4: Configure OpenClaw
 
 Edit `~/.openclaw/openclaw.json`. Choose a configuration below based on your setup.
 
-### A) Pacman Only (Simplest)
+### A) Space Lord Only (Simplest)
 
-One agent, one channel. Everything goes to Pacman.
+One agent, one channel. Everything goes to Space Lord.
 
 ```json5
 {
   agents: {
     list: [
       {
-        id: "pacman",
+        id: "spacelord",
         default: true,
-        name: "Pacman",
-        workspace: "/path/to/pacman/openclaw"
+        name: "Space Lord",
+        workspace: "/path/to/spacelord/openclaw"
       }
     ]
   }
 }
 ```
 
-### B) Pacman + Your Existing Agent
+### B) Space Lord + Your Existing Agent
 
-Keep your default OpenClaw agent for general tasks. Route a specific Telegram bot to Pacman.
+Keep your default OpenClaw agent for general tasks. Route a dedicated Telegram bot to Space Lord.
 
 ```json5
 {
@@ -95,17 +95,17 @@ Keep your default OpenClaw agent for general tasks. Route a specific Telegram bo
         workspace: "~/.openclaw/workspace-default"
       },
       {
-        id: "pacman",
-        name: "Pacman",
-        workspace: "/path/to/pacman/openclaw"
+        id: "spacelord",
+        name: "Space Lord",
+        workspace: "/path/to/spacelord/openclaw"
       }
     ]
   },
   bindings: [
-    // Route a dedicated Telegram bot to Pacman
+    // Route a dedicated Telegram bot to Space Lord
     {
-      agentId: "pacman",
-      match: { channel: "telegram", accountId: "pacman-bot" }
+      agentId: "spacelord",
+      match: { channel: "telegram", accountId: "spacelord-bot" }
     },
     // Everything else goes to default
     {
@@ -119,8 +119,8 @@ Keep your default OpenClaw agent for general tasks. Route a specific Telegram bo
         default: {
           botToken: "YOUR_MAIN_BOT_TOKEN"
         },
-        "pacman-bot": {
-          botToken: "YOUR_PACMAN_BOT_TOKEN",
+        "spacelord-bot": {
+          botToken: "YOUR_SPACELORD_BOT_TOKEN",
           dmPolicy: "pairing"
         }
       }
@@ -131,25 +131,25 @@ Keep your default OpenClaw agent for general tasks. Route a specific Telegram bo
 
 **How to get a second Telegram bot:**
 1. Open Telegram, find **@BotFather**
-2. Send `/newbot`, name it "Pacman Wallet" (or similar)
-3. Copy the bot token into `YOUR_PACMAN_BOT_TOKEN`
+2. Send `/newbot`, name it "Space Lord Wallet" (or similar)
+3. Copy the bot token into `YOUR_SPACELORD_BOT_TOKEN`
 
 ### C) Route by Chat (Single Bot, Multiple Agents)
 
-Use one Telegram bot but route specific group chats to Pacman.
+Use one Telegram bot but route specific group chats to Space Lord.
 
 ```json5
 {
   agents: {
     list: [
       { id: "default", default: true, workspace: "~/.openclaw/workspace-default" },
-      { id: "pacman", name: "Pacman", workspace: "/path/to/pacman/openclaw" }
+      { id: "spacelord", name: "Space Lord", workspace: "/path/to/spacelord/openclaw" }
     ]
   },
   bindings: [
-    // This specific group chat goes to Pacman
+    // This specific group chat goes to Space Lord
     {
-      agentId: "pacman",
+      agentId: "spacelord",
       match: {
         channel: "telegram",
         peer: { kind: "group", id: "-1001234567890" }
@@ -165,17 +165,17 @@ To find a Telegram group chat ID: add your bot to the group, send a message, the
 
 ### D) Multi-Channel (Telegram + Discord)
 
-Same Pacman agent, reachable from multiple platforms.
+Same Space Lord agent, reachable from multiple platforms.
 
 ```json5
 {
   agents: {
     list: [
       {
-        id: "pacman",
+        id: "spacelord",
         default: true,
-        name: "Pacman",
-        workspace: "/path/to/pacman/openclaw"
+        name: "Space Lord",
+        workspace: "/path/to/spacelord/openclaw"
       }
     ]
   },
@@ -208,9 +208,9 @@ WhatsApp uses QR pairing instead of a bot token.
   agents: {
     list: [
       {
-        id: "pacman",
+        id: "spacelord",
         default: true,
-        workspace: "/path/to/pacman/openclaw"
+        workspace: "/path/to/spacelord/openclaw"
       }
     ]
   },
@@ -235,18 +235,18 @@ The heartbeat checks your portfolio, daemons, and orders twice daily.
 ```bash
 # 6 AM daily check
 openclaw cron add \
-  --name "pacman-morning" \
+  --name "spacelord-morning" \
   --cron "0 6 * * *" \
-  --agent pacman \
+  --agent spacelord \
   --session isolated \
   --announce telegram:default \
   --message "Run the HEARTBEAT.md checklist"
 
 # 6 PM daily check
 openclaw cron add \
-  --name "pacman-evening" \
+  --name "spacelord-evening" \
   --cron "0 18 * * *" \
-  --agent pacman \
+  --agent spacelord \
   --session isolated \
   --announce telegram:default \
   --message "Run the HEARTBEAT.md checklist"
@@ -257,8 +257,8 @@ Adjust the `--announce` channel to match your setup (e.g., `discord:default`, `w
 ## Step 6: Start Daemons & Verify
 
 ```bash
-# Start Pacman background services
-cd /path/to/pacman
+# Start Space Lord background services
+cd /path/to/spacelord
 ./launch.sh daemon-start
 
 # Verify agent is loaded
@@ -268,7 +268,7 @@ openclaw agents list --bindings
 openclaw gateway restart
 
 # Test with a chat
-openclaw chat pacman
+openclaw chat spacelord
 > hi
 # Should see: portfolio overview, daemon status, action menu
 ```
@@ -279,9 +279,9 @@ openclaw chat pacman
 
 | Problem | Solution |
 |---------|----------|
-| "Skill not found" | Check symlink: `ls -la openclaw/skills/pacman-hedera/SKILL.md` |
-| "exec failed" | Verify Pacman works standalone: `cd /path/to/pacman && ./launch.sh balance` |
-| "daemon not running" | Run `./launch.sh daemon-start` from the Pacman repo |
+| "Skill not found" | Check symlink: `ls -la openclaw/skills/spacelord-hedera/SKILL.md` |
+| "exec failed" | Verify Space Lord works standalone: `cd /path/to/spacelord && ./launch.sh balance` |
+| "daemon not running" | Run `./launch.sh daemon-start` from the Space Lord repo |
 | Agent suggests MoonPay with tokens available | SOUL.md rule — check it's loaded (`/context list` in chat) |
 | "No route found" for a swap | Run `./launch.sh pools search <TOKEN>` to discover pools |
 | Agent modifying config files | SOUL.md violation — check `openclaw agents list` shows correct workspace |
@@ -297,7 +297,7 @@ openclaw chat pacman
 │        └───────────────┼───────────────┘         │
 │                        ▼                         │
 │              ┌─────────────────┐                 │
-│              │  Pacman Agent   │                 │
+│              │  Space Lord Agent   │                 │
 │              │  (openclaw/)    │                 │
 │              │                 │                 │
 │              │  SOUL.md ◄──── loaded every turn  │
@@ -308,7 +308,7 @@ openclaw chat pacman
 │              ./launch.sh <cmd>                   │
 │                       ▼                          │
 │              ┌─────────────────┐                 │
-│              │  Pacman CLI     │                 │
+│              │  Space Lord CLI     │                 │
 │              │  (Python app)   │                 │
 │              │                 │                 │
 │              │  Daemon ──► PowerLaw rebalancer   │
@@ -330,4 +330,4 @@ openclaw chat pacman
 | `AGENTS.md` | Every turn | Architecture guide for the agent |
 | `MEMORY.md` | Private sessions | Long-term memory index |
 | `HEARTBEAT.md` | Cron (2x/day) | Portfolio monitoring checklist |
-| `skills/pacman-hedera/SKILL.md` | On demand | Full 965-line command reference |
+| `skills/spacelord-hedera/SKILL.md` | On demand | Full 965-line command reference |

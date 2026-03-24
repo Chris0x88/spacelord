@@ -3,13 +3,13 @@
 ## Private Key Safety
 
 - **Never share your `.env` file.** It contains your private keys in plaintext.
-- **Use a dedicated hot wallet.** Do not use your main savings account. Fund the Pacman account with only what you're willing to risk.
+- **Use a dedicated hot wallet.** Do not use your main savings account. Fund the Space Lord account with only what you're willing to risk.
 - **Back up your keys.** Run `backup-keys --file` to export to `~/Downloads`. Store backups offline.
 - **`.env` is gitignored.** If you fork this repo, verify `.env` is in `.gitignore` before pushing.
 
 ## Transfer Whitelists
 
-The transfer whitelist is the **most critical safety feature** in Pacman.
+The transfer whitelist is the **most critical safety feature** in Space Lord.
 
 - All outbound transfers are blocked unless the recipient is whitelisted in `data/settings.json` or is one of your own accounts in `data/accounts.json`.
 - EVM addresses (`0x...`) are blocked entirely — only Hedera IDs (`0.0.xxx`) are accepted.
@@ -58,7 +58,7 @@ When driven by an AI agent (OpenClaw), these rules apply:
 - RPC endpoint: `https://mainnet.hashio.io/api` (Hedera JSON-RPC relay)
 - Mirror Node: `https://mainnet-public.mirrornode.hedera.com` (read-only, public)
 - No API keys are sent to third parties except MoonPay (fiat onramp, user-initiated only).
-- The dashboard API (`http://127.0.0.1:8088`) requires `PACMAN_API_SECRET` header and binds to localhost only.
+- The dashboard API (`http://127.0.0.1:8088`) requires `SPACELORD_API_SECRET` header and binds to localhost only.
 
 ## Reporting Vulnerabilities
 

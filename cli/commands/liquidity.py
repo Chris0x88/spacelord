@@ -75,7 +75,7 @@ def _pool_deposit_agent(app, args, amount, dry_run, json_mode):
         return
 
     # Find the best matching pool from cached data
-    raw_path = Path("data/pacman_data_raw.json")
+    raw_path = Path("data/spacelord_data_raw.json")
     if not raw_path.exists():
         msg = "Pool data not found. Run 'refresh' first."
         if json_mode:
@@ -203,7 +203,7 @@ def cmd_pool_deposit(app, args):
             return
 
         # Load cached pools
-        raw_path = Path("data/pacman_data_raw.json")
+        raw_path = Path("data/spacelord_data_raw.json")
         if not raw_path.exists():
             print(f"  {C.ERR}✗{C.R} Pool data not found. Please wait 60s and try again, or run python -m scripts.refresh_data")
             return
@@ -374,7 +374,7 @@ def cmd_pool_deposit(app, args):
     try:
         import json as _json, math as _math
         from pathlib import Path as _Path
-        _raw_path = _Path("data/pacman_data_raw.json")
+        _raw_path = _Path("data/spacelord_data_raw.json")
         _pool_tick = tick_lower  # fallback
         if _raw_path.exists():
             with open(_raw_path) as _raw_f:

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Pacman Associations - HTS Token Association Management
+Space Lord Associations - HTS Token Association Management
 ======================================================
 
 Handles checking and creating token associations on Hedera.
-Extracted from PacmanExecutor to keep the executor focused on swap execution.
+Extracted from SpaceLordExecutor to keep the executor focused on swap execution.
 
 HEDERA-SPECIFIC NOTE:
     On Hedera, accounts must explicitly "associate" with a token before

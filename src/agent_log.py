@@ -178,7 +178,7 @@ def _emit_sft_pair(command: str, resolved: dict, result: str, error: str,
 
     # Build the system message (compact version of SKILL.md essentials)
     system_msg = (
-        "You are driving the Pacman Hedera trading CLI. "
+        "You are driving the Space Lord Hedera trading CLI. "
         "Commands: swap <amt> <FROM> for <TO>, balance, send <amt> <TOKEN> to <ACCOUNT>, "
         "price <TOKEN>, associate <TOKEN>, account switch <ID>, robot status, history. "
         "Use token tickers (HBAR, USDC, WBTC, SAUCE, USDC[hts]). "

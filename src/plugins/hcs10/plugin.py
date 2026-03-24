@@ -115,7 +115,7 @@ class Hcs10Agent(BasePlugin):
         The topic ID is saved to HCS_INBOUND_TOPIC_ID in .env.
         """
         from hiero_sdk_python.consensus.topic_create_transaction import TopicCreateTransaction
-        from src.config import PacmanConfig
+        from src.config import SpaceLordConfig
         try:
             client = self.app.account_manager.client
             account_id = self.app.config.hedera_account_id
@@ -134,7 +134,7 @@ class Hcs10Agent(BasePlugin):
                 with self._state_lock:
                     self._state["inbound_topic_id"] = topic_id
                     self._save_state()
-                PacmanConfig.set_env_value("HCS_INBOUND_TOPIC_ID", topic_id)
+                SpaceLordConfig.set_env_value("HCS_INBOUND_TOPIC_ID", topic_id)
                 logger.info(f"[HCS10] Inbound topic created: {topic_id}")
                 return topic_id
         except Exception as e:

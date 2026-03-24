@@ -1,6 +1,6 @@
-# Pacman Agent Memory
+# Space Lord Agent Memory
 
-Long-term memory for the Pacman agent. Update this file during operation to persist state across sessions.
+Long-term memory for the Space Lord agent. Update this file during operation to persist state across sessions.
 
 ## Portfolio State
 <!-- Update after each balance check -->

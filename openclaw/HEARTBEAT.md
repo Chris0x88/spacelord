@@ -1,4 +1,4 @@
-# Pacman Heartbeat
+# Space Lord Heartbeat
 
 Scheduled via OpenClaw cron at 6 AM and 6 PM daily.
 Execute these checks in order. If ALL pass, respond with `HEARTBEAT_OK`.

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Pacman Balances - Token Balance Queries
+Space Lord Balances - Token Balance Queries
 =======================================
 
 Fetches wallet balances using Multicall batching or sequential fallback.
-Extracted from PacmanExecutor to keep the executor focused on swap execution.
+Extracted from SpaceLordExecutor to keep the executor focused on swap execution.
 """
 
 import json

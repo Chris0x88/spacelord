@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AWS KMS Key Provider for Pacman
+AWS KMS Key Provider for Space Lord
 ================================
 
 Proof-of-concept for HSM-backed transaction signing on Hedera.
@@ -11,7 +11,7 @@ delegates all signing to AWS KMS. The private key NEVER leaves the HSM.
 
 Architecture:
     ┌─────────────┐     ┌───────────────┐     ┌──────────────┐
-    │  Pacman CLI  │────▶│  KMS Provider │────▶│  AWS KMS HSM │
+    │  Space Lord CLI  │────▶│  KMS Provider │────▶│  AWS KMS HSM │
     │  (executor)  │     │  (this file)  │     │  (secp256k1) │
     └─────────────┘     └───────────────┘     └──────────────┘
          │                     │                      │
@@ -26,19 +26,19 @@ Setup (one-time):
     1. Create an asymmetric KMS key:
        aws kms create-key --key-spec ECC_SECG_P256K1 --key-usage SIGN_VERIFY
     2. Create an alias:
-       aws kms create-alias --alias-name alias/pacman-hedera --target-key-id <key-id>
+       aws kms create-alias --alias-name alias/spacelord-hedera --target-key-id <key-id>
     3. Set env var:
-       export PACMAN_KMS_KEY_ID=alias/pacman-hedera
+       export SPACELORD_KMS_KEY_ID=alias/spacelord-hedera
 
-Integration with PacmanExecutor (planned):
+Integration with SpaceLordExecutor (planned):
     In src/executor.py, the executor currently signs with a local key:
         signed_tx = self.w3.eth.account.sign_transaction(tx, self.private_key)
 
     With KMS, it would become:
-        kms = KMSKeyProvider(key_id=os.getenv("PACMAN_KMS_KEY_ID"))
+        kms = KMSKeyProvider(key_id=os.getenv("SPACELORD_KMS_KEY_ID"))
         signed_tx = kms.sign_transaction(tx, chain_id=295)  # 295 = Hedera mainnet
 
-    PacmanConfig would add: key_provider: str = "local"  (or "kms")
+    SpaceLordConfig would add: key_provider: str = "local"  (or "kms")
 
 Dependencies:
     pip install boto3  (add to pyproject.toml [project.optional-dependencies])
@@ -55,10 +55,10 @@ Limitations (PoC):
     - Requires AWS credentials configured (IAM role or access key)
     - ~100ms latency per signature (network round-trip to KMS)
     - Costs $1/month per key + $0.03 per 10,000 signatures
-    - Not wired into PacmanExecutor yet — this is the architecture demo
+    - Not wired into SpaceLordExecutor yet — this is the architecture demo
 
 Note for Judges:
-    This demonstrates that Pacman's key management is pluggable.
+    This demonstrates that Space Lord's key management is pluggable.
     The same pattern works with:
     - Azure Key Vault (ECDSA P-256K)
     - Google Cloud KMS (EC_SIGN_SECP256K1_SHA256)
@@ -91,7 +91,7 @@ class KMSKeyProvider:
         KeyUsage: SIGN_VERIFY
 
     Usage:
-        kms = KMSKeyProvider(key_id="alias/pacman-hedera")
+        kms = KMSKeyProvider(key_id="alias/spacelord-hedera")
         address = kms.get_evm_address()
         signed_tx = kms.sign_transaction(unsigned_tx, chain_id=295)
     """
@@ -99,7 +99,7 @@ class KMSKeyProvider:
     def __init__(self, key_id: str, region: str = "us-east-1"):
         """
         Args:
-            key_id: KMS key ID, ARN, or alias (e.g., "alias/pacman-hedera")
+            key_id: KMS key ID, ARN, or alias (e.g., "alias/spacelord-hedera")
             region: AWS region where the key is hosted
         """
         self.key_id = key_id
@@ -311,7 +311,7 @@ def _decode_der_signature(der_bytes: bytes) -> Tuple[int, int]:
 # Convenience: Create a KMS Key (for initial setup)
 # ---------------------------------------------------------------------------
 
-def create_kms_key(alias: str = "pacman-hedera", region: str = "us-east-1") -> str:
+def create_kms_key(alias: str = "spacelord-hedera", region: str = "us-east-1") -> str:
     """
     Create an AWS KMS asymmetric key for Hedera transaction signing.
 
@@ -323,8 +323,8 @@ def create_kms_key(alias: str = "pacman-hedera", region: str = "us-east-1") -> s
         Key ID string
 
     Usage:
-        key_id = create_kms_key("pacman-hedera")
-        # Then set: export PACMAN_KMS_KEY_ID=alias/pacman-hedera
+        key_id = create_kms_key("spacelord-hedera")
+        # Then set: export SPACELORD_KMS_KEY_ID=alias/spacelord-hedera
     """
     import boto3
 
@@ -334,9 +334,9 @@ def create_kms_key(alias: str = "pacman-hedera", region: str = "us-east-1") -> s
     response = client.create_key(
         KeySpec="ECC_SECG_P256K1",  # secp256k1 — same as Ethereum/Hedera
         KeyUsage="SIGN_VERIFY",
-        Description="Pacman Hedera transaction signing key (secp256k1)",
+        Description="Space Lord Hedera transaction signing key (secp256k1)",
         Tags=[
-            {"TagKey": "Application", "TagValue": "pacman"},
+            {"TagKey": "Application", "TagValue": "spacelord"},
             {"TagKey": "Network", "TagValue": "hedera"},
         ],
     )
@@ -361,19 +361,19 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) > 1 and sys.argv[1] == "create":
-        alias = sys.argv[2] if len(sys.argv) > 2 else "pacman-hedera"
+        alias = sys.argv[2] if len(sys.argv) > 2 else "spacelord-hedera"
         key_id = create_kms_key(alias)
         print(f"Created KMS key: {key_id}")
         print(f"Alias: alias/{alias}")
-        print(f"\nSet in .env: PACMAN_KMS_KEY_ID=alias/{alias}")
+        print(f"\nSet in .env: SPACELORD_KMS_KEY_ID=alias/{alias}")
 
     elif len(sys.argv) > 1 and sys.argv[1] == "address":
-        key_id = sys.argv[2] if len(sys.argv) > 2 else "alias/pacman-hedera"
+        key_id = sys.argv[2] if len(sys.argv) > 2 else "alias/spacelord-hedera"
         kms = KMSKeyProvider(key_id=key_id)
         print(f"EVM Address: {kms.get_evm_address()}")
 
     else:
-        print("AWS KMS Key Provider for Pacman")
+        print("AWS KMS Key Provider for Space Lord")
         print("================================")
         print()
         print("Commands:")
@@ -385,5 +385,5 @@ if __name__ == "__main__":
         print("  Private key NEVER leaves the AWS HSM (FIPS 140-2 Level 3)")
         print()
         print("Integration:")
-        print("  Set PACMAN_KMS_KEY_ID=alias/pacman-hedera in .env")
-        print("  PacmanConfig.key_provider = 'kms'  (planned)")
+        print("  Set SPACELORD_KMS_KEY_ID=alias/spacelord-hedera in .env")
+        print("  SpaceLordConfig.key_provider = 'kms'  (planned)")

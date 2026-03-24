@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Power Law Bot Configuration — Merged with Pacman .env
+Power Law Bot Configuration — Merged with Space Lord .env
 =====================================================
 
-All settings are read from the same .env file Pacman uses.
+All settings are read from the same .env file Space Lord uses.
 Prefixed with ROBOT_ to avoid collision.
 """
 

@@ -35,7 +35,7 @@ from src.logger import logger
 
 POOLS_URL_V2 = "https://api.saucerswap.finance/v2/pools"
 POOLS_URL_V1 = "https://api.saucerswap.finance/pools"
-RAW_DATA_FILE = DATA_DIR / "pacman_data_raw.json"
+RAW_DATA_FILE = DATA_DIR / "spacelord_data_raw.json"
 TOKENS_FILE   = DATA_DIR / "tokens.json"
 POOLS_FILE    = DATA_DIR / "pools_v2.json"
 
@@ -90,7 +90,7 @@ def load_env():
                         os.environ[key] = value
 
 def get_api_key():
-    network = os.getenv("PACMAN_NETWORK", "mainnet").lower()
+    network = os.getenv("SPACELORD_NETWORK", "mainnet").lower()
     if network == "testnet":
         key = os.getenv("SAUCERSWAP_API_KEY_TESTNET")
     else:
@@ -198,7 +198,7 @@ def refresh(force=False):
     # -------------------------------------------------------------------
     with open(RAW_DATA_FILE, "w") as f:
         json.dump(all_pools, f, indent=2)
-    print(f"  {C.OK}✓{C.R}  pacman_data_raw.json updated ({len(all_pools)} pools)")
+    print(f"  {C.OK}✓{C.R}  spacelord_data_raw.json updated ({len(all_pools)} pools)")
 
     # -------------------------------------------------------------------
     # 4. Auto-populate tokens.json — V2 ONLY

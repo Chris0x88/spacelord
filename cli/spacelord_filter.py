@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pacman Filter - Token Filtering and Sorting
+Space Lord Filter - Token Filtering and Sorting
 =============================================
 
 Provides UI-focused filtering and sorting for token data.

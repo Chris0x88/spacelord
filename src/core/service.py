@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pacman Service Manager
+Space Lord Service Manager
 ======================
 
 Handles native OS persistence (macOS launchd and Linux systemd).
@@ -28,8 +28,8 @@ class ServiceManager:
     def __init__(self):
         self.os_type = platform.system().lower()
         self.user = os.getenv("USER") or os.getenv("USERNAME")
-        self.label = "com.chris0x88.pacman"
-        self.service_name = "pacman"
+        self.label = "com.chris0x88.spacelord"
+        self.service_name = "spacelord"
         
     def get_service_path(self) -> Path:
         if self.os_type == "darwin":
@@ -69,8 +69,8 @@ class ServiceManager:
     <dict>
         <key>PATH</key>
         <string>{os.environ.get('PATH', '')}</string>
-        <key>PACMAN_NETWORK</key>
-        <string>{os.environ.get('PACMAN_NETWORK', 'mainnet')}</string>
+        <key>SPACELORD_NETWORK</key>
+        <string>{os.environ.get('SPACELORD_NETWORK', 'mainnet')}</string>
     </dict>
 </dict>
 </plist>
@@ -80,7 +80,7 @@ class ServiceManager:
         """Generate Linux systemd service content."""
         launch_sh = ROOT_DIR / "launch.sh"
         return f"""[Unit]
-Description=Pacman Trading Daemon
+Description=Space Lord Trading Daemon
 After=network.target
 
 [Service]
@@ -103,7 +103,7 @@ WantedBy=default.target
 
         path.parent.mkdir(parents=True, exist_ok=True)
         
-        print(f"  {C.BOLD}🔧 Installing Pacman Service...{C.R}")
+        print(f"  {C.BOLD}🔧 Installing Space Lord Service...{C.R}")
         
         if self.os_type == "darwin":
             content = self.generate_plist()
@@ -138,7 +138,7 @@ WantedBy=default.target
             print(f"  {C.WARN}⚠{C.R} Service file not found.")
             return False
 
-        print(f"  {C.BOLD}🗑 Uninstalling Pacman Service...{C.R}")
+        print(f"  {C.BOLD}🗑 Uninstalling Space Lord Service...{C.R}")
         
         if self.os_type == "darwin":
             subprocess.run(["launchctl", "unload", str(path)], capture_output=True)

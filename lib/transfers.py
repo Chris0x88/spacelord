@@ -1,5 +1,5 @@
 """
-Pacman Transfers
+Space Lord Transfers
 ================
 
 Handles direct crypto transfers (HBAR and HTS Tokens) using the JSON-RPC relay.
@@ -105,7 +105,7 @@ def execute_transfer(executor, token_symbol: str, amount: float, recipient: str,
     Execute a transfer of HBAR or Tokens.
     
     Args:
-        executor: Initialized PacmanExecutor instance.
+        executor: Initialized SpaceLordExecutor instance.
         token_symbol: "HBAR" or token symbol (e.g. "USDC").
         amount: Amount in readable units (e.g. 100.0).
         recipient: Hedera ID (0.0.x) or EVM Address (0x...).

@@ -1,12 +1,12 @@
 """
-Pacman Text Resources
+Space Lord Text Resources
 =====================
 
 Central repository for static text, help menus, and user messages.
 Keeps display logic clean and focused on rendering.
 """
 # Note: Uses placeholders {ACCENT}, {CHROME}, etc. for formatting
-PACMAN_BANNER_TEMPLATE = """{ACCENT}
+SPACELORD_BANNER_TEMPLATE = """{ACCENT}
     ███████╗██████╗  █████╗  ██████╗███████╗    ██╗      ██████╗ ██████╗ ██████╗ 
     ██╔════╝██╔══██╗██╔══██╗██╔════╝██╔════╝    ██║     ██╔═══██╗██╔══██╗██╔══██╗
     ███████╗██████╔╝███████║██║     █████╗      ██║     ██║   ██║██████╔╝██║  ██║
@@ -175,7 +175,7 @@ HELP_EXPLAINERS = {
 
     "nlp": """{C.BOLD}NATURAL LANGUAGE INTERFACE{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}
-Pacman interprets freeform text using fuzzy pattern matching.
+Space Lord interprets freeform text using fuzzy pattern matching.
 You do NOT need to use exact command syntax for swaps.
 
 {C.ACCENT}Supported Intent Patterns:{C.R}
@@ -189,7 +189,7 @@ You do NOT need to use exact command syntax for swaps.
   - Common names: {C.TEXT}Bitcoin, Ethereum, Hedera{C.R}
   - Variants:   {C.TEXT}WBTC_HTS, WBTC_LZ, WETH_HTS{C.R}
   - Nicknames:  {C.TEXT}btc, eth, sauce, usdc{C.R} (see data/aliases.json)
-  Pacman is case-insensitive and handles hyphens vs underscores.
+  Space Lord is case-insensitive and handles hyphens vs underscores.
 
 {C.ACCENT}Amount Rules:{C.R}
   - Write numbers without symbols: {C.TEXT}100.50{C.R} not {C.TEXT}$100.50{C.R}
@@ -205,12 +205,12 @@ You do NOT need to use exact command syntax for swaps.
   HTS tokens and their ERC20 counterparts have different IDs:
     {C.TEXT}WBTC_HTS{C.R}  = HTS-native (0.0.624505) — shows in HashPack wallet
     {C.TEXT}WBTC_LZ{C.R}   = LayerZero ERC20 — invisible in HashPack
-  Use plain {C.TEXT}WBTC{C.R} and Pacman picks the best variant automatically.
+  Use plain {C.TEXT}WBTC{C.R} and Space Lord picks the best variant automatically.
   Run {C.TEXT}tokens{C.R} to see all supported variants and their contract IDs.""",
 
     "swap": """{C.BOLD}SWAPPING ASSETS — COMPLETE REFERENCE{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}
-Pacman routes through the SaucerSwap V2 liquidity graph to find
+Space Lord routes through the SaucerSwap V2 liquidity graph to find
 the most efficient path between any two supported tokens.
 
 {C.ACCENT}Command Syntax:{C.R}
@@ -227,7 +227,7 @@ the most efficient path between any two supported tokens.
   1. {C.BOLD}Simulation{C.R}: Every swap runs eth_call simulation first.
      If it would revert, the transaction is NEVER broadcast.
   2. {C.BOLD}Slippage{C.R}: Default 2% tolerance. Adjust with {C.TEXT}slippage <percent>{C.R}.
-  3. {C.BOLD}Association{C.R}: Pacman auto-associates HTS tokens if needed.
+  3. {C.BOLD}Association{C.R}: Space Lord auto-associates HTS tokens if needed.
   4. {C.BOLD}Approval{C.R}: ERC20 allowances are checked and approved before swap.
 
 {C.ACCENT}Slippage Setting:{C.R}
@@ -242,7 +242,7 @@ the most efficient path between any two supported tokens.
   - WHBAR (0.0.1456986) is used internally; users never need to specify it
 
 {C.ACCENT}SIMULATION MODE:{C.R}
-  Set {C.TEXT}PACMAN_SIMULATE=true{C.R} in .env to test without broadcasting.
+  Set {C.TEXT}SPACELORD_SIMULATE=true{C.R} in .env to test without broadcasting.
   All outputs are identical except no gas is spent and tx hash = "SIMULATED".""",
 
     "send": """{C.BOLD}TRANSFERRING ASSETS — COMPLETE REFERENCE{C.R}
@@ -270,7 +270,7 @@ Send HBAR or any HTS token to any Hedera account.
   - HBAR: native CryptoTransfer via Hedera SDK
   - HTS tokens: CryptoTransfer with token transfer list
   - Association is checked on sender side before broadcasting
-  - Recipient must be already associated (or Pacman warns you)
+  - Recipient must be already associated (or Space Lord warns you)
 
 {C.ACCENT}Memo:{C.R}
   Memos are stored on-chain (max 100 chars). They appear in HashScan
@@ -290,7 +290,7 @@ Display your wallet holdings with live USD valuation.
   3. HBAR balance: fetched separately via eth_getBalance (native)
 
 {C.ACCENT}Price Sources (in order):{C.R}
-  1. SaucerSwap V2 pool data (primary — from data/pacman_data_raw.json)
+  1. SaucerSwap V2 pool data (primary — from data/spacelord_data_raw.json)
   2. CoinGecko API (fallback for missing tokens)
   3. Binance spot (final fallback for HBAR)
 
@@ -314,7 +314,7 @@ Fetch real-time market rates for all supported tokens.
   {C.TEXT}ᗧ sources{C.R}        Full source attribution table
 
 {C.ACCENT}Price Source Priority:{C.R}
-  1. {C.OK}SaucerSwap V2{C.R} — pool data (primary; from pacman_data_raw.json)
+  1. {C.OK}SaucerSwap V2{C.R} — pool data (primary; from spacelord_data_raw.json)
      Refreshed when you run any command that fetches pool data.
      Source label: "SaucerSwap V2 (Contract ID: 0.0.xxxxx)"
   2. {C.MUTED}CoinGecko{C.R}    — only used if SaucerSwap price is missing/stale
@@ -327,11 +327,11 @@ Fetch real-time market rates for all supported tokens.
 
 {C.ACCENT}Refreshing Price Data:{C.R}
   Run any price command after `pools search` or after a data refresh.
-  The {C.TEXT}refresh_data.py{C.R} script in scripts/ updates pacman_data_raw.json.""",
+  The {C.TEXT}refresh_data.py{C.R} script in scripts/ updates spacelord_data_raw.json.""",
 
     "pools": """{C.BOLD}POOL REGISTRY MANAGEMENT — COMPLETE REFERENCE{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}
-Manage which SaucerSwap liquidity pools Pacman uses for routing.
+Manage which SaucerSwap liquidity pools Space Lord uses for routing.
 
 {C.ACCENT}Sub-Commands:{C.R}
   {C.TEXT}pools list{C.R}               Show all currently approved pools (V1 + V2)
@@ -381,7 +381,7 @@ View wallet details and manage Hedera account IDs.
   - Known sub-accounts with nicknames from your local registry
 
 {C.ACCENT}Sub-Account Creation ({C.TEXT}account --new{C.ACCENT}):{C.R}
-  Creates a new Hedera ID sharing your current private key. Pacman:
+  Creates a new Hedera ID sharing your current private key. Space Lord:
   1. Prompts for an optional nickname to label the account
   2. Calls CryptoCreate via Hiero SDK
   3. Saves ID + nickname to data/accounts.json
@@ -439,7 +439,7 @@ The setup wizard configures your Hedera credentials safely.
 {C.ACCENT}Setup Options:{C.R}
   [P] Paste existing Private Key
       - Enter your 64-char hex ECDSA private key (masked input)
-      - Pacman auto-discovers your Hedera Account ID via Mirror Node
+      - Space Lord auto-discovers your Hedera Account ID via Mirror Node
       - Saved to .env as PRIVATE_KEY and HEDERA_ACCOUNT_ID
 
   [C] Create completely fresh Account
@@ -501,7 +501,7 @@ Stake your HBAR balance to a consensus node to earn ~1% APY rewards.
 {C.ACCENT}Under the Hood:{C.R}
   Uses a CryptoUpdate transaction (HIP-406) via the Hiero SDK.
   This sets staked_node_id on your account record.
-  Pacman verifies your key derivation matches before executing.
+  Space Lord verifies your key derivation matches before executing.
 
 {C.ACCENT}Viewing Staking Status:{C.R}
   Run {C.TEXT}balance{C.R} — staking status and pending rewards appear at the top.""",
@@ -553,7 +553,7 @@ Manage concentrated liquidity positions on SaucerSwap V2.
   - Full Range: use ticks -887220 to 887220.
 
 {C.ACCENT}Automatic HBAR Wrapping:{C.R}
-  SaucerSwap V2 uses WHBAR. Pacman automatically detects HBAR input, 
+  SaucerSwap V2 uses WHBAR. Space Lord automatically detects HBAR input, 
   acquires WHBAR on your behalf, and mints the position in one flow.
 
 {C.ACCENT}Viewing Your Positions:{C.R}
@@ -627,7 +627,7 @@ your account storage.
   3. Send USDC from HashPack/MetaMask to your Hedera ID.
 
 {C.ACCENT}Auto-Association:{C.R}
-  Pacman creates new accounts with {C.TEXT}max_automatic_token_associations: -1{C.R}
+  Space Lord creates new accounts with {C.TEXT}max_automatic_token_associations: -1{C.R}
   (unlimited). This means you usually don't need to manually
   associate—the first time someone sends you a token, it will
   auto-link for a small HBAR fee.
@@ -660,7 +660,7 @@ when your BTC allocation deviates too far from the model's target.
 
 {C.ACCENT}OpenClaw / External Agent Integration:{C.R}
   Agents can natively access live generated charts over HTTP when the daemon is running!
-  {C.TEXT}GET /chart.png?secret=<PACMAN_API_SECRET>{C.R}
+  {C.TEXT}GET /chart.png?secret=<SPACELORD_API_SECRET>{C.R}
   Returns a high-definition static matplotlib PNG plotting the floor, ceiling, 
   fair value, and cycle phases, alongside the SMA 100.
   {C.MUTED}Use this in a helper function to instantly capture and return the image stream
@@ -669,7 +669,7 @@ when your BTC allocation deviates too far from the model's target.
 {C.WARN}Note:{C.R} The robot trades LIVE (no simulation). Minimum portfolio: $5 USD.
 Below $5, transaction costs (~$0.30/trade) exceed the rebalance benefit.""",
 
-    "doctor": """{C.BOLD}PACMAN DOCTOR — SYSTEM DIAGNOSTICS{C.R}
+    "doctor": """{C.BOLD}SPACE LORD DOCTOR — SYSTEM DIAGNOSTICS{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}
 A simple diagnostics tool to ensure your environment is healthy
 and optimized for both humans and AI agents.
@@ -689,7 +689,7 @@ and optimized for both humans and AI agents.
 
     "hcs": """{C.BOLD}HCS MESSAGING (WALLED GARDENS){C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}
-Pacman uses the Hedera Consensus Service (HCS) as a decentralized 
+Space Lord uses the Hedera Consensus Service (HCS) as a decentralized 
 communication layer for sharing investment signals between accounts.
 
 {C.ACCENT}Walled Garden Concept:{C.R}
@@ -704,7 +704,7 @@ communication layer for sharing investment signals between accounts.
 
 {C.ACCENT}Power Law Integration:{C.R}
   The {C.TEXT}robot{C.R} daemon automatically broadcasts rebalancing signals 
-  to your active HCS topic. Other Pacman instances listening 
+  to your active HCS topic. Other Space Lord instances listening 
   to the same topic can react to your "lead" signals.
 
 {C.ACCENT}Monetization (BETA):{C.R}

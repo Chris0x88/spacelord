@@ -4,22 +4,22 @@ import json
 from pathlib import Path
 
 # Setup environment for testing
-os.environ["PACMAN_SIMULATE"] = "true"
-os.environ["PACMAN_CONFIRM"] = "false"
+os.environ["SPACELORD_SIMULATE"] = "true"
+os.environ["SPACELORD_CONFIRM"] = "false"
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.translator import translate, resolve_token
-from src.router import PacmanVariantRouter
+from src.router import SpaceLordVariantRouter
 from src.limit_orders import LimitOrderEngine
-from src.controller import PacmanController
+from src.controller import SpaceLordController
 from lib.prices import price_manager
 
 class TestCoreLogic(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.router = PacmanVariantRouter()
+        cls.router = SpaceLordVariantRouter()
         cls.router.load_pools()
 
     def test_canonical_resolution_bitcoin(self):
@@ -113,7 +113,7 @@ class TestTranslator(unittest.TestCase):
 class TestRouter(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.router = PacmanVariantRouter()
+        cls.router = SpaceLordVariantRouter()
         cls.router.load_pools()
 
     def test_direct_route_hbar_usdc(self):
@@ -191,10 +191,10 @@ class TestLimitOrders(unittest.TestCase):
 class TestLiveExecution(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        # WARNING: This connects to the live network, but with PACMAN_SIMULATE=true
+        # WARNING: This connects to the live network, but with SPACELORD_SIMULATE=true
         # by default in the environment unless overridden.
         # We will test the validation boundaries and simulation outputs here.
-        cls.app = PacmanController()
+        cls.app = SpaceLordController()
         # Ensure we don't accidentally run live unless explicitly asked
         # For the test suite, we stay in SIMULATE=true for these unit tests,
         # and we will add a flag to run actual live mutations later.
@@ -227,14 +227,14 @@ class TestLiveExecution(unittest.TestCase):
         res = self.app.swap(req["from_token"], req["to_token"], req["amount"], req["mode"])
         self.assertTrue(res.success, f"Simulation failed: {res.error}")
 
-@unittest.skipIf(os.environ.get("PACMAN_LIVE_TESTS") != "true", "Live tests require PACMAN_LIVE_TESTS=true")
+@unittest.skipIf(os.environ.get("SPACELORD_LIVE_TESTS") != "true", "Live tests require SPACELORD_LIVE_TESTS=true")
 class TestLiveIntegration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Force LIVE mode
-        os.environ["PACMAN_SIMULATE"] = "false"
-        os.environ["PACMAN_CONFIRM"] = "false"
-        cls.app = PacmanController()
+        os.environ["SPACELORD_SIMULATE"] = "false"
+        os.environ["SPACELORD_CONFIRM"] = "false"
+        cls.app = SpaceLordController()
         cls.app.config.simulate_mode = False
 
     def test_live_balance(self):

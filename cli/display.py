@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pacman Display - Terminal UI Rendering Engine
+Space Lord Display - Terminal UI Rendering Engine
 ==============================================
 
 Pure rendering module — takes data, prints formatted output.
@@ -8,8 +8,8 @@ Pure rendering module — takes data, prints formatted output.
 ARCHITECTURAL NOTE:
 -------------------
 This module is "Dumb". It contains NO business logic.
-- Sorting, Filtering, and Data Preparation are delegated to `cli.pacman_filter`.
-- Execution is delegated to `pacman_executor`.
+- Sorting, Filtering, and Data Preparation are delegated to `cli.spacelord_filter`.
+- Execution is delegated to `spacelord_executor`.
 - Configuration is loaded via the filter or app controller.
 
 Its only job is to print ANSI-colored text to stdout.
@@ -24,23 +24,23 @@ from typing import Optional, List, Dict
 
 # Central Logic Layer
 try:
-    from cli.pacman_filter import ui_filter
+    from cli.spacelord_filter import ui_filter
 except ImportError:
     # Fallback for when running from scripts/ or root without package
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from cli.pacman_filter import ui_filter
+    from cli.spacelord_filter import ui_filter
 
 try:
     from cli.text_content import (
         HELP_COMMANDS, HELP_EXAMPLES, 
-        PACMAN_BANNER_TEMPLATE, HELP_EXPLAINERS
+        SPACELORD_BANNER_TEMPLATE, HELP_EXPLAINERS
     )
 except ImportError:
     # Fallback default if file missing
     HELP_COMMANDS = []
     HELP_EXAMPLES = []
     HELP_EXPLAINERS = {}
-    PACMAN_BANNER_TEMPLATE = "Pacman"
+    SPACELORD_BANNER_TEMPLATE = "Space Lord"
 
 
 # ---------------------------------------------------------------------------
@@ -82,7 +82,7 @@ class C:
 # ASCII Art Banner
 # ---------------------------------------------------------------------------
 
-PACMAN_BANNER = PACMAN_BANNER_TEMPLATE.format(
+SPACELORD_BANNER = SPACELORD_BANNER_TEMPLATE.format(
     ACCENT=C.ACCENT,
     CHROME=C.CHROME,
     R=C.R,
@@ -168,7 +168,7 @@ def show_help(topic: str = None):
 
 def _show_help_collapsed(groups):
     """Show compact help with just group headings and summaries."""
-    print(f"\n{C.BOLD}{C.TEXT}  PACMAN COMMANDS{C.R}")
+    print(f"\n{C.BOLD}{C.TEXT}  SPACE LORD COMMANDS{C.R}")
     print(f"  {C.CHROME}{'─' * 56}{C.R}")
 
     for key, group in groups.items():
@@ -481,7 +481,7 @@ def _show_single_balance(executor, token_name: str, price_manager):
 
 def _show_all_balances(executor, price_manager, lp_positions: list = None):
     """Display all wallet balances in a formatted table."""
-    from src.router import PacmanVariantRouter
+    from src.router import SpaceLordVariantRouter
 
     import time
     ts = time.strftime("%H:%M")
@@ -677,7 +677,7 @@ def show_tokens():
     """
     Display all supported tokens in a clean formatted table.
     
-    WHY: This is the curated "Market Map". It shows tokens that Pacman 
+    WHY: This is the curated "Market Map". It shows tokens that Space Lord 
     officially supports and has metadata for. It draws directly from 
     data/tokens.json (Source of Truth) and integrates nicknames from 
     the translator.

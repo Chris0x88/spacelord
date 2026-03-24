@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Power Law Adapter — Bridges Heartbeat Model to Pacman Controller
+Power Law Adapter — Bridges Heartbeat Model to Space Lord Controller
 ================================================================
 
-This adapter wraps PacmanController so the rebalancer bot can:
-- Get BTC price (from Pacman's price manager)
+This adapter wraps SpaceLordController so the rebalancer bot can:
+- Get BTC price (from Space Lord's price manager)
 - Get portfolio state (WBTC + USDC balances)
-- Execute rebalance swaps (via Pacman's swap engine)
+- Execute rebalance swaps (via Space Lord's swap engine)
 
-This is the ONLY integration point between the Power Law bot and Pacman.
+This is the ONLY integration point between the Power Law bot and Space Lord.
 The heartbeat model and bot logic remain standalone.
 """
 
@@ -39,9 +39,9 @@ class PortfolioState:
     usdc_percent: float       # Current USDC allocation %
 
 
-class PacmanAdapter:
+class SpaceLordAdapter:
     """
-    Adapts PacmanController for the Power Law rebalancer bot.
+    Adapts SpaceLordController for the Power Law rebalancer bot.
 
     The bot calls adapter methods instead of talking to Web3 directly.
     This keeps one source of truth for all swap/balance/price logic.
@@ -54,7 +54,7 @@ class PacmanAdapter:
     def __init__(self, controller):
         """
         Args:
-            controller: An initialized PacmanController instance.
+            controller: An initialized SpaceLordController instance.
         """
         self.controller = controller
         self._last_price_fetch = None
@@ -76,11 +76,11 @@ class PacmanAdapter:
 
         if robot_key and robot_id:
             try:
-                from src.config import PacmanConfig, SecureString
-                from src.executor import PacmanExecutor
+                from src.config import SpaceLordConfig, SecureString
+                from src.executor import SpaceLordExecutor
 
                 # Build a config clone for the robot with its own key
-                robot_config = PacmanConfig(
+                robot_config = SpaceLordConfig(
                     private_key=robot_key,
                     network=self.controller.config.network,
                     rpc_url=self.controller.config.rpc_url,
@@ -91,7 +91,7 @@ class PacmanAdapter:
                     max_slippage_percent=self.controller.config.max_slippage_percent,
                     require_confirmation=False,  # Robot never needs human confirmation
                 )
-                self._robot_executor = PacmanExecutor(robot_config)
+                self._robot_executor = SpaceLordExecutor(robot_config)
                 logger.info(f"[PowerLaw] Robot executor initialized for {robot_id} (own key)")
             except Exception as e:
                 logger.warning(f"[PowerLaw] Could not init robot executor: {e}. Using main executor.")
@@ -104,7 +104,7 @@ class PacmanAdapter:
         return self._robot_executor
     
     def get_btc_price(self) -> float:
-        """Get current BTC price in USD from Pacman's price manager."""
+        """Get current BTC price in USD from Space Lord's price manager."""
         try:
             # Try the local pool price data first (fastest)
             price = _pm.get_price(WBTC_TOKEN_ID)
@@ -209,7 +209,7 @@ class PacmanAdapter:
     def execute_rebalance(self, direction: str, amount_usd: float, 
                           simulate: bool = True) -> dict:
         """
-        Execute a rebalance swap via Pacman's controller.
+        Execute a rebalance swap via Space Lord's controller.
         
         Args:
             direction: "buy_btc" (USDC → WBTC) or "sell_btc" (WBTC → USDC)

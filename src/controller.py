@@ -1,11 +1,11 @@
 """
-Pacman Controller - Headless Trading SDK
+Space Lord Controller - Headless Trading SDK
 =========================================
 
-The PacmanController class orchestrates the business logic:
-- Configuration (PacmanConfig)
-- Routing (PacmanVariantRouter)
-- Execution (PacmanExecutor)
+The SpaceLordController class orchestrates the business logic:
+- Configuration (SpaceLordConfig)
+- Routing (SpaceLordVariantRouter)
+- Execution (SpaceLordExecutor)
 
 It is designed to be imported by CLIs, Daemons, or Web APIs.
 """
@@ -13,23 +13,23 @@ It is designed to be imported by CLIs, Daemons, or Web APIs.
 import requests
 from typing import Optional, Dict, Tuple
 
-from src.config import PacmanConfig
+from src.config import SpaceLordConfig
 from src.logger import logger
-from src.errors import PacmanError, ConfigurationError
-from src.executor import PacmanExecutor, ExecutionResult
-from src.router import PacmanVariantRouter, VariantRoute
+from src.errors import SpaceLordError, ConfigurationError
+from src.executor import SpaceLordExecutor, ExecutionResult
+from src.router import SpaceLordVariantRouter, VariantRoute
 from lib.prices import price_manager
 
-class PacmanController:
+class SpaceLordController:
     """
-    Main controller class for Pacman.
+    Main controller class for Space Lord.
     """
 
     def __init__(self, config_path: str = "config.yaml"):
         """Initialize the application components."""
         self._ensure_data_templates()
         try:
-            self.config = PacmanConfig.from_env()
+            self.config = SpaceLordConfig.from_env()
 
             # Key resolution: if active account is the robot, use robot's key
             # This is critical for oneshot mode where each CLI invocation is a
@@ -40,8 +40,8 @@ class PacmanController:
                 logger.info(f"[Init] Using robot key for {self.config.robot_account_id}")
                 self.config.private_key = self.config.robot_private_key
 
-            self.executor = PacmanExecutor(self.config)
-            self.router = PacmanVariantRouter(price_manager=price_manager)
+            self.executor = SpaceLordExecutor(self.config)
+            self.router = SpaceLordVariantRouter(price_manager=price_manager)
             self.router.load_pools() # Build routing graph from cached data
             
             # Record account details for display
@@ -54,7 +54,7 @@ class PacmanController:
             logger.error(f"Configuration error: {e}")
             raise
         except Exception as e:
-            logger.error(f"Failed to initialize PacmanApp: {e}")
+            logger.error(f"Failed to initialize Space LordApp: {e}")
             raise
 
     def _ensure_data_templates(self):
@@ -104,7 +104,7 @@ class PacmanController:
         load_dotenv(dotenv_path=env_path, override=True)
 
         # 3. Rebuild core components
-        self.config = PacmanConfig.from_env()
+        self.config = SpaceLordConfig.from_env()
 
         # Key resolution: if the active account is the robot, use robot's key
         if (self.config.hedera_account_id == self.config.robot_account_id
@@ -112,7 +112,7 @@ class PacmanController:
             logger.info(f"[Reload] Switching to robot key for {self.config.robot_account_id}")
             self.config.private_key = self.config.robot_private_key
 
-        self.executor = PacmanExecutor(self.config)
+        self.executor = SpaceLordExecutor(self.config)
         self.account_id = self.config.hedera_account_id
         self.network = self.config.network
 
@@ -233,7 +233,7 @@ class PacmanController:
         """
         route = self.get_route(from_token, to_token, amount, mode=mode)
         if not route or route.output_format == "ERROR" or len(route.steps) == 0:
-            raise PacmanError(f"No route found for {from_token} -> {to_token}")
+            raise SpaceLordError(f"No route found for {from_token} -> {to_token}")
 
         # Execution using the refactored raw_amount parameter
         return self.executor.execute_swap(
@@ -485,7 +485,7 @@ class PacmanController:
         t0_id = self.resolve_token_id(token0.upper())
         t1_id = self.resolve_token_id(token1.upper())
         if not t0_id or not t1_id:
-            raise PacmanError("Invalid token symbols or IDs.")
+            raise SpaceLordError("Invalid token symbols or IDs.")
 
 
         t0_decimals = self.executor._get_token_decimals(t0_id)
@@ -511,7 +511,7 @@ class PacmanController:
             try:
                 import json
                 from pathlib import Path
-                raw_path = Path("data/pacman_data_raw.json")
+                raw_path = Path("data/spacelord_data_raw.json")
                 if raw_path.exists():
                     pools = json.load(open(raw_path))
                     for p in pools:

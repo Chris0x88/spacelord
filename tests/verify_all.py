@@ -6,12 +6,12 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.append(os.getcwd())
 
-from src.controller import PacmanController
+from src.controller import SpaceLordController
 from src.translator import translate
 
 # Force Simulation Mode
-os.environ["PACMAN_SIMULATE"] = "true"
-os.environ["PACMAN_CONFIRM"] = "false"
+os.environ["SPACELORD_SIMULATE"] = "true"
+os.environ["SPACELORD_CONFIRM"] = "false"
 
 # Load token metadata for human-readable names and decimals
 TOKEN_META = {}
@@ -63,8 +63,8 @@ def fmt_amount(raw: int, token_id: str) -> str:
         return f"{readable:.8f} {name}"
 
 
-app = PacmanController()
-print(f"Pacman Test Suite (simulation mode)")
+app = SpaceLordController()
+print(f"Space Lord Test Suite (simulation mode)")
 print(f"Account: {app.account_id} | Network: {app.network}")
 print()
 

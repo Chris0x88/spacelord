@@ -1,4 +1,4 @@
-# Pacman Data Directory
+# Space Lord Data Directory
 
 This directory contains the central source of truth for token metadata, liquidity pool registries, and application logic rules.
 
@@ -27,7 +27,7 @@ The `refresh_strategy` defines how `scripts/refresh_data.py` builds the local li
 - **[variants.json](./variants.json)**: Maps relationship between ERC20 bridged tokens and HTS native variants.
 
 ## 🛠 Variables Registry
-- **`pacman_data_raw.json`**: The live cache. This file is generated/updated by `scripts/refresh_data.py`. It contains the actual reserves and pricing data used by the router.
+- **`spacelord_data_raw.json`**: The live cache. This file is generated/updated by `scripts/refresh_data.py`. It contains the actual reserves and pricing data used by the router.
 
 > [!NOTE]
 > Always run `scripts/refresh_data.py` after modifying `settings.json` refresh strategies to update your local map.

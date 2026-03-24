@@ -488,7 +488,7 @@ def _print_robot_help():
     print()
     print(f"  {C.BOLD}OpenClaw Integration:{C.R}")
     print(f"  {C.MUTED}To pull the latest Power Law chart into OpenClaw or an AI Agent:{C.R}")
-    print(f"  {C.ACCENT}GET http://127.0.0.1:8088/chart.png?secret=YOUR_PACMAN_API_SECRET{C.R}")
+    print(f"  {C.ACCENT}GET http://127.0.0.1:8088/chart.png?secret=YOUR_SPACELORD_API_SECRET{C.R}")
     print()
     print(f"  {C.BOLD}Startup Explainer:{C.R}")
     print(f"  {C.MUTED}1. Run 'robot start' to initiate background monitoring.{C.R}")

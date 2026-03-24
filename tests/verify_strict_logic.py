@@ -5,13 +5,13 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.controller import PacmanController
+from src.controller import SpaceLordController
 from src.logger import set_verbose
 
 def test_strict_logic():
     print("--- Testing Strict Logic Separation ---")
     set_verbose(False)
-    app = PacmanController()
+    app = SpaceLordController()
     
     # 1. Test Strict Convert (Should Succeed)
     print("\n[TEST 1] Convert HTS-WBTC -> WBTC_LZ (Should SUCCEED)")

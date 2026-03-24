@@ -8,7 +8,7 @@ Handles: NLP swap parsing, _do_swap execution, swap-v1 legacy swaps.
 
 import sys
 from src.logger import logger
-from src.errors import PacmanError
+from src.errors import SpaceLordError
 from src.translator import translate
 from cli.display import C, print_receipt
 from cli.commands.wallet import _safe_input
@@ -140,7 +140,7 @@ def _do_swap(app, req, yes=False, json_mode=False):
             print(f"\n  {C.ERR}✗{C.R} FAILED: {res.error}")
             print(f"  {C.MUTED}Recovery: Try a smaller amount, increase slippage with 'slippage 3.0', or run 'doctor' to diagnose.{C.R}")
 
-    except PacmanError as e:
+    except SpaceLordError as e:
         if json_mode:
             import json as _json
             print(_json.dumps({"success": False, "error": str(e)}))

@@ -11,7 +11,7 @@ def hedera_id_to_evm(hedera_id: str) -> str:
 def test_approve():
     load_dotenv()
     rpc_url = os.getenv("RPC_URL", "https://mainnet.hashio.io/api")
-    private_key = os.getenv("PACMAN_PRIVATE_KEY")
+    private_key = os.getenv("SPACELORD_PRIVATE_KEY")
     
     w3 = Web3(Web3.HTTPProvider(rpc_url))
     acct = w3.eth.account.from_key(private_key)

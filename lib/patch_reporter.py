@@ -50,7 +50,7 @@ def auto_report_error(app, command: str, error: str, stack_trace: str = None):
     thread so it never blocks the CLI. Silently swallows all exceptions.
 
     Args:
-        app: PacmanController instance (needs .hcs_manager and .account_id)
+        app: SpaceLordController instance (needs .hcs_manager and .account_id)
         command: The CLI command that failed (e.g. "swap 10 USDC for HBAR")
         error: The error message
         stack_trace: Optional full stack trace

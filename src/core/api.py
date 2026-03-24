@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pacman Secure API
+Space Lord Secure API
 =================
 
 Lightweight REST API providing authenticated access to the daemon state.
@@ -20,12 +20,12 @@ app_flask = Flask(__name__)
 CORS(app_flask) # Enable CORS for the local dashboard
 
 # Shared context
-pacman_app = None
-api_secret = os.getenv("PACMAN_API_SECRET")
+spacelord_app = None
+api_secret = os.getenv("SPACELORD_API_SECRET")
 
 def require_auth(f):
     """Decorator to enforce shared secret authentication.
-    Accepts via X-Pacman-Secret header OR ?secret= query param (for images/links).
+    Accepts via X-SpaceLord-Secret header OR ?secret= query param (for images/links).
 
     Localhost (127.0.0.1) requests bypass auth to allow the dashboard to work
     when served by the daemon without passing secrets via headers.
@@ -35,7 +35,7 @@ def require_auth(f):
         if request.remote_addr == "127.0.0.1" or request.remote_addr == "localhost":
             return f(*args, **kwargs)
 
-        header_secret = request.headers.get("X-Pacman-Secret")
+        header_secret = request.headers.get("X-SpaceLord-Secret")
         query_secret = request.args.get("secret")
         provided = header_secret or query_secret
 
@@ -80,26 +80,26 @@ def health_check():
 @require_auth
 def get_status():
     """Return high-level daemon and system status directly from memory."""
-    if not pacman_app or not hasattr(pacman_app, 'pm'):
+    if not spacelord_app or not hasattr(spacelord_app, 'pm'):
          return jsonify({"error": "Daemon initializing..."}), 503
          
     import time
     
     # Calculate uptime (from app start time if available)
     uptime = 0
-    if hasattr(pacman_app, 'start_time'):
-        uptime = int(time.time() - pacman_app.start_time)
+    if hasattr(spacelord_app, 'start_time'):
+        uptime = int(time.time() - spacelord_app.start_time)
         
     try:
         return jsonify({
             "pid": os.getpid(),
             "uptime_sec": uptime,
-            "main_account_id": pacman_app.account_id,
+            "main_account_id": spacelord_app.account_id,
             "last_heartbeat": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "plugins": pacman_app.pm.get_all_statuses(),
+            "plugins": spacelord_app.pm.get_all_statuses(),
             "hcs": {
-                "topic_id": getattr(pacman_app.hcs_manager, 'topic_id', None) if hasattr(pacman_app, 'hcs_manager') else None,
-                "is_active": hasattr(pacman_app, 'hcs_manager') and pacman_app.hcs_manager is not None and getattr(pacman_app.hcs_manager, 'topic_id', None) is not None
+                "topic_id": getattr(spacelord_app.hcs_manager, 'topic_id', None) if hasattr(spacelord_app, 'hcs_manager') else None,
+                "is_active": hasattr(spacelord_app, 'hcs_manager') and spacelord_app.hcs_manager is not None and getattr(spacelord_app.hcs_manager, 'topic_id', None) is not None
             }
         })
     except Exception as e:
@@ -110,17 +110,17 @@ def get_status():
 @require_auth
 def get_plugins():
     """Return health for ALL discovered plugins directly from memory."""
-    if not pacman_app or not hasattr(pacman_app, 'pm'):
+    if not spacelord_app or not hasattr(spacelord_app, 'pm'):
         return jsonify([])
     
     # Get live status from the PluginManager instance
-    return jsonify(pacman_app.pm.get_all_statuses())
+    return jsonify(spacelord_app.pm.get_all_statuses())
 
 @app_flask.route("/logs", methods=["GET"])
 @require_auth
 def get_logs():
     """Return the last 50 lines of the system log."""
-    log_path = Path("logs/pacman.log")
+    log_path = Path("logs/spacelord.log")
     if not log_path.exists():
         return jsonify([])
     
@@ -135,18 +135,18 @@ def get_logs():
 @require_auth
 def get_portfolio():
     """Proxy to the cached bot portfolio state."""
-    if not pacman_app:
+    if not spacelord_app:
         return jsonify({"error": "Controller not initialized"}), 500
     
     try:
         # Get live portfolio from the PowerLaw plugin instance if available
-        if hasattr(pacman_app, 'pm'):
-            pl_plugin = pacman_app.pm.plugins.get("PowerLaw")
+        if hasattr(spacelord_app, 'pm'):
+            pl_plugin = spacelord_app.pm.plugins.get("PowerLaw")
             if pl_plugin and pl_plugin._last_portfolio:
                 return jsonify(pl_plugin._last_portfolio)
         
         # Fallback to direct check if needed (blocking)
-        balances = pacman_app.get_balances(token_highlights=["WBTC[HTS]", "USDC", "HBAR"])
+        balances = spacelord_app.get_balances(token_highlights=["WBTC[HTS]", "USDC", "HBAR"])
         return jsonify(balances)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -155,11 +155,11 @@ def get_portfolio():
 @require_auth
 def get_holdings():
     """Returns the full dictionary of all non-zero wallet balances with USD values (Aggregated)."""
-    if not pacman_app:
+    if not spacelord_app:
         return jsonify({"error": "Controller not initialized"}), 500
     
     try:
-        raw_balances = pacman_app.get_aggregated_balances()
+        raw_balances = spacelord_app.get_aggregated_balances()
         holdings = []
         
         # Filter out NLP aliases (e.g. "DOLLAR", "BITCOIN") by checking standard tokens
@@ -184,7 +184,7 @@ def get_holdings():
             if sym in tokens_data:
                 token_id = tokens_data[sym].get("id", sym)
             
-            raw_price = pacman_app.router.price_manager.get_price(token_id)
+            raw_price = spacelord_app.router.price_manager.get_price(token_id)
             price_usd = 1.0 if sym in ("USDC", "USD") else (float(raw_price) if raw_price else 0.0)
             val_usd = bal * price_usd
             total_portfolio_usd += val_usd
@@ -211,12 +211,12 @@ def get_holdings():
 @require_auth
 def get_accounts():
     """Returns enriched, role-segregated balances for all known accounts."""
-    if not pacman_app:
+    if not spacelord_app:
         return jsonify({"error": "Controller not initialized"}), 500
     try:
         # 1. Gather all IDs and their roles
-        main_id = pacman_app.account_id
-        robot_id = pacman_app.config.robot_account_id
+        main_id = spacelord_app.account_id
+        robot_id = spacelord_app.config.robot_account_id
         
         # Load registry for nicknames (skip explicitly inactive accounts)
         registry_map = {}
@@ -263,7 +263,7 @@ def get_accounts():
         def enrich_account(acc_id, role):
             # Use account_id_override for non-main IDs
             try:
-                balances = pacman_app.get_balances(account_id=(acc_id if acc_id != main_id else None))
+                balances = spacelord_app.get_balances(account_id=(acc_id if acc_id != main_id else None))
                 if balances is None:
                     balances = {}
             except Exception as e:
@@ -306,12 +306,12 @@ def get_accounts():
 
                 # 3. Get Price
                 price_id = token_id
-                raw_price = pacman_app.router.price_manager.get_price(price_id)
+                raw_price = spacelord_app.router.price_manager.get_price(price_id)
                 price_usd = 1.0 if sym in ("USDC", "USDT") else (float(raw_price) if raw_price else 0.0)
                 
                 # HBAR price fallback
                 if token_id == "0.0.0" and price_usd == 0:
-                    price_usd = pacman_app.router.price_manager.hbar_price
+                    price_usd = spacelord_app.router.price_manager.hbar_price
 
                 # 4. Store entry
                 aggregated[token_id] = {
@@ -359,11 +359,11 @@ def get_accounts():
 @require_auth
 def get_history():
     """Return the recent execution history ledger."""
-    if not pacman_app:
+    if not spacelord_app:
         return jsonify({"error": "Controller not initialized"}), 500
     try:
         limit = int(request.args.get("limit", 20))
-        history = pacman_app.executor.get_execution_history(limit=limit)
+        history = spacelord_app.executor.get_execution_history(limit=limit)
         # Inject type for swap records that lack one (executor stores "mode" not "type")
         for rec in history:
             if "type" not in rec:
@@ -387,7 +387,7 @@ def get_history():
                         })
                         
             # Inject Limit Order background scans
-            log_file = Path("logs/pacman.log")
+            log_file = Path("logs/spacelord.log")
             if log_file.exists():
                 with open(log_file) as f:
                     lines = f.readlines()[-300:]
@@ -416,11 +416,11 @@ def get_history():
 @require_auth
 def get_hcs_messages():
     """Return recent HCS signals from the active topic."""
-    if not pacman_app or not hasattr(pacman_app, 'hcs_manager'):
+    if not spacelord_app or not hasattr(spacelord_app, 'hcs_manager'):
         return jsonify([])
     try:
         limit = int(request.args.get("limit", 10))
-        messages = pacman_app.hcs_manager.get_messages(limit=limit)
+        messages = spacelord_app.hcs_manager.get_messages(limit=limit)
         return jsonify(messages)
     except Exception as e:
         logger.error(f"API Error get_hcs_messages: {e}")
@@ -437,7 +437,7 @@ def get_feedback():
     try:
         import requests as _req
         limit = int(request.args.get("limit", 20))
-        network = getattr(pacman_app.config, "network", "mainnet") if pacman_app else "mainnet"
+        network = getattr(spacelord_app.config, "network", "mainnet") if spacelord_app else "mainnet"
         base = "https://mainnet-public.mirrornode.hedera.com" if network == "mainnet" else "https://testnet.mirrornode.hedera.com"
         url = f"{base}/api/v1/topics/{topic_id}/messages?limit={limit}&order=desc"
         resp = _req.get(url, timeout=10)
@@ -530,13 +530,13 @@ def get_hedera_prices():
 
 def run_server(app, port=8088):
     """Entry point for the API thread."""
-    global pacman_app
-    pacman_app = app
+    global spacelord_app
+    spacelord_app = app
     
     if not api_secret:
-        logger.error("PACMAN_API_SECRET not set in .env. API starting in insecure mode (LOCAL ONLY).")
+        logger.error("SPACELORD_API_SECRET not set in .env. API starting in insecure mode (LOCAL ONLY).")
     
-    logger.info(f"🚀 Pacman API starting on http://127.0.0.1:{port}")
+    logger.info(f"🚀 Space Lord API starting on http://127.0.0.1:{port}")
     logger.info(f"   [OpenClaw Integration] 📈 Chart Endpoint: http://127.0.0.1:{port}/chart.png?secret=***")
     import logging
     log = logging.getLogger('werkzeug')

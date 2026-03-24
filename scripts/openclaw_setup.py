@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OpenClaw Agent Setup — One-command onboarding for Pacman + Hedera
+OpenClaw Agent Setup — One-command onboarding for Space Lord + Hedera
 =================================================================
 
 Creates a fully configured OpenClaw agent with:
@@ -32,16 +32,16 @@ class C:
     ERR     = "\033[31m"     # red
     R       = "\033[0m"      # reset
 
-PACMAN_DIR = Path(__file__).resolve().parent.parent
-OPENCLAW_DIR = PACMAN_DIR / "openclaw"
+SPACELORD_DIR = Path(__file__).resolve().parent.parent
+OPENCLAW_DIR = SPACELORD_DIR / "openclaw"
 OPENCLAW_CONFIG = Path.home() / ".openclaw" / "openclaw.json"
-ENV_FILE = PACMAN_DIR / ".env"
-ENV_TEMPLATE = PACMAN_DIR / ".env.template"
+ENV_FILE = SPACELORD_DIR / ".env"
+ENV_TEMPLATE = SPACELORD_DIR / ".env.template"
 
 
 def banner():
     print(f"""
-  {C.BOLD}{C.ACCENT}ᗧ  PACMAN × OPENCLAW{C.R}
+  {C.BOLD}{C.ACCENT}ᗧ  SPACE LORD × OPENCLAW{C.R}
   {C.MUTED}{'═' * 52}{C.R}
   {C.BOLD}One-command setup for your AI Hedera trading agent.{C.R}
   {C.MUTED}This wizard will configure:{C.R}
@@ -109,7 +109,7 @@ def setup_hedera_wallet():
         if reuse in ["y", "yes", ""]:
             return existing_id
         print(f"  {C.MUTED}Backing up current .env to .env.backup...{C.R}")
-        shutil.copy2(ENV_FILE, PACMAN_DIR / ".env.backup")
+        shutil.copy2(ENV_FILE, SPACELORD_DIR / ".env.backup")
 
     print(f"  {C.MUTED}How would you like to set up your wallet?{C.R}")
     print(f"  {C.ACCENT}[I]{C.R} Import existing Private Key")
@@ -186,7 +186,7 @@ def setup_hedera_wallet():
 
     _env_set("PRIVATE_KEY", raw_key)
     _env_set("HEDERA_ACCOUNT_ID", hedera_id)
-    _env_set("PACMAN_SIMULATE", "false")
+    _env_set("SPACELORD_SIMULATE", "false")
 
     print(f"  {C.OK}✅ Wallet configured:{C.R} {C.BOLD}{hedera_id}{C.R}")
     return hedera_id
@@ -212,12 +212,12 @@ def _env_set(key, value):
 # ─── Step 2: OpenClaw Agent ──────────────────────────────────
 
 def setup_openclaw_agent():
-    """Configure the Pacman agent in openclaw.json."""
+    """Configure the Space Lord agent in openclaw.json."""
     print(f"\n  {C.BOLD}[2/3] OPENCLAW AGENT{C.R}")
 
     # Link the skill
-    skill_link = OPENCLAW_DIR / "skills" / "pacman-hedera" / "SKILL.md"
-    skill_target = PACMAN_DIR / "SKILL.md"
+    skill_link = OPENCLAW_DIR / "skills" / "spacelord-hedera" / "SKILL.md"
+    skill_target = SPACELORD_DIR / "SKILL.md"
     if not skill_link.exists() and skill_target.exists():
         try:
             skill_link.symlink_to(os.path.relpath(skill_target, skill_link.parent))
@@ -233,23 +233,23 @@ def setup_openclaw_agent():
     config = json.loads(OPENCLAW_CONFIG.read_text())
     workspace_path = str(OPENCLAW_DIR)
 
-    # Check if pacman skill/workspace already configured
+    # Check if spacelord skill/workspace already configured
     existing_workspace = config.get("agents", {}).get("defaults", {}).get("workspace", "")
-    if "pacman" in existing_workspace.lower():
+    if "spacelord" in existing_workspace.lower():
         print(f"  {C.OK}✓{C.R} Already configured as default workspace")
         return True
 
     # Check for multi-agent setup (agents.list exists)
     agents_list = config.get("agents", {}).get("list", [])
-    pacman_exists = any(a.get("id") == "pacman" for a in agents_list)
+    spacelord_exists = any(a.get("id") == "spacelord" for a in agents_list)
 
-    if pacman_exists:
-        print(f"  {C.OK}✓{C.R} Pacman agent already in agents list")
+    if spacelord_exists:
+        print(f"  {C.OK}✓{C.R} Space Lord agent already in agents list")
         return True
 
-    print(f"  {C.MUTED}How should Pacman be added to your OpenClaw?{C.R}")
-    print(f"  {C.ACCENT}[D]{C.R} Default agent {C.MUTED}(replace current workspace — Pacman becomes your main agent){C.R}")
-    print(f"  {C.ACCENT}[S]{C.R} Second agent  {C.MUTED}(keep existing agent, add Pacman alongside it){C.R}")
+    print(f"  {C.MUTED}How should Space Lord be added to your OpenClaw?{C.R}")
+    print(f"  {C.ACCENT}[D]{C.R} Default agent {C.MUTED}(replace current workspace — Space Lord becomes your main agent){C.R}")
+    print(f"  {C.ACCENT}[S]{C.R} Second agent  {C.MUTED}(keep existing agent, add Space Lord alongside it){C.R}")
 
     choice = safe_input(f"\n  Choice {C.MUTED}(d/s){C.R}: ", default="s").lower()
 
@@ -277,15 +277,15 @@ def setup_openclaw_agent():
             ]
 
         agents_list.append({
-            "id": "pacman",
-            "name": "Pacman",
+            "id": "spacelord",
+            "name": "Space Lord",
             "workspace": workspace_path
         })
 
         config.setdefault("agents", {})["list"] = agents_list
-        print(f"  {C.OK}✓{C.R} Added Pacman as second agent")
+        print(f"  {C.OK}✓{C.R} Added Space Lord as second agent")
         print(f"  {C.MUTED}Default agent workspace: {old_workspace}{C.R}")
-        print(f"  {C.MUTED}Pacman agent workspace: {workspace_path}{C.R}")
+        print(f"  {C.MUTED}Space Lord agent workspace: {workspace_path}{C.R}")
 
     # Write config
     _backup_and_write_config(config)
@@ -295,16 +295,16 @@ def setup_openclaw_agent():
 # ─── Step 3: Telegram Bot ────────────────────────────────────
 
 def setup_telegram(is_multi_agent):
-    """Configure Telegram routing for the Pacman agent."""
+    """Configure Telegram routing for the Space Lord agent."""
     print(f"\n  {C.BOLD}[3/3] TELEGRAM ROUTING{C.R}")
 
     config = json.loads(OPENCLAW_CONFIG.read_text())
     existing_telegram = config.get("channels", {}).get("telegram", {})
 
     if not is_multi_agent:
-        # Single agent — existing telegram config routes to Pacman automatically
+        # Single agent — existing telegram config routes to Space Lord automatically
         if existing_telegram.get("enabled"):
-            print(f"  {C.OK}✓{C.R} Telegram already configured — routes to your default agent (now Pacman)")
+            print(f"  {C.OK}✓{C.R} Telegram already configured — routes to your default agent (now Space Lord)")
             return True
         # No telegram at all yet
         want_tg = safe_input(f"  Set up a Telegram bot? {C.MUTED}(y/N){C.R} ", default="n").lower()
@@ -326,13 +326,13 @@ def setup_telegram(is_multi_agent):
         print(f"  {C.OK}✓{C.R} Telegram configured!")
         return True
 
-    # Multi-agent — need a SECOND bot token for Pacman
-    print(f"  {C.MUTED}You have two agents. To route messages to Pacman,{C.R}")
+    # Multi-agent — need a SECOND bot token for Space Lord
+    print(f"  {C.MUTED}You have two agents. To route messages to Space Lord,{C.R}")
     print(f"  {C.MUTED}you need a dedicated Telegram bot for it.{C.R}")
     print()
     print(f"  {C.BOLD}Quick guide:{C.R}")
     print(f"  {C.MUTED}  1. Open Telegram → @BotFather → /newbot{C.R}")
-    print(f"  {C.MUTED}  2. Name it something like 'Pacman Wallet'{C.R}")
+    print(f"  {C.MUTED}  2. Name it something like 'Space Lord Wallet'{C.R}")
     print(f"  {C.MUTED}  3. Copy the bot token and paste it below{C.R}")
     print()
 
@@ -341,7 +341,7 @@ def setup_telegram(is_multi_agent):
         print(f"  {C.MUTED}No problem. Add it later — see openclaw/SETUP.md for instructions.{C.R}")
         return True
 
-    token = safe_input(f"  {C.ACCENT}Paste Pacman bot token:{C.R} ")
+    token = safe_input(f"  {C.ACCENT}Paste Space Lord bot token:{C.R} ")
     if not token or ":" not in token:
         print(f"  {C.ERR}✗{C.R} Invalid token format")
         return False
@@ -387,7 +387,7 @@ def setup_telegram(is_multi_agent):
                     "botToken": existing_token,
                     "dmPolicy": telegram_conf.get("dmPolicy", "pairing"),
                 },
-                "pacman": {
+                "spacelord": {
                     "botToken": token,
                     "dmPolicy": "allowlist" if your_tg_id else "pairing",
                 }
@@ -396,31 +396,31 @@ def setup_telegram(is_multi_agent):
         if existing_allow:
             new_telegram["accounts"]["default"]["allowFrom"] = existing_allow
         if your_tg_id:
-            new_telegram["accounts"]["pacman"]["allowFrom"] = [your_tg_id]
+            new_telegram["accounts"]["spacelord"]["allowFrom"] = [your_tg_id]
     else:
-        # Already multi-account — just add pacman
+        # Already multi-account — just add spacelord
         new_telegram = telegram_conf
-        new_telegram["accounts"]["pacman"] = {
+        new_telegram["accounts"]["spacelord"] = {
             "botToken": token,
             "dmPolicy": "allowlist" if your_tg_id else "pairing",
         }
         if your_tg_id:
-            new_telegram["accounts"]["pacman"]["allowFrom"] = [your_tg_id]
+            new_telegram["accounts"]["spacelord"]["allowFrom"] = [your_tg_id]
 
     config["channels"]["telegram"] = new_telegram
 
     # Add bindings: each bot token → its agent
     bindings = config.get("bindings", [])
-    pacman_binding = {"agentId": "pacman", "match": {"channel": "telegram", "accountId": "pacman"}}
+    spacelord_binding = {"agentId": "spacelord", "match": {"channel": "telegram", "accountId": "spacelord"}}
     default_binding = {"agentId": "default", "match": {"channel": "telegram", "accountId": "default"}}
-    if not any(b.get("agentId") == "pacman" for b in bindings):
-        bindings.append(pacman_binding)
+    if not any(b.get("agentId") == "spacelord" for b in bindings):
+        bindings.append(spacelord_binding)
     if not any(b.get("agentId") == "default" and b.get("match", {}).get("accountId") == "default" for b in bindings):
         bindings.append(default_binding)
     config["bindings"] = bindings
 
     _backup_and_write_config(config)
-    print(f"  {C.OK}✓{C.R} Telegram bot added for Pacman agent!")
+    print(f"  {C.OK}✓{C.R} Telegram bot added for Space Lord agent!")
     if your_tg_id:
         print(f"  {C.MUTED}Restricted to user ID: {your_tg_id}{C.R}")
 
@@ -447,7 +447,7 @@ def _resolve_telegram_username(bot_token, username):
 
 
 def _register_bot_commands(bot_token):
-    """Register Pacman slash commands with BotFather via Telegram Bot API."""
+    """Register Space Lord slash commands with BotFather via Telegram Bot API."""
     import urllib.request
 
     commands = [
@@ -515,13 +515,13 @@ def finish(hedera_id, is_multi_agent):
         pass
 
     print(f"\n  {C.ACCENT}Next steps:{C.R}")
-    print(f"  {C.MUTED}  1.{C.R} Start Pacman daemons: {C.BOLD}./launch.sh daemon-start{C.R}")
-    print(f"  {C.MUTED}  2.{C.R} Open Telegram and message your Pacman bot!")
+    print(f"  {C.MUTED}  1.{C.R} Start Space Lord daemons: {C.BOLD}./launch.sh daemon-start{C.R}")
+    print(f"  {C.MUTED}  2.{C.R} Open Telegram and message your Space Lord bot!")
 
     if is_multi_agent:
         print(f"\n  {C.MUTED}Agent routing:{C.R}")
         print(f"  {C.MUTED}  • Your existing bot → default agent{C.R}")
-        print(f"  {C.MUTED}  • Pacman bot → Pacman agent (trading, portfolio, daemons){C.R}")
+        print(f"  {C.MUTED}  • Space Lord bot → Space Lord agent (trading, portfolio, daemons){C.R}")
         print(f"  {C.MUTED}  Verify: openclaw agents list --bindings{C.R}")
 
     print(f"\n  {C.MUTED}Docs: openclaw/SETUP.md for advanced config (multi-channel, Discord, WhatsApp){C.R}")

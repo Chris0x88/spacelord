@@ -29,7 +29,7 @@ def cmd_hcs(app, args):
             print(f"  {C.ERR}✗{C.R} Usage: {C.TEXT}hcs topic create [memo]{C.R}")
             return
         if args[1].lower() == "create":
-            memo = " ".join(args[2:]) if len(args) > 2 else "Pacman HCS Signal Topic"
+            memo = " ".join(args[2:]) if len(args) > 2 else "Space Lord HCS Signal Topic"
             print(f"  {C.MUTED}Creating new HCS topic...{C.R}")
             topic_id = app.hcs_manager.create_topic(memo=memo)
             if topic_id:
@@ -250,11 +250,11 @@ def _cmd_feedback_setup(app):
         return
 
     print(f"  {C.MUTED}Creating new HCS feedback topic...{C.R}")
-    topic_id = app.hcs_manager.create_topic(memo="Pacman Cross-Agent Feedback")
+    topic_id = app.hcs_manager.create_topic(memo="Space Lord Cross-Agent Feedback")
     if topic_id:
         # Persist to .env
-        from src.config import PacmanConfig
-        PacmanConfig.set_env_value("FEEDBACK_TOPIC_ID", topic_id)
+        from src.config import SpaceLordConfig
+        SpaceLordConfig.set_env_value("FEEDBACK_TOPIC_ID", topic_id)
         print(f"  {C.OK}✅ Feedback topic created: {C.BOLD}{topic_id}{C.R}")
         print(f"  {C.MUTED}   Saved to .env as FEEDBACK_TOPIC_ID{C.R}")
         print(f"  {C.TEXT}   Submit feedback: {C.ACCENT}hcs feedback submit bug <description>{C.R}")

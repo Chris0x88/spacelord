@@ -5,8 +5,8 @@ import sys
 # Add root to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 
-from pacman_config import SecureString, PacmanConfig
-from pacman_errors import ConfigurationError
+from src.config import SecureString, SpaceLordConfig
+from src.errors import ConfigurationError
 
 class TestSecureString(unittest.TestCase):
     def test_basic_lifecycle(self):
@@ -32,14 +32,14 @@ class TestSecureString(unittest.TestCase):
         self.assertFalse(bool(secure))
         self.assertEqual(repr(secure), "<SecureString: ***HIDDEN***>")
 
-    def test_pacman_config_integration(self):
+    def test_spacelord_config_integration(self):
         # Setup Env
         pk = "0x" + "a" * 64
-        os.environ["PACMAN_PRIVATE_KEY"] = pk
-        os.environ["PACMAN_SIMULATE"] = "false"
+        os.environ["SPACELORD_PRIVATE_KEY"] = pk
+        os.environ["SPACELORD_SIMULATE"] = "false"
 
         # Load
-        config = PacmanConfig.from_env()
+        config = SpaceLordConfig.from_env()
 
         # Verify type and value
         self.assertIsInstance(config.private_key, SecureString)
@@ -51,12 +51,12 @@ class TestSecureString(unittest.TestCase):
         except ConfigurationError as e:
             self.fail(f"ConfigurationError raised: {e}")
 
-    def test_pacman_config_validation_failure(self):
+    def test_spacelord_config_validation_failure(self):
         # Setup Invalid Env
-        os.environ["PACMAN_PRIVATE_KEY"] = "invalid_key_too_short"
-        os.environ["PACMAN_SIMULATE"] = "false"
+        os.environ["SPACELORD_PRIVATE_KEY"] = "invalid_key_too_short"
+        os.environ["SPACELORD_SIMULATE"] = "false"
 
-        config = PacmanConfig.from_env()
+        config = SpaceLordConfig.from_env()
 
         with self.assertRaises(ConfigurationError):
             config.validate()

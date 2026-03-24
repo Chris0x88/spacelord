@@ -82,7 +82,7 @@ Background daemons power the Power Law rebalancer, limit orders, HCS signals, an
 
 ## Full Reference
 
-For complete command reference, decision trees, error handling, token knowledge, and routing intelligence: load the `pacman-hedera` skill (SKILL.md in `skills/pacman-hedera/`).
+For complete command reference, decision trees, error handling, token knowledge, and routing intelligence: load the `spacelord-hedera` skill (SKILL.md in `skills/spacelord-hedera/`).
 
 ---
-*Pacman v4.0.0 | Hedera Apex Hackathon 2026 | Built for OpenClaw*
+*Space Lord v4.0.0 | Hedera Apex Hackathon 2026 | Built for OpenClaw*

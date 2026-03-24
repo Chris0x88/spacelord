@@ -1,6 +1,6 @@
-# Pacman Hedera Skill
+# Space Lord Hedera Skill
 
-This directory should contain the Pacman SKILL.md file.
+This directory should contain the Space Lord SKILL.md file.
 
 ## Setup
 

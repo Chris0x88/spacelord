@@ -37,7 +37,7 @@ SFT_FILE = TRAINING_DIR / "instruction_pairs.jsonl"
 
 # System prompt for all training data (compact)
 SYSTEM_PROMPT = (
-    "You are driving the Pacman Hedera trading CLI. "
+    "You are driving the Space Lord Hedera trading CLI. "
     "Commands: swap <amt> <FROM> for <TO>, balance, send <amt> <TOKEN> to <ACCOUNT>, "
     "price <TOKEN>, associate <TOKEN>, account switch <ID>, robot status, history. "
     "Use token tickers (HBAR, USDC, WBTC, SAUCE, USDC[hts]). "

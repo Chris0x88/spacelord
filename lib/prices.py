@@ -1,12 +1,12 @@
 """
-Pacman Price Manager
+Space Lord Price Manager
 ====================
 
-Manages token prices using local pool data (pacman_data_raw.json)
+Manages token prices using local pool data (spacelord_data_raw.json)
 as the Source of Truth. This aligns with the "refresh loop" architecture.
 
 Usage:
-    from pacman_price_manager import price_manager
+    from spacelord_price_manager import price_manager
     price = price_manager.get_price("0.0.456858")
 """
 
@@ -16,11 +16,11 @@ import os
 
 logger = logging.getLogger(__name__)
 
-class PacmanPriceManager:
+class SpaceLordPriceManager:
     """
     Manages token prices by aggregating data from local sources.
     
-    The manager uses `pacman_data_raw.json` (SaucerSwap V2 live export) 
+    The manager uses `spacelord_data_raw.json` (SaucerSwap V2 live export) 
     as the sole source of truth for pricing.
     
     WHY: By relying on the raw pool data, we ensure that our pricing is always
@@ -29,7 +29,7 @@ class PacmanPriceManager:
     route but can't price (or vice-versa).
     
     DATA FLOW:
-    refresh_data.py -> data/pacman_data_raw.json -> PacmanPriceManager
+    refresh_data.py -> data/spacelord_data_raw.json -> SpaceLordPriceManager
     """
 
     def __init__(self, data_file: str = None):
@@ -41,7 +41,7 @@ class PacmanPriceManager:
         """
         if data_file is None:
             from pathlib import Path
-            self.data_file = str(Path(__file__).parent.parent / "data" / "pacman_data_raw.json")
+            self.data_file = str(Path(__file__).parent.parent / "data" / "spacelord_data_raw.json")
         else:
             self.data_file = data_file
             
@@ -54,7 +54,7 @@ class PacmanPriceManager:
         """
         Load raw pool data and build a price map.
         
-        This method processes `pacman_data_raw.json` as the source of truth.
+        This method processes `spacelord_data_raw.json` as the source of truth.
         """
         from src.logger import logger
         try:
@@ -245,4 +245,4 @@ class PacmanPriceManager:
         self._load_data()
 
 # Singleton
-price_manager = PacmanPriceManager()
+price_manager = SpaceLordPriceManager()

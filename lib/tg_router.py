@@ -1,7 +1,7 @@
 """
 Telegram Inbound Router  [SHARED — business logic for command routing]
 =======================
-Routes slash commands and button callbacks to PacmanController methods.
+Routes slash commands and button callbacks to SpaceLordController methods.
 Returns pre-formatted HTML + button markup as response dicts.
 
 Called by:
@@ -36,10 +36,10 @@ from typing import Dict, Any, Optional, List
 
 from lib import tg_format as formatters
 
-logger = logging.getLogger("pacman.telegram")
+logger = logging.getLogger("spacelord.telegram")
 
 # Repo root — used for data file access
-# lib/tg_router.py → lib/ → pacman/ (2 levels up)
+# lib/tg_router.py → lib/ → spacelord/ (2 levels up)
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _DATA_DIR = _REPO_ROOT / "data"
 
@@ -322,7 +322,7 @@ class InboundRouter:
     # ------------------------------------------------------------------
 
     def _fast_lane(self, cmd: str, user_id: int, arg: str = "") -> Dict[str, Any]:
-        """Execute command directly via PacmanController — no LLM."""
+        """Execute command directly via SpaceLordController — no LLM."""
         try:
             if cmd in ("/balance", "/portfolio"):
                 return self._cmd_balance()

@@ -1,12 +1,12 @@
-# Contributing to Pacman
+# Contributing to Space Lord
 
-Pacman is an open-source self-custody AI wallet for Hedera. Contributions are welcome — whether it's new plugins, bug fixes, documentation, or trading strategies.
+Space Lord is an open-source self-custody AI wallet for Hedera. Contributions are welcome — whether it's new plugins, bug fixes, documentation, or trading strategies.
 
 ## Quick Setup
 
 ```bash
-git clone https://github.com/Chris0x88/pacman.git
-cd pacman
+git clone https://github.com/Chris0x88/spacelord.git
+cd spacelord
 ./launch.sh init        # First-run wizard (creates .env, sets up keys)
 ./launch.sh balance     # Verify everything works
 ```
@@ -29,7 +29,7 @@ scripts/          Utility scripts
 
 ## Adding a Plugin
 
-Plugins extend Pacman with new background services. Every plugin inherits from `BasePlugin`:
+Plugins extend Space Lord with new background services. Every plugin inherits from `BasePlugin`:
 
 ```python
 # src/plugins/my_plugin/plugin.py
@@ -56,7 +56,7 @@ Plugins are auto-discovered by `src/core/plugin_manager.py` from `src/plugins/`.
 
 1. Create a handler in `cli/commands/your_feature.py`
 2. Register it in `cli/main.py` in the `COMMANDS` dict
-3. The handler receives the `PacmanController` instance
+3. The handler receives the `SpaceLordController` instance
 
 ## Safety Rules
 

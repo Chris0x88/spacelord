@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Pacman Executor - Live Transaction Execution
+Space Lord Executor - Live Transaction Execution
 ============================================
 
-The "Engine Room". Takes a VariantRoute (from PacmanVariantRouter) and
+The "Engine Room". Takes a VariantRoute (from SpaceLordVariantRouter) and
 executes it on-chain.
 
 Delegates to extracted modules:
@@ -33,7 +33,7 @@ from typing import Dict, Optional, List
 from dataclasses import dataclass, field
 from pathlib import Path
 from src.logger import logger
-from src.config import PacmanConfig, SecureString
+from src.config import SpaceLordConfig, SecureString
 from src.errors import ConfigurationError, ExecutionError, InsufficientFundsError
 
 # Extracted modules (delegation)
@@ -107,12 +107,12 @@ class ExecutionResult:
             "lp_fee_token": self.lp_fee_token
         }
 
-class PacmanExecutor:
+class SpaceLordExecutor:
     """
     Executes swaps with optional wrap/unwrap steps.
     """
     
-    def __init__(self, config: PacmanConfig):
+    def __init__(self, config: SpaceLordConfig):
         """Initialize executor with configuration."""
         from lib.saucerswap import SaucerSwapV2, hedera_id_to_evm
         from web3 import Web3
@@ -140,7 +140,7 @@ class PacmanExecutor:
         # Hashio requires x-api-key header; include if present in env
         import os
         headers = {}
-        api_key = os.getenv("SAUCERSWAP_API_KEY_MAINNET") or os.getenv("PACMAN_API_KEY")
+        api_key = os.getenv("SAUCERSWAP_API_KEY_MAINNET") or os.getenv("SPACELORD_API_KEY")
         if api_key:
             headers["x-api-key"] = api_key
             logger.debug(f"   [RPC] Added x-api-key header")
@@ -182,7 +182,7 @@ class PacmanExecutor:
         self.recordings_dir = Path("execution_records")
         self.recordings_dir.mkdir(exist_ok=True)
         
-        logger.debug(f"✅ PacmanExecutor initialized")
+        logger.debug(f"✅ SpaceLordExecutor initialized")
         logger.debug(f"   RPC Provider:   {self.rpc_url}")
         logger.debug(f"   Chain ID:      {self.chain_id}")
         logger.debug(f"   Hedera Account: {self.hedera_account_id} (Native ID)")

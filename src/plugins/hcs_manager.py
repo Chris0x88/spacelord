@@ -1,5 +1,5 @@
 """
-Pacman HCS Manager Plugin
+Space Lord HCS Manager Plugin
 =========================
 
 Handles Hedera Consensus Service (HCS) operations:
@@ -29,14 +29,14 @@ except Exception:
 
 class HcsManager(BasePlugin):
     """
-    Manages HCS topics and messaging for the Pacman ecosystem.
+    Manages HCS topics and messaging for the Space Lord ecosystem.
     """
     
     def __init__(self, app):
         super().__init__(app, "HCS")
         self.topic_id: Optional[str] = getattr(app.config, "hcs_topic_id", None)
         
-    def create_topic(self, memo: str = "Pacman HCS Topic") -> Optional[str]:
+    def create_topic(self, memo: str = "Space Lord HCS Topic") -> Optional[str]:
         """Create a new HCS topic and set it as the active one."""
         try:
             client = self.app.account_manager.client
@@ -53,8 +53,8 @@ class HcsManager(BasePlugin):
             if receipt.topic_id:
                 topic_id = str(receipt.topic_id)
                 self.topic_id = topic_id
-                from src.config import PacmanConfig
-                PacmanConfig.set_env_value("HCS_TOPIC_ID", topic_id)
+                from src.config import SpaceLordConfig
+                SpaceLordConfig.set_env_value("HCS_TOPIC_ID", topic_id)
                 logger.info(f"✅ Created HCS Topic: {topic_id}")
                 return topic_id
             return None

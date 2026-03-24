@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pacman Limit Order Engine
+Space Lord Limit Order Engine
 =========================
 
 A generic, function-agnostic limit order system.
@@ -443,7 +443,7 @@ class LimitOrderEngine:
 
         self._monitor_thread = threading.Thread(
             target=self._monitor_loop,
-            name="pacman-limit-orders",
+            name="spacelord-limit-orders",
             daemon=True,
         )
         self._monitor_thread.start()

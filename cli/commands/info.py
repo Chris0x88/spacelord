@@ -614,7 +614,7 @@ def cmd_refresh(app, args):
 
 
 def cmd_install_service(app, args):
-    """Install Pacman as a native OS service (launchd/systemd)."""
+    """Install Space Lord as a native OS service (launchd/systemd)."""
     from src.core.service import ServiceManager
     sm = ServiceManager()
     sm.install()
@@ -678,7 +678,7 @@ _DOCS_REGISTRY = {
     "readme": {
         "file": "README.md",
         "title": "README",
-        "description": "What Pacman is, features, quickstart, architecture overview",
+        "description": "What Space Lord is, features, quickstart, architecture overview",
     },
     "changelog": {
         "file": "CHANGELOG.md",

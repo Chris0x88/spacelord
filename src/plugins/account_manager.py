@@ -1,5 +1,5 @@
 """
-Pacman Account Manager Plugin
+Space Lord Account Manager Plugin
 =============================
 
 Standalone module for native Hedera account operations using hiero-sdk-python.
@@ -180,7 +180,7 @@ class AccountManager:
                 .set_key(new_key.public_key()) \
                 .set_initial_balance(Hbar.from_hbars(initial_balance_hbar)) \
                 .set_max_automatic_token_associations(-1) \
-                .set_account_memo("Pacman Created Account")
+                .set_account_memo("Space Lord Created Account")
 
             # Set EVM Alias for ECDSA keys to ensure wallet compatibility (HashPack/Metamask)
             if new_key.public_key().is_ecdsa():

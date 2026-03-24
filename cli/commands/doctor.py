@@ -1,5 +1,5 @@
 """
-Pacman Doctor - System Health & AI Safety Diagnostics
+Space Lord Doctor - System Health & AI Safety Diagnostics
 ====================================================
 Validates environment, accounts, daemons, gas, keys, and connectivity.
 Helps prevent AI agents from getting stuck in loops due to bad config.
@@ -17,7 +17,7 @@ def cmd_doctor(app, args):
     """Run comprehensive system health check."""
     json_mode = "--json" in args
 
-    print(f"\n  {C.BOLD}👨‍⚕️ Pacman Doctor Diagnostics{C.R}")
+    print(f"\n  {C.BOLD}👨‍⚕️ Space Lord Doctor Diagnostics{C.R}")
     print(f"  {'─' * 45}")
 
     root_dir = Path(__file__).resolve().parent.parent.parent
@@ -156,7 +156,7 @@ def cmd_doctor(app, args):
     if daemon_running:
         try:
             import requests
-            secret = os.getenv("PACMAN_API_SECRET", "")
+            secret = os.getenv("SPACELORD_API_SECRET", "")
             r = requests.get(f"http://127.0.0.1:8088/health", timeout=3)
             if r.status_code == 200:
                 ok("API responding on :8088", "daemon")
@@ -179,7 +179,7 @@ def cmd_doctor(app, args):
 
     # Check key backup status
     backup_dir = root_dir / "backups"
-    backup_files = list(backup_dir.glob("key_backup_*.txt")) + list(backup_dir.glob("pacman_key_*.txt")) if backup_dir.exists() else []
+    backup_files = list(backup_dir.glob("key_backup_*.txt")) + list(backup_dir.glob("spacelord_key_*.txt")) if backup_dir.exists() else []
     if backup_files:
         latest = max(backup_files, key=lambda f: f.stat().st_mtime)
         ok(f"Key backup exists ({latest.name})", "files")

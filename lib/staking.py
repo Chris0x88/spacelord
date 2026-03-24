@@ -1,5 +1,5 @@
 """
-Pacman Staking Plugin
+Space Lord Staking Plugin
 =====================
 
 Isolated module for managing Hedera Native Staking.
@@ -114,10 +114,10 @@ class StakingManager:
             
             if node_id == -1:
                 tx.clear_staked_node_id()
-                tx.set_transaction_memo("Pacman Unstake")
+                tx.set_transaction_memo("Space Lord Unstake")
             else:
                 tx.set_staked_node_id(node_id)
-                tx.set_transaction_memo("Pacman Staking Update")
+                tx.set_transaction_memo("Space Lord Staking Update")
 
             # Execute
             tx.freeze_with(self.client)

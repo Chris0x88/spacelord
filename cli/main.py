@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pacman CLI - Operational Trading Interface
+Space Lord CLI - Operational Trading Interface
 ==========================================
 
 Thin dispatcher. All command handlers live in cli/commands/*.
@@ -20,8 +20,8 @@ from pathlib import Path
 root_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(root_dir))
 
-from src.controller import PacmanController
-from src.errors import PacmanError, ConfigurationError
+from src.controller import SpaceLordController
+from src.errors import SpaceLordError, ConfigurationError
 from src.logger import logger
 from cli.display import C, print_security_warning
 
@@ -53,15 +53,15 @@ from cli.commands.patch import cmd_patch
 
 # Load banner from cli.text_content
 try:
-    from cli.text_content import PACMAN_BANNER_TEMPLATE
+    from cli.text_content import SPACELORD_BANNER_TEMPLATE
     import socket
     hostname = socket.gethostname()
-    PACMAN_BANNER = PACMAN_BANNER_TEMPLATE.format(
+    SPACELORD_BANNER = SPACELORD_BANNER_TEMPLATE.format(
         ACCENT=C.ACCENT, CHROME=C.CHROME, MUTED=C.MUTED, 
         OK=C.OK, TEXT=C.TEXT, BRAND=C.BRAND, R=C.R
     )
 except Exception:
-    PACMAN_BANNER = f"{C.ACCENT}╔══════════════════════════════════════════╗{C.R}\n{C.ACCENT}║           PACMAN TRADING CLI           ║{C.R}\n{C.ACCENT}╚══════════════════════════════════════════╝{C.R}"
+    SPACELORD_BANNER = f"{C.ACCENT}╔══════════════════════════════════════════╗{C.R}\n{C.ACCENT}║           SPACE LORD TRADING CLI           ║{C.R}\n{C.ACCENT}╚══════════════════════════════════════════╝{C.R}"
 
 def cmd_logs(app, args):
     """Show recent agent interaction logs and failure summary."""
@@ -218,7 +218,7 @@ def process_input(app, text):
         if cmd in COMMANDS:
             try:
                 COMMANDS[cmd](app, args)
-            except PacmanError as e:
+            except SpaceLordError as e:
                 _result, _error = "error", str(e)
                 print(f"  {C.ERR}✗{C.R} {e}")
             except Exception as e:
@@ -230,7 +230,7 @@ def process_input(app, text):
             # Fallback to NLP
             try:
                 handle_natural_language(app, text)
-            except PacmanError as e:
+            except SpaceLordError as e:
                 _result, _error = "error", str(e)
                 print(f"  {C.ERR}✗{C.R} {e}")
             except Exception as e:
@@ -273,15 +273,15 @@ def main():
 
     # Banner: ONLY in interactive mode (no args). Agents never see it.
     if not is_oneshot:
-        print(PACMAN_BANNER)
+        print(SPACELORD_BANNER)
         print_security_warning()
 
     # Initialize App (Logic)
     try:
         if verbose_requested:
-            os.environ["PACMAN_VERBOSE"] = "true"
+            os.environ["SPACELORD_VERBOSE"] = "true"
             
-        app = PacmanController()
+        app = SpaceLordController()
         
         # Wallet/API checks only in interactive mode (they use input() which breaks pipes)
         if not is_oneshot:
@@ -304,7 +304,7 @@ def main():
         import signal as _signal
         import time
         
-        print(f"  {C.BOLD}🤖 Pacman Daemon Mode{C.R}")
+        print(f"  {C.BOLD}🤖 Space Lord Daemon Mode{C.R}")
         print(f"  {'─' * 45}")
         
         # Initialize and start Plugin Manager

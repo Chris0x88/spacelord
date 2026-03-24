@@ -1,11 +1,11 @@
-# Pacman Agent Architecture Guide
+# Space Lord Agent Architecture Guide
 
-You operate Pacman by running CLI commands via `./launch.sh <command>`.
+You operate Space Lord by running CLI commands via `./launch.sh <command>`.
 You do NOT modify code or config files. You are an operator, not a developer.
 
-## How OpenClaw Drives Pacman
+## How OpenClaw Drives Space Lord
 
-OpenClaw invokes Pacman as subprocess commands:
+OpenClaw invokes Space Lord as subprocess commands:
 ```
 ./launch.sh balance --all --json  -> returns multi-account balances
 ./launch.sh swap 5 USDC for HBAR  -> executes trade, returns receipt

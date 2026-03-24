@@ -59,7 +59,7 @@ class BackupPlugin(BasePlugin):
         """Zip the data directory."""
         now = datetime.now()
         timestamp = now.strftime("%Y%m%d_%H%M%S")
-        filename = f"pacman_backup_{timestamp}.zip"
+        filename = f"spacelord_backup_{timestamp}.zip"
         dest_path = self.backup_dir / filename
         
         logger.info(f"[{self.plugin_name}] Creating snapshot: {filename}")
@@ -80,8 +80,8 @@ class BackupPlugin(BasePlugin):
         cutoff = datetime.now() - timedelta(days=self.retention_days)
         removed_count = 0
         
-        for file in self.backup_dir.glob("pacman_backup_*.zip"):
-            # Extract date from filename: pacman_backup_YYYYMMDD_HHMMSS.zip
+        for file in self.backup_dir.glob("spacelord_backup_*.zip"):
+            # Extract date from filename: spacelord_backup_YYYYMMDD_HHMMSS.zip
             try:
                 date_str = file.name.split("_")[2] # YYYYMMDD
                 file_date = datetime.strptime(date_str, "%Y%m%d")

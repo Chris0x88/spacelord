@@ -18,10 +18,10 @@ import time
 sys.path.insert(0, ".")
 
 # Force NON-simulation mode for a real fill test
-os.environ["PACMAN_SIMULATE"] = "false"
-os.environ["PACMAN_CONFIRM"] = "false"  # No interactive confirmation
+os.environ["SPACELORD_SIMULATE"] = "false"
+os.environ["SPACELORD_CONFIRM"] = "false"  # No interactive confirmation
 
-from src.controller import PacmanController
+from src.controller import SpaceLordController
 from src.limit_orders import LimitOrderEngine
 from lib.prices import price_manager
 
@@ -30,7 +30,7 @@ print("  LIVE LIMIT ORDER FILL TEST")
 print("=" * 60)
 
 # 1. Init
-app = PacmanController()
+app = SpaceLordController()
 print(f"\n✅ Controller initialized (mode: {'SIM' if app.config.simulate_mode else 'LIVE'})")
 print(f"   Account: {app.account_id}")
 print(f"   Network: {app.network}")

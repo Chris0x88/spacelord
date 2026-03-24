@@ -165,7 +165,7 @@ def format_home(
 ) -> str:
     """Home screen with optional balance summary."""
     lines = [
-        "🏠 <b>Pacman Wallet</b>",
+        "🏠 <b>Space Lord Wallet</b>",
         _THIN_SEP,
         "",
     ]

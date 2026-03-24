@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Pacman History - Execution Recording & Retrieval
+Space Lord History - Execution Recording & Retrieval
 =================================================
 
 Records swap, V1 swap, staking, and transfer executions to JSON files.
 Also appends to the JSONL training log for AI model fine-tuning.
 
-Extracted from PacmanExecutor to keep the executor focused on swap execution.
+Extracted from SpaceLordExecutor to keep the executor focused on swap execution.
 """
 
 import json

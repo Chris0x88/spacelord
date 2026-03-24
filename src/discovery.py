@@ -1,9 +1,9 @@
 """
-Pacman Discovery - Universal Pool Search Engine
+Space Lord Discovery - Universal Pool Search Engine
 ==============================================
 
 This module is a standalone "Sidecar" for finding liquidity pools on Hedera.
-It is decoupled from the PacmanController to ensure that discovery logic
+It is decoupled from the SpaceLordController to ensure that discovery logic
 (which often requires external APIs and heavy filtering) does not 
 destabilize core trading logic.
 

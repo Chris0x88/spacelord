@@ -1,4 +1,4 @@
-# Pacman Agent — User Preferences
+# Space Lord Agent — User Preferences
 
 Copy this file to `openclaw/USER.md` and customize for your setup.
 

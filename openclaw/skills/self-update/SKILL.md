@@ -12,8 +12,8 @@ triggers:
 
 # Self-Update Skill
 
-Your knowledge of Pacman comes from files in this workspace (`openclaw/`).
-The Pacman CLI is developed separately and may add commands, flags, or features
+Your knowledge of Space Lord comes from files in this workspace (`openclaw/`).
+The Space Lord CLI is developed separately and may add commands, flags, or features
 you don't know about yet.
 
 ## How to Sync

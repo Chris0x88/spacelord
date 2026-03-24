@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pacman Translator - Natural Language to Intent
+Space Lord Translator - Natural Language to Intent
 ==============================================
 
 Parses user commands into structured requests.

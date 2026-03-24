@@ -2,7 +2,7 @@
 Agent Sync — Push codebase knowledge into the OpenClaw agent workspace
 ======================================================================
 The OpenClaw agent can only see files in openclaw/. This command reads
-the current state of the Pacman codebase and writes updated workspace
+the current state of the Space Lord codebase and writes updated workspace
 files that the agent picks up on its next turn.
 
 Usage:
@@ -83,11 +83,11 @@ def _build_tools(app):
     commands_block = _get_help_output()
     ts = datetime.now().strftime('%Y-%m-%d %H:%M')
 
-    return f"""# Pacman Tools — Environment-Specific Configuration
+    return f"""# Space Lord Tools — Environment-Specific Configuration
 
 ## Entry Point
 All CLI commands: `./launch.sh <command>`
-Working directory: The pacman repository root (where launch.sh lives)
+Working directory: The Space Lord repository root (where launch.sh lives)
 
 ## Accounts
 - **Main**: `{main_id}` — user trading wallet
@@ -106,7 +106,7 @@ Working directory: The pacman repository root (where launch.sh lives)
 - Check: `./launch.sh hcs status`
 
 ## Cross-Agent Feedback (HCS)
-Submit bugs, suggestions, and successes to a shared HCS topic that all Pacman agents can read.
+Submit bugs, suggestions, and successes to a shared HCS topic that all Space Lord agents can read.
 ```
 ./launch.sh hcs feedback submit bug "description of the issue"
 ./launch.sh hcs feedback submit suggestion "improvement idea"
@@ -164,14 +164,14 @@ def _build_agents():
 
     ts = datetime.now().strftime('%Y-%m-%d %H:%M')
 
-    return f"""# Pacman Agent Architecture Guide
+    return f"""# Space Lord Agent Architecture Guide
 
-You operate Pacman by running CLI commands via `./launch.sh <command>`.
+You operate Space Lord by running CLI commands via `./launch.sh <command>`.
 You do NOT modify code or config files. You are an operator, not a developer.
 
-## How OpenClaw Drives Pacman
+## How OpenClaw Drives Space Lord
 
-OpenClaw invokes Pacman as subprocess commands:
+OpenClaw invokes Space Lord as subprocess commands:
 ```
 ./launch.sh balance --all --json  -> returns multi-account balances
 ./launch.sh swap 5 USDC for HBAR  -> executes trade, returns receipt
@@ -285,7 +285,7 @@ def _build_bootstrap():
         if marker in content:
             extra = "\n" + content[content.index(marker):]
 
-    result = f"""# Pacman Bootstrap — Safety Limits & Startup
+    result = f"""# Space Lord Bootstrap — Safety Limits & Startup
 
 ## Safety Limits (from governance.json)
 

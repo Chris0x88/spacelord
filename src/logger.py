@@ -6,7 +6,7 @@ from pathlib import Path
 LOG_DIR = Path("logs")
 LOG_DIR.mkdir(exist_ok=True)
 
-def setup_logger(name: str, log_file: str = "pacman.log", level=logging.INFO):
+def setup_logger(name: str, log_file: str = "spacelord.log", level=logging.INFO):
     """Set up a logger that outputs to both a file and the console."""
     formatter = logging.Formatter(
         '%(asctime)s | %(name)s | %(levelname)s | %(message)s',
@@ -36,17 +36,17 @@ def setup_logger(name: str, log_file: str = "pacman.log", level=logging.INFO):
     return logger
 
 # Primary app logger (Console + File)
-logger = setup_logger("pacman")
+logger = setup_logger("spacelord")
 
 # UI Mirror Logger (File ONLY)
 # We create a child logger or separate logger that only has the file handler
-ui_logger = logging.getLogger("pacman.ui")
+ui_logger = logging.getLogger("spacelord.ui")
 ui_logger.setLevel(logging.INFO)
-ui_logger.propagate = False # Prevent double-logging to parent 'pacman' handlers
+ui_logger.propagate = False # Prevent double-logging to parent 'spacelord' handlers
 
 # Add ONLY the file handler to ui_logger
 _file_formatter = logging.Formatter('%(asctime)s | UI | %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-_file_h = logging.FileHandler(LOG_DIR / "pacman.log")
+_file_h = logging.FileHandler(LOG_DIR / "spacelord.log")
 _file_h.setFormatter(_file_formatter)
 ui_logger.addHandler(_file_h)
 

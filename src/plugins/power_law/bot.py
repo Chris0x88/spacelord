@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Power Law Rebalancer Bot — Pacman Integration
+Power Law Rebalancer Bot — Space Lord Integration
 ==============================================
 
 Adapted from the standalone Bitcoin Power Law rebalancer.
-Uses Pacman's controller via adapter.py instead of direct Web3 calls.
+Uses Space Lord's controller via adapter.py instead of direct Web3 calls.
 
 Core logic: get power law signal → compare to portfolio → rebalance if deviation > threshold.
 """
@@ -20,7 +20,7 @@ from typing import Optional, Callable
 from src.logger import logger
 from src.core.base_plugin import BasePlugin
 from src.plugins.power_law.config import RobotConfig, get_robot_config
-from src.plugins.power_law.adapter import PacmanAdapter, PortfolioState
+from src.plugins.power_law.adapter import SpaceLordAdapter, PortfolioState
 
 # State persistence
 STATE_FILE = Path(__file__).resolve().parent.parent.parent.parent / "data" / "robot_state.json"
@@ -29,18 +29,18 @@ STATE_FILE = Path(__file__).resolve().parent.parent.parent.parent / "data" / "ro
 class PowerLawBot(BasePlugin):
     """
     Rebalancer bot that uses the Bitcoin Power Law Model to determine
-    optimal BTC allocation and rebalances via Pacman's swap engine.
+    optimal BTC allocation and rebalances via Space Lord's swap engine.
     """
     
     def __init__(self, app, config: Optional[RobotConfig] = None):
         """
         Args:
-            app: An initialized PacmanController instance.
+            app: An initialized SpaceLordController instance.
             config: Robot configuration. If None, loads from .env.
         """
         super().__init__(app, "PowerLaw")
         self.config = config or get_robot_config()
-        self.adapter = PacmanAdapter(app)
+        self.adapter = SpaceLordAdapter(app)
         
         # 1. Ensure Robot Account exists and is configured
         self._ensure_robot_account()
@@ -329,7 +329,7 @@ class PowerLawBot(BasePlugin):
         cycle phase, current portfolio state, and whether the model is saying
         accumulate or distribute.
 
-        Cost: ~$0.0001 per HCS message. Revenue per subscriber: ~$0.027/day.
+        Cost: ~$0.0008 per HCS message.
 
         Uses exponential backoff on consecutive HCS failures to avoid log flooding.
         Backoff schedule: 60s -> 300s -> 900s -> 3600s (cap).

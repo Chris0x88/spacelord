@@ -3,7 +3,7 @@ Telegram Fast-Lane Command  [OPENCLAW AGENT — subprocess bridge]
 ===========================
 Single CLI entry point for all Telegram button-driven operations.
 
-Called by OpenClaw's pacman agent (TELEGRAM_BOT_TOKEN) when it receives
+Called by OpenClaw's Space Lord agent (TELEGRAM_BOT_TOKEN) when it receives
 callback_data or slash commands from the AGENT Telegram chat.
 Returns pre-formatted HTML + JSON button markup that OpenClaw passes
 directly to Telegram's sendMessage API.
@@ -26,7 +26,7 @@ import json
 import sys
 from pathlib import Path
 
-from src.controller import PacmanController
+from src.controller import SpaceLordController
 from lib.tg_router import InboundRouter
 
 

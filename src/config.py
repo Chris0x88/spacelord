@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pacman Config - Secure Configuration Management
+Space Lord Config - Secure Configuration Management
 Handles private keys, RPC endpoints, and safety limits.
 """
 
@@ -47,8 +47,8 @@ class SecureString:
         return bool(self._data)
 
 @dataclass
-class PacmanConfig:
-    """Secure configuration for Pacman trading."""
+class SpaceLordConfig:
+    """Secure configuration for Space Lord trading."""
     
     # Required
     private_key: Optional[SecureString] = None
@@ -100,7 +100,7 @@ class PacmanConfig:
             return default
     
     @classmethod
-    def from_env(cls) -> "PacmanConfig":
+    def from_env(cls) -> "Space LordConfig":
         """Load configuration from environment variables."""
         
         # Load from .env file if present
@@ -122,11 +122,11 @@ class PacmanConfig:
             del raw_key # Attempt to clear local ref
         
         # Network settings
-        config.network = os.getenv("PACMAN_NETWORK", "mainnet")
+        config.network = os.getenv("SPACELORD_NETWORK", "mainnet")
         if config.network == "testnet":
             config.rpc_url = "https://testnet.hashio.io/api"
         else:
-            config.rpc_url = os.getenv("PACMAN_RPC_URL", "https://mainnet.hashio.io/api")
+            config.rpc_url = os.getenv("SPACELORD_RPC_URL", "https://mainnet.hashio.io/api")
         
         # Safety limits — data/governance.json is the ONLY place to change these.
         # Edit that file, not this code and not .env.
@@ -148,7 +148,7 @@ class PacmanConfig:
         # Slippage priority: ENV var (override) > governance.json (primary) > default (2.0%)
         # Hard cap: 5% (enforced in validate())
         max_slippage = 2.0  # Default fallback
-        env_slippage = os.getenv("PACMAN_MAX_SLIPPAGE")
+        env_slippage = os.getenv("SPACELORD_MAX_SLIPPAGE")
         if env_slippage:
             # ENV var is the override escape hatch (e.g. for one-off high-slippage swaps)
             max_slippage = cls._safe_float(env_slippage, 2.0)
@@ -174,9 +174,9 @@ class PacmanConfig:
         config.max_slippage_percent = min(max_slippage, 5.0)  # Hard cap at 5%
         
         # Execution mode
-        config.simulate_mode = os.getenv("PACMAN_SIMULATE", "false").lower() == "true"
-        config.require_confirmation = os.getenv("PACMAN_CONFIRM", "true").lower() == "true"
-        config.verbose_mode = os.getenv("PACMAN_VERBOSE", "false").lower() == "true"
+        config.simulate_mode = os.getenv("SPACELORD_SIMULATE", "false").lower() == "true"
+        config.require_confirmation = os.getenv("SPACELORD_CONFIRM", "true").lower() == "true"
+        config.verbose_mode = os.getenv("SPACELORD_VERBOSE", "false").lower() == "true"
         
         # Hedera account ID (for transaction records)
         config.hedera_account_id = os.getenv("HEDERA_ACCOUNT_ID")
@@ -300,7 +300,7 @@ class PacmanConfig:
     def print_status(self):
         """Print current configuration status."""
         print("="*60)
-        print("🔧 PACMAN CONFIGURATION")
+        print("🔧 SPACE LORD CONFIGURATION")
         print("="*60)
         print(f"Network: {self.network}")
         print(f"RPC: {self.rpc_url}")
@@ -322,9 +322,9 @@ class PacmanConfig:
 # Environment Template
 # ---------------------------------------------------------------------------
 
-_default_config = PacmanConfig()
+_default_config = SpaceLordConfig()
 
-ENV_TEMPLATE = f"""# Pacman Configuration
+ENV_TEMPLATE = f"""# Space Lord Configuration
 # Copy this to .env and fill in your values
 
 # Required for live trading (Standard Ethereum Format)
@@ -334,16 +334,16 @@ PRIVATE_KEY=your_private_key_here_without_0x_prefix
 HEDERA_ACCOUNT_ID=0.0.123456
 
 # Network (mainnet or testnet)
-PACMAN_NETWORK={_default_config.network}
+SPACELORD_NETWORK={_default_config.network}
 
 # Safety limits — ALL live in data/governance.json (NOT here)
 # Slippage override (governance.json is primary; this env var overrides it)
-PACMAN_MAX_SLIPPAGE={_default_config.max_slippage_percent:.1f}  # Override only; primary source is governance.json
+SPACELORD_MAX_SLIPPAGE={_default_config.max_slippage_percent:.1f}  # Override only; primary source is governance.json
 
 # Execution mode
-PACMAN_SIMULATE={'true' if _default_config.simulate_mode else 'false'}
-PACMAN_CONFIRM={'true' if _default_config.require_confirmation else 'false'}
-PACMAN_VERBOSE={'true' if _default_config.verbose_mode else 'false'}
+SPACELORD_SIMULATE={'true' if _default_config.simulate_mode else 'false'}
+SPACELORD_CONFIRM={'true' if _default_config.require_confirmation else 'false'}
+SPACELORD_VERBOSE={'true' if _default_config.verbose_mode else 'false'}
 """
 
 def create_env_template():
@@ -373,7 +373,7 @@ if __name__ == "__main__":
         create_env_template()
     else:
         try:
-            config = PacmanConfig.from_env()
+            config = SpaceLordConfig.from_env()
             config.print_status()
             config.validate()
             print("\n✅ Configuration is valid and safe for trading")

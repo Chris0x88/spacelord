@@ -7,7 +7,7 @@ Discord Fast-Lane Command  [UNTESTED PLUGIN — OpenClaw agent subprocess bridge
 Single CLI entry point for all Discord button-driven operations.
 Same router as Telegram, different output format (Discord markdown + buttons).
 
-Called by OpenClaw's pacman agent when it receives interactions from Discord.
+Called by OpenClaw's Space Lord agent when it receives interactions from Discord.
 Returns pre-formatted Discord markdown + JSON button markup.
 
 Usage:
@@ -20,7 +20,7 @@ import json
 import sys
 from pathlib import Path
 
-from src.controller import PacmanController
+from src.controller import SpaceLordController
 from lib.tg_router import InboundRouter
 from lib.dc_format import convert_response
 

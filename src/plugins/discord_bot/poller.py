@@ -61,7 +61,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger("pacman.discord")
+logger = logging.getLogger("spacelord.discord")
 
 # ---------------------------------------------------------------------------
 # Module-level state
@@ -268,8 +268,8 @@ def create_bot() -> discord.Client:
     # ── Slash Commands ─────────────────────────────────────────
 
     @tree.command(
-        name="pacman",
-        description="Open Pacman wallet menu",
+        name="spacelord",
+        description="Open Space Lord wallet menu",
         guild=guild_obj,
     )
     async def cmd_menu(interaction: discord.Interaction):
@@ -529,9 +529,9 @@ async def main() -> None:
     _bot_token = dc_config.get_bot_token()
     _allowed_users = dc_config.get_allowed_users()
 
-    logger.info("Initialising PacmanController...")
-    from src.controller import PacmanController
-    controller = PacmanController()
+    logger.info("Initialising SpaceLordController...")
+    from src.controller import SpaceLordController
+    controller = SpaceLordController()
     _router = InboundRouter(controller)
 
     client, tree = create_bot()

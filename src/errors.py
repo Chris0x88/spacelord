@@ -1,47 +1,47 @@
 """
-Pacman Errors
+Space Lord Errors
 =============
 
-Standardized exception hierarchy for the Pacman application.
+Standardized exception hierarchy for the Space Lord application.
 These exceptions separate "expected failures" (User error, Market conditions)
 from "unexpected crashes" (Bugs).
 """
 
-class PacmanError(Exception):
-    """Base class for all Pacman exceptions."""
+class SpaceLordError(Exception):
+    """Base class for all Space Lord exceptions."""
     def __init__(self, message: str, details: dict = None):
         super().__init__(message)
         self.message = message
         self.details = details or {}
 
-class ConfigurationError(PacmanError):
+class ConfigurationError(SpaceLordError):
     """Raised when the environment or config is invalid."""
     pass
 
-class TokenNotFoundError(PacmanError):
+class TokenNotFoundError(SpaceLordError):
     """Raised when a requested token symbol cannot be resolved."""
     pass
 
-class RouteNotFoundError(PacmanError):
+class RouteNotFoundError(SpaceLordError):
     """Raised when no valid swap path exists between tokens."""
     pass
 
-class InsufficientFundsError(PacmanError):
+class InsufficientFundsError(SpaceLordError):
     """Raised when the wallet lacks funds for the operation."""
     pass
 
-class ExecutionError(PacmanError):
+class ExecutionError(SpaceLordError):
     """Raised when a transaction fails on-chain or during simulation."""
     pass
 
-class UserCancelledError(PacmanError):
+class UserCancelledError(SpaceLordError):
     """Raised when the user declines a confirmation prompt."""
     pass
 
-class SlippageExceededError(PacmanError):
+class SlippageExceededError(SpaceLordError):
     """Raised when slippage exceeds user's configured maximum."""
     pass
 
-class PriceFetchError(PacmanError):
+class PriceFetchError(SpaceLordError):
     """Raised when price data cannot be fetched from APIs."""
     pass

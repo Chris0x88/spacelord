@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pacman Variant Router - Handles ERC20 vs HTS token variants
+Space Lord Variant Router - Handles ERC20 vs HTS token variants
 The ultimate routing engine that understands dual-token formats on Hedera.
 """
 
@@ -67,7 +67,7 @@ class VariantRoute:
                 lines.append(f"  {i}. Wrap {step.from_token} → {step.to_token} (gas: {step.gas_estimate_hbar:.3f} HBAR)")
         return "\n".join(lines)
 
-class PacmanVariantRouter:
+class SpaceLordVariantRouter:
     """
     Ultimate router that understands Hedera's dual-token system.
     
@@ -136,7 +136,7 @@ class PacmanVariantRouter:
         """Get the current live HBAR price from the price manager."""
         return self.price_manager.get_hbar_price()
         
-    def load_pools(self, pools_file: str = "data/pacman_data_raw.json"):
+    def load_pools(self, pools_file: str = "data/spacelord_data_raw.json"):
         """
         Populate the routing graph.
         

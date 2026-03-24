@@ -1,7 +1,7 @@
-# Pacman — Claude Code Governance
+# Space Lord — Claude Code Governance
 
 ## What This Is
-Pacman is a Python CLI for Hedera Hashgraph trading (~10K LOC), designed for AI agent operation via OpenClaw. Entry point: `./launch.sh`. Core: `src/controller.py` → `src/router.py` → `src/executor.py`.
+Space Lord is a Python CLI for Hedera Hashgraph trading (~10K LOC), designed for AI agent operation via OpenClaw. Entry point: `./launch.sh`. Core: `src/controller.py` → `src/router.py` → `src/executor.py`.
 
 ## Hard Rules
 

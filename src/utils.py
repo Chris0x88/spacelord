@@ -1,8 +1,8 @@
 """
-Pacman Utilities
+Space Lord Utilities
 ================
 
-General purpose utility functions for the Pacman suite.
+General purpose utility functions for the Space Lord suite.
 """
 
 import re

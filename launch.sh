@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Pacman Zero-Dependency Launcher (Single-Instance)
+# Space Lord Zero-Dependency Launcher (Single-Instance)
 # ============================================================================
 # Usage:  ./launch.sh [command]
 #
@@ -34,14 +34,14 @@ NC='\033[0m'
 
 # --- Step 1: Ensure uv is installed ---
 if ! command -v uv &> /dev/null; then
-    echo -e "${CYAN}[Pacman]${NC} Installing uv (Astral Python manager)..."
+    echo -e "${CYAN}[Space Lord]${NC} Installing uv (Astral Python manager)..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     if ! command -v uv &> /dev/null; then
-        echo -e "${RED}[Pacman]${NC} Failed to install uv. See: https://docs.astral.sh/uv/"
+        echo -e "${RED}[Space Lord]${NC} Failed to install uv. See: https://docs.astral.sh/uv/"
         exit 1
     fi
-    echo -e "${GREEN}[Pacman]${NC} uv installed."
+    echo -e "${GREEN}[Space Lord]${NC} uv installed."
 fi
 
 # --- Helper: Check if daemon is running ---
@@ -93,9 +93,9 @@ stop_daemon() {
 
 # --- Step 2: Check for .env ---
 if [ ! -f "$SCRIPT_DIR/.env" ] && [ "$1" != "init" ] 2>/dev/null; then
-    echo -e "${YELLOW}[Pacman]${NC} No .env file found."
-    echo -e "${CYAN}[Pacman]${NC} Run: ./launch.sh init    (full first-run wizard)"
-    echo -e "${CYAN}[Pacman]${NC}  or: cp .env.template .env && edit manually"
+    echo -e "${YELLOW}[Space Lord]${NC} No .env file found."
+    echo -e "${CYAN}[Space Lord]${NC} Run: ./launch.sh init    (full first-run wizard)"
+    echo -e "${CYAN}[Space Lord]${NC}  or: cp .env.template .env && edit manually"
     exit 1
 fi
 
@@ -105,7 +105,7 @@ if [ $# -gt 0 ]; then
         init)
             echo ""
             echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "${GREEN}  Pacman — First Run Setup${NC}"
+            echo -e "${GREEN}  Space Lord — First Run Setup${NC}"
             echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             echo ""
 
@@ -135,7 +135,7 @@ if [ $# -gt 0 ]; then
             if [ -d "$SCRIPT_DIR/openclaw" ]; then
                 echo -e "${CYAN}[3/5]${NC} Syncing agent documentation..."
                 uv run --project "$SCRIPT_DIR" python -m cli.main agent-sync 2>/dev/null || \
-                    echo -e "${YELLOW}[Pacman]${NC} agent-sync skipped (run manually if needed)"
+                    echo -e "${YELLOW}[Space Lord]${NC} agent-sync skipped (run manually if needed)"
             else
                 echo -e "${CYAN}[3/5]${NC} OpenClaw workspace not found — skipping agent sync."
             fi
@@ -143,7 +143,7 @@ if [ $# -gt 0 ]; then
             # 4. Run health check
             echo -e "${CYAN}[4/5]${NC} Running health check..."
             uv run --project "$SCRIPT_DIR" python -m cli.main doctor 2>/dev/null || \
-                echo -e "${YELLOW}[Pacman]${NC} Doctor check had warnings — review above."
+                echo -e "${YELLOW}[Space Lord]${NC} Doctor check had warnings — review above."
 
             # 5. Done
             echo ""
@@ -163,11 +163,11 @@ if [ $# -gt 0 ]; then
 
         dashboard)
             if ! is_daemon_running; then
-                echo -e "${YELLOW}[Pacman]${NC} Daemon not running — starting..."
+                echo -e "${YELLOW}[Space Lord]${NC} Daemon not running — starting..."
                 "$0" daemon-start
                 sleep 2
             fi
-            echo -e "${CYAN}[Pacman]${NC} Opening dashboard..."
+            echo -e "${CYAN}[Space Lord]${NC} Opening dashboard..."
             open "http://127.0.0.1:8088/" 2>/dev/null || echo "http://127.0.0.1:8088/"
             exit 0
             ;;
@@ -175,13 +175,13 @@ if [ $# -gt 0 ]; then
         daemon-start|start)
             if is_daemon_running; then
                 pid=$(get_daemon_pid)
-                echo -e "${GREEN}[Pacman]${NC} Daemon already running (PID: $pid)"
-                echo -e "${CYAN}[Pacman]${NC} Dashboard: http://127.0.0.1:8088/"
-                echo -e "${CYAN}[Pacman]${NC} Stop: ./launch.sh daemon-stop | Restart: ./launch.sh daemon-restart"
+                echo -e "${GREEN}[Space Lord]${NC} Daemon already running (PID: $pid)"
+                echo -e "${CYAN}[Space Lord]${NC} Dashboard: http://127.0.0.1:8088/"
+                echo -e "${CYAN}[Space Lord]${NC} Stop: ./launch.sh daemon-stop | Restart: ./launch.sh daemon-restart"
                 exit 0
             fi
 
-            echo -e "${GREEN}[Pacman]${NC} Starting daemon..."
+            echo -e "${GREEN}[Space Lord]${NC} Starting daemon..."
             mkdir -p "$SCRIPT_DIR/data"
 
             PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
@@ -192,11 +192,11 @@ if [ $# -gt 0 ]; then
 
             sleep 2
             if kill -0 "$daemon_pid" 2>/dev/null; then
-                echo -e "${GREEN}[Pacman]${NC} Daemon started (PID: $daemon_pid)"
-                echo -e "${CYAN}[Pacman]${NC} Dashboard: http://127.0.0.1:8088/"
-                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f daemon_output.log"
+                echo -e "${GREEN}[Space Lord]${NC} Daemon started (PID: $daemon_pid)"
+                echo -e "${CYAN}[Space Lord]${NC} Dashboard: http://127.0.0.1:8088/"
+                echo -e "${CYAN}[Space Lord]${NC} Logs: tail -f daemon_output.log"
             else
-                echo -e "${RED}[Pacman]${NC} Daemon failed to start. Check daemon_output.log"
+                echo -e "${RED}[Space Lord]${NC} Daemon failed to start. Check daemon_output.log"
                 rm -f "$PID_FILE"
                 exit 1
             fi
@@ -205,15 +205,15 @@ if [ $# -gt 0 ]; then
 
         daemon-stop|stop)
             if ! is_daemon_running; then
-                echo -e "${CYAN}[Pacman]${NC} No daemon running."
+                echo -e "${CYAN}[Space Lord]${NC} No daemon running."
                 lsof -ti:8088 | xargs kill -9 2>/dev/null || true
                 rm -f "$PID_FILE"
                 exit 0
             fi
             pid=$(get_daemon_pid)
-            echo -e "${CYAN}[Pacman]${NC} Stopping daemon (PID: $pid)..."
+            echo -e "${CYAN}[Space Lord]${NC} Stopping daemon (PID: $pid)..."
             stop_daemon
-            echo -e "${GREEN}[Pacman]${NC} Daemon stopped."
+            echo -e "${GREEN}[Space Lord]${NC} Daemon stopped."
             exit 0
             ;;
 
@@ -227,16 +227,16 @@ if [ $# -gt 0 ]; then
         daemon-status)
             if is_daemon_running; then
                 pid=$(get_daemon_pid)
-                echo -e "${GREEN}[Pacman]${NC} Daemon running (PID: $pid)"
-                echo -e "${CYAN}[Pacman]${NC} Dashboard: http://127.0.0.1:8088/"
+                echo -e "${GREEN}[Space Lord]${NC} Daemon running (PID: $pid)"
+                echo -e "${CYAN}[Space Lord]${NC} Dashboard: http://127.0.0.1:8088/"
                 if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8088/health 2>/dev/null | grep -q "200"; then
-                    echo -e "${GREEN}[Pacman]${NC} API: healthy"
+                    echo -e "${GREEN}[Space Lord]${NC} API: healthy"
                 else
-                    echo -e "${YELLOW}[Pacman]${NC} API: not responding yet"
+                    echo -e "${YELLOW}[Space Lord]${NC} API: not responding yet"
                 fi
             else
-                echo -e "${CYAN}[Pacman]${NC} Daemon not running."
-                echo -e "${CYAN}[Pacman]${NC} Start: ./launch.sh start"
+                echo -e "${CYAN}[Space Lord]${NC} Daemon not running."
+                echo -e "${CYAN}[Space Lord]${NC} Start: ./launch.sh start"
             fi
             exit 0
             ;;
@@ -244,7 +244,7 @@ if [ $# -gt 0 ]; then
         telegram-start|tg-start)
             TG_PID_FILE="$SCRIPT_DIR/data/telegram.pid"
             if [ -f "$TG_PID_FILE" ] && kill -0 "$(cat "$TG_PID_FILE")" 2>/dev/null; then
-                echo -e "${GREEN}[Pacman]${NC} Telegram bot already running (PID: $(cat "$TG_PID_FILE"))"
+                echo -e "${GREEN}[Space Lord]${NC} Telegram bot already running (PID: $(cat "$TG_PID_FILE"))"
                 exit 0
             fi
             # Load .env so TELEGRAM_BOT_TOKEN is available
@@ -255,10 +255,10 @@ if [ $# -gt 0 ]; then
                 set +a
             fi
             if [ -z "${TELEGRAM_BOT_TOKEN:-}" ]; then
-                echo -e "${RED}[Pacman]${NC} TELEGRAM_BOT_TOKEN not set. Add it to .env first."
+                echo -e "${RED}[Space Lord]${NC} TELEGRAM_BOT_TOKEN not set. Add it to .env first."
                 exit 1
             fi
-            echo -e "${GREEN}[Pacman]${NC} Starting Telegram bot (long-polling)..."
+            echo -e "${GREEN}[Space Lord]${NC} Starting Telegram bot (long-polling)..."
             mkdir -p "$SCRIPT_DIR/logs"
             PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
             nohup "$PYTHON_EXEC" -m src.plugins.tg_wallet_bot.poller \
@@ -268,11 +268,11 @@ if [ $# -gt 0 ]; then
             disown
             sleep 3
             if kill -0 "$tg_pid" 2>/dev/null; then
-                echo -e "${GREEN}[Pacman]${NC} Telegram bot started (PID: $tg_pid)"
-                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/telegram.log"
-                echo -e "${CYAN}[Pacman]${NC} No tunnel needed — direct connection to Telegram API"
+                echo -e "${GREEN}[Space Lord]${NC} Telegram bot started (PID: $tg_pid)"
+                echo -e "${CYAN}[Space Lord]${NC} Logs: tail -f logs/telegram.log"
+                echo -e "${CYAN}[Space Lord]${NC} No tunnel needed — direct connection to Telegram API"
             else
-                echo -e "${RED}[Pacman]${NC} Failed to start. Check logs/telegram.log"
+                echo -e "${RED}[Space Lord]${NC} Failed to start. Check logs/telegram.log"
                 rm -f "$TG_PID_FILE"
                 exit 1
             fi
@@ -299,10 +299,10 @@ if [ $# -gt 0 ]; then
             pkill -f "src.plugins.tg_wallet_bot.poller" 2>/dev/null || true
             sleep 1
             if pgrep -f "src.plugins.tg_wallet_bot.poller" > /dev/null 2>&1; then
-                echo -e "${YELLOW}[Pacman]${NC} Warning: stray poller still running — forcing kill."
+                echo -e "${YELLOW}[Space Lord]${NC} Warning: stray poller still running — forcing kill."
                 pkill -9 -f "src.plugins.tg_wallet_bot.poller" 2>/dev/null || true
             fi
-            echo -e "${GREEN}[Pacman]${NC} Telegram bot stopped."
+            echo -e "${GREEN}[Space Lord]${NC} Telegram bot stopped."
             exit 0
             ;;
 
@@ -329,22 +329,22 @@ if [ $# -gt 0 ]; then
 
             if [ -n "$LIVE_PID" ]; then
                 # Check whether launchd is managing it
-                if launchctl list 2>/dev/null | grep -q "com.pacman.telegram"; then
-                    echo -e "${GREEN}[Pacman]${NC} Telegram bot running (PID: $LIVE_PID) — managed by launchd (auto-restarts)"
+                if launchctl list 2>/dev/null | grep -q "com.spacelord.telegram"; then
+                    echo -e "${GREEN}[Space Lord]${NC} Telegram bot running (PID: $LIVE_PID) — managed by launchd (auto-restarts)"
                 else
-                    echo -e "${GREEN}[Pacman]${NC} Telegram bot running (PID: $LIVE_PID)"
+                    echo -e "${GREEN}[Space Lord]${NC} Telegram bot running (PID: $LIVE_PID)"
                 fi
                 # Pull bot username from last log entry
                 BOT_NAME=$(grep "Bot: @" "$SCRIPT_DIR/logs/telegram.log" 2>/dev/null | tail -1 | sed 's/.*Bot: //')
-                [ -n "$BOT_NAME" ] && echo -e "${CYAN}[Pacman]${NC} Connected as: $BOT_NAME"
-                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/telegram.log"
+                [ -n "$BOT_NAME" ] && echo -e "${CYAN}[Space Lord]${NC} Connected as: $BOT_NAME"
+                echo -e "${CYAN}[Space Lord]${NC} Logs: tail -f logs/telegram.log"
             else
-                echo -e "${CYAN}[Pacman]${NC} Telegram bot not running."
-                if launchctl list 2>/dev/null | grep -q "com.pacman.telegram"; then
-                    echo -e "${YELLOW}[Pacman]${NC} launchd service exists but process is down — check logs."
+                echo -e "${CYAN}[Space Lord]${NC} Telegram bot not running."
+                if launchctl list 2>/dev/null | grep -q "com.spacelord.telegram"; then
+                    echo -e "${YELLOW}[Space Lord]${NC} launchd service exists but process is down — check logs."
                 else
-                    echo -e "${CYAN}[Pacman]${NC} Start:   ./launch.sh telegram-start"
-                    echo -e "${CYAN}[Pacman]${NC} Install: ./launch.sh telegram-install  (auto-start on login)"
+                    echo -e "${CYAN}[Space Lord]${NC} Start:   ./launch.sh telegram-start"
+                    echo -e "${CYAN}[Space Lord]${NC} Install: ./launch.sh telegram-install  (auto-start on login)"
                 fi
             fi
             exit 0
@@ -353,12 +353,12 @@ if [ $# -gt 0 ]; then
         telegram-install|tg-install)
             # Install as a macOS launchd service — starts on login, restarts on crash
             PLIST_DIR="$HOME/Library/LaunchAgents"
-            PLIST_FILE="$PLIST_DIR/com.pacman.telegram.plist"
+            PLIST_FILE="$PLIST_DIR/com.spacelord.telegram.plist"
             mkdir -p "$PLIST_DIR"
 
             PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python 2>/dev/null)
             if [ -z "$PYTHON_EXEC" ]; then
-                echo -e "${RED}[Pacman]${NC} Could not find Python via uv. Run './launch.sh telegram-start' first."
+                echo -e "${RED}[Space Lord]${NC} Could not find Python via uv. Run './launch.sh telegram-start' first."
                 exit 1
             fi
 
@@ -369,7 +369,7 @@ if [ $# -gt 0 ]; then
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.pacman.telegram</string>
+  <string>com.spacelord.telegram</string>
   <key>ProgramArguments</key>
   <array>
     <string>$PYTHON_EXEC</string>
@@ -406,27 +406,27 @@ PLIST_EOF
             sleep 1
             launchctl load "$PLIST_FILE"
             sleep 2
-            if launchctl list | grep -q "com.pacman.telegram"; then
-                echo -e "${GREEN}[Pacman]${NC} Telegram bot installed as launchd service."
-                echo -e "${CYAN}[Pacman]${NC} It will now start automatically on login and restart on crash."
-                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/telegram.log"
+            if launchctl list | grep -q "com.spacelord.telegram"; then
+                echo -e "${GREEN}[Space Lord]${NC} Telegram bot installed as launchd service."
+                echo -e "${CYAN}[Space Lord]${NC} It will now start automatically on login and restart on crash."
+                echo -e "${CYAN}[Space Lord]${NC} Logs: tail -f logs/telegram.log"
                 echo ""
-                echo -e "${YELLOW}[Pacman]${NC} IMPORTANT: Disconnect OpenClaw from this bot's Telegram account."
+                echo -e "${YELLOW}[Space Lord]${NC} IMPORTANT: Disconnect OpenClaw from this bot's Telegram account."
                 echo -e "           Two connections = 409 Conflict. OpenClaw must NOT poll this bot token."
             else
-                echo -e "${RED}[Pacman]${NC} launchd load may have failed. Check: launchctl list | grep pacman"
+                echo -e "${RED}[Space Lord]${NC} launchd load may have failed. Check: launchctl list | grep spacelord"
             fi
             exit 0
             ;;
 
         telegram-uninstall|tg-uninstall)
-            PLIST_FILE="$HOME/Library/LaunchAgents/com.pacman.telegram.plist"
+            PLIST_FILE="$HOME/Library/LaunchAgents/com.spacelord.telegram.plist"
             if [ -f "$PLIST_FILE" ]; then
                 launchctl unload "$PLIST_FILE" 2>/dev/null || true
                 rm -f "$PLIST_FILE"
-                echo -e "${GREEN}[Pacman]${NC} Telegram launchd service removed."
+                echo -e "${GREEN}[Space Lord]${NC} Telegram launchd service removed."
             else
-                echo -e "${CYAN}[Pacman]${NC} No launchd service installed."
+                echo -e "${CYAN}[Space Lord]${NC} No launchd service installed."
             fi
             pkill -f "src.plugins.tg_wallet_bot.poller" 2>/dev/null || true
             exit 0
@@ -442,7 +442,7 @@ PLIST_EOF
         telegram-ngrok|tg-ngrok)
             # Start ngrok tunnel and auto-configure webhook
             PORT="${TELEGRAM_PORT:-8443}"
-            echo -e "${GREEN}[Pacman]${NC} Starting ngrok tunnel on port $PORT..."
+            echo -e "${GREEN}[Space Lord]${NC} Starting ngrok tunnel on port $PORT..."
             NGROK_LOG="$SCRIPT_DIR/logs/ngrok.log"
             nohup ngrok http "$PORT" --log "$NGROK_LOG" --log-format json > /dev/null 2>&1 &
             echo $! > "$SCRIPT_DIR/data/ngrok.pid"
@@ -452,17 +452,17 @@ PLIST_EOF
             NGROK_URL=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null \
                 | python3 -c "import sys,json; t=json.load(sys.stdin).get('tunnels',[]); print(next((x['public_url'] for x in t if x['proto']=='https'),''))" 2>/dev/null)
             if [ -z "$NGROK_URL" ]; then
-                echo -e "${RED}[Pacman]${NC} Could not get ngrok URL. Check logs/ngrok.log"
+                echo -e "${RED}[Space Lord]${NC} Could not get ngrok URL. Check logs/ngrok.log"
                 exit 1
             fi
-            echo -e "${GREEN}[Pacman]${NC} ngrok URL: $NGROK_URL"
+            echo -e "${GREEN}[Space Lord]${NC} ngrok URL: $NGROK_URL"
             # Write to .env
             if grep -q "TELEGRAM_WEBHOOK_URL" "$SCRIPT_DIR/.env" 2>/dev/null; then
                 sed -i.bak "s|TELEGRAM_WEBHOOK_URL=.*|TELEGRAM_WEBHOOK_URL=$NGROK_URL|" "$SCRIPT_DIR/.env"
             else
                 echo "TELEGRAM_WEBHOOK_URL=$NGROK_URL" >> "$SCRIPT_DIR/.env"
             fi
-            echo -e "${GREEN}[Pacman]${NC} TELEGRAM_WEBHOOK_URL set in .env"
+            echo -e "${GREEN}[Space Lord]${NC} TELEGRAM_WEBHOOK_URL set in .env"
             # Set the webhook
             TELEGRAM_WEBHOOK_URL="$NGROK_URL" uv run --project "$SCRIPT_DIR" \
                 python -m src.plugins.telegram.setup_webhook set
@@ -474,7 +474,7 @@ PLIST_EOF
         discord-start|dc-start)
             DC_PID_FILE="$SCRIPT_DIR/data/discord.pid"
             if [ -f "$DC_PID_FILE" ] && kill -0 "$(cat "$DC_PID_FILE")" 2>/dev/null; then
-                echo -e "${GREEN}[Pacman]${NC} Discord bot already running (PID: $(cat "$DC_PID_FILE"))"
+                echo -e "${GREEN}[Space Lord]${NC} Discord bot already running (PID: $(cat "$DC_PID_FILE"))"
                 exit 0
             fi
             # Load .env so DISCORD_BOT_TOKEN is available
@@ -485,11 +485,11 @@ PLIST_EOF
                 set +a
             fi
             if [ -z "${DISCORD_BOT_TOKEN:-}" ]; then
-                echo -e "${RED}[Pacman]${NC} DISCORD_BOT_TOKEN not set. Add it to .env first."
-                echo -e "${CYAN}[Pacman]${NC} Get one at: https://discord.com/developers/applications"
+                echo -e "${RED}[Space Lord]${NC} DISCORD_BOT_TOKEN not set. Add it to .env first."
+                echo -e "${CYAN}[Space Lord]${NC} Get one at: https://discord.com/developers/applications"
                 exit 1
             fi
-            echo -e "${GREEN}[Pacman]${NC} Starting Discord bot..."
+            echo -e "${GREEN}[Space Lord]${NC} Starting Discord bot..."
             mkdir -p "$SCRIPT_DIR/logs"
             PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
             nohup "$PYTHON_EXEC" -m src.plugins.discord_bot.poller \
@@ -499,10 +499,10 @@ PLIST_EOF
             disown
             sleep 3
             if kill -0 "$dc_pid" 2>/dev/null; then
-                echo -e "${GREEN}[Pacman]${NC} Discord bot started (PID: $dc_pid)"
-                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/discord.log"
+                echo -e "${GREEN}[Space Lord]${NC} Discord bot started (PID: $dc_pid)"
+                echo -e "${CYAN}[Space Lord]${NC} Logs: tail -f logs/discord.log"
             else
-                echo -e "${RED}[Pacman]${NC} Failed to start. Check logs/discord.log"
+                echo -e "${RED}[Space Lord]${NC} Failed to start. Check logs/discord.log"
                 rm -f "$DC_PID_FILE"
                 exit 1
             fi
@@ -526,10 +526,10 @@ PLIST_EOF
             pkill -f "src.plugins.discord_bot.poller" 2>/dev/null || true
             sleep 1
             if pgrep -f "src.plugins.discord_bot.poller" > /dev/null 2>&1; then
-                echo -e "${YELLOW}[Pacman]${NC} Warning: stray Discord bot still running — forcing kill."
+                echo -e "${YELLOW}[Space Lord]${NC} Warning: stray Discord bot still running — forcing kill."
                 pkill -9 -f "src.plugins.discord_bot.poller" 2>/dev/null || true
             fi
-            echo -e "${GREEN}[Pacman]${NC} Discord bot stopped."
+            echo -e "${GREEN}[Space Lord]${NC} Discord bot stopped."
             exit 0
             ;;
 
@@ -554,25 +554,25 @@ PLIST_EOF
             fi
 
             if [ -n "$LIVE_PID" ]; then
-                echo -e "${GREEN}[Pacman]${NC} Discord bot running (PID: $LIVE_PID)"
+                echo -e "${GREEN}[Space Lord]${NC} Discord bot running (PID: $LIVE_PID)"
                 BOT_NAME=$(grep "Bot:" "$SCRIPT_DIR/logs/discord.log" 2>/dev/null | tail -1 | sed 's/.*Bot: //')
-                [ -n "$BOT_NAME" ] && echo -e "${CYAN}[Pacman]${NC} Connected as: $BOT_NAME"
-                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/discord.log"
+                [ -n "$BOT_NAME" ] && echo -e "${CYAN}[Space Lord]${NC} Connected as: $BOT_NAME"
+                echo -e "${CYAN}[Space Lord]${NC} Logs: tail -f logs/discord.log"
             else
-                echo -e "${CYAN}[Pacman]${NC} Discord bot not running."
-                echo -e "${CYAN}[Pacman]${NC} Start: ./launch.sh discord-start"
+                echo -e "${CYAN}[Space Lord]${NC} Discord bot not running."
+                echo -e "${CYAN}[Space Lord]${NC} Start: ./launch.sh discord-start"
             fi
             exit 0
             ;;
 
         discord-install|dc-install)
             PLIST_DIR="$HOME/Library/LaunchAgents"
-            PLIST_FILE="$PLIST_DIR/com.pacman.discord.plist"
+            PLIST_FILE="$PLIST_DIR/com.spacelord.discord.plist"
             mkdir -p "$PLIST_DIR"
 
             PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python 2>/dev/null)
             if [ -z "$PYTHON_EXEC" ]; then
-                echo -e "${RED}[Pacman]${NC} Could not find Python via uv. Run './launch.sh discord-start' first."
+                echo -e "${RED}[Space Lord]${NC} Could not find Python via uv. Run './launch.sh discord-start' first."
                 exit 1
             fi
 
@@ -583,7 +583,7 @@ PLIST_EOF
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.pacman.discord</string>
+  <string>com.spacelord.discord</string>
   <key>ProgramArguments</key>
   <array>
     <string>$PYTHON_EXEC</string>
@@ -618,37 +618,37 @@ PLIST_EOF
             sleep 1
             launchctl load "$PLIST_FILE"
             sleep 2
-            if launchctl list | grep -q "com.pacman.discord"; then
-                echo -e "${GREEN}[Pacman]${NC} Discord bot installed as launchd service."
-                echo -e "${CYAN}[Pacman]${NC} It will now start automatically on login and restart on crash."
-                echo -e "${CYAN}[Pacman]${NC} Logs: tail -f logs/discord.log"
+            if launchctl list | grep -q "com.spacelord.discord"; then
+                echo -e "${GREEN}[Space Lord]${NC} Discord bot installed as launchd service."
+                echo -e "${CYAN}[Space Lord]${NC} It will now start automatically on login and restart on crash."
+                echo -e "${CYAN}[Space Lord]${NC} Logs: tail -f logs/discord.log"
             else
-                echo -e "${RED}[Pacman]${NC} launchd load may have failed. Check: launchctl list | grep pacman"
+                echo -e "${RED}[Space Lord]${NC} launchd load may have failed. Check: launchctl list | grep spacelord"
             fi
             exit 0
             ;;
 
         discord-uninstall|dc-uninstall)
-            PLIST_FILE="$HOME/Library/LaunchAgents/com.pacman.discord.plist"
+            PLIST_FILE="$HOME/Library/LaunchAgents/com.spacelord.discord.plist"
             if [ -f "$PLIST_FILE" ]; then
                 launchctl unload "$PLIST_FILE" 2>/dev/null || true
                 rm -f "$PLIST_FILE"
-                echo -e "${GREEN}[Pacman]${NC} Discord launchd service removed."
+                echo -e "${GREEN}[Space Lord]${NC} Discord launchd service removed."
             else
-                echo -e "${CYAN}[Pacman]${NC} No Discord launchd service installed."
+                echo -e "${CYAN}[Space Lord]${NC} No Discord launchd service installed."
             fi
             pkill -f "src.plugins.discord_bot.poller" 2>/dev/null || true
             exit 0
             ;;
 
         openclaw-setup|agent-setup)
-            echo -e "${CYAN}[Pacman]${NC} Starting OpenClaw agent setup..."
+            echo -e "${CYAN}[Space Lord]${NC} Starting OpenClaw agent setup..."
             uv run --project "$SCRIPT_DIR" python scripts/openclaw_setup.py
             exit $?
             ;;
 
         kill)
-            echo -e "${CYAN}[Pacman]${NC} Killing ALL Pacman processes..."
+            echo -e "${CYAN}[Space Lord]${NC} Killing ALL Space Lord processes..."
             pkill -9 -f "cli.main" 2>/dev/null || true
             pkill -9 -f "src.plugins.discord_bot.poller" 2>/dev/null || true
             lsof -ti:8088 | xargs kill -9 2>/dev/null || true
@@ -656,22 +656,22 @@ PLIST_EOF
             sleep 1
             remaining=$(pgrep -f "cli.main" 2>/dev/null | wc -l | tr -d ' ')
             if [ "$remaining" -eq 0 ]; then
-                echo -e "${GREEN}[Pacman]${NC} All clear. No Pacman processes running."
+                echo -e "${GREEN}[Space Lord]${NC} All clear. No Space Lord processes running."
             else
-                echo -e "${YELLOW}[Pacman]${NC} $remaining process(es) still running — try again."
+                echo -e "${YELLOW}[Space Lord]${NC} $remaining process(es) still running — try again."
             fi
             exit 0
             ;;
     esac
 fi
 
-# --- Step 4: Run Pacman ---
+# --- Step 4: Run Space Lord ---
 cd "$SCRIPT_DIR"
 
 if [ $# -eq 0 ]; then
     # Interactive mode — ensure daemons are running
     if ! is_daemon_running; then
-        echo -e "${CYAN}[Pacman]${NC} Starting background daemons..."
+        echo -e "${CYAN}[Space Lord]${NC} Starting background daemons..."
         PYTHON_EXEC=$(uv run --project "$SCRIPT_DIR" which python)
         mkdir -p "$SCRIPT_DIR/data"
         nohup "$PYTHON_EXEC" -m cli.main daemon > "$SCRIPT_DIR/daemon_output.log" 2>&1 &
@@ -680,14 +680,14 @@ if [ $# -eq 0 ]; then
         disown
         sleep 2
         if kill -0 "$daemon_pid" 2>/dev/null; then
-            echo -e "${GREEN}[Pacman]${NC} Daemons started (PID: $daemon_pid)"
+            echo -e "${GREEN}[Space Lord]${NC} Daemons started (PID: $daemon_pid)"
         else
-            echo -e "${YELLOW}[Pacman]${NC} Daemon start failed — check daemon_output.log"
+            echo -e "${YELLOW}[Space Lord]${NC} Daemon start failed — check daemon_output.log"
             rm -f "$PID_FILE"
         fi
     else
         pid=$(get_daemon_pid)
-        echo -e "${GREEN}[Pacman]${NC} Daemons running (PID: $pid)"
+        echo -e "${GREEN}[Space Lord]${NC} Daemons running (PID: $pid)"
     fi
     uv run --project "$SCRIPT_DIR" python -m cli.main
 else

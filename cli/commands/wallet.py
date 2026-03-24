@@ -71,7 +71,7 @@ def cmd_setup(app, args):
     from lib.saucerswap import SaucerSwapV2
     from web3 import Web3
 
-    print(f"\n{C.BOLD}{C.ACCENT}  ᗧ  PACMAN | WELCOME TO THE FUTURE OF HEDERA{C.R}")
+    print(f"\n{C.BOLD}{C.ACCENT}  ᗧ  SPACE LORD | WELCOME TO THE FUTURE OF HEDERA{C.R}")
     print(f"  {C.CHROME}{'═' * 56}{C.R}")
     print(f"  {C.TEXT}The AI-native toolkit for serious Hedera builders.{C.R}")
     print(f"  {C.MUTED}This wizard will set up your keys, accounts, and HCS signals.{C.R}")
@@ -124,7 +124,7 @@ def cmd_setup(app, args):
         sponsor_id = os.getenv("HEDERA_ACCOUNT_ID")
         if sponsor_id:
              print(f"\n  {C.BOLD}Instant Activation?{C.R}")
-             print(f"  Pacman can sponsor this new account from {C.BOLD}{sponsor_id}{C.R}.")
+             print(f"  Space Lord can sponsor this new account from {C.BOLD}{sponsor_id}{C.R}.")
              do_sponsor = _safe_input(f"  Sponsor now? {C.MUTED}(y/n){C.R} ").strip().lower()
              if do_sponsor in ['y', 'yes']:
                  new_id, _ = app.create_new_account(initial_balance=1.0, alias_key=raw_key)
@@ -161,7 +161,7 @@ def cmd_setup(app, args):
 
     # 2. Account Isolation
     print(f"\n  {C.BOLD}[2/3] ACCOUNT ISOLATION (ROBOTS){C.R}")
-    print(f"  {C.TEXT}Pacman recommends using a dedicated sub-account for AI agents{C.R}")
+    print(f"  {C.TEXT}Space Lord recommends using a dedicated sub-account for AI agents{C.R}")
     print(f"  {C.TEXT}to keep your main funds and rebalancer logic separate.{C.R}")
     
     do_robot = _safe_input(f"\n  Create dedicated rebalancer account? {C.MUTED}(y/n){C.R} ", default="n").strip().lower()
@@ -176,12 +176,12 @@ def cmd_setup(app, args):
 
     # 3. HCS Signals
     print(f"\n  {C.BOLD}[3/3] HCS MESSAGING & SIGNALS{C.R}")
-    print(f"  {C.TEXT}Broadcast signals to other Pacman instances via HCS.{C.R}")
+    print(f"  {C.TEXT}Broadcast signals to other Space Lord instances via HCS.{C.R}")
     
     do_hcs = _safe_input(f"\n  Create a new HCS signal topic now? {C.MUTED}(y/n){C.R} ", default="n").strip().lower()
     if do_hcs in ['y', 'yes']:
         print(f"  {C.MUTED}Creating HCS topic...{C.R}")
-        topic_id = app.hcs_manager.create_topic(memo="Pacman Signals")
+        topic_id = app.hcs_manager.create_topic(memo="Space Lord Signals")
         if topic_id:
              print(f"  {C.OK}✅ TOPIC ACTIVE: {C.BOLD}{topic_id}{C.R}")
         else:
@@ -388,8 +388,8 @@ def cmd_account(app, args):
                 print(f"  {C.OK}✅ Key saved:{C.R} {fp}")
             # Open email draft with backup file attached (macOS: auto-attaches via AppleScript)
             _try_open_email_draft(
-                f"Pacman Key Backup — {new_id}",
-                f"New Pacman account created.\n\nAccount: {new_id}\nNickname: {nickname or '(none)'}\nKey Type: ECDSA (secp256k1)\nEVM: {evm_addr}\n\nKey backup file is attached.",
+                f"Space Lord Key Backup — {new_id}",
+                f"New Space Lord account created.\n\nAccount: {new_id}\nNickname: {nickname or '(none)'}\nKey Type: ECDSA (secp256k1)\nEVM: {evm_addr}\n\nKey backup file is attached.",
                 attachment_path=saved_files[0]
             )
         else:
@@ -493,7 +493,7 @@ def _build_account_json(app, account_id=None):
     """Build structured balance JSON for one account. Used by cmd_balance."""
     import json as _json
     from lib.prices import price_manager
-    from cli.pacman_filter import ui_filter
+    from cli.spacelord_filter import ui_filter
 
     price_manager.reload()
     balances = app.get_balances(account_id=account_id)
@@ -863,7 +863,7 @@ def check_wallet_setup(app):
         return
 
     if not app.config.private_key:
-        print(f"\n  {C.BOLD}{C.TEXT}Welcome to Pacman!{C.R}")
+        print(f"\n  {C.BOLD}{C.TEXT}Welcome to Space Lord!{C.R}")
         print(f"  {C.MUTED}To start trading, you'll need to configure your Hedera wallet.{C.R}")
         print(f"  Run {C.BOLD}{C.ACCENT}setup{C.R} to get started.")
         print()
@@ -976,7 +976,7 @@ def cmd_status(app, args):
         hbar_price = price_manager.get_hbar_price()
         total_usd = hbar_bal * hbar_price
 
-        from cli.pacman_filter import ui_filter
+        from cli.spacelord_filter import ui_filter
         tokens_data = ui_filter.get_token_metadata()
 
         for token_key, bal in balances.items():
@@ -1212,10 +1212,10 @@ def _auto_backup_new_key(account_id, private_key, nickname="", evm_address=""):
 
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     safe_id = account_id.replace(".", "_")
-    filename = f"pacman_key_{safe_id}_{timestamp}.txt"
+    filename = f"spacelord_key_{safe_id}_{timestamp}.txt"
 
     content = (
-        f"PACMAN KEY BACKUP\n"
+        f"SPACE LORD KEY BACKUP\n"
         f"{'=' * 50}\n"
         f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         f"Account ID:  {account_id}\n"
@@ -1439,7 +1439,7 @@ def cmd_backup_keys(app, args):
         backup_file = backup_dir / f"key_backup_{timestamp}.txt"
 
         file_content = (
-            f"PACMAN KEY BACKUP — {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"SPACE LORD KEY BACKUP — {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
             f"{'=' * 60}\n"
             f"IMPORTANT: Save to a password manager, then delete this file.\n"
             f"These keys control real funds on Hedera mainnet.\n"
@@ -1477,9 +1477,9 @@ def cmd_backup_keys(app, args):
             pass
 
         # Try to open email client with a SHORT summary (not full keys — too long for mailto:)
-        email_subject = f"Pacman Key Backup — {time.strftime('%Y-%m-%d')}"
+        email_subject = f"Space Lord Key Backup — {time.strftime('%Y-%m-%d')}"
         active_keys = [e for e in inventory if e["is_active"]]
-        email_summary = f"Pacman key backup saved to:\n{backup_file_path}\n"
+        email_summary = f"Space Lord key backup saved to:\n{backup_file_path}\n"
         if downloads_path:
             email_summary += f"{downloads_path}\n"
         email_summary += f"\n{len(active_keys)} active key(s), {len(inventory)} total.\n\n"
@@ -1568,7 +1568,7 @@ def _update_env(key, value, force=False):
     # Create file if missing
     if not env_path.exists():
         with open(env_path, "w") as f:
-            f.write("# Pacman .env\n")
+            f.write("# Space Lord .env\n")
 
     lines = []
     found = False

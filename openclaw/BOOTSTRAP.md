@@ -1,4 +1,4 @@
-# Pacman Bootstrap — Safety Limits & Startup
+# Space Lord Bootstrap — Safety Limits & Startup
 
 ## Safety Limits (from governance.json)
 
