@@ -62,6 +62,14 @@ SKILL.md
 # Backups
 backups/
 
+# Bridge (too early — no on-chain liquidity yet, 2026-03-27)
+lib/bridge_usdt0.py
+cli/commands/bridge.py
+data/abi/
+
+# Knowledge base (gitignored per CLAUDE.md)
+data/knowledge/
+
 # Deprecated
 deprecated/
 pactui/
