@@ -198,6 +198,7 @@ class USDT0Bridge:
     HEDERA_USDT0_HEDERA_ID = "0.0.642851"
     USDT0_DECIMALS = 6
 
+    # Required executor attributes: w3, eoa, config.private_key, chain_id, network
     def __init__(self, executor):
         self.executor = executor
         self.w3 = executor.w3
@@ -250,9 +251,29 @@ def cmd_bridge(app, args):
     "max_bridge_usd": 100.00,
     "allowed_chains": ["arbitrum"],
     "min_bridge_amount_usd": 1.00,
-    "require_destination_address": true
+    "counts_toward_daily_limit": true
 }
 ```
+
+Bridge amounts count toward the existing `max_daily_usd` limit. If a user swaps $90 and bridges $50 in the same day, the bridge is blocked (total $140 > $100 daily limit).
+
+### Bridge Destination Whitelist (`data/settings.json`)
+
+Cross-chain bridges require a whitelisted destination, extending the existing whitelist pattern:
+
+```json
+"bridge_whitelist": [
+    {
+        "chain": "arbitrum",
+        "address": "0xYourArbAddress",
+        "label": "My Arbitrum Wallet"
+    }
+]
+```
+
+This is enforced in `lib/bridge_usdt0.py` before any contract call. The `--to` address must match a `bridge_whitelist` entry for the target chain. This parallels `transfer_whitelist` for on-chain transfers — wallet whitelists remain the most important safety feature.
+
+**Note:** Bridge destinations are EVM addresses (0x..., 42 chars), not Hedera IDs. This is the one place where EVM addresses are required, since the destination is on an EVM chain. Hedera IDs (0.0.xxx) are rejected as bridge destinations.
 
 ### CLI Registration (`cli/main.py`)
 
@@ -285,21 +306,27 @@ Every bridge operation logs to `training_data/live_executions.jsonl`:
 | Error | Detection | Response |
 |-------|-----------|----------|
 | Insufficient USDT0 balance | `balanceOf()` < amount | "Insufficient USDT0 balance. Have: X, Need: Y" |
-| Insufficient HBAR for LZ fee | Native balance < `quoteSend().nativeFee` | "Need X HBAR for LayerZero fee, have Y" |
-| Amount exceeds governance limit | `amount > governance.bridging.max_bridge_usd` | "Bridge amount $X exceeds limit of $Y" |
+| Insufficient HBAR for LZ fee + gas reserve | `hbar_balance < nativeFee + gas_estimate + min_hbar_reserve` | "Need X HBAR (Y fee + Z gas + 5 reserve), have W" |
+| Amount exceeds per-tx limit | `amount > governance.bridging.max_bridge_usd` | "Bridge amount $X exceeds limit of $Y" |
+| Amount exceeds daily limit | `daily_total + amount > governance.safety_limits.max_daily_usd` | "Bridge would exceed daily limit. Used: $X, Limit: $Y" |
+| Destination not whitelisted | `recipient not in bridge_whitelist[chain]` | "Address not in bridge whitelist. Add it first." |
+| Destination is Hedera ID | `recipient.startswith("0.0.")` | "Bridge destination must be an EVM address (0x...), not a Hedera ID" |
 | Chain not in allowed list | `dest_chain not in governance.bridging.allowed_chains` | "Chain 'X' not in allowed list: [Y]" |
-| Invalid destination address | Not a valid EVM address | "Invalid EVM address: X" |
+| Invalid EVM address | Not 0x + 40 hex chars | "Invalid EVM address: X" |
 | OFT send() reverts | Transaction receipt status 0 | "Bridge transaction failed: [revert reason]" |
+| LayerZero delivery timeout | Status "pending" after 15 minutes | "LayerZero delivery slow. Check: scan.layerzero.network" |
 | LayerZero delivery fails | Status check returns "failed" | "LayerZero delivery failed. Funds safe — check LZ scan" |
-| USDT0 token not associated on Hedera | Contract call reverts | "USDT0 token not associated with account. Run: associate 0.0.642851" |
+| USDT0 token not associated | Contract call reverts | "USDT0 token not associated with account. Run: associate 0.0.642851" |
 
 ## 7. Security Considerations
 
 - **Private key handling:** Same reveal/delete pattern as executor — `pk = reveal(); try: ...; finally: del pk`
 - **No destination address fabrication:** Recipient must be explicitly provided, never defaulted
 - **Governance enforcement:** All limits checked before any contract call
-- **Allowance management:** Approve exact amount, not MAX_UINT256 (minimize exposure)
+- **Allowance management:** Approve exact amount per transaction, not MAX_UINT256 (minimize exposure). Each bridge call issues its own approval if allowance is insufficient. Extra gas cost is acceptable for safety.
 - **Refund address:** Set to `self.eoa` so excess LZ fees return to sender
+- **Amount precision:** User-facing amounts are `float` but converted to raw units via `int(amount * 10**6)` with truncation (matching `lib/saucerswap.py` pattern). All contract calls use integer raw amounts.
+- **Bridge in `agent_rules.never_auto_execute`:** Add `"bridge"` to governance.json `agent_rules.never_auto_execute` — bridging is irreversible cross-chain and must require explicit user command.
 
 ## 8. Testing Strategy
 
@@ -308,8 +335,8 @@ Every bridge operation logs to `training_data/live_executions.jsonl`:
 - Integration test (manual): Testnet bridge with small amount
 
 ### Space Lord (Python)
-- Unit tests: Governance checks, argument parsing, error cases
-- Integration test: Full bridge on testnet with `simulate_mode` override in test only
+- Unit tests: Governance checks, argument parsing, whitelist enforcement, error cases
+- Integration test: Real execution against Hedera testnet contracts (NOT `simulate_mode` — we never simulate, per CLAUDE.md). Testnet uses real transactions against testnet OFT contracts.
 - Verify: Token association, approval, quote accuracy, send execution
 
 ### Manual Verification Checklist
@@ -320,7 +347,29 @@ Every bridge operation logs to `training_data/live_executions.jsonl`:
 - [ ] LayerZero scan shows message delivered
 - [ ] USDT0 appears on Arbitrum recipient address
 
-## 9. Future Extensions (Not in v1)
+## 9. SKILL.md Update
+
+Add bridge command documentation to SKILL.md so the OpenClaw agent knows the command exists:
+
+```
+## Bridge (Cross-Chain)
+- `bridge <amount> USDT0 <chain>` — Bridge USDT0 to another chain via LayerZero
+- `bridge status <tx_hash>` — Check bridge delivery status
+- Supported chains: arbitrum
+- Destination must be whitelisted in bridge_whitelist (data/settings.json)
+- Counts toward daily transaction limit
+```
+
+## 10. LayerZero Status Checking
+
+The `check_status` tool polls the LayerZero Scan API:
+- **API:** `GET https://scan.layerzero.network/api/trpc/messages.list?input={"filters":{"srcTxHash":"0x..."}}`
+- **Polling:** Not automatic. User calls `bridge status <tx_hash>` manually.
+- **Expected delivery:** 30 seconds to 3 minutes for Hedera → Arbitrum.
+- **Timeout guidance:** If status is still "pending" after 15 minutes, display warning with link to LayerZero scan UI.
+- **No retry logic:** If delivery fails, funds are held by LayerZero protocol and can be recovered. Direct user to LayerZero scan.
+
+## 11. Future Extensions (Not in v1)
 
 - Arbitrum → Hedera (reverse bridge)
 - Additional chains (Optimism, Polygon, HyperCore direct)
@@ -328,7 +377,7 @@ Every bridge operation logs to `training_data/live_executions.jsonl`:
 - XAUt0 / CNHt0 bridging (same OFT pattern, different tokens)
 - Automatic USDT0 → USDC swap on Arbitrum after bridge
 
-## 10. Downstream Context: Hyperliquid
+## 12. Downstream Context: Hyperliquid
 
 After bridging USDT0 to Arbitrum, the user's next step is typically depositing into Hyperliquid:
 - Hyperliquid accepts native USDC on Arbitrum via Bridge2 (min $5 deposit)
