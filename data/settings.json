@@ -34,6 +34,7 @@
         ]
     },
     "transfer_whitelist": [],
+    "bridge_whitelist": [],
     "limit_order_poll_seconds": 3600,
     "limit_order_daemon_enabled": true,
     "patch_network": {
