@@ -50,6 +50,7 @@ from cli.commands.doctor import cmd_doctor
 from cli.commands.telegram import cmd_telegram
 from cli.commands.discord import cmd_discord
 from cli.commands.patch import cmd_patch
+from cli.commands.bridge import cmd_bridge
 
 # Load banner from cli.text_content
 try:
@@ -151,6 +152,8 @@ COMMANDS = {
     "dc": cmd_discord, "discord": cmd_discord,
     # --- Patch Network ---
     "patch": cmd_patch,
+    # --- Bridge ---
+    "bridge": cmd_bridge,
     # --- System ---
     "doctor": cmd_doctor,
     "refresh": cmd_refresh, "sync": cmd_refresh,
