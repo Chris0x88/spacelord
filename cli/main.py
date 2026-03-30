@@ -45,6 +45,7 @@ from cli.commands.orders import cmd_order
 from cli.commands.hcs import cmd_hcs
 from cli.commands.hcs10 import cmd_hcs10
 from cli.commands.robot import cmd_robot
+from cli.commands.forecast import cmd_forecast
 from cli.commands.agent_sync import cmd_agent_sync
 from cli.commands.doctor import cmd_doctor
 from cli.commands.telegram import cmd_telegram
@@ -143,6 +144,8 @@ COMMANDS = {
     "order": cmd_order, "orders": cmd_order,
     # --- Robot ---
     "robot": cmd_robot, "bot": cmd_robot,
+    # --- Power Law Forecast ---
+    "forecast": cmd_forecast, "fl": cmd_forecast,
     # --- Messaging ---
     "hcs": cmd_hcs,
     "hcs10": cmd_hcs10,
