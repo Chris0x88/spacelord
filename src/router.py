@@ -171,6 +171,15 @@ class SpaceLordVariantRouter:
             tb_id = entry.get("tokenB")
             fee = entry.get("fee", 3000)
 
+            # Skip V1 pools that may have been written into pools_v2.json by
+            # scripts/refresh_data.py. The V2 quoter ABI does not match V1 contracts;
+            # routing through a V1 entry here would revert with a cryptic error.
+            # V1 swaps are an explicit user command (`swap-v1`) and use a separate
+            # code path (lib/v1_saucerswap.py).
+            if entry.get("protocol") == "v1":
+                logger.debug(f"Skipping V1 pool from V2 registry {ta_id}<->{tb_id}")
+                continue
+
             # Skip pools touching deprecated tokens (e.g. Hashport [hts] post-sunset)
             if ta_id in self.deprecated_token_ids or tb_id in self.deprecated_token_ids:
                 logger.debug(f"Skipping deprecated-token pool {ta_id}<->{tb_id}")
