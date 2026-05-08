@@ -32,11 +32,10 @@ Agents can adjust these **only on explicit user command**. They are never modifi
 
 ## Account Architecture
 
-| Account | ID | Role | Key Source |
-|---------|-----|------|------------|
-| Main | 0.0.10289160 | User trading | `PRIVATE_KEY` in `.env` |
-| Robot | 0.0.10379302 | Rebalancer daemon | `ROBOT_PRIVATE_KEY` in `.env` |
-| Deprecated | 0.0.10301803 | Backup only | Never use, never delete |
+| Account | Role | Key Source |
+|---------|------|------------|
+| Main | User trading | `PRIVATE_KEY` in `.env` |
+| Robot (optional) | Power Law rebalancer daemon | `ROBOT_PRIVATE_KEY` in `.env` |
 
 - `MAIN_OPERATOR_KEY` in `.env` is the Hedera admin key (used for staking, token association).
 - `PRIVATE_KEY` is the ECDSA signing key (used for EVM swaps, transfers).

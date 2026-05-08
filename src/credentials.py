@@ -1,11 +1,17 @@
 """Space Lord key management — OWS vault + macOS Keychain dual-store.
 
-Keys are stored in BOTH:
-  - OWS vault (~/.ows/wallets/) — AES-256-GCM encrypted, Rust core
-  - macOS Keychain — syncs to iCloud for backup/recovery
+Keys are stored in:
+  - OWS vault (~/.ows/wallets/) — AES-256-GCM encrypted, Rust core (if `ows` package present)
+  - macOS Keychain (local-only by default; iCloud sync NOT enabled)
+  - .env (legacy fallback)
 
 Resolution order for get_private_key():
   OWS vault -> macOS Keychain -> env var -> error
+
+Self-custody note: macOS Keychain entries are written via the Python `keyring`
+package which calls SecKeychain APIs directly. We do NOT pass keys via subprocess
+argv (which would leak via `ps`). Default sync attribute is local-only — keys
+do not propagate to iCloud Keychain.
 """
 from __future__ import annotations
 
@@ -139,17 +145,27 @@ def _keychain_available() -> bool:
 
 
 def _keychain_store(address: str, private_key: str) -> None:
+    """Store a private key in macOS Keychain via SecKeychain API.
+
+    Uses the `keyring` package, which calls Security framework APIs directly.
+    The key is NEVER passed via subprocess argv (which would leak via `ps`).
+    """
     addr = address.lower()
     if not addr.startswith("0x"):
         addr = "0x" + addr
 
-    result = subprocess.run(
-        ["security", "add-generic-password",
-         "-s", KEYCHAIN_SERVICE, "-a", addr, "-w", private_key, "-U"],
-        capture_output=True, text=True, timeout=10,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Keychain store failed: {result.stderr.strip()}")
+    try:
+        import keyring
+    except ImportError as e:
+        raise RuntimeError(
+            "Keychain storage requires the `keyring` package. "
+            "Install via: uv sync"
+        ) from e
+
+    try:
+        keyring.set_password(KEYCHAIN_SERVICE, addr, private_key)
+    except Exception as e:
+        raise RuntimeError(f"Keychain store failed: {e}") from e
 
 
 def _keychain_get(address: Optional[str] = None) -> Optional[str]:
@@ -167,18 +183,11 @@ def _keychain_get(address: Optional[str] = None) -> Optional[str]:
         addr = "0x" + addr
 
     try:
-        result = subprocess.run(
-            ["security", "find-generic-password",
-             "-s", KEYCHAIN_SERVICE, "-a", addr, "-w"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result.returncode == 0:
-            key = result.stdout.strip()
-            if key:
-                return key
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-    return None
+        import keyring
+        key = keyring.get_password(KEYCHAIN_SERVICE, addr)
+        return key if key else None
+    except Exception:
+        return None
 
 
 def _keychain_list() -> List[str]:

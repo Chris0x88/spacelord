@@ -105,6 +105,39 @@ def _do_swap(app, req, yes=False, json_mode=False):
         print(f"  {C.TEXT}{route.from_variant}{C.R} → {C.TEXT}{route.to_variant}{C.R}")
         print(route.explain())
 
+        # Governance soft-confirmation: if estimated USD exceeds max_swap_amount_usd,
+        # require explicit override. TTY: prompt. Non-TTY (agent/pipe): hard block.
+        try:
+            cap = app.config.max_swap_amount_usd
+            basis = from_token if mode == "exact_in" else to_token
+            usd_value = None
+            if cap and cap > 0:
+                pm = getattr(app.executor, "price_manager", None)
+                meta = app.router._get_token_meta(basis) if hasattr(app, "router") else None
+                token_id = (meta or {}).get("id") if meta else None
+                if not token_id and basis in ("HBAR", "0.0.0", "WHBAR"):
+                    token_id = "0.0.0"
+                if pm and token_id:
+                    if getattr(pm, "hbar_price", 0) == 0:
+                        try: pm.reload()
+                        except Exception: pass
+                    price = pm.get_hbar_price() if token_id == "0.0.0" else pm.get_price(token_id)
+                    if price and price > 0:
+                        usd_value = amount * price
+            if usd_value is not None and usd_value > cap:
+                msg = f"Estimated swap value ~${usd_value:.2f} exceeds governance cap ${cap:.2f}."
+                if not sys.stdin.isatty():
+                    print(f"  {C.ERR}✗{C.R} {msg}")
+                    print(f"  {C.MUTED}This requires interactive confirmation. Run from a terminal, lower the amount, or raise max_swap_usd in data/governance.json.{C.R}")
+                    return
+                print(f"\n  {C.WARN}⚠{C.R} {msg}")
+                cap_confirm = _safe_input(f"  Type {C.TEXT}yes{C.R} to override and proceed: ").strip().lower()
+                if cap_confirm != "yes":
+                    print(f"  {C.MUTED}Cancelled (cap not overridden).{C.R}")
+                    return
+        except Exception as _cap_err:
+            logger.debug(f"USD cap check skipped: {_cap_err}")
+
         if app.config.require_confirmation and not yes:
             confirm = _safe_input(f"\n  Execute swap? {C.MUTED}(y/n){C.R} ").strip().lower()
             if confirm not in ["y", "yes"]:

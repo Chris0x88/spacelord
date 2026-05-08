@@ -92,7 +92,7 @@ stop_daemon() {
 }
 
 # --- Step 2: Check for .env ---
-if [ ! -f "$SCRIPT_DIR/.env" ] && [ "$1" != "init" ] 2>/dev/null; then
+if [ ! -f "$SCRIPT_DIR/.env" ] && [ "${1-}" != "init" ]; then
     echo -e "${YELLOW}[Space Lord]${NC} No .env file found."
     echo -e "${CYAN}[Space Lord]${NC} Run: ./launch.sh init    (full first-run wizard)"
     echo -e "${CYAN}[Space Lord]${NC}  or: cp .env.template .env && edit manually"

@@ -55,10 +55,11 @@ class RobotConfig:
         os.getenv("ROBOT_MODEL", "POWER_LAW")
     )
     
-    # --- Simulation Mode ---
-    # Default True for safety. Set ROBOT_SIMULATE=false for live trading.
+    # --- Dry-run Mode (daemon logs intended trades but does NOT broadcast) ---
+    # Default True for safety. Set ROBOT_DRY_RUN=false (or legacy ROBOT_SIMULATE=false) for live trading.
+    # Internal field is named `simulate` for backward compat across power_law/* call sites.
     simulate: bool = field(default_factory=lambda:
-        os.getenv("ROBOT_SIMULATE", "true").lower() != "false"
+        (os.getenv("ROBOT_DRY_RUN") or os.getenv("ROBOT_SIMULATE") or "true").lower() != "false"
     )
 
 

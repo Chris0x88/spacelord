@@ -80,10 +80,12 @@ class SpaceLordVariantRouter:
     
     # Canonical token defaults — human-friendly names → internal variant keys
     # These MUST always resolve. Users say "bitcoin", agents say "0.0.10082597".
+    # USDT[hts] and DAI[hts] removed: Hashport bridge wound down 2026-05-31.
     CANONICAL_DEFAULTS = {
         "bitcoin": "0.0.10082597", "btc": "0.0.10082597", "wbtc": "0.0.10082597",
         "ethereum": "0.0.9770617", "eth": "0.0.9770617", "weth": "0.0.9770617",
-        "dollar": "0.0.456858", "usd": "0.0.456858",        "usdc": "USDC", "usdt": "USDT[hts]", "dai": "DAI[hts]",
+        "dollar": "0.0.456858", "usd": "0.0.456858",
+        "usdc": "USDC",
         "sauce": "SAUCE", "hbar": "HBAR", "hedera": "HEDERA"
     }
     
@@ -110,17 +112,35 @@ class SpaceLordVariantRouter:
         from lib.prices import price_manager as pm
         self.price_manager = price_manager or pm
 
+        # Deprecated token set (e.g. Hashport [hts] tokens post 2026-05-31 sunset).
+        # Sourced from governance.json + per-token "deprecated": true flags in tokens.json.
+        # Pools containing any of these IDs are skipped during load_pools() so the routing
+        # graph never offers a path through a token that's permanently locked.
+        self.deprecated_token_ids: set = set()
+        for tid, meta in self._tokens_data.items():
+            if isinstance(meta, dict) and meta.get("deprecated") is True:
+                self.deprecated_token_ids.add(meta.get("id", tid))
+
         # Load min pool liquidity from governance.json (routing section)
+        # — and merge any additional deprecated_token_ids declared there.
         try:
             gov_path = BASE_DIR / "data" / "governance.json"
             if gov_path.exists():
                 with open(gov_path) as f:
                     gov = json.load(f)
-                val = gov.get("routing", {}).get("min_pool_liquidity_usd")
+                routing_cfg = gov.get("routing", {}) or {}
+                val = routing_cfg.get("min_pool_liquidity_usd")
                 if val is not None and float(val) >= 0:
                     self.MIN_POOL_LIQUIDITY_USD = float(val)
+                gov_deprecated = (routing_cfg.get("deprecated_tokens") or {}).get("ids") or []
+                for tid in gov_deprecated:
+                    if isinstance(tid, str):
+                        self.deprecated_token_ids.add(tid)
         except (FileNotFoundError, json.JSONDecodeError, ValueError, TypeError) as e:
             logger.warning(f"Could not load min_pool_liquidity_usd from governance.json, using default {self.MIN_POOL_LIQUIDITY_USD}: {e}")
+
+        if self.deprecated_token_ids:
+            logger.debug(f"Routing will skip {len(self.deprecated_token_ids)} deprecated token IDs.")
         
     def _load_json(self, path: Path, default):
         try:
@@ -150,11 +170,16 @@ class SpaceLordVariantRouter:
             ta_id = entry.get("tokenA")
             tb_id = entry.get("tokenB")
             fee = entry.get("fee", 3000)
-            
+
+            # Skip pools touching deprecated tokens (e.g. Hashport [hts] post-sunset)
+            if ta_id in self.deprecated_token_ids or tb_id in self.deprecated_token_ids:
+                logger.debug(f"Skipping deprecated-token pool {ta_id}<->{tb_id}")
+                continue
+
             # Resolve symbols for the graph keys
             ta_sym = self._id_to_sym(ta_id)
             tb_sym = self._id_to_sym(tb_id)
-            
+
             if ta_sym and tb_sym:
                 if not self._is_blacklisted(ta_sym, tb_sym):
                     # Static registry has no liquidity data; use 0 as sentinel
@@ -177,11 +202,15 @@ class SpaceLordVariantRouter:
                     
                     if not (ta_id and tb_id):
                         continue
-                        
+
+                    # Skip pools touching deprecated tokens (e.g. Hashport [hts] post-sunset)
+                    if ta_id in self.deprecated_token_ids or tb_id in self.deprecated_token_ids:
+                        continue
+
                     # Treat WHBAR as HBAR for topological pathfinding
                     ta_key = "0.0.0" if ta_id == "0.0.1456986" else ta_id
                     tb_key = "0.0.0" if tb_id == "0.0.1456986" else tb_id
-                    
+
                     if self._is_blacklisted(ta_key, tb_key):
                         continue
                     

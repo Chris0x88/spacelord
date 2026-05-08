@@ -5,10 +5,12 @@ __pycache__/
 *.egg-info/
 venv/
 .venv/
+.pytest_cache/
 
 # Environment & secrets
 .env
 .env.*
+!.env.template
 .DS_Store
 
 # IDE
@@ -27,6 +29,13 @@ package-lock.json
 .~lock*
 daemon_output.log
 tmp/
+logs/
+execution_records/
+training_data/
+FEEDBACK/
+
+# Sensitive: chat/session archives may contain pasted .env contents
+data/chat_archive/
 
 # Virtual environments
 pacman_env/
@@ -48,11 +57,21 @@ MEMORY.md
 memory/
 */MEMORY.md
 
-# Developer files
-SKILL.md
+# Per-user agent preferences (populate from openclaw/defaults/USER.md)
+openclaw/USER.md
 
-# Ignore gitignore
-.gitignore
+# Personal governance overrides (ships generic via data/templates/governance.template.json)
+data/governance.json
+
+# Local-only tests (not shipped to public repo)
+tests/local/
+
+# Personal openclaw automation (paths hardcoded to user's machine)
+openclaw/scripts/
+
+# Skill files are gitignored by default — but ship the agent skill
+SKILL.md
+!openclaw/skills/*/SKILL.md
 
 # Template exceptions
 !data/templates/*.template.json
@@ -62,12 +81,7 @@ SKILL.md
 # Backups
 backups/
 
-# Bridge (too early — no on-chain liquidity yet, 2026-03-27)
-lib/bridge_usdt0.py
-cli/commands/bridge.py
-data/abi/
-
-# Knowledge base (gitignored per CLAUDE.md)
+# Knowledge base (per CLAUDE.md, gitignored)
 data/knowledge/
 
 # Deprecated

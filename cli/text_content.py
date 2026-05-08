@@ -224,7 +224,7 @@ the most efficient path between any two supported tokens.
   {C.TEXT}ᗧ swap 0.001 WBTC for HBAR{C.R}     Sell Bitcoin HTS token
 
 {C.ACCENT}Pre-Execution Safety:{C.R}
-  1. {C.BOLD}Simulation{C.R}: Every swap runs eth_call simulation first.
+  1. {C.BOLD}Pre-flight check{C.R}: Every swap runs an eth_call dry-run first.
      If it would revert, the transaction is NEVER broadcast.
   2. {C.BOLD}Slippage{C.R}: Default 2% tolerance. Adjust with {C.TEXT}slippage <percent>{C.R}.
   3. {C.BOLD}Association{C.R}: Space Lord auto-associates HTS tokens if needed.
@@ -241,9 +241,9 @@ the most efficient path between any two supported tokens.
   - Prefers lower-fee paths and higher-liquidity pools
   - WHBAR (0.0.1456986) is used internally; users never need to specify it
 
-{C.ACCENT}SIMULATION MODE:{C.R}
-  Set {C.TEXT}SPACELORD_SIMULATE=true{C.R} in .env to test without broadcasting.
-  All outputs are identical except no gas is spent and tx hash = "SIMULATED".""",
+{C.ACCENT}Live Execution Only:{C.R}
+  Space Lord never simulates. Every swap goes live to mainnet.
+  Use small amounts (under the {C.TEXT}max_swap_usd{C.R} cap in governance.json) for testing.""",
 
     "send": """{C.BOLD}TRANSFERRING ASSETS — COMPLETE REFERENCE{C.R}
 {C.CHROME}────────────────────────────────────────────────────────{C.R}

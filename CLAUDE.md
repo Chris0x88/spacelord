@@ -24,9 +24,8 @@ Space Lord is a Python CLI for Hedera Hashgraph trading (~10K LOC), designed for
 - If routing data is stale, fix the refresh scripts — don't weaken the router.
 
 ### Accounts
-- Main: 0.0.10289160 (all user operations)
-- Robot: 0.0.10379302 (rebalancer daemon, currently unfunded)
-- Old Robot: 0.0.10301803 (deprecated backup — NEVER delete)
+- Main: from `HEDERA_ACCOUNT_ID` in `.env` (all user operations)
+- Robot: from `ROBOT_ACCOUNT_ID` in `.env` (Power Law rebalancer daemon, optional)
 - config.py discovers robot by nickname "Bitcoin Rebalancer Daemon" in accounts.json
 - If robot has $0 balance: say "needs funding" — never suggest rebalancing
 

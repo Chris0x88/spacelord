@@ -67,7 +67,7 @@ All responses MUST follow these formatting rules unless operating on a different
 - **Bold headings** for every section — use *asterisks* for bold on Telegram (NOT HTML tags)
 - **Currency values**: Always show USD equivalent — e.g. 124.50 HBAR (~$9.96), 0.00125 WBTC (~$125.00)
 - **Token symbols**: UPPERCASE always — HBAR, USDC, WBTC, WETH, SAUCE
-- **Account IDs**: Use backtick monospace — `0.0.10289160`
+- **Account IDs**: Use backtick monospace — `<HEDERA_ACCOUNT_ID>`
 - **Numbers**: Use backtick monospace for amounts — `124.50` HBAR
 - **Separators**: Use thin lines (━━━━━━━━━━━━━━━━━━━━━━━━) for visual hierarchy
 - **NEVER use HTML tags** (<b>, <i>, <code>, <a>) — they render as literal text on Telegram
