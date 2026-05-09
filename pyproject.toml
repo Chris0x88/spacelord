@@ -36,6 +36,11 @@ dependencies = [
 test = [
     "pytest>=7.0.0",
 ]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.8.0",
+]
 
 [project.scripts]
 spacelord = "cli.main:main"
@@ -43,6 +48,54 @@ spacelord = "cli.main:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*", "cli*", "lib*", "data*"]
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+# Convention: pytest discovers `test_*.py` (sim-mode and unit tests, safe to
+# auto-run in CI). Live-broadcast scripts keep `verify_*.py` / `live_test_*.py`
+# prefixes so they are NOT collected; run those manually:
+#     uv run python tests/verify_core_tools.py
+#     uv run python tests/live_test_limit_order.py
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["."]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--showlocals",
+]
+markers = [
+    "slow: marks tests as slow (deselect with -m 'not slow')",
+    "integration: tests that touch the filesystem or external state (still sim-mode)",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff (lint only — formatting kept manual for now)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["data", "backups", "dev", "execution_records", "logs", "openclaw"]
+
+[tool.ruff.lint]
+# Conservative starting set; expand later. Codes:
+# E,W = pycodestyle, F = pyflakes, I = isort, UP = pyupgrade, B = flake8-bugbear
+select = ["E", "W", "F", "I", "UP", "B"]
+ignore = [
+    "E501",  # line length (handled by formatter, line-length is generous already)
+    "B008",  # function call in default arg (pattern used in CLI handlers)
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+ignore_missing_imports = true
+# Start permissive; tighten file-by-file via per-module overrides as cleanup lands.
+disallow_untyped_defs = false
+check_untyped_defs = false
 
 # ---------------------------------------------------------------------------
 # uv Configuration (zero-dependency launcher)
