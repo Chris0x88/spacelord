@@ -36,8 +36,20 @@ def _force_simulation_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     monkeypatch.setenv("SPACELORD_SIMULATE", "true")
     monkeypatch.setenv("SPACELORD_CONFIRM", "false")
-    # Clean any inherited operator credentials so a stray import that reads them
-    # gets a deterministic empty value rather than the developer's real keys.
-    for var in ("OPERATOR_KEY", "OPERATOR_ID", "OPERATOR_EVM_ADDRESS"):
+    # Clean inherited operator credentials so a stray import / env-loader
+    # that reads them gets a deterministic empty value rather than the
+    # developer's real keys (otherwise a test setting PRIVATE_KEY="0xaaa..."
+    # would silently observe the real .env value instead).
+    secret_vars = (
+        "PRIVATE_KEY",
+        "SPACELORD_PRIVATE_KEY",
+        "ROBOT_PRIVATE_KEY",
+        "OPERATOR_KEY",
+        "OPERATOR_ID",
+        "OPERATOR_EVM_ADDRESS",
+        "HEDERA_ACCOUNT_ID",
+        "ROBOT_ACCOUNT_ID",
+    )
+    for var in secret_vars:
         if var in os.environ:
             monkeypatch.delenv(var, raising=False)

@@ -37,7 +37,10 @@ class TestCoreLogic(unittest.TestCase):
         self.assertEqual(resolve_token("usdc"), "0.0.456858")
 
     def test_canonical_resolution_hbar(self):
-        self.assertEqual(resolve_token("hbar"), "0.0.1456986")
+        # Per handoff doc: HBAR = 0.0.0 (native), user-facing.
+        # WHBAR = 0.0.1456986 is internal routing only — never user-facing.
+        # The translator/resolver must resolve `hbar` to native, not WHBAR.
+        self.assertEqual(resolve_token("hbar"), "0.0.0")
         self.assertEqual(resolve_token("hedera"), "0.0.0")
 
     def test_canonical_resolution_unknown(self):
@@ -55,24 +58,25 @@ class TestTranslator(unittest.TestCase):
             self.assertEqual(translate(cmd), {"intent": "balance"})
 
     def test_price_intents(self):
-        self.assertEqual(translate("price hbar"), {"intent": "price", "token": "0.0.1456986"})
+        # `hbar` resolves to native HBAR (0.0.0), not WHBAR — see test_canonical_resolution_hbar.
+        self.assertEqual(translate("price hbar"), {"intent": "price", "token": "0.0.0"})
         self.assertEqual(translate("price hedera"), {"intent": "price", "token": "0.0.0"})
         self.assertEqual(translate("what is the price of bitcoin"), {"intent": "price", "token": "0.0.10082597"})
 
     def test_swap_exact_in(self):
-        # swap AMOUNT TOKEN to TOKEN
+        # swap AMOUNT TOKEN to TOKEN — `hbar` resolves to native (0.0.0)
         req = translate("swap 100 hbar for usdc")
         self.assertEqual(req["intent"], "swap")
         self.assertEqual(req["amount"], 100.0)
-        self.assertEqual(req["from_token"], "0.0.1456986")
+        self.assertEqual(req["from_token"], "0.0.0")
         self.assertEqual(req["to_token"], "0.0.456858")
         self.assertEqual(req["mode"], "exact_in")
 
     def test_swap_exact_out_style_1(self):
-        # swap TOKEN to AMOUNT TOKEN
+        # swap TOKEN to AMOUNT TOKEN — `hbar` resolves to native (0.0.0)
         req = translate("swap hbar to 10 usdc")
         self.assertEqual(req["amount"], 10.0)
-        self.assertEqual(req["from_token"], "0.0.1456986")
+        self.assertEqual(req["from_token"], "0.0.0")
         self.assertEqual(req["to_token"], "0.0.456858")
         self.assertEqual(req["mode"], "exact_out")
 
@@ -85,10 +89,10 @@ class TestTranslator(unittest.TestCase):
         self.assertEqual(req["mode"], "exact_out")
 
     def test_swap_implicit_1(self):
-        # swap TOKEN to TOKEN
+        # swap TOKEN to TOKEN — `hbar` resolves to native (0.0.0)
         req = translate("swap hbar for usdc")
         self.assertEqual(req["amount"], 1.0)
-        self.assertEqual(req["from_token"], "0.0.1456986")
+        self.assertEqual(req["from_token"], "0.0.0")
         self.assertEqual(req["to_token"], "0.0.456858")
         self.assertEqual(req["mode"], "exact_in")
 
@@ -101,14 +105,18 @@ class TestTranslator(unittest.TestCase):
 
     # Adding many variations for comprehensive testing
     def test_translator_variations(self):
+        # Translator output for `swap` intents includes a `flags: {}` field
+        # for downstream router hints (e.g. force_v1, slippage_override). It
+        # is empty by default and asserted explicitly here so a future change
+        # that populates it without a corresponding test update will fail loudly.
         cases = [
-            ("trade 50 eth into btc", {"intent": "swap", "amount": 50.0, "from_token": "0.0.9770617", "to_token": "0.0.10082597", "mode": "exact_in"}),
-            ("exchange 10 hedera to dollar", {"intent": "swap", "amount": 10.0, "from_token": "0.0.0", "to_token": "0.0.456858", "mode": "exact_in"}),
-            ("get 0.5 ethereum with usdc", {"intent": "swap", "amount": 0.5, "to_token": "0.0.9770617", "from_token": "0.0.456858", "mode": "exact_out"}),
-            ("transfer 5 btc to 0.0.999", {"intent": "send", "amount": 5.0, "token": "0.0.10082597", "recipient": "0.0.999"}),
+            ("trade 50 eth into btc",        {"intent": "swap", "amount": 50.0, "from_token": "0.0.9770617", "to_token": "0.0.10082597", "mode": "exact_in",  "flags": {}}),
+            ("exchange 10 hedera to dollar", {"intent": "swap", "amount": 10.0, "from_token": "0.0.0",       "to_token": "0.0.456858",   "mode": "exact_in",  "flags": {}}),
+            ("get 0.5 ethereum with usdc",   {"intent": "swap", "amount": 0.5,  "to_token":   "0.0.9770617", "from_token": "0.0.456858", "mode": "exact_out", "flags": {}}),
+            ("transfer 5 btc to 0.0.999",    {"intent": "send", "amount": 5.0,  "token":      "0.0.10082597", "recipient": "0.0.999"}),
         ]
         for text, expected in cases:
-            self.assertEqual(translate(text), expected)
+            self.assertEqual(translate(text), expected, f"mismatch on input: {text!r}")
 
 class TestRouter(unittest.TestCase):
     @classmethod
@@ -347,9 +355,10 @@ class TestNLPVariations(unittest.TestCase):
 
     # --- PRICE/BALANCE VARIATIONS ---
     def test_nlp_price_1(self):
+        # `hbar` resolves to native (0.0.0); WHBAR (0.0.1456986) is internal.
         req = translate("price hbar")
         self.assertEqual(req["intent"], "price")
-        self.assertEqual(req["token"], "0.0.1456986")
+        self.assertEqual(req["token"], "0.0.0")
 
     def test_nlp_price_2(self):
         req = translate("what is the price of wbtc")

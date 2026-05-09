@@ -33,24 +33,13 @@ jobs:
       - name: Sync dev dependencies
         run: uv sync --extra dev
 
-      # Strict pytest with the known-broken tests deselected. Any of the 90
-      # currently-passing tests breaking will fail this job (regression gate).
-      #
-      # FIXME post-launch: fix or remove these and drop the --deselect flags.
-      # See commit 9da7dbc for context on each failure.
-      - name: Run pytest (strict, known-broken deselected)
-        run: |
-          uv run pytest tests/ -v \
-            --deselect tests/test_approve.py::test_approve \
-            --deselect tests/test_massive_suite.py::TestCoreLogic::test_canonical_resolution_hbar \
-            --deselect tests/test_massive_suite.py::TestTranslator::test_price_intents \
-            --deselect tests/test_massive_suite.py::TestTranslator::test_swap_exact_in \
-            --deselect tests/test_massive_suite.py::TestTranslator::test_swap_exact_out_style_1 \
-            --deselect tests/test_massive_suite.py::TestTranslator::test_swap_implicit_1 \
-            --deselect tests/test_massive_suite.py::TestTranslator::test_translator_variations \
-            --deselect tests/test_massive_suite.py::TestNLPVariations::test_nlp_price_1 \
-            --deselect tests/test_secure_config.py::TestSecureString::test_spacelord_config_integration \
-            --deselect tests/test_secure_config.py::TestSecureString::test_spacelord_config_validation_failure
+      # Strict pytest. Every collected test must pass. Live-broadcast verifiers
+      # keep `verify_*.py` / `live_test_*.py` prefixes (not collected) and are
+      # run manually as scripts. The TestLiveIntegration class in
+      # test_massive_suite.py is gated behind SPACELORD_LIVE_TESTS=true and
+      # stays skipped here.
+      - name: Run pytest (strict — all tests must pass)
+        run: uv run pytest tests/ -v
 
   lint:
     name: ruff (advisory)

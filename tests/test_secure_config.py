@@ -33,27 +33,28 @@ class TestSecureString(unittest.TestCase):
         self.assertEqual(repr(secure), "<SecureString: ***HIDDEN***>")
 
     def test_spacelord_config_integration(self):
-        # Setup Env
+        # The env var SpaceLordConfig.from_env() actually reads is `PRIVATE_KEY`
+        # (see src/config.py:119). Earlier tests used `SPACELORD_PRIVATE_KEY`,
+        # which was silently ignored — masking the developer's real .env value
+        # bleeding through into the test.
+        # The conftest autouse fixture clears PRIVATE_KEY/SPACELORD_PRIVATE_KEY/etc.
+        # before every test, so this assignment is the only source of truth here.
         pk = "0x" + "a" * 64
-        os.environ["SPACELORD_PRIVATE_KEY"] = pk
+        os.environ["PRIVATE_KEY"] = pk
         os.environ["SPACELORD_SIMULATE"] = "false"
 
-        # Load
         config = SpaceLordConfig.from_env()
 
-        # Verify type and value
         self.assertIsInstance(config.private_key, SecureString)
         self.assertEqual(config.private_key.reveal(), pk)
 
-        # Verify validation passes
         try:
             config.validate()
         except ConfigurationError as e:
             self.fail(f"ConfigurationError raised: {e}")
 
     def test_spacelord_config_validation_failure(self):
-        # Setup Invalid Env
-        os.environ["SPACELORD_PRIVATE_KEY"] = "invalid_key_too_short"
+        os.environ["PRIVATE_KEY"] = "invalid_key_too_short"
         os.environ["SPACELORD_SIMULATE"] = "false"
 
         config = SpaceLordConfig.from_env()
