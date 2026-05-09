@@ -84,10 +84,10 @@ The exact directory layout for the rebuild repo. Sized targets in parentheses ar
 ```
 spacelord-v2/
 ├── adapters/                  (~500 LOC budget; thin)
-│   ├── base.py                Abstract Adapter protocol (Pydantic models, async methods)
-│   ├── hedera.py              Hedera adapter (wraps current src/executor + lib/saucerswap)
-│   ├── solana.py              Stubbed; raises NotImplemented(planned: v2.x)
-│   ├── hyperliquid.py         Stubbed; raises NotImplemented(planned: v2.x)
+│   ├── base.py                Capability protocols (NOT a single Adapter — see note below)
+│   ├── hedera.py              Hedera capabilities: SwapCapability, TransferCapability, BalanceCapability
+│   ├── solana.py              Stubbed; raises NotImplementedError (planned: v2.x)
+│   ├── hyperliquid.py         Stubbed — likely PerpCapability + TransferCapability (NOT SwapCapability)
 │   └── mock.py                Test double; deterministic responses
 │
 ├── engines/                   (~6K LOC; the brain)
@@ -169,6 +169,51 @@ spacelord-v2/
 ```
 
 **Why these budgets:** every file under ~300 LOC, every package under ~3K LOC, total under ~20K LOC. That's the size where Claude Code can read a whole module in one tool call, hold the relevant context, and edit it without thrashing.
+
+### Open design question: capabilities, not a monolithic Adapter (added 2026-05-09 per user feedback)
+
+The first draft of this doc proposed a single `Adapter` protocol that every chain (Hedera / Solana / HyperLiquid) would implement. **The user rightly pushed back: chains are not structurally similar.** A few examples of why a uniform interface is the wrong abstraction:
+
+| Operation | Hedera (SaucerSwap) | HyperLiquid | Solana (Jupiter / Raydium) |
+|---|---|---|---|
+| Swap | EVM call to V2 router contract; HTS token associations | No spot DEX in the same sense — perp orderbook is the primary primitive | SPL token transfers + program calls (Jupiter aggregator routes across many programs) |
+| Order book | None (AMM only) | Native; limit orders are a first-class primitive | Some programs have orderbooks (Phoenix, OpenBook); most are AMMs |
+| Account model | EVM alias OR HTS account ID; both work | EOA only | Account-based with program-derived addresses (PDAs) |
+| Fee model | HBAR fee + per-tx prepayment | Maker/taker bps on perps | Lamports + per-program rent |
+
+Forcing all of these through a uniform `swap(from, to, amount)` either lies (HyperLiquid has no spot swap) or strips so much detail the engines have to special-case the chain anyway, defeating the abstraction.
+
+**The cleaner pattern is capability-scoped protocols.** Each chain implements only the capabilities it actually has. Engines query "do I have a `SwapCapability` for chain X?" before dispatching, and the type system catches "tried to call swap on HyperLiquid" at static-analysis time:
+
+```python
+# adapters/base.py
+class SwapCapability(Protocol):
+    async def quote_swap(self, from_token: TokenRef, to_token: TokenRef, amount: Decimal) -> SwapQuote: ...
+    async def execute_swap(self, quote: SwapQuote, max_slippage_bps: int) -> SwapResult: ...
+
+class PerpCapability(Protocol):
+    async def quote_open(self, market: str, side: Literal["long", "short"], size_usd: Decimal) -> PerpQuote: ...
+    async def execute_open(self, quote: PerpQuote) -> PerpResult: ...
+    async def close_position(self, position_id: str) -> PerpResult: ...
+
+class TransferCapability(Protocol):  # most chains have this
+    async def transfer(self, to: AccountRef, token: TokenRef, amount: Decimal) -> TransferResult: ...
+
+class BalanceCapability(Protocol):  # universal
+    async def get_balances(self, account: AccountRef) -> dict[TokenRef, Decimal]: ...
+
+# adapters/hedera.py
+class HederaAdapter(SwapCapability, TransferCapability, BalanceCapability):
+    # Implements all three. No PerpCapability because Hedera doesn't host perps.
+    ...
+
+# adapters/hyperliquid.py
+class HyperliquidAdapter(PerpCapability, TransferCapability, BalanceCapability):
+    # Implements perps + transfer + balance. No SwapCapability — HL is not a spot DEX.
+    ...
+```
+
+**Decide before phase 1.** This is the most important architectural call in the rebuild because it shapes every engine call signature. Listed in §11 as an explicit gate.
 
 ---
 
@@ -395,6 +440,7 @@ To prevent scope drift:
 
 ## 11. Open questions for you
 
+- **🔴 Adapter shape: monolithic or capability-scoped?** Strongest recommendation: **capability-scoped** (see §3 design note). Gates phase 1.
 - **New repo name?** `spacelord-v2`, `spacelord-core`, something else? Branding implications.
 - **Public from day 0, or private until v2.0 ships?** I'd recommend private until phase 2 (agent layer working), then public so contributors can read the architecture doc.
 - **Codex CLI as a first-class harness from phase 2, or phase 3?** Phase 3 is faster but means a week without Codex compatibility.
