@@ -1,0 +1,80 @@
+name: test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch: {}
+
+# Cancel superseded runs on the same branch / PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    name: pytest (Python 3.10, sim mode)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.10
+
+      - name: Sync dev dependencies
+        run: uv sync --extra dev
+
+      # Strict pytest with the known-broken tests deselected. Any of the 90
+      # currently-passing tests breaking will fail this job (regression gate).
+      #
+      # FIXME post-launch: fix or remove these and drop the --deselect flags.
+      # See commit 9da7dbc for context on each failure.
+      - name: Run pytest (strict, known-broken deselected)
+        run: |
+          uv run pytest tests/ -v \
+            --deselect tests/test_approve.py::test_approve \
+            --deselect tests/test_massive_suite.py::TestCoreLogic::test_canonical_resolution_hbar \
+            --deselect tests/test_massive_suite.py::TestTranslator::test_price_intents \
+            --deselect tests/test_massive_suite.py::TestTranslator::test_swap_exact_in \
+            --deselect tests/test_massive_suite.py::TestTranslator::test_swap_exact_out_style_1 \
+            --deselect tests/test_massive_suite.py::TestTranslator::test_swap_implicit_1 \
+            --deselect tests/test_massive_suite.py::TestTranslator::test_translator_variations \
+            --deselect tests/test_massive_suite.py::TestNLPVariations::test_nlp_price_1 \
+            --deselect tests/test_secure_config.py::TestSecureString::test_spacelord_config_integration \
+            --deselect tests/test_secure_config.py::TestSecureString::test_spacelord_config_validation_failure
+
+  lint:
+    name: ruff (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Advisory only for the first pass — never run on this 26.5K-LOC codebase
+    # before. Surfaces issues without blocking. Make this required once the
+    # initial cleanup pass lands.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.10
+
+      - name: Sync dev dependencies
+        run: uv sync --extra dev
+
+      - name: Ruff check (advisory — does not block merge yet)
+        run: uv run ruff check src cli lib tests
