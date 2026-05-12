@@ -326,7 +326,7 @@ class SpaceLordController:
     def hcs_manager(self):
         """Lazy initialization of the HCSManager plugin (walled garden signal broadcasts)."""
         if not hasattr(self, '_hcs_manager') or self._hcs_manager is None:
-            from src.plugins.hcs_manager import HcsManager
+            from src.plugins.hcs.hcs_manager import HcsManager
             self._hcs_manager = HcsManager(self)
         return self._hcs_manager
 
