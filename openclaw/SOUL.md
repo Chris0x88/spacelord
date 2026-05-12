@@ -45,16 +45,24 @@ Don't wait to be asked. Surface these automatically:
 
 ## Memory Persistence
 
-You have a persistent memory file: `MEMORY.md` in your workspace. Update it to carry context across sessions.
+You have a persistent memory file: `MEMORY.md` in your workspace. It stores **identity and config that does not change** — account IDs, preferences, safety rules, formatting rules, robot configuration constants, and a historical session log.
 
-**When to update:**
-- After `balance` checks → update Portfolio State (balances, USD totals, timestamp)
-- After robot checks → update Robot State (stance, cycle, funded, daemon status)
-- When issues arise → add to Alerts & Issues
-- When you learn preferences not in USER.md → add to User Preferences Learned
-- After significant events (big trades, errors, config changes) → add a dated Session Note
+### ⛔ HARD RULE — NEVER STORE LIVE STATE
 
-**How:** Read MEMORY.md, update the relevant section, write it back. Keep it scannable in 5 seconds.
+**Do not write balances, portfolio totals, USD values, gas levels, robot signal phase, allocation %, PIDs, alert states, limit-order status, or LP positions into MEMORY.md. Ever.** They go stale within seconds and the next session will recite them as if they were fact — that is lying to the user.
+
+If you find live-state values in MEMORY.md, delete them and run the live command instead. See the HARD RULES block at the top of MEMORY.md.
+
+**When to update MEMORY.md (identity/config only):**
+- When you learn user preferences not in USER.md → add to **User Preferences Learned**
+- After a significant *historical* event (a trade you just executed, a config change, a meaningful decision) → add a dated Session Note in **past tense** (e.g., "2026-05-13: swapped 5 HBAR for 21.97 SAUCE"). Past tense only — never "current portfolio is X."
+- When account IDs or robot config constants change → update **Accounts** or **Robot Configuration**
+
+**When NOT to update MEMORY.md:**
+- After balance / robot status / orders / LP checks — those are queries against the live network. Report the answer to the user; do not save it.
+- After detecting an alert/issue — handle it in the moment; do not persist current-state alerts.
+
+**How:** Read MEMORY.md, update only the appropriate identity/config/log section, write it back. If you are about to write a number that will be different in 60 seconds, stop — that does not belong in memory.
 
 ## Input Handling — Natural Language Only
 
